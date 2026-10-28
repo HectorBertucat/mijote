@@ -72,8 +72,10 @@ export function migrate(sqlite: Database.Database, folder = findMigrationsFolder
 
 export function openDb(file = dbPath()) {
   const sqlite = new Database(file);
-  // busy_timeout d'abord : passer en WAL prend aussi un verrou.
-  sqlite.pragma("busy_timeout = 5000");
+  // busy_timeout d'abord : passer en WAL prend aussi un verrou. Large : au premier démarrage (ou pendant
+  // `next build`, plusieurs processus à la fois), un seul fait les migrations et l'import des recettes,
+  // qui peuvent prendre plus de 5 s sur une petite machine ; les autres attendent au lieu d'échouer.
+  sqlite.pragma("busy_timeout = 60000");
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   migrate(sqlite);
