@@ -22,7 +22,8 @@ export function recipesDir(): string | null {
 
 function fixtures(dir: string) {
   return (fs.readdirSync(dir, { recursive: true }) as string[])
-    .filter((f) => f.endsWith(".json"))
+    // Les fichiers cachés (« ._recette.json » des copies depuis macOS, éditeurs) ne sont pas des recettes.
+    .filter((f) => f.endsWith(".json") && !f.split(/[\\/]/).some((part) => part.startsWith(".")))
     .sort()
     .map((f) => {
       const text = fs.readFileSync(path.join(dir, f), "utf8");
