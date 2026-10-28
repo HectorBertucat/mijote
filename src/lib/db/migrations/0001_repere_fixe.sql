@@ -1,0 +1,1 @@
+ALTER TABLE `people` ADD `fixed_meal_ref` text;

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Vérifie chaque commit qui part (contenu et messages).
+z=0000000000000000000000000000000000000000
+while read local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$z" ] && continue
+  if [ "$remote_sha" = "$z" ]; then range="$(git rev-list --max-parents=0 "$local_sha" | tail -1)..$local_sha"; full=1; else range="$remote_sha..$local_sha"; full=0; fi
+  node scripts/check-private.mjs --range "$range" || exit 1
+  [ "$full" = 1 ] && { node scripts/check-private.mjs --all || exit 1; }
+done
+exit 0

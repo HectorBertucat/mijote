@@ -1,0 +1,246 @@
+{
+  "slug": "saute-minute-porc-gingembre-miel",
+  "name": "Sauté minute de porc gingembre-miel",
+  "description": "Le wok à la française : lanières d'échine marinées à la maïzena, feu vif, une seule fournée, légumes croquants.",
+  "servingsUnits": 5,
+  "tags": [
+    "porc",
+    "poele",
+    "minute",
+    "riz",
+    "asiatique"
+  ],
+  "fridgeDays": 1,
+  "freezerOk": false,
+  "kcalUnit": 140,
+  "proteinUnit": 12.4,
+  "status": "liked",
+  "source": "Recette de démonstration, testée en batch cooking.",
+  "tips": "Plat à manger frais (15 min). L'échine tranchée fine cuit en 2 min et reste juteuse grâce à son gras. La maïzena fait un voile qui garde le jus et dore très bien.",
+  "ingredients": [
+    {
+      "lineRaw": "300 g côtes échines sans os label rouge",
+      "item": "Côtes échines sans os, en lanières de 1 cm",
+      "grams": 300,
+      "food": "echine_porc"
+    },
+    {
+      "lineRaw": "1 c. à s. sauce soja",
+      "item": "Marinade : soja 1 c. à s.",
+      "grams": 15,
+      "group": "A",
+      "pantry": true,
+      "food": "sauce_soja"
+    },
+    {
+      "lineRaw": "1 c. à c. maïzena",
+      "item": "Marinade : maïzena 1 c. à c.",
+      "grams": 5,
+      "group": "A",
+      "pantry": true,
+      "food": "maizena"
+    },
+    {
+      "lineRaw": "1 c. à c. huile",
+      "item": "Marinade : huile 1 c. à c., poivre",
+      "grams": 5,
+      "group": "A",
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 0,
+        "note": "marinade : tout est mangé"
+      }
+    },
+    {
+      "lineRaw": "1 poivron rouge",
+      "item": "Poivron rouge, en lanières",
+      "grams": 150,
+      "units": 1,
+      "group": "B",
+      "food": "poivron"
+    },
+    {
+      "lineRaw": "1/2 oignon",
+      "item": "½ oignon, en lamelles",
+      "grams": 75,
+      "units": 0.5,
+      "group": "B",
+      "food": "oignon"
+    },
+    {
+      "lineRaw": "1 gousse d'ail",
+      "item": "Ail, haché",
+      "units": 1,
+      "group": "C",
+      "food": "ail"
+    },
+    {
+      "lineRaw": "1 c. à c. gingembre frais râpé",
+      "item": "Gingembre frais, râpé",
+      "grams": 5,
+      "group": "C",
+      "food": "gingembre"
+    },
+    {
+      "lineRaw": "1 c. à s. sauce soja",
+      "item": "Sauce : soja 1 c. à s.",
+      "grams": 15,
+      "group": "D",
+      "pantry": true,
+      "food": "sauce_soja"
+    },
+    {
+      "lineRaw": "1 c. à c. miel",
+      "item": "Sauce : miel 1 c. à c. + 2 c. à s. d'eau",
+      "grams": 7,
+      "group": "D",
+      "pantry": true,
+      "food": "miel"
+    },
+    {
+      "lineRaw": "55 g riz basmati",
+      "item": "Riz basmati",
+      "grams": 55,
+      "pantry": true,
+      "food": "riz_basmati"
+    },
+    {
+      "lineRaw": "huile neutre",
+      "item": "Huile neutre",
+      "grams": 15,
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 5,
+        "note": "légumes et sauce se font dans la même poêle : presque tout part dans l’assiette"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "kind": "boil",
+      "text": "Riz en route : 55 g rincés + 85 ml d'eau, ébullition, feu minimum couvert 11 min, repos 5 min.",
+      "durationMin": 19,
+      "activeMin": 1,
+      "equipmentId": "casserole-14",
+      "hobLevel": 9,
+      "phases": [
+        {
+          "text": "Riz rincé (55 g) + 85 ml d'eau dans la casserole, couvercle, niveau 9",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 1.5,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Dès que ça bout : niveau 1, couvercle",
+          "min": 0.5,
+          "hobLevel": 1
+        },
+        {
+          "text": "Le riz cuit à couvert, sans soulever le couvercle",
+          "min": 11,
+          "hobLevel": 1,
+          "wait": true
+        },
+        {
+          "text": "Hors du feu, garde le couvercle",
+          "min": 0.5
+        },
+        {
+          "text": "Repos à couvert",
+          "min": 5,
+          "wait": true
+        }
+      ]
+    },
+    {
+      "kind": "prep",
+      "text": "Lanières de 1 cm tamponnées, puis marinées 10 min (bol A). Pendant ce temps : bol B poivron + oignon, bol C ail + gingembre, bol D sauce soja-miel-eau.",
+      "durationMin": 10,
+      "activeMin": 6,
+      "bowls": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle vide à 7, test de la goutte (bille qui glisse comme du mercure), essuie, 1 c. à s. d'huile. Lanières en une seule couche (300 g, c'est large sous le seuil de 500 g). 1 min sans toucher, saute, encore 1 min. Réserve : elles finiront plus tard.",
+      "durationMin": 5,
+      "activeMin": 5,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": [
+        "A"
+      ],
+      "cue": "Ça chante fort ; bords brunis.",
+      "phases": [
+        {
+          "text": "Poêle vide sur le foyer, préchauffe",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Test de la goutte : si la bille glisse, essuie, 1 c. à s. d'huile",
+          "min": 0.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Lanières (bol A) en une seule couche, ne touche pas",
+          "min": 1,
+          "hobLevel": 7
+        },
+        {
+          "text": "Saute, encore 1 min, puis réserve",
+          "min": 1,
+          "hobLevel": 7
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Même poêle à 7 : poivron + oignon (bol B) 2 à 3 min. Ail + gingembre (bol C) 20 s.",
+      "durationMin": 3,
+      "activeMin": 3,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": [
+        "B",
+        "C"
+      ],
+      "cue": "Légumes croquants avec des points brunis.",
+      "phases": [
+        {
+          "text": "Poivron + oignon (bol B), saute",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Ail + gingembre (bol C)",
+          "min": 0.5,
+          "hobLevel": 7
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Sauce (bol D) + porc, 30 s jusqu'à ce que ce soit brillant. Tout de suite dans l'assiette.",
+      "durationMin": 1,
+      "activeMin": 1,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": [
+        "D"
+      ],
+      "cue": "Sauce laquée qui nappe les lanières."
+    }
+  ]
+}

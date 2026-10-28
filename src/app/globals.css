@@ -1,0 +1,57 @@
+@import "tailwindcss";
+/* Système graphique « Plan de travail » : tokens, polices, échelles et animations. */
+@import "./cuisine-tokens.css";
+/* Kit de composants (src/components/ui/) : traits animés, anneaux, hachures. */
+@import "../components/ui/kit.css";
+@import "../components/illus/illus.css";
+
+/* Atelier : ce qui change dans une recette (ajout, retrait, nouvelle quantité). */
+@theme {
+  --animate-grow-in: grow-in 420ms var(--ease-out);
+  --animate-flash: flash 1.4s var(--ease-out);
+  --animate-panel-in: panel-in 260ms var(--ease-out);
+  --animate-shimmer: shimmer 1.2s linear infinite;
+}
+@keyframes grow-in {
+  0% { opacity: 0; transform: translateX(-8px); max-height: 0; }
+  100% { opacity: 1; transform: none; max-height: 6rem; }
+}
+@keyframes flash {
+  0% { background-color: var(--c-accent-soft); }
+  100% { background-color: transparent; }
+}
+@keyframes panel-in {
+  0% { transform: translateX(24px); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+/* Trait qui barre un ingrédient retiré, tiré de gauche à droite. */
+.strike-out {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 55%;
+  background-size: 100% 2px;
+  animation: var(--animate-strike);
+}
+
+/* Retour au toucher : tout ce qui se clique s'enfonce légèrement. */
+a, button, summary, [role="radio"] {
+  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-quick) ease, border-color var(--dur-quick) ease, color var(--dur-quick) ease, opacity var(--dur-quick) ease;
+}
+a:active, button:active:not(:disabled), summary:active, [role="radio"]:active {
+  transform: scale(0.97);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--c-line) 25%, var(--c-surface-2) 50%, var(--c-line) 75%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: var(--radius-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a:active, button:active { transform: none; }
+}

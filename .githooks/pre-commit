@@ -1,0 +1,3 @@
+#!/bin/sh
+# Rien de privé dans le dépôt public (scripts/check-private.mjs).
+exec node scripts/check-private.mjs --staged

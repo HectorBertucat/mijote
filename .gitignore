@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.env*
+!.env.example
+data/
+*.db
+*.db-*
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+/build
+
+# Contexte et données privés d'une instance (dépôt séparé, jamais publié)
+/perso/

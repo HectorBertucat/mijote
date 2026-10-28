@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Icône de l'appli : un bol bleu émail fumant sur le lin. Valeurs des tokens bg (#f6f4f0), accent (#2342c4), hot (#e4572e), ink (#1b1d23). -->
+  <rect width="64" height="64" rx="14" fill="#f6f4f0"/>
+  <path d="M24 14c-4 4 4 6 0 10M32 12c-4 4 4 6 0 10M40 14c-4 4 4 6 0 10" fill="none" stroke="#868a93" stroke-width="3" stroke-linecap="round"/>
+  <path d="M8 30h48c0 13-10 22-24 22S8 43 8 30z" fill="#2342c4" stroke="#1b1d23" stroke-width="3" stroke-linejoin="round"/>
+  <ellipse cx="32" cy="30" rx="24" ry="5" fill="#e4572e" stroke="#1b1d23" stroke-width="3"/>
+  <path d="M15 37c3 6 8 9 13 10" fill="none" stroke="#e5eafb" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+</svg>

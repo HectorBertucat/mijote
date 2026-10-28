@@ -1,0 +1,27 @@
+# Journal des changements
+
+## 2.1.0 (2026-10-28) : repère fixe, garde-fou
+
+- **Repère fixe d'un repas** par personne (Santé › Profil, `people.fixed_meal_ref`, migration 0001) : il sert à la part de chaque recette tant que la dépense n'est pas mesurée ; la journée de la Semaine = deux repas + le hors batch.
+- **Cuisine réappliquée** : les noms et notes donnés aux récipients restent, l'équipement ajouté à la main n'est pas retiré.
+- **Garde-fou** (`.githooks/`, `scripts/check-private.mjs`) : refuse les secrets, les bases, les `.env`, les mentions d'IA en co-auteur et, si l'instance en a, les motifs privés de `perso/denylist.txt`.
+- Contexte privé facultatif d'une instance (`perso/`, ignoré par git), chargé par `CLAUDE.md` s'il existe.
+
+## 2.0.1 (2026-10-28) : prêt à publier
+
+- **Courses sans catalogue, de bout en bout** : prix payé saisissable par ligne, « Tout cocher » et validation sans produit du catalogue ; le placard et les coûts suivent.
+- **Catalogue d'exemple** (`examples/catalogue-csv`) qui sert un CSV de produits avec l'API attendue, et contrat documenté (`docs/catalogue.md`).
+- **Programme de sport par l'IA** en deux appels (le programme, puis les figures) : le schéma complet dépassait la taille de grammaire de l'API ; budget de jetons ramené sous le seuil du streaming. Trouvé par le test réel.
+- **Tests** : 227 tests (foyer, cuisine, accès, courses sans et avec catalogue, parcours IA avec faux client), test de fumée de l'appli construite (`pnpm test:smoke`), vérification des fonctions IA en vrai (`pnpm test:ai`), CI avec l'image Docker.
+
+## 2.0.0 (2026-10-27) : Mijote, version open source
+
+Première version publique, tirée d'une appli de batch cooking utilisée chaque semaine depuis septembre 2026.
+
+- **Foyer réglable** : N personnes, créées à la mise en route (`/bienvenue`) et dans Réglages ; plus aucune personne en dur. La part de référence est celle du profil actif.
+- **Cuisine réglable** : plaque (type, foyers, niveaux), four, récipients, à deux ou seul (`src/lib/kitchen/`) ; les récipients absents restent connus des recettes (`equipment.owned`).
+- **Courses sans catalogue** : quantités par rayon (rayon deviné au nom), lignes cochables en magasin ; le catalogue de drive devient facultatif.
+- **Sport** : programmes en base par personne (`training_programs`), modèles génériques, générateur sans IA, programmes sur mesure par l'IA avec exercices inventés et figures animées vérifiées (`motion-check.ts`).
+- **Dessins d'aliments par l'IA**, filtrés par une liste blanche stricte (`src/lib/illus/sanitize.ts`).
+- **Installation** : Docker et docker compose, mot de passe facultatif (`MIJOTE_PASSWORD`), import Apple Santé limité à la clé de chaque personne.
+- Une seule migration initiale ; variables `MIJOTE_*`.

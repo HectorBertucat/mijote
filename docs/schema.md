@@ -1,0 +1,59 @@
+# Modèle de données (référence)
+
+SQLite + Drizzle, une migration initiale (`src/lib/db/migrations/0000_init.sql`) puis une migration par changement (`pnpm db:generate --name <nom>`), appliquées au démarrage. Ids en texte (uuid), dates en ISO 8601 UTC, quantités en grammes (1 ml = 1 g sauf indication), prix en euros.
+
+## 1. Personnes, préférences, équipement
+| Table | Champs principaux | Rôle |
+|---|---|---|
+| `people` | id, name, portion_units (part de base), notes, profil Santé (sex, birth_date, height_cm, activity, goal, rate_pct, protein_g_per_kg, protein_g), outside_kcal/outside_protein_g (mangé par jour hors batch), setup_done_at (mise en route faite) | Le foyer, créé à la mise en route (`/bienvenue`), `rank` = ordre ; la part réelle d'une recette suit la cible (`src/lib/eaters`) |
+| `preferences` | id, person_id?, kind (`like`, `dislike`, `avoid_task`, `rule`), text, tags | Goûts, tâches pénibles, règles de cuisine |
+| `equipment` | id, kind (`hob`, `oven`, `pan`, `pot`, `dish`, `appliance`, `utensil`), name, dims_json, capacity_l, max_batch_g, count, owned | Foyers, four, poêle, cocotte, casseroles, plats… décrits par la mise en route (`src/lib/kitchen/presets.ts`). Les récipients standard existent toujours (les recettes les citent) ; `owned = false` : absent de cette cuisine |
+| `equipment_fit` | equipment_id, hob_id | Quel récipient va sur quel foyer |
+
+## 2. Recettes, notes, planning, sessions
+| Table | Champs principaux | Rôle |
+|---|---|---|
+| `recipes` | id, name, slug, description, servings_units, tags, fridge_days, freezer_ok, kcal_unit, protein_unit, status (`liked`, `to_try`, `archived`), source, parent_id?, created_at | Fiche standardisée. `parent_id` : la recette d'origine d'une variante, toujours la racine (une variante de variante est une sœur), `ON DELETE SET NULL` ; reprise des variantes déjà gardées depuis `source` (« Variante de « X » (/recettes/slug) ») |
+| `recipe_ingredients` | id, recipe_id, line_raw, item, grams, group (bol), optional, yield (rendement : part du paquet, parure, gras de la poêle) | La ligne brute est envoyée à chronocatalog `/resolve` |
+| `recipe_steps` | id, recipe_id, order, kind (`prep`, `sear`, `braise`, `boil`, `bake`, `rest`, `cool`), text, duration_min, active_min, equipment_kind, equipment_alt (récipients de rechange, json), hob_level, oven_temp, bowl_refs | Étapes typées : le planificateur s'en sert |
+| `recipe_notes` | id, recipe_id, person_id, category (`taste`, `prep`, `painful_ingredient`, `storage`, `reheat`, `other`), text, rating?, created_at | Notes rapides, pendant ou après la cuisson |
+| `week_plans` | id, week_start, notes | Semaine |
+| `week_recipes` | id, week_plan_id, recipe_id, factor (multiplicateur des unités cuites, 1 = la fiche), extras (json : recipe_ingredient_id → grammes ajoutés pour finir un paquet), position | Recettes retenues pour la semaine |
+| `meal_slots` | id, week_plan_id, day, meal (`lunch`, `dinner`), person_id, place (`home`, `office`), recipe_id?, units? (unités servies, tirées de la cible et de la recette, migration 0020) | Qui mange où, quoi, et combien |
+| `cook_sessions` | id, week_plan_id?, shopping_list_id?, started_at, ended_at, plan_json (sortie du planificateur, `SessionPlan`), status (`prep`, `cooking`, `done`), test (session test : durées non apprises, migration 0017) | Une session de cuisine ; `shopping_list_id` quand elle part d'une liste validée (ingrédients commandés) |
+| `cook_events` | id, session_id, at, kind (`step_start`, `step_done`, `bowl_ready`, `timer_start`, `timer_done`, `note`), ref, payload_json | Journal : synchro entre écrans et vraies durées |
+| `duration_samples` | id, session_id, at, kind (`gesture`, `weigh`, `step`), key (`cut:oignon`, `other:<slug>-2`, `weigh`, `step:<slug>#4`), ref, label, grams, units, est_min (référence), planned_min, real_min, weight (< 1 : part d'un bol coché), via | Durées réelles mesurées dans le journal quand une session passe « terminée » (réécrites si elle repasse terminée, retirées si on la rouvre) ; les 5 dernières sessions terminées corrigent les estimations (`src/lib/session/durations.ts`) |
+| `timers` | id, session_id, label, step_ref, ends_at, done_at? | Les minuteurs sont une heure de fin ; chaque écran fait son propre décompte |
+
+## 3. Courses, achats, coûts
+| Table | Champs principaux | Rôle |
+|---|---|---|
+| `shopping_lists` | id, week_plan_id, created_at, status (`draft`, `checked`, `ordered`, `paid`), build_done/build_total/build_error (progression de la création), ordered_at, recipe_scales (json slug → multiplicateur), recipe_extras (json recipe_ingredient_id → grammes ajoutés), archived_at (liste archivée, migration 0017), drive_job_id/drive_status/drive_at/drive_error/drive_summary (envoi au panier du drive (catalogue relié)), order_job_id/order_status/order_error/chrono_order_id/order_imported_at (relecture de la commande) | `week_plan_id` quand la liste vient de la Semaine ; `shopping_item_sources.grams` porte les grammes aux unités choisies |
+| `shopping_items` | id, list_id, item, need_g, recipe_ids, chrono_product_id, packs, unit_price, checked_at, availability_json, state (`ok`, `warn`, `ko`), aisle, in_cart_at (coché « dans le panier »), live_request_id/live_status/live_asked_at (vérification en direct), assoc_key/assoc_scope (clé et scope des produits associés qui ont servi, migration 0010), chrono_id (« P123 »), drive_outcome/drive_qty (ce que le vrai panier en a dit, migration 0021) | Une ligne de la charte : état et rayon |
+| `shopping_item_sources` | id, item_id, recipe_ingredient_id?, recipe_id, line_raw, grams, units | Quelle ligne de recette chaque ligne de courses couvre (le prorata entre recettes en découle). `recipe_ingredient_id` passe à null si la recette est réimportée |
+| `purchases` | id, list_id?, chrono_product_id, name, bought_at, packs, pack_g, price_paid, promo, shopping_item_id?, item | Ce qui a été payé. **price_paid = total de la ligne** (paquets × prix effectif `promo ?? prix`), figé à la validation de la commande, remplacé par le prix réellement payé quand la commande du drive est relue (price_estimated garde l'estimé, chrono_order_id la commande, migration 0021) |
+| `pantry_lots` | id, purchase_id?, item, grams_left, value_left, grams_initial, value_initial, opened_at, closed_at, status (`ok`, `used`, `lost`) | Restes et placard. Un lot par achat. Produit sans poids : lot à la taille du besoin, `grams_initial = 0` s'il est inconnu (consommé en entier). À la clôture, grams_left/value_left gardent ce qui restait |
+| `cook_usages` | id, session_id?, recipe_id, lot_id?, grams, cooked_at, value, item | Ce que chaque recette a consommé. `value` est figée (prorata du lot) ; `lot_id` null = pas au placard, prix du catalogue de la dernière liste |
+| `ingredient_products` | id, key (`type:<slug>` chronocatalog, sinon `food:<id>`, sinon `item:<nom>`), scope (`all` ou un recipe_ingredient_id), label, food_id, product_id, status (`accepted`, `refused`), preferred, product_json (carte du jour du choix), decided_at ; unique (key, scope, product_id) | Produits du drive associés à l'ingrédient générique. `all` vaut pour toutes les recettes, présentes et futures ; un scope de ligne de recette prime (ses acceptés remplacent les communs). Un refus est toujours commun. Règles dans `src/lib/products/core.ts` (`prefsFor`). Le scope de ligne suit `recipe_ingredient_id`, gardé par position à la réimportation |
+| `ai_calls` | id, at, screen, model, input_tokens, output_tokens, cache_read_tokens, cost_usd, ok, error, duration_ms ; index (screen, at) | Suivi du budget IA. `duration_ms` : durée de l'appel ; la médiane des 10 derniers appels réussis d'un écran cale la progression des chargements (`src/lib/ai/durations.ts`, réponses simulées à part) |
+| `adjust_proposals` | recipe_id (clé, cascade), proposal (json : brouillon, vérification, restes classés), exchanges (json : demandes et réponses), recipe_updated_at, updated_at | Proposition « Ajuster » en cours, une seule par recette. Affiner ajoute un échange, une option repart de la fiche et recommence le fil ; « Effacer » et « Garder cette version » la vident ; périmée (vidée) si la fiche a changé depuis (`recipe_updated_at`) |
+
+## Fonctions exposées (pour la session de cuisine)
+- `orderedIngredientsFor(db, listId): OrderedRecipe[]` (`src/lib/shopping/ordered.ts`) : pour chaque recette de la liste, chaque ingrédient (`recipeIngredientId`, `lineRaw`, `item`, `needG`, `needUnits`, `pantry`, `optional`) avec le produit commandé (`product`: `productId`, `name`, `brandName`, `quantityLabel`, `packs`, `packG`, `lineBoughtG`, `ordered`), `boughtG` (part des grammes achetés, au prorata des besoins de la ligne), `gapG` (< 0 manque, > 0 reste au placard) et `status` (`ok`, `short`, `surplus`, `pantry`, `missing`, `unknown`). Par recette : `coverage` (plus petit ratio acheté / besoin) et `suggestedUnits` (unités de la recette conseillées au prorata quand quelque chose manque).
+- `planCookUsage(db, recipeId): PlannedUsage[]` (`src/lib/costs/cook.ts`) : consommation par défaut (grammes de la fiche via la dernière liste, lots `ok` du même produit, les plus anciens d'abord).
+- `recordCookUsage(db, { sessionId?, recipeId, cookedAt?, usages: { lotId | null, grams, value?, item? }[] })` : synchrone, une transaction ; écrit `cook_usages`, décrémente les lots (un lot vidé passe en `used`). `cookRecipe(db, recipeId, sessionId?)` enchaîne les deux.
+
+## 4. Sport et dessins
+| Table | Champs principaux | Rôle |
+|---|---|---|
+| `training_programs` | id, person_id, program (json `Program`, exercices inventés et figures compris), source (`modele`, `generateur`, `ia`), request, created_at, archived_at | Programme en cours de chacun (le plus récent non archivé) |
+| `workouts` | id, person_id, date, ts, type, minutes, note, entries | Carnet des séances |
+| `training_live` | id, person_id, state, version, updated_at, ended_at | Séance en cours partagée entre écrans |
+| `food_art` | key (nom normalisé), label, category, svg | Dessins d'aliments créés par l'IA, filtrés par `sanitizeIllu` |
+| `app_settings` | key, value | Réglages de l'instance : mise en route, cuisine, magasin, nom de la maison |
+
+## Coûts dérivés (en code, `src/lib/costs/`, sans IA)
+- **coût théorique d'une recette** = Σ grammes utilisés × prix au kilo payé du lot ;
+- **coût pratique** = Σ paquets entiers achetés pour la recette − valeur des restes réutilisés ailleurs (un reste marqué `lost` revient à la recette) ;
+- par portion : coût × unités de la part (`people.portion_units`) / unités de la fiche.
+- Réel (la recette a été cuisinée) : théorique = Σ `cook_usages.value` par cuisson ; pratique = théorique + part de la recette dans les lots `lost` achetés pour elle (les restes `ok` ou `used` servent ailleurs). Estimé (pas encore cuisinée) : depuis la dernière liste, théorique = grammes × prix au gramme du catalogue, pratique = part de la recette × paquets entiers.

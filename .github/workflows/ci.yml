@@ -1,0 +1,46 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: Types, tests, build, fumée
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          MIJOTE_DATA_DIR: /tmp/build-data
+      - run: pnpm test:smoke
+
+  docker:
+    name: Image Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Construire l'image
+        run: docker build -t mijote:ci .
+      - name: Lancer le conteneur et vérifier la mise en route
+        run: |
+          docker run -d --name mijote -p 3010:3010 -e MIJOTE_PASSWORD=ci mijote:ci
+          for i in $(seq 1 40); do curl -sf -o /dev/null http://localhost:3010/manifest.webmanifest && break; sleep 2; done
+          curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://localhost:3010/recettes | tee /tmp/r
+          grep -q '307 .*/connexion' /tmp/r
+          TOKEN=$(printf 'mijote:ci' | sha256sum | cut -d' ' -f1)
+          curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' -b "mijote.auth=$TOKEN" http://localhost:3010/recettes | tee /tmp/r
+          grep -q '307 .*/bienvenue' /tmp/r
+          curl -sf -b "mijote.auth=$TOKEN" http://localhost:3010/bienvenue | grep -q 'Bienvenue dans Mijote'
+          docker logs mijote | grep -q "recette(s) importée(s)"
+          docker exec mijote ls /data/mijote.db
+      - if: failure()
+        run: docker logs mijote || true

@@ -1,0 +1,356 @@
+{
+  "slug": "colombo-porc",
+  "name": "Colombo de porc",
+  "description": "Le curry antillais doux : échine saisie, pommes de terre et pois chiches cuits dans la sauce, donc pas de riz à faire.",
+  "servingsUnits": 20,
+  "tags": [
+    "porc",
+    "cocotte",
+    "batch",
+    "épicé doux"
+  ],
+  "fridgeDays": 3,
+  "freezerOk": true,
+  "kcalUnit": 140,
+  "proteinUnit": 11.4,
+  "status": "liked",
+  "source": "Recette de démonstration, testée en batch cooking.",
+  "tips": "Écume le gras figé le lendemain matin. Le citron vert à la fin se dose au goût : commence par un demi. Viande décongelée : elle rend beaucoup d'eau, tamponne-la très sèche avant la saisie.",
+  "ingredients": [
+    {
+      "lineRaw": "1 kg échine de porc",
+      "item": "Échine de porc en cubes de 4 cm",
+      "grams": 1000,
+      "food": "echine_porc"
+    },
+    {
+      "lineRaw": "poudre à colombo Ducros 40 g",
+      "item": "Poudre à colombo (2½ c. à s., la moitié du pot)",
+      "grams": 20,
+      "group": "C",
+      "food": "colombo"
+    },
+    {
+      "lineRaw": "2 oignons jaunes",
+      "item": "Oignons, émincés",
+      "grams": 300,
+      "units": 2,
+      "group": "A",
+      "food": "oignon"
+    },
+    {
+      "lineRaw": "4 gousses d'ail",
+      "item": "Ail, haché",
+      "units": 4,
+      "group": "B",
+      "food": "ail"
+    },
+    {
+      "lineRaw": "20 g gingembre frais",
+      "item": "Gingembre frais, râpé",
+      "grams": 20,
+      "group": "B",
+      "food": "gingembre"
+    },
+    {
+      "lineRaw": "1 c. à s. concentré de tomate",
+      "item": "Concentré de tomate",
+      "grams": 15,
+      "group": "C",
+      "pantry": true,
+      "food": "concentre_tomate"
+    },
+    {
+      "lineRaw": "3 carottes",
+      "item": "Carottes, en rondelles épaisses",
+      "grams": 300,
+      "units": 3,
+      "group": "D",
+      "food": "carotte"
+    },
+    {
+      "lineRaw": "thym, laurier",
+      "item": "Thym, 2 feuilles de laurier",
+      "group": "D",
+      "pantry": true,
+      "food": "zero"
+    },
+    {
+      "lineRaw": "500 g pommes de terre chair ferme",
+      "item": "Pommes de terre chair ferme, cubes de 3 cm",
+      "grams": 500,
+      "group": "E",
+      "food": "pomme_de_terre"
+    },
+    {
+      "lineRaw": "1 boîte pois chiches 400 g",
+      "item": "Pois chiches, égouttés",
+      "grams": 265,
+      "units": 1,
+      "group": "E",
+      "food": "pois_chiches"
+    },
+    {
+      "lineRaw": "1/2 cube de bouillon",
+      "item": "½ cube de bouillon dans 600 ml d'eau",
+      "units": 0.5,
+      "pantry": true,
+      "food": "bouillon_cube"
+    },
+    {
+      "lineRaw": "1 citron vert",
+      "item": "Citron vert (zeste + jus, au goût)",
+      "units": 1,
+      "group": "F",
+      "food": "citron_vert"
+    },
+    {
+      "lineRaw": "huile neutre",
+      "item": "Huile neutre",
+      "grams": 30,
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 8,
+        "note": "15 g pour la saisie (la poêle est déglacée dans la cocotte : ~15 % reste), 15 g pour les oignons en cocotte (tout est mangé)"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignons émincés. Bol B : ail haché + gingembre râpé. Bol C : colombo + concentré. Bol D : carottes en rondelles épaisses, thym, laurier. Bol E : pommes de terre en cubes de 3 cm (dans l'eau froide) + pois chiches égouttés. Bol F : citron vert.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Tamponne le porc très sec. Poêle vide 2 à 3 min à 6-7, test de la goutte, essuie, baisse à 6, huile. Saisie en 2 fournées de 500 g : 7 pendant 1 min puis 6, 2 min 30 sans toucher, retourne quand ça se décolle, encore 2 min. Réserve.",
+      "durationMin": 14,
+      "activeMin": 14,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "Bille d'eau qui glisse comme du mercure avant l'huile ; ça chante fort à la pose.",
+      "phases": [
+        {
+          "text": "Porc tamponné très sec. Poêle vide sur le grand foyer",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Test de la goutte : si la bille glisse comme du mercure, essuie, niveau 6, 1 c. à s. d'huile",
+          "min": 0.5,
+          "hobLevel": 6
+        },
+        {
+          "text": "500 g de porc, espacés, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 1
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 1
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 1
+        },
+        {
+          "text": "500 g de porc, espacés, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 2
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 2
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 2
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Cocotte préchauffée vide 3 min à 6, 1 c. à s. d'huile, oignons (bol A) 10 à 12 min au niveau 5. 8 min, c'est trop court.",
+      "durationMin": 13,
+      "activeMin": 4,
+      "equipmentId": "cocotte",
+      "hobLevel": 5,
+      "bowls": [
+        "A"
+      ],
+      "cue": "Oignons fondants et dorés.",
+      "phases": [
+        {
+          "text": "Cocotte vide sur le grand foyer, préchauffe",
+          "min": 3,
+          "hobLevel": 6
+        },
+        {
+          "text": "1 c. à s. d'huile + oignons (bol A), remue toutes les 2 à 3 min jusqu'à fondants et dorés",
+          "min": 0.5,
+          "hobLevel": 5
+        }
+      ],
+      "equipmentAlt": [
+        "faitout"
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Ail + gingembre (bol B) 1 min. Baisse à 4, colombo (bol C) 30 s en remuant : les épices en poudre brûlent vite et deviennent amères. Concentré 1 min.",
+      "durationMin": 3,
+      "activeMin": 3,
+      "equipmentId": "cocotte",
+      "hobLevel": 4,
+      "bowls": [
+        "B",
+        "C"
+      ],
+      "phases": [
+        {
+          "text": "Ail + gingembre (bol B), remue",
+          "min": 1,
+          "hobLevel": 5
+        },
+        {
+          "text": "Niveau 4 : colombo (bol C), remue sans arrêt, les épices brûlent vite",
+          "min": 0.5,
+          "hobLevel": 4
+        },
+        {
+          "text": "Concentré de tomate (bol C), remue",
+          "min": 1,
+          "hobLevel": 4
+        }
+      ],
+      "equipmentAlt": [
+        "faitout"
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Déglace la poêle avec 150 ml d'eau et verse dans la cocotte. Porc, carottes, thym, laurier (bol D), eau + ½ cube jusqu'à couvrir. Ébullition franche à 8, puis 3, couvercle entrouvert, 40 min.",
+      "durationMin": 45,
+      "activeMin": 3,
+      "equipmentId": "cocotte",
+      "hobLevel": 3,
+      "bowls": [
+        "D"
+      ],
+      "phases": [
+        {
+          "text": "Déglace la poêle avec 150 ml d'eau en grattant les sucs, verse dans la cocotte",
+          "min": 1
+        },
+        {
+          "text": "Porc, carottes, thym, laurier (bol D), eau + ½ cube jusqu'à couvrir",
+          "min": 1,
+          "hobLevel": 8
+        },
+        {
+          "text": "Ça monte à ébullition franche",
+          "min": 3,
+          "hobLevel": 8,
+          "wait": true
+        },
+        {
+          "text": "Ça bout : niveau 3, couvercle entrouvert",
+          "min": 0.5,
+          "hobLevel": 3
+        }
+      ],
+      "equipmentAlt": [
+        "faitout"
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Pommes de terre + pois chiches (bol E), encore 25 à 30 min. Trop liquide : découvre les 10 dernières minutes et écrase 2-3 morceaux de pomme de terre contre la paroi.",
+      "durationMin": 28,
+      "activeMin": 2,
+      "equipmentId": "cocotte",
+      "hobLevel": 3,
+      "bowls": [
+        "E"
+      ],
+      "cue": "Pommes de terre tendres, sauce nappante.",
+      "phases": [
+        {
+          "text": "Pommes de terre + pois chiches (bol E), mélange, couvercle entrouvert",
+          "min": 1,
+          "hobLevel": 3
+        },
+        {
+          "text": "Ça mijote",
+          "min": 15,
+          "hobLevel": 3,
+          "wait": true
+        },
+        {
+          "text": "Trop liquide ? Retire le couvercle",
+          "min": 0.5,
+          "hobLevel": 3
+        },
+        {
+          "text": "Encore 10 min",
+          "min": 10,
+          "hobLevel": 3,
+          "wait": true
+        },
+        {
+          "text": "Écrase 2-3 morceaux de pomme de terre contre la paroi si la sauce est trop liquide",
+          "min": 0.5,
+          "hobLevel": 3
+        }
+      ],
+      "equipmentAlt": [
+        "faitout"
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Hors du feu : zeste du citron vert (bol F), puis le jus petit à petit en goûtant. Commence par un demi.",
+      "durationMin": 2,
+      "activeMin": 2,
+      "bowls": [
+        "F"
+      ],
+      "phases": [
+        {
+          "text": "Hors du feu : zeste du citron vert (bol F)",
+          "min": 0.5
+        },
+        {
+          "text": "Le jus petit à petit en goûtant : commence par un demi",
+          "min": 1.5
+        }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "4 portions égales (total ÷ 4). Refroidis dans un plat large, filme tiède, frigo au fond.",
+      "durationMin": 10,
+      "activeMin": 3
+    }
+  ]
+}

@@ -1,0 +1,471 @@
+{
+  "slug": "chasseur-porc",
+  "name": "Chasseur de porc",
+  "description": "Le grand classique, en version porc : sauté de porc saisi à la poêle, braisé 1 h 30 au four avec échalotes, vin blanc et tomate, champignons saisis à sec. Riz et haricots verts à part.",
+  "servingsUnits": 36,
+  "tags": [
+    "porc",
+    "cocotte",
+    "four",
+    "batch",
+    "riz",
+    "à relire"
+  ],
+  "fridgeDays": 3,
+  "freezerOk": true,
+  "kcalUnit": 152,
+  "proteinUnit": 11.4,
+  "status": "liked",
+  "source": "Recette de démonstration, testée en batch cooking.",
+  "tips": "Le porc était un peu dur la dernière fois : 1 h 30 au four à 160 °C, pas moins. La poêle et la cocotte veulent toutes deux le grand foyer : saisis d'abord, puis passe la poêle sur le foyer moyen pour les champignons (le bord chauffe moins, travaille au centre). Plan B s'il manque une barquette : 1 cuisse de dinde de 650 g braisée entière avec le porc, elle se détache à la pince. 21/10 : 3 barquettes seulement, la 4e est partie au forno à la place des saucisses oubliées.",
+  "ingredients": [
+    {
+      "lineRaw": "1,5 kg sauté de porc",
+      "item": "Sauté de porc sans os Label Rouge (3 barquettes de 500 g ; la 4e va au forno)",
+      "grams": 1500,
+      "food": "saute_porc"
+    },
+    {
+      "lineRaw": "1 kg champignons de paris",
+      "item": "Champignons de Paris frais, en quartiers",
+      "grams": 1000,
+      "group": "A",
+      "food": "champignon"
+    },
+    {
+      "lineRaw": "4 échalotes",
+      "item": "Échalotes, ciselées",
+      "grams": 120,
+      "units": 4,
+      "group": "B",
+      "food": "echalote"
+    },
+    {
+      "lineRaw": "1 oignon jaune",
+      "item": "Oignon, ciselé",
+      "grams": 150,
+      "units": 1,
+      "group": "B",
+      "food": "oignon"
+    },
+    {
+      "lineRaw": "3 gousses d'ail",
+      "item": "Ail, haché",
+      "units": 3,
+      "group": "B",
+      "food": "ail"
+    },
+    {
+      "lineRaw": "1 c. à s. farine",
+      "item": "Farine",
+      "grams": 15,
+      "group": "C",
+      "pantry": true,
+      "food": "farine"
+    },
+    {
+      "lineRaw": "25 cl vin blanc sec",
+      "item": "Vin blanc sec",
+      "grams": 250,
+      "group": "D",
+      "optional": true,
+      "food": "vin_blanc_cuit"
+    },
+    {
+      "lineRaw": "400 g pulpe de tomates concassées",
+      "item": "Pulpe de tomates concassées",
+      "grams": 400,
+      "group": "E",
+      "food": "pulpe_tomate"
+    },
+    {
+      "lineRaw": "2 c. à s. concentré de tomate",
+      "item": "Concentré de tomate",
+      "grams": 30,
+      "group": "E",
+      "pantry": true,
+      "food": "concentre_tomate"
+    },
+    {
+      "lineRaw": "1 cube bouillon de volaille",
+      "item": "Cube de volaille dans 300 ml d'eau chaude",
+      "units": 1,
+      "group": "E",
+      "pantry": true,
+      "food": "bouillon_cube"
+    },
+    {
+      "lineRaw": "thym, laurier",
+      "item": "Thym, 2 feuilles de laurier",
+      "group": "E",
+      "pantry": true,
+      "food": "zero"
+    },
+    {
+      "lineRaw": "1 botte de persil",
+      "item": "Persil, ciselé (à la fin)",
+      "grams": 20,
+      "group": "F",
+      "optional": true,
+      "food": "persil"
+    },
+    {
+      "lineRaw": "huile neutre",
+      "item": "Huile neutre",
+      "grams": 45,
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 10,
+        "note": "30 g pour la saisie (la poêle est déglacée dans le plat : ~15 % reste sur la poêle et le papier), 15 g pour les échalotes en cocotte (tout est mangé)"
+      }
+    },
+    {
+      "lineRaw": "1 kg haricots verts extra-fins surgelés",
+      "item": "Haricots verts extra-fins surgelés (accompagnement)",
+      "grams": 1000,
+      "group": "H",
+      "food": "haricots_verts"
+    },
+    {
+      "lineRaw": "360 g riz basmati",
+      "item": "Riz basmati (à part : 40 à 50 g cru par part)",
+      "grams": 360,
+      "group": "G",
+      "pantry": true,
+      "food": "riz_basmati"
+    }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Four à 160 °C chaleur tournante, grille au niveau 4 (la cocotte est haute). Bol A : champignons en quartiers (essuyés, pas lavés). Bol B : échalotes, oignon, ail. Bol C : farine. Bol D : vin blanc. Bol E : pulpe, concentré, bouillon chaud, thym, laurier. Bol G : riz pesé.",
+      "durationMin": 20,
+      "activeMin": 20,
+      "equipmentId": "oven",
+      "ovenTemp": 160,
+      "bowls": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "G"
+      ]
+    },
+    {
+      "kind": "prep",
+      "text": "Tamponne le sauté au papier absorbant, bien sec. Recoupe les gros morceaux à 4 cm pour une cuisson égale.",
+      "durationMin": 4,
+      "activeMin": 4
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle sur le grand foyer, vide 2 à 3 min à 6-7. Test de la goutte : quand une bille glisse comme du mercure, essuie, baisse à 6, 1 c. à s. d'huile.",
+      "durationMin": 3,
+      "activeMin": 1,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "L'huile ondule en 5 à 10 s.",
+      "phases": [
+        {
+          "text": "Poêle vide sur le grand foyer",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Test de la goutte : si la bille glisse, essuie, niveau 6, 1 c. à s. d'huile",
+          "min": 0.5,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Saisie en 3 fournées de 500 g (une barquette = une fournée). 7 pendant 1 min après la pose puis 6, 2 min 30 sans toucher, retourne quand ça se décolle seul, encore 2 min. Doré sur deux faces, pas cuit à cœur. Réserve dans un saladier avec le jus. Si les sucs foncent trop entre deux fournées, déglace avec un fond d'eau, garde ce jus, et reprends la goutte.",
+      "durationMin": 18,
+      "activeMin": 18,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "Ça chante fort. Un bouillonnement mou = trop de viande ou viande mouillée.",
+      "phases": [
+        {
+          "text": "500 g dans la poêle, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 1
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 1
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 1
+        },
+        {
+          "text": "500 g dans la poêle, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 2
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 2
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 2
+        },
+        {
+          "text": "500 g dans la poêle, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 3
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 3
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 3
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Déglace la poêle avec 150 ml d'eau en grattant les sucs bruns, verse dans le saladier du porc. Passe la poêle sur le foyer moyen.",
+      "durationMin": 1,
+      "activeMin": 1,
+      "equipmentId": "poele-28",
+      "hobLevel": 6
+    },
+    {
+      "kind": "braise",
+      "text": "Cocotte sur le grand foyer, préchauffée vide 3 min à 7. 1 c. à s. d'huile, échalotes + oignon + ail (bol B) 5 min au niveau 5, sans brûler. Farine (bol C) 1 min en remuant.",
+      "durationMin": 9,
+      "activeMin": 6,
+      "equipmentId": "cocotte",
+      "hobLevel": 5,
+      "bowls": [
+        "B",
+        "C"
+      ],
+      "cue": "Échalotes translucides, farine qui sent la noisette.",
+      "phases": [
+        {
+          "text": "Cocotte vide sur le grand foyer, préchauffe",
+          "min": 3,
+          "hobLevel": 7
+        },
+        {
+          "text": "1 c. à s. d'huile + échalotes, oignon, ail (bol B), remue de temps en temps",
+          "min": 5,
+          "hobLevel": 5
+        },
+        {
+          "text": "Farine (bol C), remue sans arrêt",
+          "min": 1,
+          "hobLevel": 5
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Vin blanc (bol D) au niveau 8, gratte le fond, réduis de moitié 2 à 3 min. Ajoute le bol E, le porc et son jus. Le liquide doit arriver aux trois quarts de la viande. Ébullition à 8, couvercle, puis au four pour 1 h 30 au total (champignons ajoutés à 1 h).",
+      "durationMin": 65,
+      "activeMin": 4,
+      "equipmentId": "cocotte",
+      "hobLevel": 8,
+      "ovenTemp": 160,
+      "bowls": [
+        "D",
+        "E"
+      ],
+      "cue": "L'odeur d'alcool a disparu avant d'ajouter le reste.",
+      "phases": [
+        {
+          "text": "Vin blanc (bol D), gratte le fond, réduis de moitié",
+          "min": 2.5,
+          "hobLevel": 8
+        },
+        {
+          "text": "Bol E + le porc et son jus, porte à ébullition",
+          "min": 3,
+          "hobLevel": 8
+        },
+        {
+          "text": "Couvercle, et au four (ou niveau 2-3 sur la plaque si le plan le dit)",
+          "min": 0.5
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Pendant le braisage, champignons (bol A) à sec dans la poêle sur le foyer moyen, niveau 7, en 2 fournées de 500 g, 8 à 10 min chacune. Ils rendent d'abord leur eau ; laisse-la s'évaporer sans remuer sans arrêt. Sel à la fin seulement. Réserve.",
+      "durationMin": 20,
+      "activeMin": 8,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": [
+        "A"
+      ],
+      "cue": "Le glouglou s'arrête, la poêle se remet à chanter : c'est là qu'ils dorent et prennent le goût.",
+      "phases": [
+        {
+          "text": "500 g de champignons à sec : ils rendent leur eau, laisse-la s'évaporer sans remuer sans arrêt",
+          "min": 9,
+          "hobLevel": 7,
+          "batch": 1
+        },
+        {
+          "text": "Réserve, puis les 500 g suivants, pareil",
+          "min": 9,
+          "hobLevel": 7,
+          "batch": 2
+        },
+        {
+          "text": "Sel, et réserve",
+          "min": 0.5
+        }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Riz (bol G) pendant le braisage : 360 g rincés + 540 ml d'eau dans le faitout, ébullition à 9, puis feu minimum couvert 11 min, repos 5 min. Étale-le dans un plat large pour qu'il refroidisse vite.",
+      "durationMin": 20,
+      "activeMin": 3,
+      "equipmentId": "faitout",
+      "hobLevel": 9,
+      "bowls": [
+        "G"
+      ],
+      "phases": [
+        {
+          "text": "Riz rincé (bol G) + 540 ml d'eau dans le faitout, couvercle, niveau 9",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 2.5,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Dès que ça bout : niveau 1, couvercle",
+          "min": 0.5,
+          "hobLevel": 1
+        },
+        {
+          "text": "Le riz cuit à couvert, sans soulever le couvercle",
+          "min": 11,
+          "hobLevel": 1,
+          "wait": true
+        },
+        {
+          "text": "Hors du feu, repos à couvert ; ensuite étale-le dans un plat large",
+          "min": 5,
+          "wait": true
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "À 1 h de braisage, ajoute les champignons dans la cocotte et remets au four 30 min.",
+      "durationMin": 30,
+      "activeMin": 1,
+      "equipmentId": "cocotte",
+      "ovenTemp": 160,
+      "bowls": [
+        "A"
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Haricots verts (bol H), pendant le braisage, dès que le riz est égoutté : le faitout rincé, eau bouillante salée au niveau 9, le kilo de haricots surgelés 7 à 8 min. Égoutte, passe-les à l'eau froide et étale-les pour qu'ils refroidissent vite. Ils se réchauffent avec le chasseur.",
+      "durationMin": 15,
+      "activeMin": 3,
+      "equipmentId": "faitout",
+      "hobLevel": 9,
+      "bowls": [
+        "H"
+      ],
+      "cue": "Encore croquants sous la dent, vert vif.",
+      "phases": [
+        {
+          "text": "Faitout rincé, eau salée, couvercle, niveau 9",
+          "min": 1,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 5,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Gros bouillons : haricots (bol H), sans couvercle",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "Les haricots cuisent",
+          "min": 7,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Égoutte, passe-les à l'eau froide et étale-les",
+          "min": 1.5
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Sors la cocotte. Test : un morceau s'écrase à la fourchette. Sauce trop liquide : 5 à 10 min sur le grand foyer à 6, sans couvercle. Goûte le sel. Persil (bol F).",
+      "durationMin": 8,
+      "activeMin": 3,
+      "equipmentId": "cocotte",
+      "hobLevel": 6,
+      "bowls": [
+        "F"
+      ],
+      "cue": "Porc fondant, sauce nappante.",
+      "phases": [
+        {
+          "text": "Sors la cocotte. Test : un morceau s'écrase à la fourchette",
+          "min": 1
+        },
+        {
+          "text": "Sauce trop liquide ? Sans couvercle sur le grand foyer",
+          "min": 6,
+          "hobLevel": 6
+        },
+        {
+          "text": "Goûte le sel, persil (bol F)",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Pèse le total : 1 unité = total ÷ 36 (une part = 4 à 5 unités, l'appli dit la part de chacun). Répartis dans 2 plats larges pour refroidir en moins de 2 h, filme tiède, frigo au fond. Riz à part.",
+      "durationMin": 10,
+      "activeMin": 5
+    }
+  ]
+}

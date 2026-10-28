@@ -1,0 +1,20 @@
+id;nom;marque;format;poids_g;prix;categorie;mots_cles
+p-saute-porc;Sauté de porc sans os;Boucherie du coin;500 g;500;5.95;viande;sauté porc échine cubes
+p-filet-mignon;Filet mignon de porc;Boucherie du coin;env. 500 g;500;9.90;viande;filet mignon porc
+p-poulet;Filets de poulet;Volaille fermière;600 g;600;8.40;viande;filet poulet blanc escalope
+p-saucisse;Saucisses de Toulouse;Boucherie du coin;6 × 100 g;600;6.20;viande;saucisse toulouse
+p-champignons;Champignons de Paris;Maraîcher;500 g;500;2.49;legume;champignon champignons paris
+p-echalote;Échalotes;Maraîcher;250 g;250;1.79;legume;échalote échalotes
+p-oignon;Oignons jaunes;Maraîcher;1 kg;1000;1.99;legume;oignon oignons jaune
+p-ail;Ail;Maraîcher;3 têtes;150;1.50;legume;ail gousse gousses
+p-tomates;Pulpe de tomates concassées;Conserverie;400 g;400;0.99;epicerie;pulpe tomate tomates concassées
+p-concentre;Concentré de tomate;Conserverie;140 g;140;0.89;epicerie;concentré tomate
+p-vin;Vin blanc sec;Cave;75 cl;750;4.50;alcool;vin blanc sec
+p-persil;Persil plat;Maraîcher;1 botte;30;0.99;legume;persil
+p-haricots;Haricots verts extra-fins surgelés;Surgelés;1 kg;1000;3.20;surgele;haricots verts surgelés
+p-riz;Riz basmati;Épicerie;1 kg;1000;2.95;epicerie;riz basmati
+p-pates;Pâtes rigatoni;Épicerie;500 g;500;1.35;epicerie;pâtes rigatoni penne
+p-ricotta;Ricotta;Crèmerie;250 g;250;2.10;laitier;ricotta
+p-creme;Crème fraîche légère 15 %;Crèmerie;20 cl;200;1.45;laitier;crème légère fraîche
+p-oeufs;Œufs frais;Ferme;6 œufs;360;2.30;oeuf;œuf œufs oeuf oeufs
+p-rape;Emmental râpé;Crèmerie;200 g;200;2.20;laitier;râpé emmental fromage

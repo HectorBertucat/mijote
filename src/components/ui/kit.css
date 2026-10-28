@@ -1,0 +1,141 @@
+/* Kit « Plan de travail » : seulement ce que les utilitaires Tailwind font mal
+   (traits animés, anneaux coniques, hachures, sélecteurs frères). Couleurs : tokens uniquement.
+   Les règles d'état sont hors @layer pour battre les utilitaires posés sur le même élément. */
+
+/* Bouton : appui qui s'enfonce, roue de chargement. */
+@layer components {
+  .k-btn { transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-quick) ease, border-color var(--dur-quick) ease, box-shadow var(--dur-quick) ease, color var(--dur-quick) ease; }
+  .k-btn:active:not(:disabled) { transform: scale(0.965); }
+  .k-noscroll { scrollbar-width: none; }
+  .k-noscroll::-webkit-scrollbar { display: none; }
+}
+.k-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: k-spin 0.8s linear infinite; flex: none; }
+
+/* Case animée : la case se remplit, la coche se trace, le libellé se barre. */
+.k-check .k-box { border: 2px solid var(--c-line-strong); background: var(--c-surface); }
+.k-check .k-box svg { stroke-dasharray: 22; stroke-dashoffset: 22; transition: stroke-dashoffset var(--dur-base) var(--ease-out) 60ms; }
+.k-check input:checked + .k-box { background: var(--c-accent); border-color: var(--c-accent); }
+.k-check input:checked + .k-box svg { stroke-dashoffset: 0; }
+.k-check input:focus-visible + .k-box { outline: 2px solid var(--c-focus); outline-offset: 2px; }
+.k-check:active .k-box { transform: scale(0.88); }
+.k-check .k-lbl { background-image: linear-gradient(currentColor, currentColor); background-repeat: no-repeat; background-position: 0 55%; background-size: 0% 2px; transition: background-size var(--dur-base) var(--ease-out), color var(--dur-base); }
+.k-check input:checked ~ .k-lbl { background-size: 100% 2px; color: var(--c-ink-3); }
+.k-check input:disabled ~ * { opacity: 0.5; }
+
+/* Compteur : le chiffre « tique » depuis le haut (+) ou le bas (−). */
+.k-tick { animation: k-tick 380ms var(--ease-out); }
+
+/* Jauge : zone cible hachurée. */
+.k-zone { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--c-ink) 22%, transparent) 0 2px, transparent 2px 6px); }
+
+/* Minuteur : anneau conique ; fini = inversé, pulse. */
+.k-timer { background: var(--c-surface); border: 1px solid var(--c-line); }
+.k-ring { background: conic-gradient(var(--c-ink) calc(var(--p, 0) * 1turn), var(--c-surface-2) 0); }
+.k-ring::after { content: ""; width: 76.9%; height: 76.9%; border-radius: 50%; background: var(--c-surface); transition: background-color var(--dur-base); }
+.k-timer.k-timer-done { background: var(--c-inverse); color: var(--c-on-inverse); border-color: var(--c-inverse); animation: k-ring 1s var(--ease-in-out) infinite; }
+.k-timer-done .k-ring { background: var(--c-on-inverse); }
+.k-timer-done .k-ring::after { background: var(--c-inverse); }
+
+/* Bandeau de session : point qui pulse. Chargement ligne par ligne : roue d'accent. */
+.k-live { animation: k-blink 1.6s ease-in-out infinite; }
+.k-mk-on { border-color: var(--c-accent); border-right-color: transparent; animation: k-spin 0.8s linear infinite; }
+
+@keyframes k-tick { 0% { transform: translateY(var(--dir, -6px)); opacity: 0.2; } 100% { transform: none; opacity: 1; } }
+@keyframes k-ring { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-inverse) 70%, transparent); } 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--c-inverse) 0%, transparent); } }
+@keyframes k-blink { 50% { opacity: 0.25; } }
+@keyframes k-fade { from { opacity: 0; } }
+@keyframes k-spin { to { transform: rotate(360deg); } }
+@keyframes k-pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+/* Le bandeau de session se pose au-dessus de la barre d'onglets sur téléphone : on laisse la place. */
+@media (max-width: 639.98px) {
+  body:has([data-session-banner]) main { padding-bottom: calc(8.5rem + env(safe-area-inset-bottom)); }
+}
+
+/* Long chargement : reflet qui glisse sur la barre ; balayage doux d'une carte en train d'être retravaillée. */
+.k-sheen { position: relative; overflow: hidden; }
+.k-sheen::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c-on-accent) 55%, transparent), transparent); transform: translateX(-100%); animation: k-sheen 1.6s var(--ease-in-out) infinite; }
+.k-scan { position: relative; }
+.k-scan::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--c-accent) 9%, transparent) 48%, color-mix(in srgb, var(--c-accent) 14%, transparent) 50%, transparent 52%); background-size: 100% 300%; animation: k-scan 2.6s var(--ease-in-out) infinite; }
+@keyframes k-sheen { to { transform: translateX(100%); } }
+@keyframes k-scan { from { background-position: 0 100%; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .k-sheen::after { animation: none; opacity: 0; }
+  .k-scan::after { animation: none; background: color-mix(in srgb, var(--c-accent) 5%, transparent); }
+  .k-mk-on { animation: none; border-right-color: var(--c-accent); }
+}
+
+/* Cachets (Stamp) : encre posée sur le papier, inclinaison fixe ; « pof » à la pose quand `fresh`. */
+.k-stamp { transform: rotate(var(--rot, 0deg)); mix-blend-mode: multiply; opacity: 0.92; }
+.dark .k-stamp, [data-theme="dark"] .k-stamp { mix-blend-mode: normal; opacity: 0.88; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .k-stamp { mix-blend-mode: normal; opacity: 0.88; } }
+.k-stamp.is-fresh { animation: k-stamp 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both; animation-delay: var(--stamp-delay, 120ms); }
+@keyframes k-stamp {
+  0% { transform: rotate(var(--rot, 0deg)) scale(1.6); opacity: 0; }
+  55% { transform: rotate(var(--rot, 0deg)) scale(0.93); opacity: 0.95; }
+  78% { transform: rotate(var(--rot, 0deg)) scale(1.03); }
+  100% { transform: rotate(var(--rot, 0deg)) scale(1); opacity: 0.92; }
+}
+@media (prefers-reduced-motion: reduce) { .k-stamp.is-fresh { animation: none; } }
+
+/* Ticket de caisse : papier, bord du bas dentelé, chiffres de caisse. */
+.k-ticket {
+  background: var(--c-raised);
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  box-shadow: var(--sh-1);
+  -webkit-mask: linear-gradient(black 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle 8px at 8px 100%, transparent 98%, black) bottom / 16px 8px repeat-x;
+  mask: linear-gradient(black 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle 8px at 8px 100%, transparent 98%, black) bottom / 16px 8px repeat-x;
+}
+.k-ticket hr { border: 0; border-top: 1.5px dashed var(--c-line-strong); }
+
+/* Frigo de fin de session : la porte s'ouvre, les boîtes tombent sur les étagères, la lumière s'allume. */
+.k-fridge .k-fridge-door { transform-box: fill-box; transform-origin: 0 50%; transform: scaleX(0); opacity: 0; }
+.k-fridge.is-fresh .k-fridge-door { animation: k-door 700ms var(--ease-in-out) both; }
+.k-fridge.is-fresh .k-fridge-box { animation: k-drop 520ms cubic-bezier(0.3, 1.5, 0.5, 1) both; animation-delay: var(--d, 400ms); }
+.k-fridge.is-fresh .k-fridge-light { animation: k-fade 400ms 500ms both; }
+@keyframes k-door { 0% { transform: scaleX(1); opacity: 1; } 70% { opacity: 1; } 100% { transform: scaleX(0.04); opacity: 0; } }
+@keyframes k-drop { 0% { transform: translateY(-46px); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .k-fridge.is-fresh .k-fridge-door, .k-fridge.is-fresh .k-fridge-box, .k-fridge.is-fresh .k-fridge-light { animation: none; } }
+
+/* Scènes des états vides : un seul mouvement à l'arrivée. Simmer : la vapeur monte, le couvercle frémit. */
+.k-scene .k-scene-roll { animation: k-roll 1.6s var(--ease-out) 200ms both; }
+.k-scene .k-scene-tip { animation: k-tip 900ms cubic-bezier(0.3, 1.4, 0.5, 1) 150ms both; }
+.k-scene .k-scene-lid { animation: k-lid-drop 700ms cubic-bezier(0.3, 1.5, 0.5, 1) 150ms both; }
+@keyframes k-roll { 0% { transform: translateX(26px) rotate(200deg); } 100% { transform: none; } }
+@keyframes k-tip { 0% { transform: rotate(0deg); } 100% { transform: rotate(-14deg); } }
+@keyframes k-lid-drop { 0% { transform: translateY(-14px) rotate(-8deg); } 100% { transform: rotate(-5deg); } }
+.k-scene .k-scene-tip { transform: rotate(-14deg); }
+.k-scene .k-scene-lid { transform: rotate(-5deg); }
+.k-simmer .k-steam { animation: k-steam 2.4s var(--ease-in-out) infinite; opacity: 0; }
+.k-simmer .k-steam:nth-of-type(2) { animation-delay: 0.6s; }
+.k-simmer .k-steam:nth-of-type(3) { animation-delay: 1.2s; }
+.k-simmer .k-lid { transform-box: fill-box; transform-origin: 50% 100%; animation: k-lid 1.2s var(--ease-in-out) infinite; }
+@keyframes k-steam { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(-10px); } }
+@keyframes k-lid { 0%, 70%, 100% { transform: none; } 80% { transform: translateY(-1.5px) rotate(-2deg); } 90% { transform: translateY(-0.5px) rotate(1.5deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .k-scene .k-scene-roll, .k-scene .k-scene-tip, .k-scene .k-scene-lid { animation: none; }
+  .k-simmer .k-steam { animation: none; opacity: 0.7; }
+  .k-simmer .k-lid { animation: none; }
+}
+
+/* Menu : en ouvrant une rubrique, son icône fait un geste, une fois. */
+.k-gesture { animation: k-g-pop 420ms cubic-bezier(0.3, 1.6, 0.5, 1); transform-origin: 50% 60%; }
+.k-gesture[data-g="basket"] { animation: k-g-swing 620ms var(--ease-out); transform-origin: 50% 0%; }
+.k-gesture[data-g="cal"] { animation: k-g-flip 520ms var(--ease-out); transform-origin: 50% 25%; }
+.k-gesture[data-g="pot"] { animation: k-g-wobble 560ms var(--ease-out); transform-origin: 50% 100%; }
+.k-gesture[data-g="book"] { animation: k-g-tilt 520ms var(--ease-out); }
+.k-gesture[data-g="pulse"] { animation: k-g-beat 520ms var(--ease-out); }
+@keyframes k-g-pop { 0% { transform: scale(0.6); } 100% { transform: none; } }
+@keyframes k-g-swing { 0% { transform: rotate(0); } 25% { transform: rotate(14deg); } 55% { transform: rotate(-9deg); } 80% { transform: rotate(4deg); } 100% { transform: none; } }
+@keyframes k-g-flip { 0% { transform: perspective(60px) rotateX(0); } 50% { transform: perspective(60px) rotateX(-70deg); } 100% { transform: none; } }
+@keyframes k-g-wobble { 0%, 100% { transform: none; } 30% { transform: rotate(-8deg) translateY(-2px); } 60% { transform: rotate(6deg); } }
+@keyframes k-g-tilt { 0%, 100% { transform: none; } 40% { transform: rotate(-12deg) scale(1.08); } }
+@keyframes k-g-beat { 0%, 100% { transform: none; } 30% { transform: scale(1.25); } 55% { transform: scale(0.95); } 75% { transform: scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { .k-gesture { animation: none !important; } }
+
+/* Test de la goutte (session, Poêle) : gouttes qui grésillent puis disparaissent ; gouttes qui glissent en dansant. */
+.k-drop-sizzle { animation: k-sizzle 1.4s var(--ease-in-out) infinite; }
+.k-drop-dance { animation: k-dance 1.3s var(--ease-in-out) infinite; }
+@keyframes k-sizzle { 0% { opacity: 1; transform: none; } 70% { opacity: 0.2; transform: scale(0.85); } 100% { opacity: 1; transform: none; } }
+@keyframes k-dance { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(10px) translateY(-1px); } 75% { transform: translateX(-10px) translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) { .k-drop-sizzle, .k-drop-dance { animation: none; } }

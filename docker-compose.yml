@@ -1,0 +1,16 @@
+# Mijote en une commande : cp .env.example .env, puis docker compose up -d → http://localhost:3010
+services:
+  mijote:
+    build: .
+    image: mijote:latest
+    restart: unless-stopped
+    ports:
+      - "${MIJOTE_PORT:-3010}:3010"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - mijote-data:/data
+
+volumes:
+  mijote-data:

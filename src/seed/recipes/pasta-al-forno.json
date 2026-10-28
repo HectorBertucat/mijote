@@ -1,0 +1,356 @@
+{
+  "slug": "pasta-al-forno-saucisse-ricotta",
+  "name": "Pasta al forno porc façon saucisse-ricotta",
+  "description": "Pâtes au four en deux plats : sauté de porc haché et assaisonné façon saucisse (fenouil, paprika, ail) et dés de poulet dorés à la poêle, sauce tomate-courgettes, ricotta aux œufs et râpé gratiné. Se découpe en parts.",
+  "servingsUnits": 36,
+  "tags": [
+    "porc",
+    "poulet",
+    "pâtes",
+    "four",
+    "batch",
+    "à relire"
+  ],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "kcalUnit": 144,
+  "proteinUnit": 10.6,
+  "status": "liked",
+  "source": "Recette de démonstration, testée en batch cooking. Sans saucisses sous la main : 1 barquette de sauté de porc assaisonnée façon saucisse, et 2 œufs dans la ricotta.",
+  "tips": "Le grand plat et le plat moyen se partagent la fournée : répartis environ 55 / 45. Les deux plats ne tiennent pas côte à côte : niveaux 2 et 4 (rails), et inverse-les à mi-cuisson. Coupe les parts une fois froid, ça se tient mieux. Sans saucisse, c'est l'assaisonnement (sel à 1,6 %, fenouil, paprika, ail) qui fait le goût : goûte une miette cuite et rectifie avant le montage. Si tu as des saucisses la prochaine fois : 700 g de Toulouse à la place du porc, dans la poêle froide à 6, sans huile.",
+  "ingredients": [
+    {
+      "lineRaw": "500 g sauté de porc",
+      "item": "Sauté de porc sans os Label Rouge (1 barquette de 500 g), en dés de 5 mm au couteau et assaisonné façon saucisse",
+      "grams": 500,
+      "group": "C",
+      "food": "saute_porc"
+    },
+    {
+      "lineRaw": "épices façon saucisse",
+      "item": "Pour le porc : 8 g de sel, 1 c. à c. de graines de fenouil (sinon thym + origan), 1 c. à c. de paprika, 2 gousses d'ail râpées, beaucoup de poivre, 1 pincée de piment",
+      "group": "C",
+      "pantry": true,
+      "food": "zero"
+    },
+    {
+      "lineRaw": "600 g filets de poulet",
+      "item": "Filets de poulet (la barquette de 600 g), en dés de 2 cm",
+      "grams": 600,
+      "group": "D",
+      "food": "filet_poulet"
+    },
+    {
+      "lineRaw": "400 g rigatoni",
+      "item": "Rigatoni Rummo n°51 (400 g sur 500)",
+      "grams": 400,
+      "group": "G",
+      "food": "pates"
+    },
+    {
+      "lineRaw": "2 ricotta 250 g",
+      "item": "Ricotta (2 × 250 g)",
+      "grams": 500,
+      "group": "E",
+      "food": "ricotta"
+    },
+    {
+      "lineRaw": "2 oeufs",
+      "item": "Œufs, battus dans la ricotta (ça lie et ça ajoute des protéines)",
+      "grams": 120,
+      "units": 2,
+      "group": "E",
+      "food": "oeuf"
+    },
+    {
+      "lineRaw": "150 g emmental râpé",
+      "item": "Râpé (moitié dans la ricotta, moitié dessus)",
+      "grams": 150,
+      "group": "E",
+      "food": "emmental_rape"
+    },
+    {
+      "lineRaw": "1 kg courgettes",
+      "item": "Courgettes (1 kg), râpées et pressées",
+      "grams": 1000,
+      "units": null,
+      "group": "B",
+      "food": "courgette"
+    },
+    {
+      "lineRaw": "3 x 400 g pulpe de tomates",
+      "item": "Pulpe de tomate (3 boîtes de 400 g)",
+      "grams": 1200,
+      "group": "F",
+      "food": "pulpe_tomate"
+    },
+    {
+      "lineRaw": "2 oignons jaunes",
+      "item": "Oignons, émincés",
+      "grams": 300,
+      "units": 2,
+      "group": "A",
+      "food": "oignon"
+    },
+    {
+      "lineRaw": "3 gousses d'ail",
+      "item": "Ail, haché (3 pour la sauce, 2 pour le porc)",
+      "units": 5,
+      "group": "A",
+      "food": "ail"
+    },
+    {
+      "lineRaw": "1 c. à s. concentré de tomate",
+      "item": "Concentré de tomate",
+      "grams": 15,
+      "group": "F",
+      "pantry": true,
+      "food": "concentre_tomate"
+    },
+    {
+      "lineRaw": "origan séché",
+      "item": "Origan (1 c. à c. dans la sauce, 1 pincée dans la ricotta)",
+      "group": "F",
+      "pantry": true,
+      "food": "zero"
+    },
+    {
+      "lineRaw": "huile d'olive",
+      "item": "Huile",
+      "grams": 30,
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 0,
+        "note": "filet sur les pâtes et oignons au faitout : tout est mangé"
+      }
+    },
+    {
+      "lineRaw": "sel, poivre",
+      "item": "Sel, poivre",
+      "pantry": true,
+      "food": "zero"
+    }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignons émincés + 3 gousses d'ail. Bol B : courgettes râpées, 1 c. à c. de sel, 10 min, puis presse-les fort dans un torchon (elles doivent perdre leur eau, sinon le plat baigne). Bol C, le porc façon saucisse : sauté 10 min au congélateur si tu peux, puis lanières et dés de 5 mm au couteau (le petit mixeur chauffe et fait une pâte avec les nerfs de l'épaule) ; ajoute 8 g de sel, 1 c. à c. de fenouil en graines (sinon thym + origan), 1 c. à c. de paprika, 2 gousses d'ail râpées, beaucoup de poivre, 1 pincée de piment ; malaxe 1 min à la main (le sel rend la viande collante, c'est le côté chair à saucisse) et garde au frigo. Bol D : poulet en dés de 2 cm, séché. Bol E : ricotta + 2 œufs battus + 75 g de râpé + poivre + origan ; garde 75 g de râpé à part. Bol F : pulpe + concentré + origan.",
+      "durationMin": 25,
+      "activeMin": 20,
+      "bowls": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Faitout d'eau salée sur le grand foyer à 9. Pâtes (bol G) 3 min de moins que le temps du paquet : elles finissent au four. Égoutte, un filet d'huile pour qu'elles ne collent pas.",
+      "durationMin": 18,
+      "activeMin": 2,
+      "equipmentId": "faitout",
+      "hobLevel": 9,
+      "bowls": [
+        "G"
+      ],
+      "phases": [
+        {
+          "text": "Faitout d'eau salée sur le grand foyer, couvercle, niveau 9",
+          "min": 1,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 6,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Dès que ça bout : pâtes (bol G), remue",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "Les pâtes cuisent : 3 min de moins que le temps du paquet",
+          "min": 8,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Égoutte, un filet d'huile pour qu'elles ne collent pas",
+          "min": 1.5
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle vide sur le foyer moyen, 2 à 3 min à 7. Test de la goutte : quand une bille glisse comme du mercure, 1 c. à s. d'huile. Porc façon saucisse (bol C) écrasé en une grande galette, 3 min sans toucher pour la croûte, puis émiette à la spatule et laisse dorer encore 4 à 5 min en remuant peu. Réserve. Le porc est maigre : pas de gras à jeter, garde les sucs.",
+      "durationMin": 11,
+      "activeMin": 10,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": [
+        "C"
+      ],
+      "cue": "Croûte brune qui se décolle seule, miettes dorées sur les bords.",
+      "phases": [
+        {
+          "text": "Poêle vide sur le foyer moyen",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Goutte OK : 1 c. à s. d'huile, porc (bol C) en galette, ne touche pas",
+          "min": 3,
+          "hobLevel": 7
+        },
+        {
+          "text": "Émiette à la spatule, laisse dorer en remuant peu",
+          "min": 4.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Réserve le porc",
+          "min": 0.5
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Remonte la poêle jusqu'au test de la goutte (bille qui glisse comme du mercure), puis 6. Poulet (bol D) en une fournée de 500 g : 7 pendant 1 min, 2 min sans toucher, saute, encore 2 min. Doré, pas forcément cuit à cœur : il finit au four. Réserve avec le porc.",
+      "durationMin": 6,
+      "activeMin": 6,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "bowls": [
+        "D"
+      ],
+      "cue": "Les dés se décollent seuls quand ils sont dorés.",
+      "phases": [
+        {
+          "text": "Remonte la poêle jusqu'au test de la goutte",
+          "min": 1,
+          "hobLevel": 7
+        },
+        {
+          "text": "Poulet (bol D), ne touche pas",
+          "min": 1,
+          "hobLevel": 7
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2,
+          "hobLevel": 6
+        },
+        {
+          "text": "Saute, encore 2 min, réserve avec le porc",
+          "min": 2,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Faitout vidé, sur le grand foyer : 1 c. à s. d'huile, oignons + ail (bol A) 10 min au niveau 5. Courgettes pressées (bol B) 4 à 5 min. Bol F, mijote 10 min au niveau 4. Déglace la poêle avec une louche de sauce et reverse-la dans le faitout.",
+      "durationMin": 25,
+      "activeMin": 8,
+      "equipmentId": "faitout",
+      "hobLevel": 5,
+      "bowls": [
+        "A",
+        "B",
+        "F"
+      ],
+      "cue": "Oignons fondants ; sauce épaisse qui ne rend plus d'eau.",
+      "phases": [
+        {
+          "text": "Faitout : 1 c. à s. d'huile + oignons et ail (bol A), remue de temps en temps",
+          "min": 10,
+          "hobLevel": 5
+        },
+        {
+          "text": "Courgettes pressées (bol B)",
+          "min": 4.5,
+          "hobLevel": 5
+        },
+        {
+          "text": "Bol F, porte à frémissement",
+          "min": 1,
+          "hobLevel": 4
+        }
+      ]
+    },
+    {
+      "kind": "bake",
+      "text": "Four à 200 °C chaleur tournante. Mélange pâtes, sauce, porc et poulet. Montage en couches dans chaque plat (environ 55 % dans le grand, 45 % dans le moyen) : la moitié des pâtes, la ricotta du bol E en cuillerées étalées grossièrement (pas mélangée aux pâtes), le reste des pâtes, puis le râpé gardé à part sur le dessus.",
+      "durationMin": 10,
+      "activeMin": 10,
+      "equipmentId": "plat-grand",
+      "ovenTemp": 200,
+      "bowls": [
+        "E"
+      ],
+      "phases": [
+        {
+          "text": "Four à 200 °C. Mélange pâtes, sauce, porc et poulet",
+          "min": 3
+        },
+        {
+          "text": "Dans chaque plat (~55 % grand, ~45 % petit) : la moitié des pâtes, puis la ricotta (bol E) en cuillerées étalées, sans mélanger",
+          "min": 4
+        },
+        {
+          "text": "Le reste des pâtes par-dessus",
+          "min": 1
+        },
+        {
+          "text": "Le râpé gardé à part sur le dessus",
+          "min": 2
+        }
+      ]
+    },
+    {
+      "kind": "bake",
+      "text": "Les deux plats aux niveaux 2 et 4, 20 à 25 min. Inverse-les à mi-cuisson.",
+      "durationMin": 25,
+      "activeMin": 1,
+      "equipmentId": "oven",
+      "ovenTemp": 200,
+      "cue": "Dessus doré, bords qui bouillonnent.",
+      "phases": [
+        {
+          "text": "Les deux plats aux niveaux 2 et 4",
+          "min": 0.5
+        },
+        {
+          "text": "Ça gratine",
+          "min": 11,
+          "wait": true
+        },
+        {
+          "text": "Inverse les plats",
+          "min": 0.5
+        },
+        {
+          "text": "Ça gratine encore",
+          "min": 11,
+          "wait": true
+        },
+        {
+          "text": "Dessus doré, bords qui bouillonnent : sors-les",
+          "min": 0.5
+        }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Repos 10 min, puis refroidis à découvert (moins de 2 h), filme et frigo. Coupe 4 parts par plat une fois froid.",
+      "durationMin": 15,
+      "activeMin": 3
+    }
+  ]
+}

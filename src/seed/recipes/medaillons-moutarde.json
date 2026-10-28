@@ -1,0 +1,265 @@
+{
+  "slug": "medaillons-filet-mignon-moutarde",
+  "name": "Médaillons de filet mignon, sauce moutarde",
+  "description": "Le plat minute à deux : croûte Maillard à la poêle, arrosage au beurre, sauce moutarde sur les sucs. Pâtes et haricots verts dans la même eau.",
+  "servingsUnits": 9,
+  "tags": [
+    "porc",
+    "poele",
+    "minute",
+    "pâtes",
+    "à deux"
+  ],
+  "fridgeDays": 1,
+  "freezerOk": false,
+  "kcalUnit": 146,
+  "proteinUnit": 13.6,
+  "status": "liked",
+  "source": "Recette de démonstration, testée en batch cooking.",
+  "tips": "Plat à manger frais (25 min). Filet très maigre : ce sont les pâtes et la crème qui font les calories. Cuisson à cœur visée : 60-62 °C, 63 °C après repos (rosé pâle, juteux). Sans thermomètre : ferme mais encore souple au doigt, environ 5-6 min au total pour 3 cm.",
+  "ingredients": [
+    {
+      "lineRaw": "500 g filet mignon de porc",
+      "item": "Filet mignon de porc, en 6 médaillons de 3 cm",
+      "grams": 500,
+      "food": "filet_mignon_porc"
+    },
+    {
+      "lineRaw": "130 g pâtes tagliatelles",
+      "item": "Pâtes (tagliatelles ou penne)",
+      "grams": 130,
+      "group": "A",
+      "pantry": true,
+      "food": "pates"
+    },
+    {
+      "lineRaw": "250 g haricots verts extra-fins surgelés",
+      "item": "Haricots verts extra-fins surgelés",
+      "grams": 250,
+      "group": "A",
+      "food": "haricots_verts"
+    },
+    {
+      "lineRaw": "10 g beurre",
+      "item": "Beurre",
+      "grams": 10,
+      "group": "B",
+      "pantry": true,
+      "food": "beurre",
+      "yield": {
+        "panLossPct": 5,
+        "note": "la sauce se fait dans la même poêle : presque tout part dans l’assiette"
+      }
+    },
+    {
+      "lineRaw": "thym",
+      "item": "Thym",
+      "group": "B",
+      "pantry": true,
+      "food": "zero"
+    },
+    {
+      "lineRaw": "1 gousse d'ail",
+      "item": "Ail, écrasé",
+      "units": 1,
+      "group": "B",
+      "food": "ail"
+    },
+    {
+      "lineRaw": "1 échalote",
+      "item": "Échalote, ciselée",
+      "grams": 30,
+      "units": 1,
+      "group": "C",
+      "food": "echalote"
+    },
+    {
+      "lineRaw": "10 cl crème légère 15 %",
+      "item": "Crème légère 15 %",
+      "grams": 100,
+      "group": "D",
+      "food": "creme_legere"
+    },
+    {
+      "lineRaw": "moutarde forte",
+      "item": "Moutarde forte (1 c. à s. bombée + 1 c. à c.)",
+      "grams": 25,
+      "group": "D",
+      "pantry": true,
+      "food": "moutarde"
+    },
+    {
+      "lineRaw": "huile neutre",
+      "item": "Huile neutre",
+      "grams": 15,
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 5,
+        "note": "la sauce se fait dans la même poêle : presque tout part dans l’assiette"
+      }
+    },
+    {
+      "lineRaw": "sel",
+      "item": "Sel",
+      "pantry": true,
+      "food": "zero"
+    }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Coupe le filet en 6 médaillons de 3 cm (une grande part : 4 petits ou 3 gros, environ 300 g ; une petite : 2, environ 200 g). Sors-les 20 min avant et tamponne-les. Bol B : beurre, thym, ail écrasé. Bol C : échalote ciselée. Bol D : crème + moutarde.",
+      "durationMin": 8,
+      "activeMin": 8,
+      "bowls": [
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Grande casserole d'eau salée à 9. Pâtes dedans. Haricots verts dans la même eau 6 min avant la fin des pâtes : une seule casserole.",
+      "durationMin": 19,
+      "activeMin": 2,
+      "equipmentId": "faitout",
+      "hobLevel": 9,
+      "bowls": [
+        "A"
+      ],
+      "phases": [
+        {
+          "text": "Grande casserole d'eau salée, couvercle, niveau 9",
+          "min": 1,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 5,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Dès que ça bout : pâtes (bol A), remue",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "Les pâtes cuisent",
+          "min": 5,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Haricots verts (bol A) dans la même eau",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "Pâtes et haricots cuisent ensemble",
+          "min": 6,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Égoutte",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle vide 2 à 3 min à 6-7, test de la goutte (bille qui glisse comme du mercure), essuie, baisse à 6, 1 c. à s. d'huile. Sel sur les médaillons juste avant, pose-les à plat.",
+      "durationMin": 3,
+      "activeMin": 2,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "L'huile ondule ; ça chante fort à la pose.",
+      "phases": [
+        {
+          "text": "Poêle vide sur le foyer",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Test de la goutte : si la bille glisse, essuie, niveau 6, 1 c. à s. d'huile. Sel sur les médaillons",
+          "min": 0.5,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "7 pendant la première minute puis 6, 2 min 30 sans toucher. Retourne quand ils se décollent seuls, 2 min sur l'autre face.",
+      "durationMin": 5,
+      "activeMin": 5,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "Croûte brune, ils se détachent sans forcer.",
+      "phases": [
+        {
+          "text": "Médaillons à plat, ne touche pas",
+          "min": 1,
+          "hobLevel": 7
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 1.5,
+          "hobLevel": 6
+        },
+        {
+          "text": "Retourne quand ils se décollent seuls, 2 min sur l'autre face",
+          "min": 2,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Baisse à 4, beurre + thym + ail (bol B). Incline la poêle et arrose les médaillons au beurre mousseux à la cuillère pendant 1 min.",
+      "durationMin": 1,
+      "activeMin": 1,
+      "equipmentId": "poele-28",
+      "hobLevel": 4,
+      "bowls": [
+        "B"
+      ],
+      "cue": "Le beurre mousse noisette, il ne doit pas noircir."
+    },
+    {
+      "kind": "rest",
+      "text": "Repos 5 min sur une assiette sous alu : ils finissent de cuire et gardent leur jus.",
+      "durationMin": 5,
+      "activeMin": 0
+    },
+    {
+      "kind": "sear",
+      "text": "Sauce dans la même poêle à 4 : échalote (bol C) 1 min dans le gras, déglace avec 100 ml d'eau en grattant tous les sucs, réduis 1 min. Hors du feu : crème + moutarde (bol D) et le jus rendu par les médaillons. La moutarde hors du feu garde son piquant.",
+      "durationMin": 3,
+      "activeMin": 3,
+      "equipmentId": "poele-28",
+      "hobLevel": 4,
+      "bowls": [
+        "C",
+        "D"
+      ],
+      "phases": [
+        {
+          "text": "Échalote (bol C) dans le gras",
+          "min": 1,
+          "hobLevel": 4
+        },
+        {
+          "text": "100 ml d'eau, gratte tous les sucs, réduis",
+          "min": 1,
+          "hobLevel": 4
+        },
+        {
+          "text": "Hors du feu : crème + moutarde (bol D) et le jus rendu par les médaillons",
+          "min": 0.5
+        }
+      ]
+    }
+  ]
+}

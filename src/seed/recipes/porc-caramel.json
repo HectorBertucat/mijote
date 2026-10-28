@@ -1,0 +1,415 @@
+{
+  "slug": "porc-caramel-oeufs",
+  "name": "Porc au caramel aux œufs (thịt kho)",
+  "description": "Cubes d'échine saisis à la poêle puis mijotés dans un caramel au nuoc-mâm, avec des œufs durs qui se colorent dans la sauce. Riz à part.",
+  "servingsUnits": 24,
+  "tags": [
+    "porc",
+    "cocotte",
+    "batch",
+    "riz",
+    "asiatique"
+  ],
+  "fridgeDays": 3,
+  "freezerOk": false,
+  "kcalUnit": 140,
+  "proteinUnit": 10.4,
+  "status": "liked",
+  "source": "Recette de démonstration, testée en batch cooking.",
+  "tips": "Le lendemain, retire à la cuillère la fine couche de gras blanc figé : environ 30 kcal de moins par portion. Pour alléger la part, 140 g de riz cuit au lieu de 175. Pas de sel : le nuoc-mâm sale tout.",
+  "ingredients": [
+    {
+      "lineRaw": "1 kg échine de porc",
+      "item": "Échine de porc en cubes de 4 cm",
+      "grams": 1000,
+      "food": "echine_porc"
+    },
+    {
+      "lineRaw": "6 oeufs",
+      "item": "Œufs",
+      "units": 6,
+      "group": "A",
+      "food": "oeuf"
+    },
+    {
+      "lineRaw": "50 g sucre",
+      "item": "Sucre",
+      "grams": 50,
+      "group": "B",
+      "pantry": true,
+      "food": "sucre"
+    },
+    {
+      "lineRaw": "3 oignons jaunes",
+      "item": "Oignons, émincés",
+      "grams": 450,
+      "units": 3,
+      "group": "C",
+      "food": "oignon"
+    },
+    {
+      "lineRaw": "4 gousses d'ail",
+      "item": "Ail, haché",
+      "units": 4,
+      "group": "D",
+      "food": "ail"
+    },
+    {
+      "lineRaw": "30 g gingembre frais",
+      "item": "Gingembre frais, en bâtonnets",
+      "grams": 30,
+      "group": "D",
+      "optional": true,
+      "food": "gingembre"
+    },
+    {
+      "lineRaw": "4 c. à s. nuoc-mâm",
+      "item": "Nuoc-mâm (sauce poisson)",
+      "grams": 60,
+      "group": "E",
+      "pantry": true,
+      "food": "nuoc_mam"
+    },
+    {
+      "lineRaw": "1 c. à s. sauce soja",
+      "item": "Sauce soja",
+      "grams": 15,
+      "group": "E",
+      "pantry": true,
+      "food": "sauce_soja"
+    },
+    {
+      "lineRaw": "huile neutre",
+      "item": "Huile neutre (tournesol)",
+      "grams": 15,
+      "pantry": true,
+      "food": "huile",
+      "yield": {
+        "panLossPct": 15,
+        "note": "saisie, puis Poêle déglacée et jus versé dans la cocotte : ~15 % reste"
+      }
+    },
+    {
+      "lineRaw": "poivre noir",
+      "item": "Poivre noir",
+      "pantry": true,
+      "food": "zero"
+    },
+    {
+      "lineRaw": "300 g riz basmati",
+      "item": "Riz basmati (cuit à part)",
+      "grams": 300,
+      "group": "F",
+      "pantry": true,
+      "food": "riz_basmati"
+    }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Coupe l'échine en cubes de 4 cm si ce n'est pas fait. Émince les oignons (bol C), hache l'ail et taille le gingembre en bâtonnets (bol D). Mélange nuoc-mâm et soja (bol E). Pèse le sucre (bol B) et le riz (bol F).",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": [
+        "C",
+        "D",
+        "E",
+        "B",
+        "F"
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Œufs (bol A) dans une casserole d'eau froide, porte à ébullition puis compte 9 min. Passe-les à l'eau froide et écale-les. Ça tourne pendant la saisie.",
+      "durationMin": 16,
+      "activeMin": 3,
+      "equipmentId": "casserole-16",
+      "hobLevel": 9,
+      "bowls": [
+        "A"
+      ],
+      "phases": [
+        {
+          "text": "Œufs (bol A) dans la casserole, eau froide à hauteur, niveau 9",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 4,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Dès que ça bout : niveau 6",
+          "min": 0.5,
+          "hobLevel": 6
+        },
+        {
+          "text": "Les œufs cuisent",
+          "min": 9,
+          "hobLevel": 6,
+          "wait": true
+        },
+        {
+          "text": "Passe-les à l'eau froide et écale-les",
+          "min": 2
+        }
+      ]
+    },
+    {
+      "kind": "prep",
+      "text": "Sors le porc et tamponne les cubes au papier absorbant : ils doivent être bien secs, sinon ils grisent au lieu de dorer.",
+      "durationMin": 2,
+      "activeMin": 2
+    },
+    {
+      "kind": "sear",
+      "text": "Préchauffe la poêle vide et sèche 2 à 3 min au niveau 6-7 (jamais 9 à vide). Test de la goutte : quand une bille d'eau glisse comme du mercure, essuie-la, baisse à 6 et mets 1 c. à s. d'huile.",
+      "durationMin": 3,
+      "activeMin": 1,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "L'huile ondule en 5 à 10 s. Si elle fume tout de suite, soulève la poêle 20 s.",
+      "phases": [
+        {
+          "text": "Poêle vide et sèche sur le foyer (jamais 9 à vide)",
+          "min": 2.5,
+          "hobLevel": 7
+        },
+        {
+          "text": "Test de la goutte : si la bille glisse comme du mercure, essuie, niveau 6, 1 c. à s. d'huile",
+          "min": 0.5,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Saisie en 2 fournées de 500 g (une vingtaine de cubes espacés de 1 à 2 cm). Monte à 7 pendant 1 min après les avoir posés, puis reviens à 6. Ne touche à rien 2 min 30, retourne quand ça se décolle seul, encore 2 min. Dorés sur deux faces, pas cuits à cœur. Réserve dans un bol avec leur jus.",
+      "durationMin": 12,
+      "activeMin": 12,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "cue": "Ça chante fort dès la pose. Un bouillonnement mou avec du liquide au fond = poêle surchargée.",
+      "phases": [
+        {
+          "text": "500 g de cubes espacés de 1 à 2 cm, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 1
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 1
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve avec le jus",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 1
+        },
+        {
+          "text": "500 g de cubes espacés de 1 à 2 cm, ne touche pas",
+          "min": 1,
+          "hobLevel": 7,
+          "batch": 2
+        },
+        {
+          "text": "Baisse à 6, toujours sans toucher",
+          "min": 2.5,
+          "hobLevel": 6,
+          "batch": 2
+        },
+        {
+          "text": "Retourne quand ça se décolle seul, encore 2 min, puis réserve avec le jus",
+          "min": 2,
+          "hobLevel": 6,
+          "batch": 2
+        }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Déglace la poêle avec 150 ml d'eau en grattant les sucs bruns. Garde ce jus. Si les sucs sont noirs, essuie plutôt : ils seraient amers.",
+      "durationMin": 1,
+      "activeMin": 1,
+      "equipmentId": "poele-28",
+      "hobLevel": 6
+    },
+    {
+      "kind": "braise",
+      "text": "Préchauffe la cocotte vide 3 min au niveau 7 (fonte froide = minutes perdues). Sucre (bol B) + 2 c. à s. d'eau, reste à 6-7 sans remuer, fais juste tourner la cocotte, 4 à 6 min.",
+      "durationMin": 9,
+      "activeMin": 6,
+      "equipmentId": "cocotte",
+      "hobLevel": 7,
+      "bowls": [
+        "B"
+      ],
+      "cue": "Caramel ambre foncé, couleur sirop d'érable. Ne le quitte pas des yeux.",
+      "phases": [
+        {
+          "text": "Cocotte vide sur le grand foyer, préchauffe",
+          "min": 3,
+          "hobLevel": 7
+        },
+        {
+          "text": "Sucre (bol B) + 2 c. à s. d'eau, sans remuer : fais tourner la cocotte jusqu'à l'ambre foncé, ne le quitte pas des yeux",
+          "min": 5,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Oignons (bol C) tout de suite dans le caramel pour le stopper, 3 min en remuant. Ail et gingembre (bol D), 1 min.",
+      "durationMin": 4,
+      "activeMin": 4,
+      "equipmentId": "cocotte",
+      "hobLevel": 6,
+      "bowls": [
+        "C",
+        "D"
+      ],
+      "phases": [
+        {
+          "text": "Oignons (bol C) tout de suite pour stopper le caramel, remue",
+          "min": 3,
+          "hobLevel": 6
+        },
+        {
+          "text": "Ail et gingembre (bol D), remue",
+          "min": 1,
+          "hobLevel": 6
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Porc avec son jus, jus de déglaçage, nuoc-mâm et soja (bol E). Eau jusqu'à affleurer la viande (environ 500 ml). Ébullition franche à 8, puis 3, couvercle entrouvert, 45 min.",
+      "durationMin": 50,
+      "activeMin": 3,
+      "equipmentId": "cocotte",
+      "hobLevel": 3,
+      "bowls": [
+        "E"
+      ],
+      "phases": [
+        {
+          "text": "Porc et son jus, jus de déglaçage, nuoc-mâm et soja (bol E), eau à hauteur (environ 500 ml)",
+          "min": 1,
+          "hobLevel": 8
+        },
+        {
+          "text": "Ça monte à ébullition franche",
+          "min": 3,
+          "hobLevel": 8,
+          "wait": true
+        },
+        {
+          "text": "Ça bout : niveau 3, couvercle entrouvert",
+          "min": 0.5,
+          "hobLevel": 3
+        }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Riz pendant le mijotage : 300 g rincés (bol F) + 450 ml d'eau, ébullition, puis feu minimum couvert 11 min, repos 5 min. Étale-le dans un plat large pour qu'il refroidisse vite.",
+      "durationMin": 23,
+      "activeMin": 3,
+      "equipmentId": "casserole-18",
+      "hobLevel": 9,
+      "bowls": [
+        "F"
+      ],
+      "phases": [
+        {
+          "text": "Riz rincé (bol F) + 450 ml d'eau dans la casserole, couvercle, niveau 9",
+          "min": 0.5,
+          "hobLevel": 9
+        },
+        {
+          "text": "L'eau chauffe",
+          "min": 4,
+          "hobLevel": 9,
+          "wait": true
+        },
+        {
+          "text": "Dès que ça bout : niveau 1, couvercle",
+          "min": 0.5,
+          "hobLevel": 1
+        },
+        {
+          "text": "Le riz cuit à couvert, sans soulever le couvercle",
+          "min": 11,
+          "hobLevel": 1,
+          "wait": true
+        },
+        {
+          "text": "Hors du feu, garde le couvercle",
+          "min": 0.5
+        },
+        {
+          "text": "Repos à couvert",
+          "min": 5,
+          "wait": true
+        },
+        {
+          "text": "Étale-le dans un plat large pour qu'il refroidisse vite",
+          "min": 1
+        }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Ajoute les œufs écalés, retire le couvercle, 15 à 20 min au niveau 4 : la sauce réduit, les œufs roulent dedans et se colorent. Poivre généreux.",
+      "durationMin": 18,
+      "activeMin": 3,
+      "equipmentId": "cocotte",
+      "hobLevel": 4,
+      "bowls": [
+        "A"
+      ],
+      "cue": "Sauce brillante et nappante, œufs ambrés.",
+      "phases": [
+        {
+          "text": "Œufs écalés (bol A) dans la sauce, retire le couvercle",
+          "min": 1,
+          "hobLevel": 4
+        },
+        {
+          "text": "La sauce réduit",
+          "min": 7,
+          "hobLevel": 4,
+          "wait": true
+        },
+        {
+          "text": "Retourne les œufs dans la sauce",
+          "min": 0.5,
+          "hobLevel": 4
+        },
+        {
+          "text": "Ça réduit encore",
+          "min": 7,
+          "hobLevel": 4,
+          "wait": true
+        },
+        {
+          "text": "Poivre généreux, goûte",
+          "min": 0.5,
+          "hobLevel": 4
+        }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Pèse le total de porc en sauce : 1 unité = total ÷ 24 (une part de 5 unités va avec 1 œuf et 175 g de riz cuit, une de 4 avec 1 œuf et 140 g). Répartis dans 2 bols ou un bol + le grand plat pour refroidir vite, filme dès que c'est tiède, frigo au fond.",
+      "durationMin": 10,
+      "activeMin": 5
+    }
+  ]
+}
