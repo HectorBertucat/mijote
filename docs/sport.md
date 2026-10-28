@@ -40,4 +40,6 @@ Une figure refusée repart une fois à l'IA avec la liste des erreurs ; si elle 
 
 Plein écran, au tempo de la figure. L'ordinateur (ou une tablette) sert d'écran ; les téléphones de télécommandes (QR code). **À deux**, une colonne par personne, chacun son programme et son rythme. La séance vit sur le serveur (table `training_live`, SSE) : un écran qui se met en veille la retrouve où elle en est.
 
+**Le guide du rythme** accompagne la figure : une courbe défile de droite à gauche, et une bille posée dessus monte et descend au tempo de chaque phase (en haut, la pose de départ ; en bas, la position la plus dure). On voit venir la prochaine descente, le prochain palier et la prochaine remontée, chaque début de phase est marqué avec son mot, et la bille grossit au moment du bip. Elle utilise la même horloge que la figure et les bips (`rhythm.ts`, testé) : sur téléphone comme sur grand écran, tout tombe au même instant.
+
 Le carnet garde les répétitions de chaque série ; quand le haut de la fourchette est atteint sur toutes les séries, l'exercice est « prêt à monter » d'un cran (double progression).
