@@ -31,7 +31,8 @@ export interface Motion {
 
 export const cycleDuration = (m: Motion) => m.steps.reduce((s, x) => s + x.dur, 0);
 
-const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+/** Courbe d'accélération des figures (douce au départ et à l'arrivée) : partagée avec le guide du rythme. */
+export const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 
 export interface Frame {
   skel: Skeleton;

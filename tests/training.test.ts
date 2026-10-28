@@ -331,3 +331,46 @@ test("programme de l'IA : ids vérifiés, matériel respecté, figure fausse rem
   assert.ok(!JSON.stringify(fixed.program.sessions).includes("ia-faux"));
   assert.deepEqual(checkMotion(fromAiMotion(toAi(MOTIONS.goblet))), [], "aller-retour du format IA");
 });
+
+// ─── Guide visuel du rythme ───
+import { heightAt, keyLevel, marksBetween, rhythmPath } from "@/lib/training/rhythm";
+
+test("rythme : la bille est en haut ou en bas à chaque début de phase, au même instant que la figure", () => {
+  for (const [id, m] of Object.entries(MOTIONS)) {
+    let at = 0;
+    let from = 0;
+    for (const s of m.steps) {
+      // Début de phase : la bille est sur la pose d'où l'on part ; fin de phase : sur la pose visée.
+      if (at > 0) assert.ok(Math.abs(heightAt(m, at) - keyLevel(m, from)) < 1e-6, `${id} début ${at}`);
+      assert.ok(Math.abs(heightAt(m, at + s.dur - 1e-6) - keyLevel(m, s.to)) < 1e-3, `${id} fin ${at + s.dur}`);
+      // Même phase que la figure au milieu de l'étape.
+      if (s.dur > 0.05) assert.equal(sample(m, at + s.dur / 2).label, s.label, id);
+      at += s.dur;
+      from = s.to;
+    }
+  }
+});
+
+test("rythme : les marques tombent sur les débuts de phase, les répétitions sont signalées, rien après la série", () => {
+  const m = MOTIONS.goblet; // 3 s descente, 1 s en bas, 1 s montée, 0,4 s en haut
+  const total = cycleDuration(m);
+  const marks = marksBetween(m, 0, 2 * total);
+  assert.equal(marks.length, 2 * m.steps.length);
+  assert.deepEqual(marks.slice(0, 4).map((x) => [x.at, x.label, x.rep]), [
+    [0, "Descends", true],
+    [3, "Tiens en bas", false],
+    [4, "Remonte fort", false],
+    [5, "Respire", false],
+  ]);
+  assert.ok(marks.filter((x) => x.rep).every((x) => Math.abs(x.at % total) < 1e-9));
+  // Série de 2 répétitions : plus de marque ensuite, la bille attend en haut.
+  const end = 2 * total;
+  assert.equal(marksBetween(m, 0, 5 * total, end).length, 2 * m.steps.length);
+  assert.equal(heightAt(m, end + 1, end), 1);
+  assert.equal(heightAt(m, -1), 1);
+  // La courbe du goblet descend jusqu'en bas et garde un palier pendant la pause.
+  assert.ok(Math.abs(heightAt(m, 3.5)) < 1e-9);
+  const path = rhythmPath(m, 2, 1, 4);
+  assert.ok(path.length > 90 && path[0].x === -1);
+  assert.ok(path.every((p) => p.h >= -1e-9 && p.h <= 1 + 1e-9));
+});

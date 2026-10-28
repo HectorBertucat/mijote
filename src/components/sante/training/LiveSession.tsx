@@ -15,6 +15,7 @@ import { AUTO_NEXT_MS, entriesOf, guideAt, suggestedReps, SWITCH_SEC, type Live,
 import { cycleDuration, sample } from "@/lib/training/motion";
 import { lastFor, levelFor, ready, type Exercise, type LiveStep, type Program, type Workout } from "@/lib/training/program";
 import { frameAt, KbFigure, LoopingFigure, useMotionClock } from "./KbFigure";
+import { RhythmGuide } from "./RhythmGuide";
 import { useLiveSync, type LiveRowClient } from "./useLiveSync";
 
 export type LiveView = "ecran" | "telecommande";
@@ -380,6 +381,9 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
             <span className="text-[15px] text-ink-2 @2xl:text-[17px]">{heroSub}</span>
           </span>
         </div>
+
+        {/* La bille qui suit le tempo : on voit venir chaque phase, au même instant que la figure et les bips. */}
+        {!seconds && <RhythmGuide motion={motion} t={t} end={g ? dur : null} active={g?.phase === "run"} className="max-w-[560px]" />}
 
         {!remote && <p className="text-[17px] leading-snug @2xl:text-[20px]">{ex.cues[0]}</p>}
 

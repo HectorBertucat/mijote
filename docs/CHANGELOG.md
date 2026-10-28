@@ -1,5 +1,8 @@
 # Journal des changements
 
+## 2026-10-28 : guide visuel du rythme
+- En séance guidée, une bille suit la courbe du tempo (comme l'écran d'une machine de sport) : on voit venir chaque phase, au même instant que la figure et les bips (`src/lib/training/rhythm.ts`, `RhythmGuide.tsx`).
+
 ## 2026-10-28 : import des recettes
 - Les fichiers cachés d'un dossier de recettes (« ._recette.json » créés par les copies depuis macOS) sont ignorés au lieu de faire échouer l'import au démarrage.
 
