@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { eq } from "drizzle-orm";
 import { openDb } from "@/lib/db/open";
 import { equipment, mealSlots, people, preferences, weighIns } from "@/lib/db/schema";
@@ -216,4 +217,14 @@ test("cuisine réappliquée : un équipement ajouté à la main n'est pas retir�
   db.insert(equipment).values({ id: "sous-vide", kind: "appliance", name: "Appareil sous-vide" }).run();
   applyKitchen(db, { ...DEFAULT_KITCHEN, hobs: 2 });
   assert.equal(db.select().from(equipment).where(eq(equipment.id, "sous-vide")).get()!.owned, true);
+});
+
+test("import des recettes : les fichiers cachés (métadonnées macOS « ._x.json ») sont ignorés", () => {
+  const db = fresh();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "recettes-"));
+  fs.copyFileSync(path.join(RECIPES, "chasseur-porc.json"), path.join(dir, "chasseur-porc.json"));
+  fs.writeFileSync(path.join(dir, "._chasseur-porc.json"), Buffer.from([0, 5, 22, 7, 0, 2, 0, 0]));
+  fs.mkdirSync(path.join(dir, ".cache"));
+  fs.writeFileSync(path.join(dir, ".cache", "x.json"), "pas du json");
+  assert.deepEqual(syncRecipes(db, dir).map((r) => r.file), ["chasseur-porc.json"]);
 });

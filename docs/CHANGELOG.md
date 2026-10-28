@@ -1,5 +1,8 @@
 # Journal des changements
 
+## 2026-10-28 : import des recettes
+- Les fichiers cachés d'un dossier de recettes (« ._recette.json » créés par les copies depuis macOS) sont ignorés au lieu de faire échouer l'import au démarrage.
+
 ## 2.1.0 (2026-10-28) : repère fixe, garde-fou
 
 - **Repère fixe d'un repas** par personne (Santé › Profil, `people.fixed_meal_ref`, migration 0001) : il sert à la part de chaque recette tant que la dépense n'est pas mesurée ; la journée de la Semaine = deux repas + le hors batch.
