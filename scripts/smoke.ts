@@ -116,7 +116,7 @@ async function main() {
     const listId = await buildShoppingList(db, ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"]);
     const sessionId = createSession(db, { slugs: ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"], mode: "solo" });
 
-    for (const p of ["/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins"])
+    for (const p of ["/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins"])
       await page(p, undefined);
     await page("/recettes", undefined, /Léa/);
     await page("/sante/entrainement?vue=programme", "mijote.profil=lea", /Changer de programme/);

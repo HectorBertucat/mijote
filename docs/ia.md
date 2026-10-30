@@ -11,6 +11,7 @@ L'IA est **facultative**. Sans `ANTHROPIC_API_KEY`, les boutons IA sont désacti
 | Coach (Santé › Objectifs) | Sonnet | une réponse et des objectifs | rythme −1 à +0,5 %/sem., protéines 1,2 à 2,4 g/kg, poids visé dans un IMC sain, jamais sous le métabolisme de base |
 | Programme de sport | Sonnet (2 appels) | les séances, puis la figure des exercices inventés | ids de la bibliothèque, matériel, séries et repos bornés, durée, chaque figure résolue par le squelette ; une figure refusée repart une fois, sinon l'exercice est remplacé |
 | Dessiner un aliment | Sonnet | un fragment SVG | liste blanche stricte (balises, couleurs du thème, animations) ; refusé, il repart une fois |
+| Importer une recette | Haiku | une recette complète, depuis un texte collé | garde-fous avant l'appel (texte vide, trop court, sans quantités, limite du jour) ; puis comme l'Atelier, plus les quantités (grammes et kcal par unité, taille du batch) : « à relire » si elles sont douteuses |
 | Estimer un repas | Haiku | kcal et macros | marqué « estimation » dans le journal |
 
 Tous les appels passent par `structured()` (`src/lib/ai/index.ts`) : un schéma de sortie imposé (sorties JSON structurées), le contexte stable en cache (profil, équipement, goûts, table nutritionnelle), et une ligne par appel dans `ai_calls` (modèle, jetons, coût, écran, durée, erreur).
@@ -27,12 +28,13 @@ Mesuré le 28/10/2026 avec `pnpm test:ai`, une fois chaque fonction :
 | Programme de sport | ~50 s | 0,09 $ |
 | Deux dessins d'aliments | ~15 s | 0,02 $ |
 | Estimer un repas | ~3 s | moins de 0,001 $ |
+| Importer une recette | ~30 s (estimé) | environ 0,003 $ (estimé, affiché avant l'appel) |
 
-Un usage normal (quelques ajustements et messages au coach par semaine) reste sous 5 $ par mois. `AI_MONTHLY_CAP_USD` (10 $ par défaut) coupe les boutons IA au-delà, jusqu'au mois suivant. La page Coûts montre la dépense du mois.
+Un usage normal (quelques ajustements et messages au coach par semaine) reste sous 5 $ par mois. `AI_MONTHLY_CAP_USD` (10 $ par défaut) coupe les boutons IA au-delà, jusqu'au mois suivant. La page Coûts montre la dépense du mois. L'import de recettes a en plus une limite par jour : `AI_IMPORTS_PER_DAY` (10 par défaut), chaque appel compte, réussi ou non.
 
 ## Tester
 
-- `pnpm test` : tous les parcours IA avec un **faux client** (réponse juste, fausse puis corrigée, fausse deux fois, plafond atteint), sans réseau ni coût (`tests/ia-parcours.test.ts`, `tests/atelier.test.ts`).
+- `pnpm test` : tous les parcours IA avec un **faux client** (réponse juste, fausse puis corrigée, fausse deux fois, plafond atteint), sans réseau ni coût (`tests/ia-parcours.test.ts`, `tests/atelier.test.ts`, `tests/importer.test.ts`).
 - `pnpm test:ai` : chaque fonction appelée **en vrai** sur une base jetable, et sa sortie contrôlée comme le fait l'appli. Il faut une clé ; compter environ 0,40 $. `pnpm test:ai programme` n'en lance qu'une.
 - `MIJOTE_AI_MOCK=1` (hors production) : l'appli rend des réponses simulées, pour développer l'interface sans clé.
 

@@ -8,12 +8,11 @@ import { MODELS, structured } from "@/lib/ai";
 import { resolve } from "@/lib/chronocatalog";
 import { loadAssociations } from "@/lib/products/store";
 import type { RecipeInput } from "@/lib/recipes/format";
-import { withPhases } from "@/lib/recipes/phases";
 import { equipmentIds, loadLibrary, loadRecipeInput, mainIngredients, promptContext } from "./library";
 import { mockAdjust, mockCreate } from "./mock";
 import { adjustOptions } from "./options";
 import { adjustPrompt, creationPrompt, systemPrompt, type CreationRequest } from "./prompt";
-import { AdjustOutput, AtelierOutput, normalizeRecipe } from "./schema";
+import { AdjustOutput, AtelierOutput, fillPhases, normalizeRecipe } from "./schema";
 import { carryYield, diffIngredients, findDuplicate, verifyRecipe, type Resolver, type Verification } from "./verify";
 import { queryLine } from "@/lib/shopping/build";
 import { householdMembers } from "@/lib/eaters/store";
@@ -172,16 +171,6 @@ export async function proposeCreation(
   if (res.duplicate && !current) res = await run([...request.avoid, res.duplicate.name]);
   const verification = await verifyRecipe({ draft: res.draft, original: current, library, resolve: deps.resolve ?? defaultResolver, associations: loadAssociations(db), household: householdMembers(db, deps.leadId) });
   return { draft: res.draft, explanation: res.out.explanation, changes: [], verification: { ...verification, warnings: [...res.filled, ...verification.warnings] }, duplicate: res.duplicate };
-}
-
-/**
- * Sous-étapes obligatoires : celles que l'IA a oubliées sont découpées par le code dans le texte de
- * l'étape (src/lib/recipes/phases.ts). Rend l'avertissement à montrer, vide si l'IA les a toutes écrites.
- */
-function fillPhases(draft: RecipeInput): string[] {
-  const { steps, filled } = withPhases(draft.steps);
-  draft.steps = steps;
-  return filled.length ? [`Sous-étapes écrites par le code (l'IA les a oubliées) pour l'étape${filled.length > 1 ? "s" : ""} ${filled.join(", ")} : relis leurs durées.`] : [];
 }
 
 export { loadRecipeInput, saveDraft, VARIANT_SOURCE } from "./library";
