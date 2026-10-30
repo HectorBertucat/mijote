@@ -77,6 +77,8 @@ export function DrivePanel({ listId, enabled, ordered, products, drive, order }:
         ["unavailable", "indisponible", "ko"],
         ["failed", "refusé", "ko"],
         ["skipped", "hors drive", "warn"],
+        ["completed", "complété par un autre produit", "ok"],
+        ["short", "manque au panier", "ko"],
       ] as const).filter(([k]) => (s[k] ?? 0) > 0)
     : [];
 
@@ -91,7 +93,11 @@ export function DrivePanel({ listId, enabled, ordered, products, drive, order }:
         <>
           <p className="text-[14px] text-ink-2">
             {drive.status === "done"
-              ? "Ce qui est vraiment dans ton panier est noté ligne par ligne. Renvoyer ne double rien : seul ce qui manque est ajouté."
+              ? (s?.short ?? 0) > 0
+                ? "Il manque encore des produits au panier (rupture, et pas de remplaçant en stock) : vois les lignes en rouge, change le produit puis renvoie."
+                : (s?.completed ?? 0) > 0
+                  ? "Panier complet : ce qui était en rupture a été remplacé par un autre produit du même type (lignes « complément »)."
+                  : "Panier complet, relu ligne par ligne. Renvoyer ne double rien : seul ce qui manque est ajouté."
               : `Les ${products} produits partent dans ton vrai panier, au nombre de paquets de la liste. Compte ~${Math.max(1, Math.round(((products + 5) * STEP_S) / 60))} min : le worker va doucement.`}
           </p>
           <div className="flex flex-wrap items-center gap-2">

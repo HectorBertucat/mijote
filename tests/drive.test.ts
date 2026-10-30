@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { openDb } from "@/lib/db/open";
 import { pantryLots, purchases, shoppingItems, shoppingLists } from "@/lib/db/schema";
 import type { CartAddResult, ChronoOrder, ResolvedProduct } from "@/lib/chronocatalog";
-import { applyOrder, cartPayload, cartUpdates, chronoIdFromUrl, matchOrder, orderSummary, orderUpdates } from "@/lib/shopping/drive";
+import { applyOrder, cartPayload, cartUpdates, chronoIdFromUrl, completeShortfalls, matchOrder, orderSummary, orderUpdates, pickSubstitute, shortfalls } from "@/lib/shopping/drive";
 
 const product = (id: string, chrono: string, weightG: number, price: number, source: "chronodrive" | "manual" = "chronodrive"): ResolvedProduct => ({
   id,
@@ -115,4 +115,63 @@ test("relire la commande : la liste est validée, les achats prennent le prix pa
   assert.equal(lot.valueInitial, 3.8);
   assert.equal(lot.valueLeft, 3.8);
   assert.deepEqual(orderSummary(db, "L"), { paid: 8.3, estimated: 9, matched: 2, total: 2 });
+});
+
+// ─── Rupture au panier : ce qui manque est complété ───
+
+const line = (refs: string[], wanted: number, after: number, outcome: CartAddResult["lines"][number]["outcome"]): CartAddResult["lines"][number] => ({
+  chronoId: `C-${refs[0]}`, refs, wanted, before: 0, sent: wanted, after, outcome, label: null, unitPrice: null, stock: null, remainingStock: after, maxCartQuantity: 999,
+});
+const cartResult = (lines: CartAddResult["lines"]): CartAddResult => ({ cartId: "c", totalCartAmount: 0, lines, summary: { added: 0, already: 0, partial: 0, unavailable: 0, failed: 0 }, skipped: [] });
+
+test("ce qui manque au panier : par produit, lignes cumulées, en grammes", () => {
+  const filets = product("u-filets", "P170743", 600, 6.49);
+  const its = [
+    { id: "a", pantry: false, packs: 4, productJson: filets },
+    { id: "b", pantry: false, packs: 3, productJson: filets }, // même produit, autre recette : 7 paquets voulus
+    { id: "c", pantry: false, packs: 1, productJson: product("u-riz", "P100", 1000, 2) },
+  ];
+  const sf = shortfalls(its, cartResult([line(["u-filets"], 7, 4, "partial"), line(["u-riz"], 1, 1, "added")]));
+  assert.deepEqual(sf, [{ productId: "u-filets", itemIds: ["a", "b"], wanted: 7, inCart: 4, missingG: 1800 }]);
+});
+
+test("remplaçant : en stock, même rayon froid, le moins cher pour les grammes manquants ; à coût égal, le grand format", () => {
+  const original = product("u-filets", "P1", 600, 6.49);
+  const kilo = product("u-kilo", "P2", 1000, 11.99); // 2 × 1 kg = 23,98 €
+  const small = product("u-720", "P3", 720, 8.99); // 3 × 720 g = 26,97 €
+  const frozen = { ...product("u-surg", "P4", 1000, 7), isFrozen: true };
+  const out = { ...product("u-out", "P5", 1000, 5), stockStatus: "NO_STOCK" as const };
+  const counter = { ...product("u-detail", "P6", 1000, 9.99), quantityLabel: "Au détail (au choix)" };
+  assert.deepEqual(pickSubstitute(1800, original, [original, small, frozen, out, counter, kilo]), { product: kilo, packs: 2 });
+  const big = product("u-2kg", "P7", 2000, 23.98); // même coût qu'2 × 1 kg, un seul paquet
+  assert.equal(pickSubstitute(1800, original, [kilo, big])!.product.id, "u-2kg");
+  assert.equal(pickSubstitute(1800, original, [original, frozen, out]), null);
+});
+
+test("complément : la ligne d'origine garde ce que le panier a pris, une ligne de remplaçant s'ajoute", async () => {
+  const { db } = openDb(":memory:");
+  db.insert(shoppingLists).values({ id: "L", title: "Test", recipeSlugs: [], buildDone: 1, buildTotal: 1 }).run();
+  const filets = product("u-filets", "P170743", 600, 6.49);
+  const kilo = product("u-kilo", "P2", 1000, 11.99);
+  db.insert(shoppingItems)
+    .values([
+      { id: "a", listId: "L", item: "Filets de poulet", needG: 2400, packs: 4, productJson: filets, aisle: "Boucherie", line: "2,4 kg filets de poulet", recipeIds: ["r1"], position: 0 },
+      { id: "b", listId: "L", item: "Filets de poulet", needG: 1300, packs: 3, productJson: filets, aisle: "Boucherie", line: "1,3 kg filets de poulet", recipeIds: ["r2"], position: 1 },
+    ])
+    .run();
+  const its = db.select().from(shoppingItems).all();
+  const sf = shortfalls(its, cartResult([line(["u-filets"], 7, 4, "partial")]));
+  const added = await completeShortfalls(db, "L", sf, async () => ({ query: "", source: "fts", totalProducts: 2, matchedTypes: [{ id: "t", slug: "filet_poulet", name: "Filet de poulet", broadCategory: "viande", unit: "kg", products: [filets, kilo] }] }) as never);
+  assert.equal(added, 1);
+  const after = db.select().from(shoppingItems).all();
+  assert.equal(after.find((i) => i.id === "a")!.packs, 4);
+  assert.equal(after.find((i) => i.id === "b"), undefined, "la ligne que le panier n'a pas prise disparaît");
+  const extra = after.find((i) => i.id !== "a" && i.id !== "b")!;
+  assert.equal(extra.item, "Filets de poulet (complément)");
+  assert.equal(extra.chronoProductId, "u-kilo");
+  assert.equal(extra.packs, 2);
+  assert.equal(extra.needG, 1800);
+  assert.deepEqual(extra.recipeIds, ["r1", "r2"]);
+  // Le panier renvoyé : 4 paquets d'origine (déjà dedans) et 2 de remplaçant.
+  assert.deepEqual(cartPayload(after), [{ productId: "u-filets", quantity: 4 }, { productId: "u-kilo", quantity: 2 }]);
 });

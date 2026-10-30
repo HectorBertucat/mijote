@@ -1,5 +1,8 @@
 # Journal des changements
 
+## 2026-10-30 : panier du drive, ruptures complétées
+- Après l'envoi au panier, ce que le drive n'a pas pu prendre (rupture, stock limité) est comparé au besoin de la liste et complété une fois par un autre produit du même type en stock, au moindre coût pour les grammes manquants (`shortfalls`, `pickSubstitute`, `completeShortfalls` dans `src/lib/shopping/drive.ts`). Une ligne « complément » s'ajoute à la liste, le panier est renvoyé puis relu ; ce qui manque encore est signalé (« manque au panier »).
+
 ## 2026-10-30 : recettes de base et dossier de l'instance
 - Au démarrage, le dossier de recettes de l'instance (`MIJOTE_RECIPES_DIR`) s'ajoute à la bibliothèque de base (`src/seed/recipes`) au lieu de la remplacer : une instance qui a ses propres fiches reçoit aussi les nouvelles recettes de l'appli. Sur un même slug, la fiche de l'instance gagne (`recipesDirs()` dans `src/seed/bootstrap.ts`).
 

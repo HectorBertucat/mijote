@@ -4,6 +4,10 @@
 // 1. « Envoyer au panier » : chaque ligne à acheter part avec son nombre de paquets (mode
 //    « ensure » : ce qui est déjà au panier compte, renvoyer ne double rien). Le worker relit
 //    le panier : chaque ligne dit ce qui y est vraiment (ajouté, partiel, indisponible).
+//    Ce qui manque (rupture, stock limité) est complété une fois par un autre produit du même type
+//    en stock, au moindre coût pour les grammes manquants (les grands formats gagnent souvent) :
+//    une ligne « complément » s'ajoute à la liste et le panier est renvoyé puis relu. Ce qui manque
+//    encore ensuite est signalé (summary.short), jamais ignoré.
 // 2. On paie et choisit son créneau sur chronodrive.com (pas automatisé).
 // 3. « Relire ma commande » : la commande récente qui ressemble le plus à la liste devient la
 //    vérité : la liste est validée si elle ne l'était pas, et chaque achat prend le prix
@@ -11,8 +15,11 @@
 // Les fonctions pures (cartPayload, cartUpdates, matchOrder, orderUpdates) sont testées.
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { pantryLots, purchases, shoppingItems, shoppingLists } from "@/lib/db/schema";
-import { accountJob, accountJobs, type CartAddResult, type ChronoOrder, type OrdersResult, type ResolvedProduct } from "@/lib/chronocatalog";
+import { pantryLots, purchases, shoppingItemSources, shoppingItems, shoppingLists } from "@/lib/db/schema";
+import { randomUUID } from "crypto";
+import { accountJob, accountJobs, effectivePrice, resolve, type CartAddResult, type ChronoOrder, type OrdersResult, type ResolveResponse, type ResolvedProduct } from "@/lib/chronocatalog";
+import { packsFor, usable } from "@/lib/products/core";
+import { rejudge } from "./build";
 import { validateOrder } from "./cart";
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -107,6 +114,59 @@ export function orderUpdates(ps: PurchaseLike[], order: ChronoOrder): { updates:
   return { updates, missing };
 }
 
+export interface Shortfall {
+  productId: string;
+  /** Lignes de courses de ce produit, dans l'ordre de la liste. */
+  itemIds: string[];
+  wanted: number;
+  inCart: number;
+  /** Grammes qui manquent au panier (paquets manquants × poids d'un paquet). */
+  missingG: number;
+}
+
+/** Ce que le panier n'a pas pu prendre, par produit (rupture ou stock limité). */
+export function shortfalls(items: (DriveItem & { needG?: number | null })[], result: CartAddResult): Shortfall[] {
+  const byRef = new Map<string, CartAddResult["lines"][number]>();
+  for (const l of result.lines) for (const r of l.refs) byRef.set(r, l);
+  const groups = new Map<string, { p: ResolvedProduct; items: string[]; wanted: number }>();
+  for (const it of items) {
+    const p = it.productJson as ResolvedProduct | null;
+    if (it.pantry || !p || p.source === "manual" || !((it.packs ?? 0) > 0)) continue;
+    const g = groups.get(p.id) ?? { p, items: [], wanted: 0 };
+    g.items.push(it.id);
+    g.wanted += it.packs!;
+    groups.set(p.id, g);
+  }
+  const out: Shortfall[] = [];
+  for (const [id, g] of groups) {
+    const l = byRef.get(id);
+    if (!l) continue;
+    const inCart = Math.max(0, l.after ?? 0);
+    if (inCart >= g.wanted) continue;
+    const packG = g.p.weightG ?? 0;
+    out.push({ productId: id, itemIds: g.items, wanted: g.wanted, inCart, missingG: packG > 0 ? (g.wanted - inCart) * packG : 0 });
+  }
+  return out;
+}
+
+/**
+ * Le remplaçant d'un produit en rupture : même type, commandable, format fixe, même rayon froid
+ * (surgelé ou non), le moins cher pour couvrir les grammes manquants ; à coût égal, le moins de paquets.
+ */
+export function pickSubstitute(missingG: number, original: ResolvedProduct, candidates: ResolvedProduct[]): { product: ResolvedProduct; packs: number } | null {
+  let best: { product: ResolvedProduct; packs: number; cost: number } | null = null;
+  for (const c of candidates) {
+    if (c.id === original.id || c.source === "manual" || !usable(c) || c.stockStatus === "NO_STOCK") continue;
+    if (!c.weightG || c.isFrozen !== original.isFrozen) continue;
+    const price = effectivePrice(c);
+    if (price == null) continue;
+    const packs = packsFor(c, missingG);
+    const cost = packs * price;
+    if (!best || cost < best.cost - 0.005 || (Math.abs(cost - best.cost) <= 0.005 && packs < best.packs)) best = { product: c, packs, cost };
+  }
+  return best && { product: best.product, packs: best.packs };
+}
+
 // ─── Base ───
 
 function getList(db: Db, listId: string) {
@@ -125,12 +185,76 @@ export async function sendToDrive(db: Db, listId: string) {
   const payload = cartPayload(items);
   if (!payload.length) throw new Error("Aucune ligne avec un produit du drive à envoyer.");
   const { job } = await accountJob("cart_add", { items: payload, mode: "ensure" });
-  db.update(shoppingLists).set({ driveJobId: job.id, driveStatus: "pending", driveAt: new Date().toISOString(), driveError: null }).where(eq(shoppingLists.id, listId)).run();
+  db.update(shoppingLists).set({ driveJobId: job.id, driveStatus: "pending", driveAt: new Date().toISOString(), driveError: null, driveSummary: null }).where(eq(shoppingLists.id, listId)).run();
   return { products: payload.length, packs: payload.reduce((s, x) => s + x.quantity, 0) };
 }
 
+/** Résolveur des remplaçants (injecté dans les tests). */
+export type Resolver = (q: string) => Promise<ResolveResponse>;
+const defaultResolver: Resolver = (q) => resolve(q, { limit: 20, available: true });
+
+/**
+ * Complète ce qui manque au panier : pour chaque produit en rupture, une ligne « complément » avec
+ * le meilleur remplaçant, et les lignes d'origine ramenées à ce que le panier a vraiment pris.
+ * Rend le nombre de compléments ajoutés.
+ */
+export async function completeShortfalls(db: Db, listId: string, short: Shortfall[], res: Resolver = defaultResolver): Promise<number> {
+  const items = itemsOf(db, listId);
+  const byId = new Map(items.map((i) => [i.id, i]));
+  let added = 0;
+  let position = items.reduce((m, i) => Math.max(m, i.position), 0);
+  for (const sf of short) {
+    const first = byId.get(sf.itemIds[0]);
+    const original = first?.productJson as ResolvedProduct | null;
+    if (!first || !original || sf.missingG <= 0) continue;
+    const r = await res(first.line ?? first.item).catch(() => null);
+    const types = r?.matchedTypes ?? [];
+    // Le type du produit d'origine d'abord : un remplaçant de la même famille.
+    const own = types.find((t) => t.products.some((p) => p.id === original.id));
+    const candidates = [...(own?.products ?? []), ...((first.alternativesJson ?? []) as ResolvedProduct[]), ...(own ? [] : types.flatMap((t) => t.products))];
+    const pick = pickSubstitute(sf.missingG, original, candidates);
+    if (!pick) continue;
+    const extraId = randomUUID();
+    db.transaction((tx) => {
+      // Les lignes d'origine gardent ce que le panier a pris, dans l'ordre de la liste.
+      let left = sf.inCart;
+      const emptied: string[] = [];
+      for (const id of sf.itemIds) {
+        const it = byId.get(id)!;
+        const keep = Math.min(it.packs ?? 0, left);
+        left -= keep;
+        // Une ligne que le panier n'a pas du tout prise disparaît : le complément la remplace.
+        if (keep === 0) emptied.push(id);
+        else tx.update(shoppingItems).set(rejudge(it, original, keep)).where(eq(shoppingItems.id, id)).run();
+      }
+      tx.insert(shoppingItems)
+        .values({
+          id: extraId,
+          listId,
+          item: `${first.item} (complément)`,
+          needG: sf.missingG,
+          recipeIds: [...new Set(sf.itemIds.flatMap((id) => byId.get(id)!.recipeIds))],
+          aisle: first.aisle,
+          line: first.line,
+          assocKey: first.assocKey,
+          position: ++position,
+          ...rejudge(first, pick.product, pick.packs),
+          warnings: [`${original.brandName ?? ""} ${original.name} en rupture : ${sf.wanted - sf.inCart} paquet${sf.wanted - sf.inCart > 1 ? "s" : ""} remplacé${sf.wanted - sf.inCart > 1 ? "s" : ""}`.trim()],
+        })
+        .run();
+      // Ses recettes (coût par recette) passent au complément avant qu'elle disparaisse.
+      if (emptied.length) {
+        tx.update(shoppingItemSources).set({ itemId: extraId }).where(inArray(shoppingItemSources.itemId, emptied)).run();
+        tx.delete(shoppingItems).where(inArray(shoppingItems.id, emptied)).run();
+      }
+    });
+    added++;
+  }
+  return added;
+}
+
 /** Suivi de l'envoi : à la fin, chaque ligne dit ce que le panier en a fait, et se coche. */
-export async function pollDrive(db: Db, listId: string): Promise<{ status: "pending" | "done" | "failed" | null; summary: Record<string, number> | null; error: string | null }> {
+export async function pollDrive(db: Db, listId: string, opts: { resolver?: Resolver } = {}): Promise<{ status: "pending" | "done" | "failed" | null; summary: Record<string, number> | null; error: string | null }> {
   const l = getList(db, listId);
   if (!l.driveJobId || l.driveStatus !== "pending") return { status: l.driveStatus, summary: l.driveSummary, error: l.driveError };
   const { jobs } = await accountJobs([l.driveJobId]);
@@ -142,9 +266,26 @@ export async function pollDrive(db: Db, listId: string): Promise<{ status: "pend
   }
   const result = job.result as CartAddResult;
   const items = itemsOf(db, listId);
+  const short = shortfalls(items, result);
+  const completed = l.driveSummary?.completed ?? null;
+  // Première relecture avec des manques : un tour de complément, puis le panier est renvoyé et relu.
+  if (short.length && completed == null) {
+    const added = await completeShortfalls(db, listId, short, opts.resolver);
+    if (added > 0) {
+      const { job: next } = await accountJob("cart_add", { items: cartPayload(itemsOf(db, listId)), mode: "ensure" });
+      db.update(shoppingLists).set({ driveJobId: next.id, driveStatus: "pending", driveSummary: { completed: added } }).where(eq(shoppingLists.id, listId)).run();
+      return { status: "pending", summary: null, error: null };
+    }
+  }
   const ups = cartUpdates(items, result);
   const at = new Date().toISOString();
-  const summary = { ...result.summary, skipped: [...ups.values()].filter((u) => u.outcome === "skipped").length, total: result.totalCartAmount ?? 0 };
+  const summary = {
+    ...result.summary,
+    skipped: [...ups.values()].filter((u) => u.outcome === "skipped").length,
+    total: result.totalCartAmount ?? 0,
+    completed: completed ?? 0,
+    short: short.length,
+  };
   db.transaction((tx) => {
     for (const [id, u] of ups) {
       const inCart = (u.qty ?? 0) > 0;
