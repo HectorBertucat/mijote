@@ -1,5 +1,8 @@
 # Journal des changements
 
+## 2026-10-30 : recettes de base et dossier de l'instance
+- Au démarrage, le dossier de recettes de l'instance (`MIJOTE_RECIPES_DIR`) s'ajoute à la bibliothèque de base (`src/seed/recipes`) au lieu de la remplacer : une instance qui a ses propres fiches reçoit aussi les nouvelles recettes de l'appli. Sur un même slug, la fiche de l'instance gagne (`recipesDirs()` dans `src/seed/bootstrap.ts`).
+
 ## 2026-10-30 : douze recettes de batch cooking
 - Douze fiches ajoutées à `src/seed/recipes/` (statut « à essayer ») : trois one pot d'orzo au poulet (épinards-parmesan, champignons-citron, épicé au chorizo), cannelloni bolognaise, gratin façon moussaka, poulet crémeux ail-parmesan, couscous poulet-merguez, dahl de pois cassés au poulet, butter chicken express, poulet au paprika fumé et patates douces, poulet basquaise, poulet teriyaki. Des classiques réécrits pour le batch cooking (source citée sur chaque fiche), autour de 145 kcal et 11 à 13 g de protéines par unité : environ 30 % des calories viennent des protéines.
 - Table nutritionnelle : 17 aliments de plus (merguez, chorizo, bœuf haché 5 %, pois cassés, semoule, patate douce, épinards, aubergine, brocoli, navet, tomates séchées, citron, parmesan, mozzarella, skyr, lait demi-écrémé, lait de coco), valeurs Ciqual. Le calcul ne change pas (`NUTRITION_VERSION` inchangée).

@@ -5,7 +5,7 @@
 Trois façons :
 1. **Atelier** (avec l'IA) : décris une envie, Mijote écrit la fiche complète et la vérifie. Elle arrive « à essayer ».
 2. **Ajuster** une recette existante : la variante est rattachée à sa recette d'origine.
-3. **Un fichier** au format standard dans `src/seed/recipes/` (ou le dossier de `MIJOTE_RECIPES_DIR`) : importé au démarrage, réimporté s'il change (les notes sont gardées). En ligne de commande : `pnpm import:recipes`.
+3. **Un fichier** au format standard dans `src/seed/recipes/` ou dans le dossier de `MIJOTE_RECIPES_DIR` (les deux sont importés ; sur un même slug, le second gagne) : importé au démarrage, réimporté s'il change (les notes sont gardées). En ligne de commande : `pnpm import:recipes`.
 
 ## Le format
 
