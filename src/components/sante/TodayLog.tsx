@@ -5,6 +5,7 @@
 // Semaine, habitudes du jour), le journal par repas, « Ajouter » (recette, hors appli avec
 // estimation IA, récents), et « Journée complète » qui fait compter la journée pour la cible.
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, Check, Field, Gauge, Icon, Input, Pill, RecipeTile, Segmented, Sheet, Stepper, Tabs, Textarea } from "@/components/ui";
 import { useToast } from "@/components/cart/Toast";
@@ -27,6 +28,8 @@ export interface TodayProps {
   totals: { kcal: number; proteinG: number };
   planned: Planned[];
   habits: Habit[];
+  /** La personne a au moins une habitude (cochée ou non aujourd'hui). */
+  hasHabits: boolean;
   entries: Entry[];
   recents: Recent[];
   library: LibItem[];
@@ -91,9 +94,16 @@ export function TodayLog(p: TodayProps) {
 
       {(p.planned.length > 0 || p.habits.length > 0) && (
         <section className="grid gap-2.5" aria-labelledby="acocher">
-          <h2 id="acocher" className="text-[18px] font-bold">
-            À cocher {todo > 0 && <span className="num text-faint">{todo}</span>}
-          </h2>
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 id="acocher" className="text-[18px] font-bold">
+              À cocher {todo > 0 && <span className="num text-faint">{todo}</span>}
+            </h2>
+            {p.hasHabits && (
+              <Link href="/sante/habitudes" className="text-[14px] font-semibold text-accent hover:underline">
+                Mes habitudes
+              </Link>
+            )}
+          </div>
           <Card className="divide-y divide-line">
             {p.planned.map((m) => (
               <div key={`${m.meal}-${m.recipeId}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -132,6 +142,15 @@ export function TodayLog(p: TodayProps) {
             ))}
           </Card>
         </section>
+      )}
+
+      {!p.hasHabits && (
+        <Card flat pad="md" className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[14px] text-ink-2">Un shaker ou un petit-déjeuner chaque matin ? Note-le une fois en habitude : il sera proposé ici d&apos;office, et ta part en tiendra compte.</p>
+          <Link href="/sante/habitudes" className="text-[14px] font-semibold text-accent hover:underline">
+            Noter mes habitudes
+          </Link>
+        </Card>
       )}
 
       <section className="grid gap-2.5" aria-labelledby="journal">

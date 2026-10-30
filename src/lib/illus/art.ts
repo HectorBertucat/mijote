@@ -1004,6 +1004,92 @@ export const FOODS = {
   },
   skyr: { category: "laitier", label: "Skyr", svg: jar("paper", "water-2", true, "water") },
   lait_demi: { category: "liquide", label: "Lait", svg: bottle("paper", "water-2", true, "water") },
+  // Petit-déjeuner, en-cas (habitudes hors batch)
+  banane: {
+    category: "fruit",
+    label: "Banane",
+    svg: `<g class="a-wobble" style="transform-origin:50% 90%"><path d="M10 22 Q12 50 36 54 Q52 56 58 44 Q44 48 32 42 Q18 34 16 18 Z" fill="${v("lemon")}"/>
+      <path d="M16 30 Q22 44 40 49" fill="none" stroke="${v("lemon-2")}" stroke-width="1.6"/>
+      <path d="M10 22 L9 14 L16 16 L16 18" fill="${v("wood-2")}"/><path d="M58 44 L61 45" fill="none" stroke="${v("wood-2")}" stroke-width="3"/></g>`,
+  },
+  pomme: {
+    category: "fruit",
+    label: "Pomme",
+    svg: `<g class="a-bob"><path d="M32 20 Q22 12 14 20 Q6 30 12 44 Q18 58 28 56 Q32 54 36 56 Q46 58 52 44 Q58 30 50 20 Q42 12 32 20 Z" fill="${v("lime")}"/>
+      <path class="a-shine" d="M18 28 Q20 23 25 21" fill="none" stroke="${v("shine")}" stroke-width="2.4"/>
+      <path d="M32 20 Q31 12 34 6" fill="none" stroke="${v("wood-2")}" stroke-width="2.6"/>${greenLeaf(40, 10, 4, "leaf-2")}</g>`,
+  },
+  yaourt: {
+    category: "laitier",
+    label: "Yaourt",
+    svg: `<path d="M16 22 H48 L44 54 Q44 56 42 56 H22 Q20 56 20 54 Z" fill="${v("paper")}"/><rect x="14" y="16" width="36" height="7" rx="2" fill="${v("accent-illu")}"/>
+      <path d="M18 34 H46" fill="none" stroke="${v("accent-illu")}" stroke-width="3"/>
+      <g class="a-bob"><path d="M22 10 Q32 4 42 10 L40 14 H24 Z" fill="${v("cream")}"/></g>`,
+  },
+  pain: {
+    category: "feculent",
+    label: "Pain",
+    svg: `<g class="a-bob"><path d="M6 46 Q2 40 10 34 L44 14 Q54 8 58 16 Q62 22 54 28 L20 48 Q12 52 6 46 Z" fill="${v("crust")}"/>
+      ${[18, 30, 42].map((x, i) => `<path d="M${x} ${38 - i * 7} q4 -6 9 -5" fill="none" stroke="${v("grain")}" stroke-width="2.6"/>`).join("")}</g>`,
+  },
+  pain_complet: {
+    category: "feculent",
+    label: "Pain complet",
+    svg: `<g class="a-bob"><path d="M8 52 V30 Q8 16 32 16 Q56 16 56 30 V52 Q56 56 52 56 H12 Q8 56 8 52 Z" fill="${v("crust")}"/>
+      <path d="M14 52 V32 Q14 22 32 22 Q50 22 50 32 V52 Z" fill="${v("grain")}"/>
+      ${[
+        [22, 32],
+        [34, 30],
+        [42, 38],
+        [26, 44],
+        [38, 48],
+      ]
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="${v("wood-2")}" stroke="none"/>`)
+        .join("")}</g>`,
+  },
+  flocons_avoine: {
+    category: "feculent",
+    label: "Flocons d'avoine",
+    svg: bowl(
+      `<g class="a-bob">${[
+        [16, 32],
+        [24, 28],
+        [32, 30],
+        [40, 27],
+        [48, 32],
+        [28, 34],
+        [40, 34],
+      ]
+        .map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="4.5" ry="3" fill="${v("grain")}"/>`)
+        .join("")}</g>`,
+      "wood",
+    ),
+  },
+  whey: {
+    category: "ingredient",
+    label: "Protéine en poudre",
+    svg: `${jar("steel-2", "iron", true, "paper")}<path d="M22 40 H42" fill="none" stroke="${v("tomato")}" stroke-width="3"/>
+      <g class="a-bob"><path d="M44 10 L58 4 L60 8 L48 14 Z" fill="${v("steel")}"/><ellipse cx="44" cy="12" rx="5" ry="3" fill="${v("paper")}"/></g>`,
+  },
+  proteine_vegetale: {
+    category: "ingredient",
+    label: "Protéine végétale",
+    svg: `${jar("leaf-2", "wood", true, "paper")}${greenLeaf(32, 40, 5, "leaf")}
+      <g class="a-bob"><path d="M44 10 L58 4 L60 8 L48 14 Z" fill="${v("steel")}"/><ellipse cx="44" cy="12" rx="5" ry="3" fill="${v("paper")}"/></g>`,
+  },
+  confiture: { category: "sucre", label: "Confiture", svg: jar("tomato", "paper", true, "paper") },
+  amandes: {
+    category: "ingredient",
+    label: "Amandes",
+    svg: `<g class="a-bob">${[
+      [20, 28, -20],
+      [40, 24, 25],
+      [30, 44, 10],
+      [48, 42, -30],
+    ]
+      .map(([x, y, r]) => `<path d="M${x} ${y - 10} Q${x + 8} ${y} ${x} ${y + 10} Q${x - 8} ${y} ${x} ${y - 10} Z" transform="rotate(${r} ${x} ${y})" fill="${v("wood")}"/>`)
+      .join("")}</g>`,
+  },
   lait_coco: {
     category: "conserve",
     label: "Lait de coco",

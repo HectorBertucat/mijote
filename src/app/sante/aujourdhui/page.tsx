@@ -20,7 +20,8 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Promi
   const { jour } = await searchParams;
   const date = isDate(jour) && jour <= today ? jour : today;
   const entries = listEntries(db, person.id, date);
-  const todo = pending(plannedMeals(db, person.id, date), listTemplates(db, person.id), entries, date);
+  const templates = listTemplates(db, person.id);
+  const todo = pending(plannedMeals(db, person.id, date), templates, entries, date);
   const review = currentReview(db, person);
   const lib = db.select({ id: recipes.id, slug: recipes.slug, name: recipes.name, kcalUnit: recipes.kcalUnit, proteinUnit: recipes.proteinUnit, status: recipes.status }).from(recipes).all();
   const colors = Object.fromEntries(lib.map((r) => [r.slug, recipeColor(r.slug)]));
@@ -53,6 +54,7 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Promi
         target={review ? { kcal: review.targets.kcal, proteinG: review.targets.proteinG } : null}
         totals={totals(entries)}
         planned={todo.planned.map((m) => ({ ...m, color: colors[m.slug] }))}
+        hasHabits={templates.length > 0}
         habits={todo.templates.map((t) => ({ id: t.id, label: t.label, meal: t.meal, kcal: t.kcal, proteinG: t.proteinG, suggested: t.suggested }))}
         entries={entries.map((e) => ({ id: e.id, meal: e.meal, kind: e.kind, label: e.label, units: e.units, kcal: e.kcal, proteinG: e.proteinG, source: e.source, slug: e.recipeId ? (slugById.get(e.recipeId) ?? null) : null }))}
         recents={recentExtras(db, person.id).map((e) => ({ label: e.label, meal: e.meal, kcal: e.kcal, proteinG: e.proteinG, fatG: e.fatG, carbsG: e.carbsG, ai: e.source === "ai" }))}

@@ -1,0 +1,1 @@
+ALTER TABLE `food_templates` ADD `items` text DEFAULT '[]' NOT NULL;

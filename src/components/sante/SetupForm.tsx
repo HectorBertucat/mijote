@@ -3,6 +3,7 @@
 // Mise en route d'un mangeur : tout ce qu'il faut pour que sa part de chaque recette suive sa cible.
 // Un seul formulaire en étapes numérotées (lisible au doigt sur téléphone comme au clavier).
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Check, Field, Input, Segmented } from "@/components/ui";
 import { useToast } from "@/components/cart/Toast";
@@ -36,6 +37,7 @@ export function SetupForm({
   values,
   lastKg,
   outside,
+  habits,
   dislikes,
 }: {
   personId: string;
@@ -43,6 +45,8 @@ export function SetupForm({
   values: ProfileValues;
   lastKg: number | null;
   outside: { kcal: number; protein: number } | null;
+  /** Les habitudes hors batch, en clair (« Shaker du matin, du lundi au vendredi ») ; null = aucune. */
+  habits: string[] | null;
   dislikes: { id: string; text: string }[];
 }) {
   const router = useRouter();
@@ -68,8 +72,9 @@ export function SetupForm({
         fd.set("goal", goal);
         if (proteinMode === "fixed") fd.set("proteinGPerKg", "");
         else fd.set("proteinG", "");
-        fd.set("outsideKcal", outK);
-        fd.set("outsideProteinG", outP);
+        // Avec des habitudes, le hors batch en vient : le chiffre libre n'est pas touché.
+        fd.set("outsideKcal", habits ? "" : outK);
+        fd.set("outsideProteinG", habits ? "" : outP);
         for (const id of removed) fd.append("removeDislike", id);
         start(async () => {
           const r = await saveSetup(personId, fd);
@@ -156,58 +161,76 @@ export function SetupForm({
       </Step>
 
       <Step n={3} title="Hors des repas du batch" help="Le batch couvre le midi et le soir. Ce que tu manges à côté (petit-déjeuner, en-cas) est retiré de ta cible avant de la partager entre les deux repas.">
-        <div className="grid gap-2 sm:grid-cols-2">
-          {OUTSIDE_PRESETS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              aria-pressed={preset === p.id}
-              onClick={() => {
-                setPreset(p.id);
-                setOutK(String(p.kcal));
-                setOutP(String(p.protein));
-              }}
-              className={`grid min-h-tap gap-0.5 rounded-[12px] border px-3 py-2.5 text-left transition-colors duration-[var(--dur-quick)] ${preset === p.id ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-line-strong"}`}
-            >
-              <b className="text-[15px]">{p.label}</b>
-              <span className="text-[13px] text-ink-2">
-                {p.hint} · <span className="num">~{p.kcal} kcal</span>
-              </span>
-            </button>
-          ))}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="kcal par jour hors batch">
-            {(id) => (
-              <Input
-                id={id}
-                inputMode="decimal"
-                num
-                value={outK}
-                onChange={(e) => {
-                  setOutK(e.target.value);
-                  setPreset("autre");
-                }}
-                placeholder="350"
-              />
-            )}
-          </Field>
-          <Field label="dont protéines (g)">
-            {(id) => (
-              <Input
-                id={id}
-                inputMode="decimal"
-                num
-                value={outP}
-                onChange={(e) => {
-                  setOutP(e.target.value);
-                  setPreset("autre");
-                }}
-                placeholder="12"
-              />
-            )}
-          </Field>
-        </div>
+        {habits ? (
+          <div className="grid gap-2">
+            <ul className="grid gap-1 text-[15px]">
+              {habits.map((h) => (
+                <li key={h}>{h}</li>
+              ))}
+            </ul>
+            <Link href={`/sante/habitudes?p=${personId}`} className="text-[15px] font-semibold text-accent hover:underline">
+              Modifier mes habitudes
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {OUTSIDE_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={preset === p.id}
+                  onClick={() => {
+                    setPreset(p.id);
+                    setOutK(String(p.kcal));
+                    setOutP(String(p.protein));
+                  }}
+                  className={`grid min-h-tap gap-0.5 rounded-[12px] border px-3 py-2.5 text-left transition-colors duration-[var(--dur-quick)] ${preset === p.id ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-line-strong"}`}
+                >
+                  <b className="text-[15px]">{p.label}</b>
+                  <span className="text-[13px] text-ink-2">
+                    {p.hint} · <span className="num">~{p.kcal} kcal</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="kcal par jour hors batch">
+                {(id) => (
+                  <Input
+                    id={id}
+                    inputMode="decimal"
+                    num
+                    value={outK}
+                    onChange={(e) => {
+                      setOutK(e.target.value);
+                      setPreset("autre");
+                    }}
+                    placeholder="350"
+                  />
+                )}
+              </Field>
+              <Field label="dont protéines (g)">
+                {(id) => (
+                  <Input
+                    id={id}
+                    inputMode="decimal"
+                    num
+                    value={outP}
+                    onChange={(e) => {
+                      setOutP(e.target.value);
+                      setPreset("autre");
+                    }}
+                    placeholder="12"
+                  />
+                )}
+              </Field>
+            </div>
+            <Link href={`/sante/habitudes?p=${personId}`} className="text-[14px] font-semibold text-accent hover:underline">
+              Ou détaille tes habitudes (shaker, petit-déjeuner, en-cas) et leurs jours
+            </Link>
+          </>
+        )}
       </Step>
 
       <Step n={4} title="Ce que tu n'aimes pas" help="Une recette qui en contient ne t'est pas servie dans la Semaine.">
