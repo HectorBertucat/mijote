@@ -24,7 +24,7 @@ Je l'ai d'abord écrite pour mon foyer, et je m'en sers chaque semaine. Cette ve
 
 ## L'IA propose, le code vérifie
 
-Mijote n'est pas un chat. L'IA (l'API Claude) intervient derrière des boutons : ajuster une recette (« −150 kcal », « sans brocoli pour Sam »), en créer une, fixer des objectifs avec un coach, écrire un programme de sport, dessiner un aliment qui n'a pas de dessin.
+Mijote n'est pas un chat. L'IA (l'API Claude) intervient derrière des boutons : ajuster une recette (« −150 kcal », « sans brocoli pour Sam »), en créer une, en importer une depuis un texte collé, fixer des objectifs avec un coach, écrire un programme de sport, dessiner un aliment qui n'a pas de dessin.
 
 Ce qu'elle rend n'est jamais utilisé tel quel :
 - les macros d'une recette sont recalculées depuis les grammes ;
@@ -54,6 +54,7 @@ Dans `.env`, tout est facultatif :
 | `MIJOTE_PASSWORD` | Mot de passe de l'appli. À mettre dès qu'elle est joignable depuis Internet. |
 | `ANTHROPIC_API_KEY` | Active les fonctions IA. |
 | `AI_MONTHLY_CAP_USD` | Plafond de dépense IA par mois (10 $ par défaut). |
+| `AI_IMPORTS_PER_DAY` | Imports de recettes depuis un texte collé, par jour (10 par défaut). |
 | `CHRONOCATALOG_URL` | Un catalogue de produits, pour avoir des prix et des stocks ([docs/catalogue.md](docs/catalogue.md)). |
 
 Toutes les données tiennent dans un fichier SQLite. Sauvegardes, HTTPS, Raspberry Pi, installation sans Docker : [docs/installation.md](docs/installation.md).

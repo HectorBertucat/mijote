@@ -130,7 +130,16 @@ export const VARIANT_SOURCE = /^Variante de « (.+?) » \(\/recettes\/([a-z0-9-]
 export function saveDraft(
   db: Db,
   draft: RecipeInput,
-  opts: { parent?: { slug: string; name: string } | null; explanation?: string; unavailable?: boolean; origin: "ajuster" | "atelier" }
+  opts: {
+    parent?: { slug: string; name: string } | null;
+    explanation?: string;
+    unavailable?: boolean;
+    origin: "ajuster" | "atelier" | "import";
+    /** Import : le lien de la recette d'origine, gardé comme source. */
+    source?: string | null;
+    /** Quantités douteuses : la recette porte l'étiquette « à relire ». */
+    review?: boolean;
+  }
 ): string {
   // Une variante se rattache toujours à la racine : garder une variante de variante en fait une sœur.
   const root = opts.parent ? db.select({ id: recipes.id, slug: recipes.slug, name: recipes.name, parentId: recipes.parentId }).from(recipes).where(eq(recipes.slug, opts.parent.slug)).get() : null;
@@ -139,11 +148,14 @@ export function saveDraft(
   const base = parent && !draft.slug.startsWith(parent.slug) ? `${parent.slug}-${draft.slug}`.slice(0, 70) : draft.slug;
   const slug = uniqueSlug(db, base);
   const tags = draft.tags.filter((t) => t !== "indisponible" && t !== "à relire");
-  tags.push(opts.origin === "ajuster" ? "variante" : "atelier");
+  tags.push(opts.origin === "ajuster" ? "variante" : opts.origin === "import" ? "importée" : "atelier");
   if (opts.unavailable) tags.push("indisponible");
+  if (opts.review) tags.push("à relire");
   const source = parent
     ? `Variante de « ${parent.name} » (/recettes/${parent.slug}). ${opts.explanation ?? ""}`.trim()
-    : `Créée dans l'atelier. ${opts.explanation ?? ""}`.trim();
+    : opts.origin === "import"
+      ? opts.source || "Importée depuis un texte collé."
+      : `Créée dans l'atelier. ${opts.explanation ?? ""}`.trim();
   const { id } = upsertRecipe(db, { ...draft, slug, tags: [...new Set(tags)], status: "to_try", kcalUnit: null, proteinUnit: null, source });
   if (top) db.update(recipes).set({ parentId: top.id }).where(eq(recipes.id, id)).run();
   return slug;

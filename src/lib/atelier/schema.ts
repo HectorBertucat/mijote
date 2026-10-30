@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { RecipeInput, STEP_KINDS, type StepPhase } from "@/lib/recipes/format";
 import { isFoodId } from "@/lib/nutrition/foods";
+import { withPhases } from "@/lib/recipes/phases";
 
 export const AiIngredient = z.object({
   lineRaw: z.string().describe("Ligne envoyée au catalogue Chronodrive, quantité comprise : « 400 g hauts de cuisse de poulet »"),
@@ -182,4 +183,14 @@ export function toAiRecipe(r: RecipeInput): AiRecipe {
       phases: (s.phases ?? []).map((p) => ({ text: p.text, min: p.min, hobLevel: p.hobLevel ?? null, batch: p.batch ?? null, wait: p.wait === true })),
     })),
   };
+}
+
+/**
+ * Sous-étapes obligatoires : celles que l'IA a oubliées sont découpées par le code dans le texte de
+ * l'étape (src/lib/recipes/phases.ts). Rend l'avertissement à montrer, vide si l'IA les a toutes écrites.
+ */
+export function fillPhases(draft: RecipeInput): string[] {
+  const { steps, filled } = withPhases(draft.steps);
+  draft.steps = steps;
+  return filled.length ? [`Sous-étapes écrites par le code (l'IA les a oubliées) pour l'étape${filled.length > 1 ? "s" : ""} ${filled.join(", ")} : relis leurs durées.`] : [];
 }

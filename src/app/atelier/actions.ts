@@ -9,6 +9,8 @@ import { findDuplicate, verifyRecipe } from "@/lib/atelier/verify";
 import { resolve, search } from "@/lib/chronocatalog";
 import { db } from "@/lib/db/client";
 import { RecipeInput } from "@/lib/recipes/format";
+import { householdMembers } from "@/lib/eaters/store";
+import { cleanUrl, importQuota, proposeImport, quantityIssues, type ImportProposal } from "@/lib/atelier/import";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -75,6 +77,38 @@ export async function saveCreationAction(raw: unknown, explanation: string): Pro
   const v = await verifyRecipe({ draft: parsed.data, original: null, library, resolve: (q) => resolve(q, { limit: 5 }), associations: loadAssociations(db) }).catch(() => null);
   if (!v) return { ok: false, error: "Catalogue injoignable : réessaie dans un instant." };
   const slug = saveDraft(db, parsed.data, { origin: "atelier", explanation: explanation.slice(0, 600), unavailable: v.blocked.length > 0 });
+  revalidatePath("/recettes");
+  return { ok: true, slug };
+}
+
+// ─── Importer une recette (texte collé + lien) ───
+
+const importLimits = () => ({ ...importQuota(db), ...budget() });
+export type ImportLimits = ReturnType<typeof importLimits>;
+
+export async function proposeImportAction(text: string, url: string): Promise<Result<{ proposal: ImportProposal; limits: ImportLimits }>> {
+  try {
+    const proposal = await proposeImport(db, { text: String(text ?? "").slice(0, 50_000), url: String(url ?? "") });
+    return { ok: true, proposal, limits: importLimits() };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+/** Enregistre l'import « à essayer » : le lien en source, « à relire » si les quantités sont douteuses (revérifiées ici). */
+export async function saveImportAction(raw: unknown, url: string | null): Promise<Result<{ slug: string }>> {
+  const parsed = RecipeInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Recette invalide." };
+  let source: string | null;
+  try {
+    source = cleanUrl(url);
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+  const household = householdMembers(db);
+  const v = await verifyRecipe({ draft: parsed.data, original: null, library: loadLibrary(db), resolve: (q) => resolve(q, { limit: 5 }), associations: loadAssociations(db), household }).catch(() => null);
+  if (!v) return { ok: false, error: "Catalogue injoignable : réessaie dans un instant." };
+  const slug = saveDraft(db, parsed.data, { origin: "import", source, review: quantityIssues(parsed.data, household).length > 0, unavailable: v.blocked.length > 0 });
   revalidatePath("/recettes");
   return { ok: true, slug };
 }

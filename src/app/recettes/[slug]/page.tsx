@@ -54,6 +54,8 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
   const v = first?.p.verdict ?? null;
   const meals = Math.floor(r.servingsUnits / Math.max(1, parts.reduce((s, x) => s + x.p.units, 0) || householdUnits(eaters)));
   const tags = r.tags.filter((t) => t !== "à relire" && t !== "indisponible");
+  // Une recette importée garde son lien en source.
+  const sourceUrl = r.source && /^https?:\/\/\S+$/.test(r.source) ? r.source : null;
   const facts = [
     `${r.servingsUnits} unités`,
     meals > 0 ? `${meals} repas${eaters.length > 1 ? ` pour ${eaters.length}` : ""}` : null,
@@ -146,8 +148,14 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
           )}
           {r.tags.includes("à relire") && (
             <Alert tone="warn" title="À relire">
-              {r.source}
+              {r.tags.includes("importée") ? "Recette importée : quantités douteuses, à relire avant de cuisiner." : r.source}
             </Alert>
+          )}
+          {sourceUrl && (
+            <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit min-w-0 max-w-full items-center gap-1.5 text-[14px] font-semibold text-accent underline-offset-2 hover:underline">
+              <Icon name="link" size="s" />
+              <span className="truncate">Source : {sourceUrl.replace(/^https?:\/\/(www\.)?/, "")}</span>
+            </a>
           )}
         </header>
 

@@ -1,5 +1,10 @@
 # Journal des changements
 
+## 2026-10-30 : importer une recette depuis un texte collé
+- Recettes › Importer (`/atelier/importer`) : on colle la légende d'un post ou la page d'un blog, avec son lien facultatif. Rien n'est téléchargé ni lu sur le réseau social : le texte collé suffit, le lien devient la source de la fiche (sans paramètres de suivi).
+- Garde-fous en code, sans appel ni coût : texte vide, trop court ou sans quantités repérables refusé ; hashtags retirés ; texte tronqué au-delà de 6 000 caractères ; limite d'imports par jour (`AI_IMPORTS_PER_DAY`, 10 par défaut), coût estimé affiché.
+- Un appel Haiku met la recette au format standard, avec le prompt système et le schéma de l'Atelier, pour un batch de 5 repas du foyer. Vérification de l'Atelier (catalogue, nutrition, sous-étapes) plus les quantités (`quantityIssues` : sans quantité, grammes et kcal par unité, taille du batch, aliments hors table) : une recette douteuse est enregistrée « à essayer » et « à relire » (`src/lib/atelier/import.ts`, `tests/importer.test.ts`).
+
 ## 2026-10-30 : Semaine, on choisit ses recettes et c'est tout
 - La page Semaine se résume à choisir ses recettes dans la bibliothèque (filtres one pot, rapide, four, congèle, aimées, à essayer). Les quantités à cuire se calent toutes seules sur les repas (`autoSize` dans `src/lib/week/propose.ts`, jusqu'à `AUTO_MAX_FACTOR` = 2) et les repas se répartissent sans rien régler. « Compléter pour moi » garde les recettes choisies et ajoute le reste.
 - Résumé simple (repas couverts, temps en cuisine) ; avertissements seulement s'il y a lieu (repas non couverts, part trop légère en protéines ou mal calée, récipient partagé). Absences, menu, unités et nutrition sont repliés.
