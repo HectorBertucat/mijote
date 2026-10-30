@@ -12,7 +12,10 @@ import { addPerson } from "@/lib/household";
 import { setSetting, SETTING } from "@/lib/settings";
 import { authToken } from "@/lib/auth";
 import { buildShoppingList } from "@/lib/shopping/build";
-import { createSession } from "@/lib/session/store";
+import { addEvent, createSession } from "@/lib/session/store";
+import { storeBoxes } from "@/lib/boxes/store";
+import { recipes } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
 import { generateProgram } from "@/lib/training/generate";
 
@@ -120,6 +123,15 @@ async function main() {
       await page(p, undefined);
     await page("/recettes", undefined, /Léa/);
     await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
+    // Fin de session : la marmite pesée part en boîtes, au frigo et au congélo.
+    await page("/frigo", undefined, /Aucune boîte/);
+    await page("/recettes/butter-chicken-express", undefined, /En boîtes/);
+    const done = createSession(db, { slugs: ["butter-chicken-express"], mode: "solo" });
+    addEvent(db, done, { kind: "note", payload: { status: "done" } });
+    const bc = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.slug, "butter-chicken-express")).get()!;
+    check(storeBoxes(db, done, bc.id, { dishG: 3800, sideG: 1350 }) > 0, "boîtes rangées en fin de session");
+    await page("/frigo", undefined, /Butter chicken/);
+    await page(`/session/${done}`, undefined);
     await page("/sante/entrainement?vue=programme", "mijote.profil=lea", /Changer de programme/);
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
     check((await get("/bienvenue")).status === 307, "mise en route faite → /bienvenue renvoie à l'accueil");

@@ -16,6 +16,7 @@ const TABS: { href: string; label: string; icon: IconName; sec: string }[] = [
   { href: "/semaine", label: "Semaine", icon: "cal", sec: "var(--c-sec-semaine)" },
   { href: "/composer", label: "Composer", icon: "pot", sec: "var(--c-sec-composer)" },
   { href: "/courses", label: "Courses", icon: "basket", sec: "var(--c-sec-courses)" },
+  { href: "/frigo", label: "Frigo", icon: "fridge", sec: "var(--c-sec-frigo)" },
   { href: "/sante", label: "Santé", icon: "pulse", sec: "var(--c-sec-sante)" },
 ];
 const secStyle = (sec: string) => ({ "--sec": sec }) as CSSProperties;
@@ -69,12 +70,12 @@ export function TabBar() {
   const path = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-[color-mix(in_srgb,var(--c-surface)_94%,transparent)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden" aria-label="Navigation">
-      <div className="mx-auto grid max-w-md grid-cols-5">
+      <div className="mx-auto grid max-w-md grid-cols-6">
         {TABS.map((t) => {
           const on = path.startsWith(t.href);
           return (
             <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} style={secStyle(t.sec)} className={`relative grid justify-items-center gap-0.5 pb-1 pt-2 text-[11px] font-semibold active:scale-100 ${on ? "text-ink" : "text-ink-2"}`}>
-              <span className={`grid h-[30px] w-14 place-items-center rounded-full transition-colors duration-[var(--dur-quick)] ${on ? "bg-[color-mix(in_srgb,var(--sec)_18%,var(--c-surface))] text-[var(--sec)]" : ""}`}>
+              <span className={`grid h-[30px] w-12 place-items-center rounded-full transition-colors duration-[var(--dur-quick)] ${on ? "bg-[color-mix(in_srgb,var(--sec)_18%,var(--c-surface))] text-[var(--sec)]" : ""}`}>
                 {/* Ouvrir une rubrique : son icône fait son geste une fois (panier qui se balance, page qui tourne…). */}
                 <span key={on ? path : "off"} data-g={t.icon} className={`grid place-items-center ${on ? "k-gesture" : ""}`}>
                   <Icon name={t.icon} />

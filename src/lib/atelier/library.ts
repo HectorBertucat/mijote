@@ -37,6 +37,7 @@ export function loadRecipeInput(db: Db, slug: string): RecipeInput | null {
       group: i.group,
       optional: i.optional,
       pantry: i.pantry,
+      ...(i.side ? { side: true } : {}),
       food: i.foodId,
       yield: i.yield ?? null,
     })),

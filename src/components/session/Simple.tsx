@@ -9,7 +9,7 @@
 // Sur téléphone (ou ?vue=telephone), la vue couvre la navigation ; sombre pendant la cuisson.
 // Barre espace : le bouton principal de l'écran ([data-main]) ; flèche gauche : retour.
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
 import { backgroundSteps, batchOf, currentPhase, passiveMin, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
 import { prepBowls, prepExtras, soonTimers, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
@@ -19,9 +19,10 @@ import type { Controls, DayChoice } from "./SessionApp";
 import { Issues, progressLine, ResumeChoice, timerMinutes } from "./blocks";
 import { DropGuide, wantsDropGuide } from "./DropGuide";
 import { FridgeDone } from "./FridgeDone";
+import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
-import { Bowl, bowlName, bowlOf, clock, dur, Eyebrow, hobName, mmss, PersonMono, QrCard, recipeOf, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlName, bowlOf, clock, dur, Eyebrow, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
 
 export interface SimpleProps {
   id: string;
@@ -834,9 +835,16 @@ function ConfirmEnd({ plan, storage }: { plan: SessionPlan; storage: RecipeStora
 }
 
 function Done({ plan, c, detail }: { plan: SessionPlan; c: Controls; detail: string }) {
+  const test = useContext(SessionTest) != null;
   return (
     <div className="grid justify-items-center gap-5 px-4 pt-8 text-center">
       <FridgeDone plan={plan} events={c.events} compact />
+      {/* Peser les marmites : grammes par boîte de chacun, puis les boîtes rangées au frigo ou au congélo (pas en session test). */}
+      {!test && (
+        <div className="w-full max-w-lg text-left">
+          <SessionBoxes id={c.id} plan={plan} />
+        </div>
+      )}
       <div className="flex flex-wrap justify-center gap-2.5">
         <Link href={detail} className="inline-flex min-h-tap items-center gap-2 rounded-[10px] border border-line-strong bg-surface px-4 font-semibold hover:border-ink">
           <Icon name="clock" size="s" />

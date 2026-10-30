@@ -125,6 +125,8 @@
 .k-gesture[data-g="pot"] { animation: k-g-wobble 560ms var(--ease-out); transform-origin: 50% 100%; }
 .k-gesture[data-g="book"] { animation: k-g-tilt 520ms var(--ease-out); }
 .k-gesture[data-g="pulse"] { animation: k-g-beat 520ms var(--ease-out); }
+.k-gesture[data-g="fridge"] { animation: k-g-door 560ms var(--ease-out); transform-origin: 20% 50%; }
+@keyframes k-g-door { 0%, 100% { transform: none; } 40% { transform: perspective(60px) rotateY(-40deg); } }
 @keyframes k-g-pop { 0% { transform: scale(0.6); } 100% { transform: none; } }
 @keyframes k-g-swing { 0% { transform: rotate(0); } 25% { transform: rotate(14deg); } 55% { transform: rotate(-9deg); } 80% { transform: rotate(4deg); } 100% { transform: none; } }
 @keyframes k-g-flip { 0% { transform: perspective(60px) rotateX(0); } 50% { transform: perspective(60px) rotateX(-70deg); } 100% { transform: none; } }

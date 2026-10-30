@@ -21,7 +21,7 @@
     { "lineRaw": "40 g beurre", "item": "Beurre", "grams": 40, "group": "A", "pantry": true, "food": "beurre" },
     { "lineRaw": "20 cl crème légère", "item": "Crème légère 15 %", "grams": 200, "group": "D", "food": "creme_legere" },
     { "lineRaw": "1 c. à s. miel", "item": "Miel", "grams": 15, "group": "C", "pantry": true, "food": "miel" },
-    { "lineRaw": "450 g riz basmati", "item": "Riz basmati", "grams": 450, "group": "F", "food": "riz_basmati" },
+    { "lineRaw": "450 g riz basmati", "item": "Riz basmati", "grams": 450, "group": "F", "food": "riz_basmati", "side": true },
     { "lineRaw": "huile", "item": "Huile, pour saisir", "grams": 20, "pantry": true, "food": "huile", "yield": { "panLossPct": 15, "note": "poêle déglacée avec une louche de sauce" } },
     { "lineRaw": "sel", "item": "Sel", "pantry": true, "food": "zero" }
   ],

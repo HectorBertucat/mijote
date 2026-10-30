@@ -31,6 +31,7 @@ src/
     semaine/ composer/     semaine de repas, sélection libre
     courses/ couts/ placard/
     session/               centre de contrôle (SSE)
+    frigo/                 boîtes du frigo et du congélo
     sante/                 santé, objectifs, Apple Santé, entraînement
     kit/                   démonstration vivante du kit de composants
   components/          composants (kit dans components/ui)
@@ -40,6 +41,7 @@ src/
     chronocatalog.ts   client du catalogue de produits (facultatif)
     costs/             achats, lots du placard, coût par part
     db/                schéma Drizzle, migrations, ouverture
+    boxes/             la marmite pesée → les boîtes de chacun, stock du frigo et du congélo
     eaters/            mangeurs, cible d'un repas, part de chacun
     health/            santé : tendance, dépense, cibles, journal, coach, Apple Santé
     household.ts       le foyer (personnes)
@@ -58,7 +60,7 @@ src/
 tests/                 node:test, un fichier par domaine
 ```
 
-Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
+Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `boxes/core.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
 
 ## Données
 
