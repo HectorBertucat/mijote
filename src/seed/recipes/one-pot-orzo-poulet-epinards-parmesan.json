@@ -1,0 +1,77 @@
+{
+  "slug": "one-pot-orzo-poulet-epinards-parmesan",
+  "name": "One pot orzo poulet, épinards et parmesan",
+  "description": "Orzo crémeux cuit dans son bouillon avec le poulet doré, des épinards fondus et du parmesan. Tout dans la cocotte, une casserole à laver.",
+  "servingsUnits": 26,
+  "tags": ["poulet", "pâtes", "one pot", "rapide", "batch"],
+  "fridgeDays": 3,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Classique « one pot orzo » au poulet et aux épinards, d'après Jow (one pot crémeux au poulet & orzo) et Miraysway (one pot poulet, orzo & épinards), réécrit pour le batch cooking.",
+  "tips": "L'orzo boit sa sauce en refroidissant : c'est normal. Au réchauffage, une cuillère d'eau dans la boîte, et il redevient crémeux. Se congèle (3 mois), sans perdre sa tenue si l'orzo est resté un peu ferme à la cuisson.",
+  "ingredients": [
+    { "lineRaw": "900 g filets de poulet", "item": "Filets de poulet, en dés de 2 cm", "grams": 900, "group": "B", "food": "filet_poulet" },
+    { "lineRaw": "500 g pâtes risoni", "item": "Risoni (orzo), 1 paquet", "grams": 500, "food": "pates" },
+    { "lineRaw": "400 g épinards en branches", "item": "Épinards frais (ou surgelés, décongelés et pressés)", "grams": 400, "group": "D", "food": "epinards" },
+    { "lineRaw": "80 g parmesan râpé", "item": "Parmesan râpé", "grams": 80, "group": "E", "food": "parmesan" },
+    { "lineRaw": "20 cl crème légère", "item": "Crème légère 15 %", "grams": 200, "group": "E", "food": "creme_legere" },
+    { "lineRaw": "1 oignon", "item": "Oignon, émincé finement", "grams": 150, "units": 1, "group": "A", "food": "oignon" },
+    { "lineRaw": "4 gousses d'ail", "item": "Ail, haché", "units": 4, "group": "A", "food": "ail" },
+    { "lineRaw": "2 cubes bouillon de volaille", "item": "Bouillon de volaille (2 cubes dans 1,3 L d'eau chaude)", "grams": 20, "units": 2, "group": "C", "pantry": true, "food": "bouillon_cube" },
+    { "lineRaw": "huile d'olive", "item": "Huile", "grams": 20, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "saisie et sauce dans la même cocotte : presque tout part dans l'assiette" } },
+    { "lineRaw": "sel, poivre, muscade", "item": "Sel, poivre, 1 pincée de muscade", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignon émincé + ail haché. Bol B : poulet en dés de 2 cm, séché, salé, poivré. Bol C : 2 cubes de bouillon dans 1,3 L d'eau chaude (bouilloire). Bol D : épinards lavés et essorés. Bol E : crème + parmesan + muscade.",
+      "durationMin": 12,
+      "activeMin": 12,
+      "bowls": ["A", "B", "C", "D", "E"]
+    },
+    {
+      "kind": "sear",
+      "text": "Cocotte vide sur le grand foyer, 3 min à 7. 1 c. à s. d'huile, la moitié du poulet (bol B) étalée : 3 min sans toucher, remue, 1 min. Réserve et recommence avec l'autre moitié. Doré dehors, pas forcément cuit à cœur : il finit dans l'orzo.",
+      "durationMin": 12,
+      "activeMin": 12,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["B"],
+      "cue": "Les dés se décollent seuls quand ils sont dorés.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 7 },
+        { "text": "Huile + moitié du poulet (bol B), ne touche pas", "min": 3, "batch": 1 },
+        { "text": "Remue, puis réserve", "min": 1.5, "batch": 1 },
+        { "text": "Le reste du poulet, ne touche pas", "min": 3, "batch": 2 },
+        { "text": "Remue, puis réserve", "min": 1.5, "batch": 2 }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Même cocotte à 5 : 1 c. à s. d'huile, oignon et ail (bol A) 4 min en grattant les sucs. Orzo 1 min pour l'enrober. Bouillon chaud (bol C) et poulet, porte à ébullition à 9, puis couvert à 3 pendant 10 min en remuant deux fois (l'orzo attache au fond). Épinards (bol D) par poignées, 2 min. Hors du feu : crème et parmesan (bol E), goûte et rectifie.",
+      "durationMin": 22,
+      "activeMin": 10,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 5,
+      "bowls": ["A", "C", "D", "E"],
+      "cue": "Orzo tendre avec encore un peu de mâche, sauce nappante (elle épaissit en refroidissant).",
+      "phases": [
+        { "text": "Huile + oignon et ail (bol A), gratte les sucs", "min": 4, "hobLevel": 5 },
+        { "text": "Orzo, remue 1 min pour l'enrober", "min": 1, "hobLevel": 5 },
+        { "text": "Bouillon (bol C) + poulet, porte à ébullition", "min": 3, "hobLevel": 9 },
+        { "text": "Couvert, ça cuit : remue au bout de 5 min", "min": 5, "hobLevel": 3, "wait": true },
+        { "text": "Remue bien le fond, recouvre", "min": 5, "hobLevel": 3, "wait": true },
+        { "text": "Épinards (bol D) par poignées, ils fondent", "min": 2, "hobLevel": 3 },
+        { "text": "Hors du feu : crème et parmesan (bol E), goûte", "min": 1 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Étale dans les plats pour refroidir vite (moins de 2 h), puis filme et frigo, ou en boîtes au congélateur.",
+      "durationMin": 10,
+      "activeMin": 2
+    }
+  ]
+}

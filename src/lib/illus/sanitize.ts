@@ -12,6 +12,7 @@ export const ILLU_TOKENS = [
   "grain", "herb", "honey", "iron", "iron-2", "label", "leaf", "leaf-2", "lime", "lime-2", "lime-pulp", "line", "meat", "meat-2", "mush", "mush-2", "mustard",
   "oil", "onion", "onion-2", "paper", "pasta", "pasta-2", "plate", "potato", "potato-2", "rice", "sauce", "sausage", "seared", "shallot", "shallot-2", "shine",
   "soy", "steam", "steel", "steel-2", "tomato", "tomato-2", "water", "water-2", "wine", "wood", "wood-2", "yolk",
+  "sweet-potato", "aubergine", "aubergine-2", "lemon", "lemon-2", "lemon-pulp", "split-pea", "coconut",
 ] as const;
 
 export const ILLU_ANIMATIONS = ["a-bead", "a-bob", "a-bubble", "a-chop", "a-drip", "a-drop", "a-fall", "a-fill", "a-flip", "a-glow", "a-lid", "a-pop", "a-pour", "a-puff", "a-shake", "a-shimmer", "a-shine", "a-sink", "a-spin-slow", "a-squeeze", "a-steam", "a-stir", "a-sway", "a-swim", "a-swirl", "a-tick", "a-twist", "a-wave", "a-whisk", "a-wobble"] as const;

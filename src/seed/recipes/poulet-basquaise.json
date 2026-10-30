@@ -1,0 +1,78 @@
+{
+  "slug": "poulet-basquaise",
+  "name": "Poulet basquaise, riz",
+  "description": "Émincés de cuisse de poulet dorés puis mijotés dans une piperade de poivrons, tomates et oignons au piment d'Espelette et au vin blanc. Riz à part.",
+  "servingsUnits": 28,
+  "tags": ["poulet", "riz", "mijoté", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Poulet basquaise traditionnel en cocotte (d'après Entrez dans ma cuisine), réécrit pour le batch cooking avec des émincés de cuisse (sans os ni peau).",
+  "tips": "Cuisse plutôt que blanc : elle reste moelleuse au réchauffage, et les émincés n'ont ni os ni peau. Sans émincés de cuisse, des filets en gros morceaux, remis dans la sauce 15 min avant la fin seulement. Sauce trop liquide en fin de cuisson : retire le poulet et laisse réduire 5 min à découvert. Encore meilleur le lendemain.",
+  "ingredients": [
+    { "lineRaw": "1,4 kg émincés de cuisse de poulet", "item": "Émincés de cuisse de poulet (sans os ni peau)", "grams": 1400, "group": "B", "food": "haut_cuisse_poulet", "yield": { "trimPct": 3, "note": "sans os ni peau : presque rien à retirer" } },
+    { "lineRaw": "4 poivrons (rouges et verts)", "item": "Poivrons rouges et verts, en lanières", "grams": 600, "units": 4, "group": "A", "food": "poivron" },
+    { "lineRaw": "2 oignons", "item": "Oignons, émincés", "grams": 300, "units": 2, "group": "A", "food": "oignon" },
+    { "lineRaw": "4 gousses d'ail", "item": "Ail, haché", "units": 4, "group": "A", "food": "ail" },
+    { "lineRaw": "2 x 400 g pulpe de tomates", "item": "Pulpe de tomate (2 boîtes)", "grams": 800, "group": "C", "food": "pulpe_tomate" },
+    { "lineRaw": "15 cl vin blanc sec", "item": "Vin blanc sec", "grams": 150, "group": "C", "pantry": true, "food": "vin_blanc_cuit" },
+    { "lineRaw": "piment d'Espelette", "item": "Piment d'Espelette (1 c. à c.), thym, laurier", "group": "C", "pantry": true, "food": "zero" },
+    { "lineRaw": "450 g riz basmati", "item": "Riz basmati (ou riz long)", "grams": 450, "group": "D", "food": "riz_basmati" },
+    { "lineRaw": "huile d'olive", "item": "Huile", "grams": 30, "pantry": true, "food": "huile", "yield": { "panLossPct": 0, "note": "tout mijote dans la même cocotte" } },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : poivrons en lanières + oignons émincés + ail. Bol B : poulet séché, salé. Bol C : pulpe + vin blanc + piment d'Espelette + thym + laurier. Bol D : riz rincé.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": ["A", "B", "C", "D"]
+    },
+    {
+      "kind": "braise",
+      "text": "Cocotte sur le grand foyer, 3 min à 7. Huile, poulet (bol B) en trois fournées : 3 min sans toucher, retourne, 2 min ; réserve. À 5 : bol A, 10 min en grattant les sucs. Bol C et le poulet, couvert à 3 pendant 35 min.",
+      "durationMin": 65,
+      "activeMin": 28,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["A", "B", "C"],
+      "cue": "Poivrons fondants, poulet qui se coupe à la cuillère.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 7 },
+        { "text": "Huile + un tiers du poulet (bol B), ne touche pas", "min": 3, "batch": 1 },
+        { "text": "Retourne, 2 min, réserve", "min": 2, "batch": 1 },
+        { "text": "Deuxième tiers, ne touche pas", "min": 3, "batch": 2 },
+        { "text": "Retourne, 2 min, réserve", "min": 2, "batch": 2 },
+        { "text": "Dernier tiers, ne touche pas", "min": 3, "batch": 3 },
+        { "text": "Retourne, 2 min, réserve", "min": 2, "batch": 3 },
+        { "text": "À 5 : bol A, gratte les sucs, remue de temps en temps", "min": 10, "hobLevel": 5 },
+        { "text": "Bol C et le poulet, couvert", "min": 1, "hobLevel": 3 },
+        { "text": "Ça mijote", "min": 35, "hobLevel": 3, "wait": true }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Riz (bol D) dans la grande casserole, 1,5 fois son volume d'eau salée : ébullition à 9, couvert à 2 pendant 12 min, 5 min de repos sans ouvrir.",
+      "durationMin": 22,
+      "activeMin": 2,
+      "equipmentId": "casserole-18",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 9,
+      "bowls": ["D"],
+      "phases": [
+        { "text": "Riz (bol D) + eau salée, porte à ébullition", "min": 4, "hobLevel": 9 },
+        { "text": "Couvert, à 2, ça cuit", "min": 12, "hobLevel": 2, "wait": true },
+        { "text": "Hors du feu, sans ouvrir", "min": 5, "wait": true },
+        { "text": "Égrène à la fourchette", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Poulet basquaise dans un plat, riz étalé dans un autre (moins de 2 h). Filme et frigo, ou en boîtes au congélateur.",
+      "durationMin": 10,
+      "activeMin": 2
+    }
+  ]
+}

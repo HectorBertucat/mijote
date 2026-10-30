@@ -1,0 +1,109 @@
+{
+  "slug": "cannelloni-bolognaise",
+  "name": "Cannelloni bolognaise",
+  "description": "Cannelloni farcis d'une bolognaise de bœuf maigre, cuits au four dans la sauce tomate sous une béchamel légère et de la mozzarella. Se coupe en parts.",
+  "servingsUnits": 34,
+  "tags": ["bœuf", "pâtes", "four", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Classique italien (cannelloni al ragù), réécrit pour le batch cooking avec du bœuf à 5 % et une béchamel au lait demi-écrémé.",
+  "tips": "La farce se met avec un sac de congélation coupé au coin, c'est bien plus rapide qu'à la cuillère. Les cannelloni secs cuisent dans la sauce : ils doivent être bien couverts, sinon le dessus reste dur. La bolognaise reste moelleuse grâce à la sauce : rien à voir avec un haché sec. Se congèle très bien, en parts.",
+  "ingredients": [
+    { "lineRaw": "1 kg viande hachée pur bœuf 5%", "item": "Bœuf haché 5 % MG", "grams": 1000, "group": "B", "food": "boeuf_hache_5" },
+    { "lineRaw": "2 boîtes cannelloni à farcir", "item": "Cannelloni à farcir (2 boîtes de 250 g)", "grams": 500, "food": "pates" },
+    { "lineRaw": "4 x 400 g pulpe de tomates", "item": "Pulpe de tomate (4 boîtes) : 2 dans la bolognaise, 2 pour le fond et le dessus", "grams": 1600, "group": "C", "food": "pulpe_tomate" },
+    { "lineRaw": "2 c. à s. concentré de tomate", "item": "Concentré de tomate", "grams": 30, "group": "C", "pantry": true, "food": "concentre_tomate" },
+    { "lineRaw": "1 oignon", "item": "Oignon, haché fin", "grams": 150, "units": 1, "group": "A", "food": "oignon" },
+    { "lineRaw": "2 carottes", "item": "Carottes, râpées fin", "grams": 200, "units": 2, "group": "A", "food": "carotte" },
+    { "lineRaw": "3 gousses d'ail", "item": "Ail, haché", "units": 3, "group": "A", "food": "ail" },
+    { "lineRaw": "60 cl lait demi-écrémé", "item": "Lait demi-écrémé, pour la béchamel", "grams": 600, "group": "D", "food": "lait_demi" },
+    { "lineRaw": "40 g farine", "item": "Farine", "grams": 40, "group": "D", "pantry": true, "food": "farine" },
+    { "lineRaw": "30 g beurre", "item": "Beurre", "grams": 30, "group": "D", "pantry": true, "food": "beurre" },
+    { "lineRaw": "2 mozzarella", "item": "Mozzarella (2 × 125 g), déchirée", "grams": 250, "units": 2, "group": "E", "food": "mozzarella" },
+    { "lineRaw": "origan, laurier", "item": "Origan (1 c. à c.), 1 feuille de laurier, muscade pour la béchamel", "pantry": true, "food": "zero" },
+    { "lineRaw": "huile d'olive", "item": "Huile", "grams": 15, "pantry": true, "food": "huile", "yield": { "panLossPct": 0, "note": "la bolognaise mijote dans la cocotte : tout est mangé" } },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignon haché fin + carottes râpées + ail. Bol B : bœuf haché. Bol C : 2 boîtes de pulpe + concentré + origan + laurier (les 2 autres boîtes restent pour le montage). Bol D : beurre, farine, lait pesés. Bol E : mozzarella déchirée.",
+      "durationMin": 12,
+      "activeMin": 12,
+      "bowls": ["A", "B", "C", "D", "E"]
+    },
+    {
+      "kind": "braise",
+      "text": "Cocotte sur le grand foyer, 3 min à 7. Huile, bœuf (bol B) en galette : 3 min sans toucher, puis émiette et laisse dorer 4 min. Bol A, 5 min à 5. Bol C, sel, poivre, mijote à 3 pendant 20 min à demi couvert. La bolognaise doit être épaisse : elle va remplir des tubes.",
+      "durationMin": 38,
+      "activeMin": 14,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["A", "B", "C"],
+      "cue": "Sauce épaisse : une cuillère tirée au fond laisse un sillon.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 7 },
+        { "text": "Huile + bœuf (bol B) en galette, ne touche pas", "min": 3, "hobLevel": 7 },
+        { "text": "Émiette, laisse dorer", "min": 4, "hobLevel": 7 },
+        { "text": "Oignon, carottes, ail (bol A)", "min": 5, "hobLevel": 5 },
+        { "text": "Bol C, sel, poivre, à demi couvert", "min": 1, "hobLevel": 3 },
+        { "text": "La bolognaise mijote, remue de temps en temps", "min": 20, "hobLevel": 3, "wait": true }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Béchamel dans la grande casserole, foyer moyen à 5 : beurre fondu, farine 1 min, lait froid d'un coup en fouettant, jusqu'à ce que ça épaississe (5 min). Sel, poivre, muscade, hors du feu.",
+      "durationMin": 8,
+      "activeMin": 8,
+      "equipmentId": "casserole-18",
+      "equipmentAlt": ["casserole-16"],
+      "hobLevel": 5,
+      "bowls": ["D"],
+      "cue": "Elle nappe le dos de la cuillère.",
+      "phases": [
+        { "text": "Beurre (bol D) fondu, farine, remue 1 min", "min": 2, "hobLevel": 5 },
+        { "text": "Lait froid d'un coup, fouette jusqu'à ce que ça épaississe", "min": 5, "hobLevel": 5 },
+        { "text": "Sel, poivre, muscade, hors du feu", "min": 1 }
+      ]
+    },
+    {
+      "kind": "bake",
+      "text": "Four à 190 °C. Une boîte de pulpe au fond de chaque plat. Farcis les cannelloni avec la bolognaise (sac de congélation coupé au coin), couche-les serrés dans les plats. Le reste de la bolognaise et la pulpe restante dessus, puis la béchamel et la mozzarella (bol E).",
+      "durationMin": 20,
+      "activeMin": 20,
+      "equipmentId": "plat-grand",
+      "ovenTemp": 190,
+      "bowls": ["E"],
+      "phases": [
+        { "text": "Four à 190 °C. Pulpe au fond des deux plats", "min": 2 },
+        { "text": "Bolognaise dans un sac de congélation, coupe le coin", "min": 2 },
+        { "text": "Farcis les cannelloni, couche-les serrés", "min": 12 },
+        { "text": "Le reste de bolognaise et de pulpe, béchamel, mozzarella (bol E)", "min": 4 }
+      ]
+    },
+    {
+      "kind": "bake",
+      "text": "Les deux plats aux niveaux 2 et 4, couverts d'aluminium 25 min, puis découverts 15 min ; inverse-les en retirant l'aluminium.",
+      "durationMin": 41,
+      "activeMin": 2,
+      "equipmentId": "oven",
+      "ovenTemp": 190,
+      "cue": "Une pointe de couteau entre sans résistance dans un cannelloni ; dessus doré.",
+      "phases": [
+        { "text": "Plats couverts aux niveaux 2 et 4", "min": 0.5 },
+        { "text": "Ça cuit sous l'aluminium", "min": 25, "wait": true },
+        { "text": "Retire l'aluminium, inverse les plats", "min": 1 },
+        { "text": "Ça gratine", "min": 14, "wait": true },
+        { "text": "Teste un cannelloni au couteau, sors-les", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Repos 10 min, refroidis à découvert (moins de 2 h), coupe en parts une fois froid, filme et frigo ou congélateur.",
+      "durationMin": 15,
+      "activeMin": 3
+    }
+  ]
+}

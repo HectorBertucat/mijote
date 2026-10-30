@@ -41,6 +41,9 @@ export const FOODS = {
   filet_mignon_porc: f("Filet mignon de porc cru", 120, 21.5, 0, 3.5),
   filet_poulet: f("Filet de poulet cru", 110, 23.5, 0, 1.5),
   saucisse_toulouse: f("Saucisse de Toulouse crue", 270, 15, 1, 23),
+  merguez: f("Merguez crue", 280, 15, 1.5, 24),
+  chorizo: f("Chorizo doux", 420, 24, 1.5, 36),
+  boeuf_hache_5: f("Bœuf haché 5 % MG cru", 125, 21, 0, 4.6),
   // Pièces avec os ou peau : valeurs de la viande mangée, poids acheté dans la recette.
   cuisse_poulet: f("Cuisse de poulet entière (viande sans peau)", 120, 19.5, 0, 4.8, 0, undefined, { trimPct: 35 }), // os ~22 %, peau et gras ~13 %
   haut_cuisse_poulet: f("Haut de cuisse de poulet désossé (viande sans peau)", 125, 19, 0, 5.5, 0, undefined, { trimPct: 12 }), // vendu avec la peau : peau et gras ~12 %
@@ -53,6 +56,9 @@ export const FOODS = {
   pates: f("Pâtes sèches", 355, 12.5, 71, 1.5, 3),
   pomme_de_terre: f("Pomme de terre crue", 80, 2, 17, 0.1, 1.8),
   pois_chiches: f("Pois chiches égouttés", 120, 7, 14, 2.5, 6),
+  pois_casses: f("Pois cassés secs", 330, 22.5, 46, 1.6, 15),
+  semoule: f("Semoule de blé dur crue", 360, 12, 72, 1.5, 3.5),
+  patate_douce: f("Patate douce crue", 86, 1.6, 17.5, 0.1, 3),
   farine: f("Farine de blé", 345, 10, 72, 1.2, 3),
   maizena: f("Fécule de maïs", 350, 0.3, 88, 0, 0.5),
   // Légumes, fruits
@@ -65,13 +71,24 @@ export const FOODS = {
   poivron: f("Poivron", 28, 1, 5, 0.3, 1.8, 150),
   carotte: f("Carotte", 36, 0.8, 7, 0.3, 2.5, 100),
   haricots_verts: f("Haricots verts", 30, 1.8, 4, 0.2, 3),
+  epinards: f("Épinards", 25, 2.9, 1.4, 0.4, 2.4),
+  aubergine: f("Aubergine", 21, 1, 3, 0.2, 2.5, 300),
+  brocoli: f("Brocoli", 30, 2.8, 2.5, 0.4, 2.6),
+  navet: f("Navet", 20, 0.8, 3.5, 0.2, 2, 150),
+  tomates_sechees: f("Tomates séchées à l'huile, égouttées", 210, 4, 13, 15, 6),
   pulpe_tomate: f("Pulpe de tomate", 25, 1.2, 4, 0.2, 1.2),
   concentre_tomate: f("Concentré de tomate", 90, 4, 16, 0.5, 4),
   persil: f("Persil", 40, 3, 6, 0.8, 4),
   citron_vert: f("Citron vert (jus et zeste)", 30, 0.4, 8, 0.2, 0.3, 60),
+  citron: f("Citron jaune (jus et zeste)", 30, 0.4, 8, 0.2, 0.3, 120),
   // Laitiers, matières grasses
   ricotta: f("Ricotta", 140, 8, 4, 10),
   emmental_rape: f("Emmental râpé", 380, 28, 0, 29),
+  parmesan: f("Parmesan", 395, 33.5, 0, 28.5),
+  mozzarella: f("Mozzarella", 240, 18, 1, 18.5, 0, 125),
+  skyr: f("Skyr nature 0 %", 63, 10.5, 4, 0.2),
+  lait_demi: f("Lait demi-écrémé", 46, 3.3, 4.8, 1.6),
+  lait_coco: f("Lait de coco", 190, 1.8, 3, 19),
   creme_legere: f("Crème légère 15 %", 165, 2.8, 4, 15),
   beurre: f("Beurre", 740, 0.7, 0.6, 82),
   huile: f("Huile", 900, 0, 0, 100, 0, undefined, { panLossPct: 30 }), // défaut : saisie à la poêle (PAN_LOSS.saisie)

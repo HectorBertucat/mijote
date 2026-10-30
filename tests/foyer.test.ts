@@ -169,7 +169,7 @@ test("cuisine appliquée : seul l'équipement coché compte, les recettes s'impo
   assert.equal(res.equipment.filter((e) => e.kind === "hob").length, 2);
   // Les recettes citent la cocotte et le four : elles s'importent (clé étrangère) sans planter.
   assert.ok(db.select().from(equipment).where(eq(equipment.id, "cocotte")).get(), "la cocotte existe, non possédée");
-  assert.equal(syncRecipes(db, RECIPES).length, 6);
+  assert.equal(syncRecipes(db, RECIPES).length, fs.readdirSync(RECIPES).filter((f) => f.endsWith(".json")).length);
   // Réappliquer une cuisine complète rend tout.
   applyKitchen(db, DEFAULT_KITCHEN);
   assert.ok(loadResources(db).equipment.some((e) => e.id === "cocotte"));

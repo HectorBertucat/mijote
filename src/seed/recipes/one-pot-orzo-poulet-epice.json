@@ -1,0 +1,81 @@
+{
+  "slug": "one-pot-orzo-poulet-epice",
+  "name": "One pot orzo poulet épicé, chorizo et poivrons",
+  "description": "Orzo à la tomate, au paprika fumé et à un peu de chorizo, avec poulet et poivrons. Le piment se règle à la fin, chacun le sien.",
+  "servingsUnits": 26,
+  "tags": ["poulet", "pâtes", "one pot", "épicé", "rapide", "batch"],
+  "fridgeDays": 3,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "D'après le one pot orzo poulet, chorizo et poivrons d'Amandine Cooking, réécrit pour le batch cooking.",
+  "tips": "Le piment : rien dans la cocotte, une pincée de piment ou du Tabasco dans les boîtes de ceux qui aiment. Le chorizo donne le goût, pas besoin de plus de 100 g. Au réchauffage, une cuillère d'eau dans la boîte.",
+  "ingredients": [
+    { "lineRaw": "900 g filets de poulet", "item": "Filets de poulet, en dés de 2 cm", "grams": 900, "group": "B", "food": "filet_poulet" },
+    { "lineRaw": "500 g pâtes risoni", "item": "Risoni (orzo), 1 paquet", "grams": 500, "food": "pates" },
+    { "lineRaw": "100 g dés de chorizo doux", "item": "Chorizo doux en dés", "grams": 100, "group": "C", "food": "chorizo" },
+    { "lineRaw": "2 poivrons rouges", "item": "Poivrons rouges, en lanières", "grams": 300, "units": 2, "group": "A", "food": "poivron" },
+    { "lineRaw": "1 oignon", "item": "Oignon, émincé", "grams": 150, "units": 1, "group": "A", "food": "oignon" },
+    { "lineRaw": "3 gousses d'ail", "item": "Ail, haché", "units": 3, "group": "A", "food": "ail" },
+    { "lineRaw": "400 g pulpe de tomates", "item": "Pulpe de tomate (1 boîte)", "grams": 400, "group": "D", "food": "pulpe_tomate" },
+    { "lineRaw": "1 c. à s. concentré de tomate", "item": "Concentré de tomate", "grams": 15, "group": "D", "pantry": true, "food": "concentre_tomate" },
+    { "lineRaw": "paprika fumé", "item": "Paprika fumé (2 c. à c.), cumin (1 c. à c.)", "group": "B", "pantry": true, "food": "zero" },
+    { "lineRaw": "2 cubes bouillon de volaille", "item": "Bouillon de volaille (2 cubes dans 1 L d'eau chaude)", "grams": 20, "units": 2, "group": "D", "pantry": true, "food": "bouillon_cube" },
+    { "lineRaw": "40 g parmesan râpé", "item": "Parmesan râpé, à la fin", "grams": 40, "food": "parmesan" },
+    { "lineRaw": "huile d'olive", "item": "Huile", "grams": 15, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "tout se fait dans la même cocotte" } },
+    { "lineRaw": "piment", "item": "Piment ou Tabasco, à la fin, selon les goûts", "optional": true, "pantry": true, "food": "zero" },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignon émincé + poivrons en lanières + ail haché. Bol B : poulet en dés de 2 cm, séché, salé, avec le paprika fumé et le cumin. Bol C : chorizo. Bol D : 2 cubes de bouillon dans 1 L d'eau chaude + pulpe + concentré.",
+      "durationMin": 14,
+      "activeMin": 14,
+      "bowls": ["A", "B", "C", "D"]
+    },
+    {
+      "kind": "sear",
+      "text": "Cocotte vide sur le grand foyer, 3 min à 6. Chorizo (bol C) sans huile, 2 min : il rend son gras rouge, réserve-le. Monte à 7, poulet (bol B) dans ce gras en deux fournées : 3 min sans toucher, remue, 1 min, réserve.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["B", "C"],
+      "cue": "Gras orange au fond, poulet doré qui se décolle seul.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 6 },
+        { "text": "Chorizo (bol C) sans huile, il rend son gras ; réserve", "min": 2, "hobLevel": 6 },
+        { "text": "Moitié du poulet (bol B), ne touche pas", "min": 3, "hobLevel": 7, "batch": 1 },
+        { "text": "Remue, puis réserve", "min": 1.5, "batch": 1 },
+        { "text": "Le reste du poulet, un filet d'huile si ça attache, ne touche pas", "min": 3, "batch": 2 },
+        { "text": "Remue, puis réserve", "min": 1.5, "batch": 2 }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Même cocotte à 5 : oignon, poivrons et ail (bol A) 5 min. Orzo 1 min. Bol D, poulet et chorizo, ébullition à 9, puis couvert à 3 pendant 11 min en remuant deux fois. Hors du feu : parmesan, goûte.",
+      "durationMin": 22,
+      "activeMin": 10,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 5,
+      "bowls": ["A", "D"],
+      "cue": "Orzo tendre, sauce tomate qui nappe.",
+      "phases": [
+        { "text": "Oignon, poivrons et ail (bol A)", "min": 5, "hobLevel": 5 },
+        { "text": "Orzo, remue 1 min", "min": 1, "hobLevel": 5 },
+        { "text": "Bol D, poulet et chorizo, porte à ébullition", "min": 3, "hobLevel": 9 },
+        { "text": "Couvert, ça cuit : remue au bout de 5 min", "min": 5, "hobLevel": 3, "wait": true },
+        { "text": "Remue bien le fond, recouvre", "min": 6, "hobLevel": 3, "wait": true },
+        { "text": "Hors du feu : parmesan, goûte", "min": 1 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Étale dans les plats pour refroidir vite (moins de 2 h), puis filme et frigo, ou en boîtes au congélateur.",
+      "durationMin": 10,
+      "activeMin": 2
+    }
+  ]
+}

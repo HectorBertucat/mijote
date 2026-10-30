@@ -845,6 +845,170 @@ export const FOODS = {
       "accent-illu",
     ),
   },
+  // Ajouts du 30/10/2026 (recettes one pot, mijotés et plats au four)
+  merguez: {
+    category: "viande",
+    label: "Merguez",
+    svg: `<g class="a-wobble" style="transform-origin:50% 50%">${[20, 34, 48]
+      .map((y, i) => `<path d="M8 ${y} Q32 ${y - 8 + i * 2} 56 ${y}" fill="none" stroke="${v("line")}" stroke-width="9" stroke-linecap="round"/><path d="M8 ${y} Q32 ${y - 8 + i * 2} 56 ${y}" fill="none" stroke="${v("sausage")}" stroke-width="6.4" stroke-linecap="round"/><path d="M16 ${y - 2} Q32 ${y - 7 + i * 2} 46 ${y - 3}" fill="none" stroke="${v("shine")}" stroke-width="1.4"/>`)
+      .join("")}</g>`,
+  },
+  chorizo: {
+    category: "viande",
+    label: "Chorizo",
+    svg: `<g class="a-bob"><path d="M4 30 Q4 18 16 18 H36 L36 46 H16 Q4 46 4 34 Z" fill="${v("tomato-2")}"/>
+      <path d="M2 32 L-2 30" fill="none" stroke-width="2.4"/>
+      <ellipse cx="36" cy="32" rx="6" ry="14" fill="${v("sauce")}"/>
+      <circle cx="50" cy="40" r="11" fill="${v("sauce")}"/>
+      ${[
+        [46, 36],
+        [53, 38],
+        [49, 45],
+        [35, 27],
+        [37, 37],
+      ]
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.6" fill="${v("fat")}" stroke="none"/>`)
+        .join("")}</g>`,
+  },
+  boeuf_hache_5: {
+    category: "viande",
+    label: "Bœuf haché",
+    svg: `<path d="M6 44 H58 L54 54 H10 Z" fill="${v("paper")}"/>
+      <g class="a-bob"><path d="M10 44 Q8 26 22 24 Q28 14 38 20 Q52 18 54 32 Q58 40 54 44 Z" fill="${v("meat")}"/>
+      ${[
+        [18, 34],
+        [26, 28],
+        [34, 36],
+        [42, 28],
+        [48, 37],
+        [30, 41],
+      ]
+        .map(([x, y]) => `<path d="M${x} ${y} q2 -3 4 0 q2 3 4 0" fill="none" stroke="${v("meat-2")}" stroke-width="1.6"/>`)
+        .join("")}</g>`,
+  },
+  pois_casses: {
+    category: "feculent",
+    label: "Pois cassés",
+    svg: `<g class="a-bob">${[
+      [18, 20],
+      [36, 16],
+      [50, 30],
+      [12, 38],
+      [30, 34],
+      [46, 48],
+      [22, 52],
+    ]
+      .map(([x, y], i) => `<path d="M${x - 8} ${y} A8 8 0 0 1 ${x + 8} ${y} Z" transform="rotate(${i * 47} ${x} ${y})" fill="${v("split-pea")}"/>`)
+      .join("")}</g>`,
+  },
+  semoule: {
+    category: "feculent",
+    label: "Semoule",
+    svg: bowl(
+      `<path d="M10 34 Q12 20 32 18 Q52 20 54 34 Z" fill="${v("grain")}"/>
+       ${[
+         [18, 30],
+         [24, 25],
+         [31, 29],
+         [38, 23],
+         [44, 29],
+         [28, 33],
+         [36, 32],
+         [48, 32],
+       ]
+         .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1" fill="${v("pasta-2")}" stroke="none"/>`)
+         .join("")}
+       ${steam([26, 38], 16, 10)}`,
+      "accent-illu",
+    ),
+  },
+  patate_douce: {
+    category: "feculent",
+    label: "Patate douce",
+    svg: `<g class="a-bob"><path d="M6 40 Q4 30 16 24 Q34 14 50 20 Q60 24 58 32 Q56 40 44 44 Q26 52 14 50 Q6 48 6 40 Z" fill="${v("sweet-potato")}"/>
+      <path d="M58 30 L63 28 M6 42 L2 45" fill="none" stroke-width="2"/>
+      <ellipse cx="44" cy="44" rx="11" ry="8" fill="${v("carrot")}"/>
+      <path class="a-shine" d="M18 28 Q26 22 34 21" fill="none" stroke="${v("shine")}" stroke-width="2"/></g>`,
+  },
+  epinards: {
+    category: "legume",
+    label: "Épinards",
+    svg: `<g class="a-sway" style="transform-origin:50% 100%">${[
+      [20, -24],
+      [32, 0],
+      [44, 24],
+    ]
+      .map(
+        ([x, r]) =>
+          `<g transform="rotate(${r} 32 58)"><path d="M32 58 V40" fill="none" stroke="${v("leaf-2")}" stroke-width="2.4"/><path d="M32 42 Q${x - 14} 30 ${x - 2} 10 Q${x + 12} 22 32 42 Z" fill="${v("leaf-2")}"/><path d="M32 40 Q${x - 2} 26 ${x - 2} 14" fill="none" stroke="${v("leaf")}" stroke-width="1.6"/></g>`,
+      )
+      .join("")}</g>`,
+  },
+  aubergine: {
+    category: "legume",
+    label: "Aubergine",
+    svg: `<g class="a-bob"><path d="M14 54 Q4 50 8 38 Q12 28 24 22 L38 12 Q46 8 50 14 Q54 20 48 28 L40 42 Q32 58 14 54 Z" fill="${v("aubergine")}"/>
+      <path d="M40 12 Q46 4 54 8 Q50 12 52 18 Q46 16 40 12 Z" fill="${v("leaf-2")}"/><path d="M52 8 L58 2" fill="none" stroke="${v("leaf-2")}" stroke-width="3.4"/>
+      <path class="a-shine" d="M16 42 Q20 34 28 30" fill="none" stroke="${v("shine")}" stroke-width="2.4"/>
+      <path d="M22 48 Q32 44 40 34" fill="none" stroke="${v("aubergine-2")}" stroke-width="1.6"/></g>`,
+  },
+  brocoli: {
+    category: "legume",
+    label: "Brocoli",
+    svg: `<g class="a-wobble" style="transform-origin:50% 95%"><path d="M26 36 H38 L40 56 Q40 58 36 58 H28 Q24 58 24 56 Z" fill="${v("lime")}"/>
+      ${[
+        [20, 30, 10],
+        [32, 22, 12],
+        [44, 30, 10],
+        [26, 38, 8],
+        [38, 38, 8],
+      ]
+        .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${v("leaf-2")}"/>`)
+        .join("")}
+      <path d="M26 20 q2 -2 4 0 M38 28 q2 -2 4 0 M16 28 q2 -2 4 0" fill="none" stroke="${v("leaf")}" stroke-width="1.6"/></g>`,
+  },
+  navet: {
+    category: "legume",
+    label: "Navet",
+    svg: `<g class="a-wobble" style="transform-origin:50% 90%"><path d="M32 22 Q12 22 12 40 Q12 54 32 58 Q52 54 52 40 Q52 22 32 22 Z" fill="${v("paper")}"/>
+      <path d="M12 36 Q14 22 32 22 Q50 22 52 36 Q42 32 32 32 Q22 32 12 36 Z" fill="${v("shallot")}"/>
+      <path d="M32 58 V62" fill="none" stroke-width="1.8"/>
+      ${greenLeaf(28, 22, 5, "leaf")}${greenLeaf(36, 22, 5, "leaf-2")}</g>`,
+  },
+  tomates_sechees: { category: "conserve", label: "Tomates séchées", svg: jar("oil", "leaf-2", true, "tomato-2") },
+  citron: {
+    category: "fruit",
+    label: "Citron",
+    svg: `<g class="a-bob"><ellipse cx="26" cy="34" rx="19" ry="15" fill="${v("lemon")}"/><path d="M7 34 L3 33 M45 34 L49 33" fill="none" stroke-width="2.4"/>
+      <circle cx="44" cy="44" r="13" fill="${v("lemon-2")}"/><circle cx="44" cy="44" r="9.5" fill="${v("lemon-pulp")}" stroke-width="1.6"/>
+      <path d="M44 34.5 V53.5 M34.5 44 H53.5 M37.3 37.3 L50.7 50.7 M50.7 37.3 L37.3 50.7" fill="none" stroke="${v("lemon-2")}" stroke-width="1.4"/></g>`,
+  },
+  parmesan: {
+    category: "laitier",
+    label: "Parmesan",
+    svg: `<g class="a-bob"><path d="M6 44 L44 16 L58 30 V48 Q58 52 54 52 H10 Q6 52 6 48 Z" fill="${v("cheese")}"/>
+      <path d="M6 44 L44 16 L58 30 L20 44 Z" fill="${v("butter")}"/><path d="M44 16 L58 30" fill="none" stroke="${v("cheese-2")}" stroke-width="4"/>
+      ${[
+        [24, 47],
+        [38, 46],
+        [48, 42],
+      ]
+        .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="${v("cheese-2")}" stroke="none"/>`)
+        .join("")}</g>`,
+  },
+  mozzarella: {
+    category: "laitier",
+    label: "Mozzarella",
+    svg: `${bowl(`<path d="M10 34 Q12 24 32 24 Q52 24 54 34 Z" fill="${v("water")}"/>`, "plate")}
+      <g class="a-bob"><circle cx="32" cy="24" r="14" fill="${v("paper")}"/><path class="a-shine" d="M24 18 Q27 14 31 13" fill="none" stroke="${v("water")}" stroke-width="2.2"/></g>`,
+  },
+  skyr: { category: "laitier", label: "Skyr", svg: jar("paper", "water-2", true, "water") },
+  lait_demi: { category: "liquide", label: "Lait", svg: bottle("paper", "water-2", true, "water") },
+  lait_coco: {
+    category: "conserve",
+    label: "Lait de coco",
+    svg: can(`<circle cx="32" cy="34" r="7" fill="${v("coconut")}"/><circle cx="32" cy="34" r="4" fill="${v("paper")}" stroke="none"/>`, "leaf-2"),
+  },
 } satisfies Record<string, FoodArt>;
 
 // Les génériques qui reprennent un dessin d'aliment.
