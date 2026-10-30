@@ -10,7 +10,7 @@ import type { Db } from "@/lib/db/open";
 import { mealSlots, people, preferences, recipeIngredients, recipes, shoppingLists, weekPlans, weekRecipes } from "@/lib/db/schema";
 import { listRecipesWithSteps } from "@/lib/recipes/queries";
 import type { Ing } from "@/lib/shopping/build";
-import { assign, defaultPlace, isFactor, NEXT_PLACE, propose, slotKey, swap, type Assignment, type Meal, type SlotIn, type WeekRecipe } from "./propose";
+import { assign, autoSize, defaultPlace, isFactor, NEXT_PLACE, propose, slotKey, swap, type Assignment, type Meal, type SlotIn, type WeekRecipe } from "./propose";
 import { dislikeRules, exclusionsOf, type DislikeRule } from "./tastes";
 import { buildProfiles, lineResolver, totalResolver } from "./packs";
 import { scaledNutrition, selectionLeftovers, type Leftover } from "./leftovers";
@@ -163,15 +163,38 @@ const withSel = (lib: LibRecipe[], sel: WeekSel[]) => {
 
 // ─── Actions ───
 
+/**
+ * « Compléter pour moi » : garde les recettes déjà choisies et ajoute celles qui couvrent le mieux
+ * le reste des repas (2 à 4 en tout), puis les quantités se calent toutes seules.
+ */
 export async function proposeWeek(db: Db, weekStart: string) {
   const w = loadWeek(db, weekStart);
   const lib = library(db);
+  const kept = loadSelection(db, w.planId);
   const tastes = loadTastes(db, lib);
   const { profiles } = await loadProfiles(db, lib);
-  const p = propose(lib, asSlots(w), { excluded: tastes.excluded, profiles, eaters: eatersCtx(db) });
-  save(db, w, lib, p ?? null);
-  writeSelection(db, w.planId, lib, (p?.slugs ?? []).map((slug) => ({ slug })));
+  const p = propose(lib, asSlots(w), { keep: kept.map((x) => x.slug), excluded: tastes.excluded, profiles, eaters: eatersCtx(db) });
+  const old = new Map(kept.map((x) => [x.slug, x]));
+  writeSelection(db, w.planId, lib, (p?.slugs ?? []).map((slug) => ({ slug, extras: old.get(slug)?.extras })));
+  resize(db, weekStart);
   return p;
+}
+
+/**
+ * Les quantités à cuire des recettes retenues, calées sur les repas de la semaine (autoSize),
+ * puis la répartition. Appelé après chaque changement de recettes ou de présence.
+ */
+export function resize(db: Db, weekStart: string) {
+  const w = loadWeek(db, weekStart);
+  const sel = loadSelection(db, w.planId);
+  const lib = withSel(library(db), sel);
+  if (sel.length) {
+    const chosen = selectedRecipes(db, lib, sel).selected;
+    const sized = autoSize(chosen, asSlots(w), { excluded: loadTastes(db, chosen).excluded, eaters: eatersCtx(db) });
+    const factorOf = new Map(sized.map((r) => [r.slug, r.factor ?? 1]));
+    writeSelection(db, w.planId, lib, sel.map((x) => ({ slug: x.slug, factor: factorOf.get(x.slug) ?? x.factor, extras: x.extras })));
+  }
+  reassign(db, weekStart);
 }
 
 export async function swapRecipe(db: Db, weekStart: string, out: string) {
@@ -187,6 +210,7 @@ export async function swapRecipe(db: Db, weekStart: string, out: string) {
     // La remplaçante prend la place de celle qu'on retire.
     const ordered = sel.map((x) => (x.slug === out ? p.slugs.find((s) => !keep.has(s))! : x.slug)).filter(Boolean);
     writeSelection(db, w.planId, lib, ordered.map((slug) => ({ slug, factor: keep.get(slug)?.factor, extras: keep.get(slug)?.extras })));
+    resize(db, weekStart);
   }
   return p;
 }
@@ -209,11 +233,13 @@ export function reassign(db: Db, weekStart: string) {
   save(db, w, lib, a);
 }
 
-function updateSel(db: Db, weekStart: string, fn: (sel: WeekSel[]) => { slug: string; factor?: number; extras?: Record<string, number> }[]) {
+function updateSel(db: Db, weekStart: string, fn: (sel: WeekSel[]) => { slug: string; factor?: number; extras?: Record<string, number> }[], opts: { sizes?: boolean } = {}) {
   const w = loadWeek(db, weekStart);
   const lib = library(db);
   writeSelection(db, w.planId, lib, fn(loadSelection(db, w.planId)));
-  reassign(db, weekStart);
+  // Les recettes changent : les quantités se recalent. Un réglage à la main (multiplicateur, grammes) reste tel quel.
+  if (opts.sizes) resize(db, weekStart);
+  else reassign(db, weekStart);
 }
 
 /** Change le multiplicateur d'unités d'une recette (par pas de FACTORS). */
@@ -224,11 +250,11 @@ export function setFactor(db: Db, weekStart: string, slug: string, factor: numbe
 
 /** Ajoute une recette de la bibliothèque (4 au plus). */
 export function addRecipe(db: Db, weekStart: string, slug: string) {
-  updateSel(db, weekStart, (sel) => (sel.length >= 4 || sel.some((x) => x.slug === slug) ? sel : [...sel, { recipeId: "", slug, factor: 1, extras: {} }]));
+  updateSel(db, weekStart, (sel) => (sel.length >= 4 || sel.some((x) => x.slug === slug) ? sel : [...sel, { recipeId: "", slug, factor: 1, extras: {} }]), { sizes: true });
 }
 
 export function removeRecipe(db: Db, weekStart: string, slug: string) {
-  updateSel(db, weekStart, (sel) => sel.filter((x) => x.slug !== slug));
+  updateSel(db, weekStart, (sel) => sel.filter((x) => x.slug !== slug), { sizes: true });
 }
 
 /** Grammes ajoutés à une ligne d'une recette retenue (0 = retirer). */
@@ -253,7 +279,7 @@ export function cyclePlace(db: Db, slotId: string): string | null {
     .get();
   if (!s) return null;
   db.update(mealSlots).set({ place: NEXT_PLACE[s.place] }).where(and(eq(mealSlots.id, slotId))).run();
-  reassign(db, s.weekStart);
+  resize(db, s.weekStart);
   return s.weekStart;
 }
 

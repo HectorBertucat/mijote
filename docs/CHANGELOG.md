@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 2026-10-30 : Semaine, on choisit ses recettes et c'est tout
+- La page Semaine se résume à choisir ses recettes dans la bibliothèque (filtres one pot, rapide, four, congèle, aimées, à essayer). Les quantités à cuire se calent toutes seules sur les repas (`autoSize` dans `src/lib/week/propose.ts`, jusqu'à `AUTO_MAX_FACTOR` = 2) et les repas se répartissent sans rien régler. « Compléter pour moi » garde les recettes choisies et ajoute le reste.
+- Résumé simple (repas couverts, temps en cuisine) ; avertissements seulement s'il y a lieu (repas non couverts, part trop légère en protéines ou mal calée, récipient partagé). Absences, menu, unités et nutrition sont repliés.
+- Présence par défaut : tout le monde mange à tous les repas, week-end compris (`defaultPlace`). Les semaines déjà créées gardent leur grille.
+- « Part à affiner » n'apparaît plus quand seul le hors batch manque (une valeur par défaut sert).
+
 ## 2026-10-30 : panier du drive, ruptures complétées
 - Après l'envoi au panier, ce que le drive n'a pas pu prendre (rupture, stock limité) est comparé au besoin de la liste et complété une fois par un autre produit du même type en stock, au moindre coût pour les grammes manquants (`shortfalls`, `pickSubstitute`, `completeShortfalls` dans `src/lib/shopping/drive.ts`). Une ligne « complément » s'ajoute à la liste, le panier est renvoyé puis relu ; ce qui manque encore est signalé (« manque au panier »).
 

@@ -36,9 +36,11 @@ Ajouter ses propres recettes en fichier : voir [recettes.md](recettes.md).
 
 ## 4. Semaine
 
-Une grille midi/soir pour chaque personne : maison, bureau (plat à emporter) ou absent. Mijote propose 2 à 4 recettes qui couvrent les repas, respectent la durée au frigo (le reste part au congélateur si la recette le supporte), les goûts de chacun et finit les paquets entamés quand c'est possible. On peut échanger une recette, changer le nombre d'unités, puis **faire la liste de courses**.
+On choisit seulement ses recettes (1 à 4, avec des filtres : one pot, rapide, four, congèle, aimées, à essayer). Mijote calcule les quantités à cuire (jusqu'au double de la fiche) et répartit les repas de chacun : durée au frigo respectée, le reste au congélateur si la recette le supporte, goûts de chacun. « Compléter pour moi » ajoute ce qui manque sans toucher aux recettes choisies. Le résumé dit les repas couverts et le temps en cuisine, et n'avertit que si besoin (repas non couverts, part mal calée, récipient partagé). Puis **faire la liste de courses**.
 
-Le **Composer** fait la même chose sans la grille : choisis 2 à 4 recettes, vois la durée de session estimée et les associations qui vont bien ensemble.
+Par défaut, tout le monde mange à tous les repas ; les absences et le détail (menu, unités, nutrition) sont repliés en bas de la page.
+
+Le **Composer** fait la même chose sans la semaine : choisis 2 à 4 recettes, vois la durée de session estimée et les associations qui vont bien ensemble.
 
 ## 5. Courses
 
