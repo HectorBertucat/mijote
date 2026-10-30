@@ -73,10 +73,9 @@ const DEFAULT_FRIDGE_DAYS = 3;
 export const DAYS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"] as const;
 export const MEAL_LABEL: Record<Meal, string> = { lunch: "midi", dinner: "soir" };
 
-/** Présence par défaut : midi au bureau et soir à la maison, week-end hors batch (chacun ajuste ensuite). */
+/** Présence par défaut : tout le monde mange à tous les repas (midi en semaine au bureau) ; on retire ensuite les absences. */
 export function defaultPlace(day: number, meal: Meal, _personId?: string): Place {
-  if (day >= 5) return "away"; // le week-end, on cuisine sur le moment : hors batch
-  return meal === "lunch" ? "office" : "home";
+  return meal === "lunch" && day < 5 ? "office" : "home";
 }
 
 export const NEXT_PLACE: Record<Place, Place> = { home: "office", office: "away", away: "home" };
@@ -342,6 +341,46 @@ export function swap(library: WeekRecipe[], slots: SlotIn[], current: string[], 
     if (!best || p.score < best.score) best = p;
   }
   return best;
+}
+
+// ─── Quantités automatiques ───
+
+/** Multiplicateur le plus haut choisi tout seul : au-delà, une marmite déborde des récipients d'une cuisine courante. */
+export const AUTO_MAX_FACTOR = 2;
+
+/**
+ * Les unités à cuire de recettes choisies à la main : le multiplicateur de chacune (pas de FACTORS,
+ * jusqu'à AUTO_MAX_FACTOR) qui couvre le plus de repas avec le moins de reste. Un reste qui se
+ * congèle coûte peu (c'est de la marge), un reste qui ne se congèle pas coûte plus. Recherche
+ * gloutonne : un pas à la fois sur la recette qui améliore le plus, jusqu'à ne plus rien gagner.
+ */
+export function autoSize(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreContext, "excluded" | "eaters"> = {}): WeekRecipe[] {
+  if (!recipes.length) return recipes;
+  const steps = FACTORS.filter((f) => f <= AUTO_MAX_FACTOR);
+  const cost = (rs: WeekRecipe[]) => {
+    const a = assign(rs, slots, ctx);
+    const unused = a.recipes.reduce((s, p) => s + (p.unitsUsed === 0 ? 1 : 0), 0);
+    const left = a.recipes.reduce((s, p, i) => s + p.unitsLeft * (rs[i].freezerOk ? 0.15 : 1), 0);
+    return (a.neededUnits - a.coveredUnits) * 10 + left + unused * 20;
+  };
+  let cur: WeekRecipe[] = recipes.map((r) => ({ ...r, factor: 1 }));
+  let best = cost(cur);
+  for (let guard = 0; guard < 40; guard++) {
+    let move: { rs: WeekRecipe[]; c: number } | null = null;
+    for (let i = 0; i < cur.length; i++) {
+      for (const dir of [1, -1] as const) {
+        const f = stepFactor(cur[i].factor ?? 1, dir);
+        if (f === cur[i].factor || !steps.includes(f as (typeof FACTORS)[number])) continue;
+        const rs = cur.map((r, j) => (j === i ? { ...r, factor: f } : r));
+        const c = cost(rs);
+        if (c < (move?.c ?? best) - 1e-9) move = { rs, c };
+      }
+    }
+    if (!move) break;
+    cur = move.rs;
+    best = move.c;
+  }
+  return cur;
 }
 
 /** Protéine principale (pour l'affichage). */

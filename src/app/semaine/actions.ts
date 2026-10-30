@@ -13,7 +13,8 @@ function weekOf(formData: FormData): string {
   return w;
 }
 
-const back = (w: string, done: string) => redirect(`/semaine?w=${w}&done=${encodeURIComponent(done)}`);
+const back = (w: string, done: string, f?: FormDataEntryValue | null) =>
+  redirect(`/semaine?w=${w}&done=${encodeURIComponent(done)}${f ? `&f=${encodeURIComponent(String(f))}` : ""}`);
 
 /** Un tap sur une présence : maison → bureau → absent → maison. Les recettes retenues sont redistribuées. */
 export async function togglePlace(slotId: string) {
@@ -53,13 +54,13 @@ export async function factorAction(formData: FormData) {
   redirect(`/semaine?w=${w}#recettes`);
 }
 
-/** Ajoute une recette proposée pour finir un paquet entamé. */
+/** Ajoute une recette à la semaine (bibliothèque, ou pour finir un paquet entamé) : les quantités se recalent. */
 export async function addAction(formData: FormData) {
   const w = weekOf(formData);
   const slug = String(formData.get("slug") ?? "");
   addRecipe(db, w, slug);
   revalidatePath("/semaine");
-  back(w, `add:${slug}`);
+  back(w, `add:${slug}`, formData.get("f"));
 }
 
 export async function removeAction(formData: FormData) {
@@ -67,7 +68,7 @@ export async function removeAction(formData: FormData) {
   const slug = String(formData.get("slug") ?? "");
   removeRecipe(db, w, slug);
   revalidatePath("/semaine");
-  back(w, `remove:${slug}`);
+  back(w, `remove:${slug}`, formData.get("f"));
 }
 
 /** Met le reste d'un paquet dans une recette déjà choisie (ou le retire : grams = 0). */

@@ -8,6 +8,8 @@ import {
   assign,
   daysAfterSession,
   defaultPlace,
+  autoSize,
+  AUTO_MAX_FACTOR,
   defaultWeek,
   mondayOf,
   propose,
@@ -67,14 +69,31 @@ function checkFridge(p: ReturnType<typeof assign>) {
   }
 }
 
-test("présence par défaut : bureau le midi, maison le soir, week-end hors batch", () => {
+test("présence par défaut : tout le monde mange à tous les repas, midi au bureau en semaine", () => {
   assert.equal(defaultPlace(0, "lunch", "alex"), "office");
   assert.equal(defaultPlace(0, "dinner", "sam"), "home");
   assert.equal(defaultPlace(3, "dinner", "sam"), "home");
-  assert.equal(defaultPlace(6, "lunch", "sam"), "away");
-  assert.equal(defaultPlace(5, "dinner", "alex"), "away");
+  assert.equal(defaultPlace(6, "lunch", "sam"), "home");
+  assert.equal(defaultPlace(5, "dinner", "alex"), "home");
   const units = week().filter((s) => s.place !== "away").reduce((s, x) => s + x.portionUnits, 0);
-  assert.equal(units, 10 * 5 + 7 * 4);
+  assert.equal(units, 14 * 5 + 7 * 4);
+});
+
+test("quantités automatiques : les recettes choisies couvrent la semaine, jamais au-delà du double de la fiche", () => {
+  const slots = week();
+  const congelables = library.filter((r) => r.freezerOk && r.servingsUnits >= 20).slice(0, 3);
+  assert.equal(congelables.length, 3);
+  const sized = autoSize(congelables, slots);
+  assert.ok(sized.every((r) => (r.factor ?? 1) <= AUTO_MAX_FACTOR && (r.factor ?? 1) >= 0.5));
+  const a = assign(sized, slots);
+  const before = assign(congelables.map((r) => ({ ...r, factor: 1 })), slots);
+  assert.ok(a.coveredUnits >= before.coveredUnits, "jamais moins couvert qu'à la taille de la fiche");
+  assert.equal(a.uncovered.length, 0, "trois recettes congelables couvrent toute la semaine");
+  // Une seule recette pour deux soirs : la marmite rétrécit au lieu de laisser un gros reste.
+  const short = week((day, meal) => (day < 2 && meal === "dinner" ? "home" : "away"));
+  const one = autoSize([congelables[0]], short);
+  assert.ok((one[0].factor ?? 1) < 1, `facteur ${one[0].factor}`);
+  assert.equal(assign(one, short).uncovered.length, 0);
 });
 
 test("la semaine par défaut : 2 à 4 recettes, presque tout couvert, frigo respecté", () => {

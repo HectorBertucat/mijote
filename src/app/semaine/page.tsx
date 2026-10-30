@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Alert, buttonClass, Card, EmptyState, Icon, Macro, MacroRow, RecipeTile, StampSemainePrete, Tape } from "@/components/ui";
+import { Alert, buttonClass, Card, ChipLink, Chips, Icon, Macro, MacroRow, RecipeTile, StampSemainePrete } from "@/components/ui";
 import { db } from "@/lib/db/client";
 import { addDays, COOK_DAY, DAYS, daysAfterSession, defaultWeek, isWeekStart, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
 import { weekView } from "@/lib/week/store";
 import { composerHref } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
-import { estimateSession } from "@/lib/session/estimate";
+import { estimateRecipe, estimateSession } from "@/lib/session/estimate";
+import { portionOf } from "@/lib/eaters/core";
 import { buildPlan } from "@/lib/session/store";
 import { FactorStepper, type Control } from "@/components/semaine/FactorStepper";
 import { Leftovers, LeftoversSkeleton } from "@/components/semaine/Leftovers";
@@ -22,7 +23,7 @@ import { WeekNutrition } from "@/components/WeekNutrition";
 import { dayRefOf, weekNutrition } from "@/lib/week/nutrition";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PendingMark } from "@/components/PendingMark";
-import { clearAction, extraAction, factorAction, proposeAction, removeAction, swapAction, weekListAction } from "./actions";
+import { addAction, clearAction, extraAction, factorAction, proposeAction, removeAction, weekListAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,8 @@ const dayNum = (w: string, d: number) => Number(addDays(w, d).split("-")[2]);
 const longDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 const titleDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
 
-export default async function Semaine({ searchParams }: { searchParams: Promise<{ w?: string; done?: string }> }) {
-  const { w: wParam, done } = await searchParams;
+export default async function Semaine({ searchParams }: { searchParams: Promise<{ w?: string; done?: string; f?: string }> }) {
+  const { w: wParam, done, f } = await searchParams;
   const w = isWeekStart(wParam) ? wParam : defaultWeek(new Date());
   const view = weekView(db, w);
   const { grid, selected, assignment: a, library, selection, tastes, eaters } = view;
@@ -75,7 +76,8 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
         return { id: wk.personId, name: people.find((p) => p.id === wk.personId)?.name ?? wk.personId, week: wk, ref: e ? dayRefOf(e) : null };
       })
     : null;
-  const toSetup = eaters.filter((e) => e.missing.length > 0 && e.source !== "fixe");
+  // Seul le hors batch manque : la part prend une valeur par défaut raisonnable, pas de quoi alerter ici.
+  const toSetup = eaters.filter((e) => e.missing.some((m) => m !== "ce que tu manges hors batch") && e.source !== "fixe");
   const eatenUnits = a.recipes.reduce((s, r) => s + r.unitsUsed, 0) + a.uncovered.reduce((s, x) => s + x.portionUnits, 0);
 
   // Cases de la grille (une par jour et repas), pour le composant client.
@@ -108,6 +110,29 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
     })
     .filter(Boolean);
 
+  // Bibliothèque (choisir ses recettes) : filtres simples, sans unités ni nombre de repas.
+  const filter = FILTERS.find((x) => x.id === f) ?? FILTERS[0];
+  const chosen = new Set(slugs);
+  const shelf = library
+    .filter((r) => r.status !== "archived" && r.servingsUnits > 0)
+    .map((r) => ({ r, est: estimateRecipe(r) }))
+    .filter(({ r, est }) => filter.match(r, est.activeMin))
+    .sort((x, y) => Number(chosen.has(y.r.slug)) - Number(chosen.has(x.r.slug)) || (x.r.status === "liked" ? 0 : 1) - (y.r.status === "liked" ? 0 : 1) || x.r.name.localeCompare(y.r.name, "fr"));
+  // Repas servis par recette (une personne à un repas = un repas), pour parler en repas et pas en unités.
+  const servedOf = (slug: string) => a.recipes.find((p) => p.slug === slug)?.meals.reduce((s, m) => s + m.personIds.length, 0) ?? 0;
+  const frozenOf = (slug: string) => a.recipes.find((p) => p.slug === slug)?.meals.filter((m) => m.frozen).reduce((s, m) => s + m.personIds.length, 0) ?? 0;
+  const toEat = cells.reduce((s, c) => s + c.slots.filter((x) => x.place !== "away").length, 0);
+  const covered = toEat - a.uncovered.length;
+  // Une part hors repère seulement quand elle compte : protéines trop basses, ou part bloquée (plat trop léger ou trop riche).
+  const offTarget = selected.flatMap((r) =>
+    eaters
+      .filter((e) => e.ref)
+      .map((e) => ({ e, p: portionOf(e, r) }))
+      .filter(({ p }) => p.verdict && (p.verdict.protein === "low" || p.capped))
+      .map(({ e, p }) => `${r.name} : ${p.verdict!.protein === "low" ? `un peu léger en protéines pour ${e.name}` : `part de ${e.name} difficile à caler`}`)
+  );
+  const minutes = plan ? plan.totalMin : est ? est.totalMin : null;
+
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
@@ -117,34 +142,18 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             {ready && <StampSemainePrete seed={w} size={118} className="-my-3" />}
           </div>
           <p className="mt-1.5 text-ink-2">
-            <span className="num">{toCover}</span> repas à couvrir · session le {longDate(addDays(w, COOK_DAY))}
+            <span className="num">{toEat}</span> repas · session le {longDate(addDays(w, COOK_DAY))}
             {awayNote.length > 0 && ` · ${awayNote.join(", ")}`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <nav className="flex items-center gap-1" aria-label="Changer de semaine">
-            <Link href={`/semaine?w=${addDays(w, -7)}`} className={buttonClass({ iconOnly: true })} aria-label="Semaine précédente">
-              <PendingMark idle={<Icon name="chev" className="rotate-180" />} />
-            </Link>
-            <Link href={`/semaine?w=${addDays(w, 7)}`} className={buttonClass({ iconOnly: true })} aria-label="Semaine suivante">
-              <PendingMark idle={<Icon name="chev" />} />
-            </Link>
-          </nav>
-          {selected.length > 0 && (
-            <form action={clearAction}>
-              <input type="hidden" name="w" value={w} />
-              <PendingButton variant="quiet" size="md" loadingLabel="J'efface…">
-                Effacer
-              </PendingButton>
-            </form>
-          )}
-          <form action={proposeAction}>
-            <input type="hidden" name="w" value={w} />
-            <SubmitButton pendingText="Je compose la semaine…" icon="sparkdraft">
-              {selected.length ? "Repropose la semaine" : "Propose la semaine"}
-            </SubmitButton>
-          </form>
-        </div>
+        <nav className="flex items-center gap-1" aria-label="Changer de semaine">
+          <Link href={`/semaine?w=${addDays(w, -7)}`} className={buttonClass({ iconOnly: true })} aria-label="Semaine précédente">
+            <PendingMark idle={<Icon name="chev" className="rotate-180" />} />
+          </Link>
+          <Link href={`/semaine?w=${addDays(w, 7)}`} className={buttonClass({ iconOnly: true })} aria-label="Semaine suivante">
+            <PendingMark idle={<Icon name="chev" />} />
+          </Link>
+        </nav>
       </div>
 
       {flash && (
@@ -153,134 +162,211 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
         </Alert>
       )}
 
-      <section className="grid gap-2" aria-label="Présence de la semaine">
-        <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2 sm:flex">
-          <span className="inline-flex items-center gap-1">
-            <Icon name="home" size="s" /> maison
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Icon name="brief" size="s" /> bureau (repas emporté)
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Icon name="dash" size="s" /> absent
-          </span>
-          <span className="text-faint">· un tap sur une pastille pour changer</span>
-        </p>
-        <WeekGrid cells={cells} dates={DAYS.map((_, d) => dayNum(w, d))} proposed={selected.length > 0} />
-      </section>
-
-      {selected.length > 0 && <MenuBoard title={`semaine du ${titleDate(w)}`} days={board} ready={ready} />}
+      <Card as="section" pad="md" className="grid gap-3" aria-labelledby="choix-titre" id="recettes">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="choix-titre" className="text-[18px] font-bold">
+            Tes recettes
+          </h2>
+          {selected.length > 0 && (
+            <span className={`num text-[14px] font-semibold ${a.uncovered.length ? "text-warn-ink" : "text-ok-ink"}`}>
+              {covered}/{toEat} repas couverts
+            </span>
+          )}
+        </div>
+        {selected.length === 0 ? (
+          <p className="text-[15px] text-ink-2">Choisis 1 à 3 recettes dans la liste plus bas : je calcule les quantités et je répartis les repas de chacun. Ou laisse-moi tout proposer.</p>
+        ) : (
+          <>
+            <div className="h-2 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+              <div className={`h-full rounded-full ${a.uncovered.length ? "bg-warn" : "bg-ok"}`} style={{ width: `${toEat ? Math.round((covered / toEat) * 100) : 0}%` }} />
+            </div>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {selected.map((r) => {
+                const served = servedOf(r.slug);
+                const frozenN = frozenOf(r.slug);
+                return (
+                  <li key={r.slug} className="flex min-w-0 items-center gap-3 rounded-[12px] border border-line bg-surface px-3 py-2.5">
+                    <RecipeTile color={recipeColor(r.slug)} name={r.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/recettes/${r.slug}`} className="block truncate font-semibold hover:text-accent">
+                        {r.name}
+                      </Link>
+                      <p className={`text-[13px] ${served ? "text-ink-2" : "font-semibold text-warn-ink"}`}>
+                        {served ? `${served} repas${frozenN ? ` dont ${frozenN} au congélo` : ""}` : "ne sert à aucun repas"}
+                      </p>
+                    </div>
+                    <form action={removeAction}>
+                      <input type="hidden" name="w" value={w} />
+                      <input type="hidden" name="slug" value={r.slug} />
+                      {f && <input type="hidden" name="f" value={f} />}
+                      <PendingButton variant="quiet" icon="x" iconOnly label={`Retirer ${r.name}`} title="Retirer" />
+                    </form>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {(selected.length === 0 || (a.uncovered.length > 0 && selected.length < 4)) && (
+            <form action={proposeAction}>
+              <input type="hidden" name="w" value={w} />
+              <SubmitButton pendingText="Je complète…" icon="sparkdraft" variant={selected.length ? "soft" : "solid"}>
+                {selected.length ? "Compléter pour moi" : "Propose-moi la semaine"}
+              </SubmitButton>
+            </form>
+          )}
+          {selected.length > 0 && (
+            <form action={clearAction}>
+              <input type="hidden" name="w" value={w} />
+              <PendingButton variant="quiet" size="md" loadingLabel="J'efface…">
+                Tout effacer
+              </PendingButton>
+            </form>
+          )}
+        </div>
+      </Card>
 
       {selected.length > 0 && (
-        <Card pad="md" className="grid gap-3">
+        <section className="grid gap-3" aria-label="Résumé">
           <MacroRow>
-            <Macro value={eatenUnits.toLocaleString("fr-FR")} unit="u" sub="à manger" />
-            <Macro value={cooked} unit="u" sub={`cuites · ${selected.length} recette${selected.length > 1 ? "s" : ""}`} tone={cooked >= eatenUnits ? "ok" : "warn"} />
-            <Macro value={plan ? fmtMin(plan.totalMin) : est ? fmtMin(est.totalMin) : "—"} sub="de session, seul" icon="clock" />
+            <Macro value={`${covered}/${toEat}`} sub="repas couverts" tone={a.uncovered.length ? "warn" : "ok"} />
+            <Macro value={minutes != null ? fmtMin(minutes) : "—"} sub="en cuisine" icon="clock" />
+            <Macro value={selected.length} sub={selected.length > 1 ? "recettes" : "recette"} />
           </MacroRow>
-          <p className="text-[13px] text-ink-2">
-            La part de chacun suit sa cible : (cible du jour − ce qu&apos;il mange hors batch) ÷ 2, divisée par les kcal d&apos;une unité de la recette, au demi près (entre 60 et 160 % de sa part habituelle). Session le dimanche d&apos;avant : frigo jusqu&apos;à J+fridge_days, au-delà congélateur (<Icon name="snow" size={13} className="inline align-[-2px]" label="congélateur" />) si la recette le supporte.
-          </p>
-        </Card>
-      )}
-
-      {toSetup.map((e) => (
-        <Alert key={e.id} tone="warn" title={`Part de ${e.name} : ${e.ref ? "à affiner" : "à la taille habituelle"}`}>
-          Il manque {joinFr(e.missing)} pour calculer sa part depuis sa cible.{" "}
-          <Link href={`/sante/demarrer?p=${e.id}`} className="font-semibold text-accent hover:underline">
-            Compléter le profil de {e.name}
-          </Link>
-        </Alert>
-      ))}
-
-      {selected.length > 0 && a.uncovered.length > 0 && (
-        <Alert tone="warn" title={a.uncovered.length === 1 ? "1 part n'est pas couverte" : `${a.uncovered.length} parts ne sont pas couvertes`}>
-          {a.uncovered.map((s) => `${DAYS[s.day]} ${MEAL_LABEL[s.meal]} ${initial(s.personId)}`).join(", ")}. À prévoir à part (restes, plat minute), ou ajoute des unités à une recette.
-        </Alert>
-      )}
-      {est?.conflicts.map((c, i) => (
-        <Alert key={i} tone="warn" icon={/four/i.test(c.message) ? "oven" : "pot"}>
-          {c.message} <span className="num">(+{fmtMin(c.extraMin)})</span>
-        </Alert>
-      ))}
-      <TastesNote rules={tastes.rules} dislikes={tastes.dislikes} names={names} recipeNames={recipeNames} selected={slugs} />
-
-      {selected.length === 0 ? (
-        <Card flat>
-          <EmptyState scene="fridge" title="Pas encore de recettes cette semaine">
-            Règle qui mange où, puis « Propose la semaine » : je choisis 2 à 4 recettes de la bibliothèque qui couvrent les repas, se gardent assez longtemps, varient la protéine et évitent les conflits d&apos;équipement.
-          </EmptyState>
-        </Card>
-      ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-2">
-          <section id="recettes" className="grid scroll-mt-20 gap-2.5" aria-labelledby="retenues-titre">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 id="retenues-titre" className="text-[18px] font-bold">
-                Recettes retenues
-              </h2>
-              <Link href={composerHref({ slugs, scales, extras })} className="inline-flex min-h-tap items-center gap-1 text-[14px] font-semibold text-accent hover:underline">
-                Ouvrir dans le Composer <PendingMark idle={<Icon name="chev" size="s" />} />
+          {a.uncovered.length > 0 && (
+            <Alert tone="warn" title={a.uncovered.length === 1 ? "Il manque 1 repas" : `Il manque ${a.uncovered.length} repas`}>
+              {selected.length >= 4
+                ? "Quatre recettes, même en double quantité, ne couvrent pas tout : prévois ces repas à part, ou retire des absences."
+                : "Ajoute une recette, ou « Compléter pour moi »."}{" "}
+              <span className="text-ink-2">({a.uncovered.map((s) => `${DAYS[s.day]} ${MEAL_LABEL[s.meal]} ${initial(s.personId)}`).join(", ")})</span>
+            </Alert>
+          )}
+          {offTarget.length > 0 && (
+            <Alert tone="warn" title="Quantités pas tout à fait calées">
+              {offTarget.join(" · ")}.
+            </Alert>
+          )}
+          {est?.conflicts.map((c, i) => (
+            <Alert key={i} tone="warn" icon={/four/i.test(c.message) ? "oven" : "pot"}>
+              {c.message} <span className="num">(+{fmtMin(c.extraMin)})</span>
+            </Alert>
+          ))}
+          {toSetup.map((e) => (
+            <Alert key={e.id} tone="warn" title={`Part de ${e.name} : à la taille habituelle`}>
+              Il manque {joinFr(e.missing)} pour caler sa part sur sa cible.{" "}
+              <Link href={`/sante/demarrer?p=${e.id}`} className="font-semibold text-accent hover:underline">
+                Compléter le profil de {e.name}
               </Link>
+            </Alert>
+          ))}
+          <TastesNote rules={tastes.rules} dislikes={tastes.dislikes} names={names} recipeNames={recipeNames} selected={slugs} />
+          <Card pad="md" className="grid gap-3" aria-labelledby="liste-titre">
+            <h2 id="liste-titre" className="text-[18px] font-bold">
+              Courses
+            </h2>
+            {view.list && <WeekListStatus list={view.list} />}
+            <div className="flex flex-wrap items-center gap-2">
+              <form action={weekListAction}>
+                <input type="hidden" name="w" value={w} />
+                <SubmitButton pendingText="Je prépare la liste…" icon="basket" variant={view.list && !view.list.changed ? "soft" : "solid"}>
+                  {view.list ? "Refaire la liste de courses" : "Faire la liste de courses"}
+                </SubmitButton>
+              </form>
             </div>
-            <ul className="grid gap-3 sm:max-lg:grid-cols-2">
-              {a.recipes.map((rp) => {
-                const r = bySlug.get(rp.slug)!;
-                const factor = r.factor ?? 1;
-                const ctl = (f: number): Control | null => (f === factor ? null : { action: factorAction, fields: { w, slug: rp.slug, factor: String(f) }, to: f });
-                const notFor = [...(tastes.dislikes.get(rp.slug) ?? new Map<string, string[]>())];
-                const added = view.extraLines.filter((x) => x.slug === rp.slug);
-                const meals = [...rp.meals].sort((x, y) => x.day - y.day || (x.meal === y.meal ? 0 : x.meal === "lunch" ? -1 : 1));
-                const span = meals.length ? `${meals.length} repas · ${DAYS[meals[0].day]} ${MEAL_LABEL[meals[0].meal]}${meals.length > 1 ? ` → ${DAYS[meals[meals.length - 1].day]} ${MEAL_LABEL[meals[meals.length - 1].meal]}` : ""}` : "ne sert à aucun repas";
-                return (
-                  <li key={rp.slug} className="min-w-0">
-                    <Card as="article" pad="sm" className="grid animate-pop gap-3">
-                      <div className="flex items-start gap-3">
-                        <RecipeTile color={recipeColor(rp.slug)} name={r.name} />
-                        <div className="min-w-0 flex-1">
-                          <Link href={`/recettes/${rp.slug}`} className="block font-display text-[17px] font-bold leading-[1.2] hover:text-accent">
-                            {r.name}
-                          </Link>
-                          <p className={`mt-0.5 text-[13px] ${meals.length ? "text-ink-2" : "font-semibold text-warn-ink"}`}>{span}</p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <form action={swapAction}>
-                            <input type="hidden" name="w" value={w} />
-                            <input type="hidden" name="slug" value={rp.slug} />
-                            <input type="hidden" name="current" value={slugs.join(",")} />
-                            <PendingButton icon="swap" title={`Échanger ${r.name}`} loadingLabel="…">
-                              Échanger
-                            </PendingButton>
-                          </form>
-                          <form action={removeAction}>
-                            <input type="hidden" name="w" value={w} />
-                            <input type="hidden" name="slug" value={rp.slug} />
-                            <PendingButton variant="quiet" icon="x" iconOnly label={`Retirer ${r.name} de la semaine`} title="Retirer de la semaine" />
-                          </form>
-                        </div>
-                      </div>
+          </Card>
+        </section>
+      )}
+
+      <section className="grid gap-3" aria-labelledby="biblio-titre">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="biblio-titre" className="text-[18px] font-bold">
+            Recettes
+          </h2>
+          <span className="text-[13px] text-ink-2">{selected.length >= 4 ? "4 recettes au plus" : "un tap pour ajouter"}</span>
+        </div>
+        <Chips scroll>
+          {FILTERS.map((x) => (
+            <ChipLink key={x.id} href={`/semaine?w=${w}${x.id === "tout" ? "" : `&f=${encodeURIComponent(x.id)}`}#biblio-titre`} active={x.id === filter.id} scroll={false}>
+              {x.label}
+            </ChipLink>
+          ))}
+        </Chips>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {shelf.map(({ r, est: e }) => {
+            const on = chosen.has(r.slug);
+            const tags = [r.tags.includes("one pot") ? "one pot" : null, `${fmtMin(e.activeMin)} actif`, r.freezerOk ? "congèle" : null, r.status === "liked" ? "aimée" : "à essayer"].filter(Boolean);
+            return (
+              <li key={r.slug}>
+                <form action={on ? removeAction : addAction} className={`flex min-w-0 items-center gap-3 rounded-[12px] border px-3 py-2.5 ${on ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
+                  <input type="hidden" name="w" value={w} />
+                  <input type="hidden" name="slug" value={r.slug} />
+                  {f && <input type="hidden" name="f" value={f} />}
+                  <RecipeTile color={recipeColor(r.slug)} name={r.name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/recettes/${r.slug}`} className="block truncate font-semibold hover:text-accent">
+                      {r.name}
+                    </Link>
+                    <p className="truncate text-[13px] text-ink-2">{tags.join(" · ")}</p>
+                  </div>
+                  {(on || selected.length < 4) && (
+                    <PendingButton variant={on ? "primary" : "secondary"} icon={on ? "check" : "plus"} iconOnly label={on ? `Retirer ${r.name}` : `Ajouter ${r.name}`} title={on ? "Retirer" : "Ajouter"} />
+                  )}
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+        {shelf.length === 0 && <p className="text-[14px] text-ink-2">Aucune recette dans ce filtre.</p>}
+      </section>
+
+      <details className="group rounded-[14px] border border-line bg-surface px-4 py-3">
+        <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-2 font-semibold">
+          <span>Absences et détail de la semaine</span>
+          <Icon name="chev" className="transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="mt-3 grid gap-5">
+          <section className="grid gap-2" aria-label="Présence de la semaine">
+            <p className="text-[14px] text-ink-2">Par défaut, tout le monde mange à tous les repas. Un tap sur une pastille pour dire qui est absent : les quantités et les repas se recalent.</p>
+            <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2 sm:flex">
+              <span className="inline-flex items-center gap-1">
+                <Icon name="home" size="s" /> maison
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Icon name="brief" size="s" /> bureau (repas emporté)
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Icon name="dash" size="s" /> absent
+              </span>
+            </p>
+            <WeekGrid cells={cells} dates={DAYS.map((_, d) => dayNum(w, d))} proposed={selected.length > 0} />
+          </section>
+
+          {selected.length > 0 && <MenuBoard title={`semaine du ${titleDate(w)}`} days={board} ready={ready} />}
+
+          {selected.length > 0 && (
+            <section className="grid gap-3" aria-label="Quantités">
+              <h3 className="font-bold">Quantités à cuire</h3>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {a.recipes.map((rp) => {
+                  const r = bySlug.get(rp.slug)!;
+                  const factor = r.factor ?? 1;
+                  const ctl = (fx: number): Control | null => (fx === factor ? null : { action: factorAction, fields: { w, slug: rp.slug, factor: String(fx) }, to: fx });
+                  const added = view.extraLines.filter((x) => x.slug === rp.slug);
+                  return (
+                    <li key={rp.slug} className="grid gap-2 rounded-[12px] border border-line p-3">
+                      <b className="truncate">{r.name}</b>
                       <div className="flex flex-wrap items-end justify-between gap-3">
                         <PartMacros kcalUnit={r.kcalUnit} proteinUnit={r.proteinUnit} eaters={eaters} />
                         <FactorStepper name={r.name} factor={factor} units={unitsOf(r)} dec={ctl(stepFactor(factor, -1))} inc={ctl(stepFactor(factor, 1))} />
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[13px] text-ink-2">
-                        <span className="num">{rp.unitsUsed} u mangées</span>
-                        <span className="num">{rp.unitsLeft > 0 ? `reste ${rp.unitsLeft} u${r.freezerOk ? " (congélo)" : ""}` : "rien ne reste"}</span>
-                        <span className="inline-flex items-center gap-[5px]">
-                          <Icon name="fridge" size="s" />
-                          frigo J+{r.fridgeDays ?? 3}
-                        </span>
-                        {r.freezerOk && (
-                          <span className="inline-flex items-center gap-[5px]">
-                            <Icon name="snow" size="s" />
-                            congèle
-                          </span>
-                        )}
-                        <span className="num">fiche {r.servingsUnits} u</span>
-                      </div>
+                      <p className="num text-[13px] text-ink-2">
+                        {rp.unitsUsed} u mangées · {rp.unitsLeft > 0 ? `reste ${rp.unitsLeft} u${r.freezerOk ? " (congélo)" : ""}` : "rien ne reste"} · frigo J+{r.fridgeDays ?? 3}
+                      </p>
                       {added.map((x) => (
                         <form key={x.ingredientId} action={extraAction}>
                           <Alert tone="ok" icon="leaf" className="!py-2 text-[14px]" action={<PendingButton variant="quiet" className="!text-ok-ink">Retirer</PendingButton>}>
-                            +{fmtG(x.grams)} {x.item.split(/[,(]/)[0].toLowerCase()} pour finir le paquet (part recalculée)
+                            +{fmtG(x.grams)} {x.item.split(/[,(]/)[0].toLowerCase()} pour finir le paquet
                           </Alert>
                           <input type="hidden" name="w" value={w} />
                           <input type="hidden" name="slug" value={rp.slug} />
@@ -288,70 +374,44 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                           <input type="hidden" name="grams" value="0" />
                         </form>
                       ))}
-                      {notFor.length > 0 && (
-                        <p className="flex items-start gap-1.5 text-[13px] text-warn-ink">
-                          <Icon name="alert" size="s" className="mt-px shrink-0" />
-                          {notFor.map(([who, what]) => `Jamais pour ${names[who] ?? who} (${joinFr(what)})`).join(" · ")}
-                        </p>
-                      )}
-                      {meals.length > 0 && (
-                        <ul className="flex flex-wrap gap-2 pt-0.5">
-                          {meals.map((m) => (
-                            <li key={`${m.day}${m.meal}${m.personIds.join()}`}>
-                              <Tape tint={m.frozen ? "var(--c-accent)" : recipeColor(rp.slug)} seed={`${rp.slug}${m.day}${m.meal}`} className="!text-[17px]">
-                                <span className="inline-flex items-center gap-1">
-                                  {m.frozen && <Icon name="snow" size={13} label="congelé" />}
-                                  {DAYS[m.day]} {MEAL_LABEL[m.meal]} · {m.personIds.map(initial).join("+")}
-                                  <span className="sr-only"> (J+{daysAfterSession(m.day)})</span>
-                                </span>
-                              </Tape>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </Card>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-[13px] text-ink-2">
+                Les quantités se calent toutes seules sur les repas (jusqu&apos;au double de la fiche) ; − / + pour forcer. La part de chacun suit sa cible : (cible du jour − hors batch) ÷ 2, au demi près. Au-delà du frigo, congélateur (<Icon name="snow" size={13} className="inline align-[-2px]" label="congélateur" />) si la recette le supporte.
+              </p>
+            </section>
+          )}
 
           {nutrition && <WeekNutrition people={nutrition} stack />}
-        </div>
-      )}
 
-      {selected.length > 0 && (
-        <Suspense key={JSON.stringify(selection)} fallback={<LeftoversSkeleton />}>
-          <Leftovers sel={selection} mode={{ kind: "week", w }} />
-        </Suspense>
-      )}
-
-      {selected.length > 0 && (
-        <Card as="section" pad="md" className="grid gap-3" aria-labelledby="liste-titre">
-          <h2 id="liste-titre" className="text-[18px] font-bold">
-            Courses de la semaine
-          </h2>
-          {view.list && <WeekListStatus list={view.list} />}
-          <div className="flex flex-wrap items-center gap-2">
-            <form action={weekListAction}>
-              <input type="hidden" name="w" value={w} />
-              <SubmitButton pendingText="Je prépare la liste…" icon="basket" variant={view.list && !view.list.changed ? "soft" : "solid"}>
-                {view.list ? "Refaire la liste de courses" : "Faire la liste de courses"}
-              </SubmitButton>
-            </form>
-            <Link href={composerHref({ slugs, scales, extras })} className={buttonClass({ variant: "quiet" })}>
-              <Icon name="pot" />
-              Ouvrir dans le Composer <PendingMark />
+          {selected.length > 0 && (
+            <Suspense key={JSON.stringify(selection)} fallback={<LeftoversSkeleton />}>
+              <Leftovers sel={selection} mode={{ kind: "week", w }} />
+            </Suspense>
+          )}
+          {selected.length > 0 && (
+            <Link href={composerHref({ slugs, scales, extras })} className="inline-flex min-h-tap items-center gap-1 text-[14px] font-semibold text-accent hover:underline">
+              Ouvrir dans le Composer <PendingMark idle={<Icon name="chev" size="s" />} />
             </Link>
-          </div>
-          <p className="text-[13px] text-ink-2">
-            La liste suit les unités choisies (<span className="num">{cooked} u</span>) et les grammes ajoutés pour finir les paquets.
-          </p>
-        </Card>
-      )}
+          )}
+        </div>
+      </details>
     </div>
   );
 }
+
+type Filter = { id: string; label: string; match: (r: { tags: string[]; freezerOk: boolean; status?: string }, activeMin: number) => boolean };
+const FILTERS: Filter[] = [
+  { id: "tout", label: "Tout", match: () => true },
+  { id: "one pot", label: "One pot", match: (r) => r.tags.includes("one pot") },
+  { id: "rapide", label: "Rapide", match: (r, m) => r.tags.includes("rapide") || m <= 40 },
+  { id: "four", label: "Four", match: (r) => r.tags.includes("four") },
+  { id: "congele", label: "Congèle", match: (r) => r.freezerOk },
+  { id: "aimees", label: "Aimées", match: (r) => r.status === "liked" },
+  { id: "essayer", label: "À essayer", match: (r) => r.status !== "liked" },
+];
 
 function flashText(done: string | undefined, bySlug: Map<string, { name: string }>): string | null {
   if (!done) return null;
