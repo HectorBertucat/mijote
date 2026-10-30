@@ -49,6 +49,8 @@ On choisit seulement ses recettes (1 à 4, avec des filtres : one pot, rapide, f
 
 Par défaut, tout le monde mange à tous les repas ; les absences et le détail (menu, unités, nutrition) sont repliés en bas de la page.
 
+**Changer la période** : une semaine va du lundi au dimanche, mais on peut choisir « du … au … », de 1 à 14 jours, avec des raccourcis (1 semaine, 10 jours, 2 semaines). La session de cuisine a lieu la veille du premier jour. Les recettes choisies et les absences restent ; les quantités se recalent (au-delà de la durée au frigo, le congélateur prend le relais). Les flèches passent à la période d'avant ou d'après, de même longueur.
+
 Le **Composer** fait la même chose sans la semaine : choisis 2 à 4 recettes, vois la durée de session estimée et les associations qui vont bien ensemble.
 
 ## 5. Courses

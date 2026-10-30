@@ -15,6 +15,7 @@ import { acceptedForItems } from "@/lib/products/list";
 import { orderedIngredientsFor } from "@/lib/shopping/ordered";
 import { db } from "@/lib/db/client";
 import { recipeIngredients, recipes, shoppingItems, shoppingLists, weekPlans } from "@/lib/db/schema";
+import { periodHeading } from "@/lib/week/period";
 import { factorLabel } from "@/lib/week/selection";
 import { AISLES } from "@/lib/shopping/rules";
 import { accountEnabled, catalogEnabled, type ResolvedProduct } from "@/lib/chronocatalog";
@@ -85,7 +86,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
   const items = db.select().from(shoppingItems).where(eq(shoppingItems.listId, id)).orderBy(asc(shoppingItems.position)).all();
   const recipeRows = db.select({ id: recipes.id, name: recipes.name, slug: recipes.slug, servingsUnits: recipes.servingsUnits }).from(recipes).all();
   const recipeNames = new Map(recipeRows.map((r) => [r.id, r.name]));
-  const week = list.weekPlanId ? db.select({ weekStart: weekPlans.weekStart }).from(weekPlans).where(eq(weekPlans.id, list.weekPlanId)).get() : null;
+  const week = list.weekPlanId ? db.select({ weekStart: weekPlans.weekStart, days: weekPlans.days }).from(weekPlans).where(eq(weekPlans.id, list.weekPlanId)).get() : null;
   const scaledRecipes = recipeRows.filter((r) => list.recipeSlugs.includes(r.slug) && (list.recipeScales[r.slug] ?? 1) !== 1);
 
   const buy = items.filter((i) => !i.pantry);
@@ -147,7 +148,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
           <p className="mt-1 text-[14px] text-ink-2">
             {week && (
               <Link href={`/semaine?w=${week.weekStart}`} className="font-semibold text-accent hover:underline">
-                Semaine du {new Date(`${week.weekStart}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" })}
+                {periodHeading(week.weekStart, week.days)}
               </Link>
             )}
             {scaledRecipes.map((r) => (

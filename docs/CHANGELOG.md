@@ -7,6 +7,13 @@
 - Planificateur (`PLAN_VERSION` 4) : l'air fryer (`air-fryer`, appareil) est un récipient, sans foyer ni four ; rechange four ↔ air fryer avec conversion de la température et de la durée (`convertForSwap`), seulement si l'étape tient dans le panier. Noms courts des casseroles : petite, moyenne, grande. Documenté dans docs/recettes.md.
 - Tests : `tests/cuisine.test.ts` (préréglages, compatibilités, ancien format, air fryer dans le plan).
 
+## 2026-10-30 : Semaine, période libre
+- La page Semaine choisit sa période « du … au … » (1 à 14 jours), avec des raccourcis 1 semaine, 10 jours, 2 semaines (« Changer la période », feuille avec deux champs date). La session a lieu la veille du premier jour (`COOK_DAY`).
+- Migration `0003_periode` : `week_plans.days` (7 par défaut) ; `week_start` devient le premier jour, n'importe quel jour ; `meal_slots.day` va de 0 à `days − 1`. Les semaines existantes restent des semaines du lundi, sur 7 jours.
+- Logique pure dans `src/lib/week/period.ts` : jours et libellés, lecture « du … au … » (plafond `MAX_DAYS` = 14), période par défaut (celle en cours tant qu'il reste plus de 3 jours, puis la suivante), navigation bout à bout, présences gardées à la même date quand la période bouge (`remapPlaces`).
+- `setPeriod` (`src/lib/week/store.ts`) allonge, raccourcit ou déplace la période ; les recettes restent, les quantités se recalent. La présence par défaut suit le jour de la semaine de la date (`defaultPlace(weekday, …)`).
+- Grille par rangées de 7 jours, menu, nutrition jour par jour (`weekNutrition(…, length)`), journal de Santé (`plannedMeals` trouve la période qui contient le jour) et listes de courses (« du 5 au 14 novembre ») suivent la période.
+
 ## 2026-10-30 : habitudes hors batch
 - Ce qu'une personne mange hors des repas du batch devient une seule source : ses **habitudes** (shaker, petit-déjeuner, en-cas), composées d'aliments de la table nutritionnelle, avec leurs jours. Les macros sont calculées en code (`src/lib/eaters/habits.ts`, testé dans `tests/habitudes.test.ts`). Ce sont les modèles du journal (`food_templates`, colonne `items`, migration `0002_habitudes`) : proposées d'office dans Santé › Aujourd'hui les jours prévus.
 - Hors batch d'un jour = la somme des habitudes prises ce jour-là. Le repère d'un repas du batch prend la moyenne de la semaine (les parts sont cuites d'avance, identiques chaque jour) ; le bilan de la Semaine compte jour par jour (le shaker de semaine ne compte plus le dimanche). Sans habitude, le chiffre libre (`people.outside_kcal`) sert de repli, puis la valeur par défaut (20 % de la journée).
