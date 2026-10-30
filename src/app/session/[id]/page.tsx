@@ -5,6 +5,10 @@ import { db } from "@/lib/db/client";
 import { dayPlan, eventsAfter, getSession } from "@/lib/session/store";
 import { SessionApp } from "@/components/session/SessionApp";
 import { modeOf, type SessionPlan } from "@/lib/session/planner";
+import { mealsOf, type RecipeStorage } from "@/lib/session/flow";
+import { recipes } from "@/lib/db/schema";
+import { householdUnits, loadEaters } from "@/lib/eaters/store";
+import { inArray } from "drizzle-orm";
 import type { DayChoice } from "@/components/session/SessionApp";
 
 const busy = (plan: SessionPlan, p: "A" | "B") =>
@@ -17,13 +21,15 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
   const { vue, personne } = await searchParams;
   const s = getSession(db, id);
   if (!s) notFound();
-  const view = vue === "telephone" ? "phone" : "full";
+  // Par défaut, la vue simple (trois temps, une consigne à la fois) ; ?vue=detail : la vue détaillée
+  // (fil, ressources, minuteurs) ; ?vue=telephone : la vue simple en plein écran, posée à côté du feu.
+  const view = vue === "telephone" ? "phone" : vue === "detail" ? "full" : "simple";
   // L'adresse vue par le navigateur (derrière Caddy et le tunnel : en-têtes transmis).
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3010";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") || /^\d+\.\d+\.\d+\.\d+/.test(host) ? "http" : "https");
   const phoneUrl = `${proto}://${host}/session/${id}?vue=telephone`;
-  const qrSvg = view === "full" ? await QRCode.toString(phoneUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) : null;
+  const qrSvg = view !== "phone" ? await QRCode.toString(phoneUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) : null;
   // À deux : un QR code par personne, qui ouvre son fil sur son téléphone.
   const duo = modeOf(s.plan) === "duo";
   const personQrs =
@@ -46,6 +52,15 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
       duo: d && d.errors.length === 0 ? { totalMin: d.totalMin, aMin: busy(d, "A"), bMin: busy(d, "B") } : null,
     };
   }
+  // Le rangement : une boîte par repas du foyer, et la conservation de chaque fiche.
+  const perMeal = householdUnits(loadEaters(db));
+  const rows = db.select({ slug: recipes.slug, units: recipes.servingsUnits, fridgeDays: recipes.fridgeDays, freezerOk: recipes.freezerOk }).from(recipes).where(inArray(recipes.slug, s.plan.recipes.map((r) => r.slug))).all();
+  const storage: RecipeStorage[] = s.plan.recipes.flatMap((r) => {
+    const row = rows.find((x) => x.slug === r.slug);
+    if (!row) return [];
+    const units = row.units * r.scale;
+    return [{ slug: r.slug, units, meals: mealsOf(units, perMeal), fridgeDays: row.fridgeDays, freezerOk: row.freezerOk }];
+  });
   return (
     <SessionApp
       id={id}
@@ -61,6 +76,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
       person={person}
       dayChoice={dayChoice}
       test={s.test}
+      storage={storage}
     />
   );
 }

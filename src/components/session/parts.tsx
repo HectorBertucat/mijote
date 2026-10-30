@@ -462,15 +462,10 @@ function beep() {
   }
 }
 
-/**
- * Minuteur fini, plein écran (DA « Minuteur fini ») : l'inverse de l'écran autour (clair sur le
- * téléphone sombre, encre sur l'ordinateur), sonne et vibre tant qu'il n'est pas arrêté ;
- * l'arrêter l'arrête sur tous les écrans. Seul propriétaire du son (le Timer du kit reste muet).
- */
-export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { plan: SessionPlan; ringing: TimerState[]; now: number; onStop: (t: TimerState) => void; kitchen?: boolean }) {
-  const any = ringing.length > 0;
+/** Sonne et vibre toutes les 1,5 s tant qu'un minuteur fini n'est pas arrêté. */
+export function useRingAlarm(on: boolean) {
   useEffect(() => {
-    if (!any) return;
+    if (!on) return;
     beep();
     navigator.vibrate?.([300, 150, 300]);
     const i = setInterval(() => {
@@ -478,7 +473,17 @@ export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { pl
       navigator.vibrate?.([300, 150, 300]);
     }, 1500);
     return () => clearInterval(i);
-  }, [any]);
+  }, [on]);
+}
+
+/**
+ * Minuteur fini, plein écran (DA « Minuteur fini ») : l'inverse de l'écran autour (clair sur le
+ * téléphone sombre, encre sur l'ordinateur), sonne et vibre tant qu'il n'est pas arrêté ;
+ * l'arrêter l'arrête sur tous les écrans. Seul propriétaire du son (le Timer du kit reste muet).
+ */
+export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { plan: SessionPlan; ringing: TimerState[]; now: number; onStop: (t: TimerState) => void; kitchen?: boolean }) {
+  const any = ringing.length > 0;
+  useRingAlarm(any);
   if (!any) return null;
   const [t, ...others] = ringing;
   const step = t.stepId ? plan.steps.find((s) => s.id === t.stepId) : undefined;

@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-30 : session, téléphone d'abord
+- La session s'ouvre sur une vue simple, pensée pour le téléphone (`src/components/session/Simple.tsx`, `SimpleDuo.tsx`) : trois temps plein écran, Prépare (tous les bols sur le plan de travail, aliments dessinés), Cuisine (une consigne à la fois, sous-étape en très grand, minuteur en pastille, « Suivant », « Ça sonne bientôt ») et Range (boîtes et frigo), une barre de progression en trois segments, un écran de transition entre les temps et une confirmation de fin. Une attente qui sonne ramène son étape au premier plan, dans l'écran lui-même.
+- Le planificateur ne change pas. Le parcours vient d'un module pur (`src/lib/session/flow.ts` : temps en cours, avancement, ce qui sonne bientôt, une boîte par repas) ; la mise en boîtes est une note du journal (`boxed`, état `boxed` dans `state.ts`), partagée par tous les écrans.
+- À deux : le fil de chacun sur son téléphone (`?personne=A`), les deux côte à côte sur grand écran (touches A et B).
+- Grand écran : la vue simple par défaut, l'ancienne vue en option (`?vue=detail`, lien « Vue détaillée » du menu, « Vue simple » pour revenir). `?vue=telephone` garde la vue simple en plein écran. L'ancienne vue téléphone (`PhoneView.tsx`) est retirée.
+- Clavier : espace = le bouton principal de l'écran (sauf sur un bouton qui a le focus), flèche gauche = retour.
+
 ## 2026-10-30 : grammes par boîte et stock du frigo
 - Fin de session : on pèse chaque marmite cuite (et le riz ou la semoule à part), l'appli dit combien de boîtes pour chacun et combien de grammes dans chaque (« Alex 3 boîtes de 705 g + 250 g de riz »), sans parler d'unités. Une boîte par repas prévu dans la Semaine, puis la marge tour à tour ; la marmite est toujours entièrement répartie. Même calculette sur la fiche recette (« En boîtes »).
 - Garniture cuite à part : nouveau champ facultatif `side` des lignes de recette (format, `recipe_ingredients.side`), posé sur le riz et la semoule de six fiches. Plat et garniture de chacun sont réglés pour viser kcal et protéines (deux poids, deux cibles), le rapport garniture / plat borné entre la moitié et le double de celui de la marmite ; repli sur la proportion simple sans repère ou sans le poids de la garniture (`splitPot`, `sideRatio` dans `src/lib/boxes/core.ts`, tests `tests/boxes.test.ts`).
