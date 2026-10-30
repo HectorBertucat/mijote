@@ -1,0 +1,81 @@
+{
+  "slug": "one-pot-orzo-poulet-champignons-citron",
+  "name": "One pot orzo poulet, champignons et citron",
+  "description": "Champignons bien dorés, poulet, orzo cuit dans le bouillon au thym, fini au zeste de citron et au parmesan. Frais sans être acide.",
+  "servingsUnits": 26,
+  "tags": ["poulet", "pâtes", "one pot", "rapide", "batch"],
+  "fridgeDays": 3,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Classique « one pot orzo » champignons-citron, réécrit pour le batch cooking, avec du poulet pour les protéines.",
+  "tips": "Le citron : le zeste entier, mais le jus d'un demi seulement, puis goûte. Les champignons doivent dorer avant tout le reste : poêle bien chaude, pas de sel avant qu'ils aient rendu leur eau. Au réchauffage, une cuillère d'eau dans la boîte.",
+  "ingredients": [
+    { "lineRaw": "900 g filets de poulet", "item": "Filets de poulet, en dés de 2 cm", "grams": 900, "group": "B", "food": "filet_poulet" },
+    { "lineRaw": "500 g pâtes risoni", "item": "Risoni (orzo), 1 paquet", "grams": 500, "food": "pates" },
+    { "lineRaw": "750 g champignons de Paris", "item": "Champignons de Paris, en lamelles épaisses", "grams": 750, "group": "C", "food": "champignon" },
+    { "lineRaw": "1 citron jaune", "item": "Citron jaune (zeste entier, jus d'une moitié)", "grams": 120, "units": 1, "group": "E", "food": "citron" },
+    { "lineRaw": "60 g parmesan râpé", "item": "Parmesan râpé", "grams": 60, "group": "E", "food": "parmesan" },
+    { "lineRaw": "15 cl crème légère", "item": "Crème légère 15 %", "grams": 150, "group": "E", "food": "creme_legere" },
+    { "lineRaw": "2 échalotes", "item": "Échalotes, ciselées", "grams": 60, "units": 2, "group": "A", "food": "echalote" },
+    { "lineRaw": "3 gousses d'ail", "item": "Ail, haché", "units": 3, "group": "A", "food": "ail" },
+    { "lineRaw": "thym", "item": "Thym (1 c. à c.)", "group": "A", "pantry": true, "food": "zero" },
+    { "lineRaw": "2 cubes bouillon de volaille", "item": "Bouillon de volaille (2 cubes dans 1,3 L d'eau chaude)", "grams": 20, "units": 2, "group": "D", "pantry": true, "food": "bouillon_cube" },
+    { "lineRaw": "huile d'olive", "item": "Huile", "grams": 30, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "tout se fait dans la même cocotte" } },
+    { "lineRaw": "persil", "item": "Persil, ciselé (facultatif)", "optional": true, "pantry": true, "food": "zero" },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : échalotes ciselées + ail haché + thym. Bol B : poulet en dés de 2 cm, séché, salé, poivré. Bol C : champignons en lamelles épaisses. Bol D : 2 cubes de bouillon dans 1,3 L d'eau chaude. Bol E : zeste du citron + jus d'une moitié + crème + parmesan.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": ["A", "B", "C", "D", "E"]
+    },
+    {
+      "kind": "sear",
+      "text": "Cocotte vide sur le grand foyer, 3 min à 7. 1 c. à s. d'huile, champignons (bol C) sans sel : 6 min en remuant peu, jusqu'à ce que l'eau soit évaporée et qu'ils dorent ; sale, réserve. Puis le poulet (bol B) en deux fournées : 3 min sans toucher, remue, 1 min, réserve.",
+      "durationMin": 18,
+      "activeMin": 18,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["B", "C"],
+      "cue": "Champignons dorés et secs ; poulet qui se décolle seul.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 7 },
+        { "text": "Huile + champignons (bol C), sans sel, remue peu", "min": 6, "hobLevel": 7 },
+        { "text": "Sale les champignons, réserve", "min": 0.5 },
+        { "text": "Huile + moitié du poulet (bol B), ne touche pas", "min": 3, "batch": 1 },
+        { "text": "Remue, puis réserve", "min": 1.5, "batch": 1 },
+        { "text": "Le reste du poulet, ne touche pas", "min": 3, "batch": 2 },
+        { "text": "Remue, puis réserve", "min": 1, "batch": 2 }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Même cocotte à 5 : échalotes, ail et thym (bol A) 3 min. Orzo 1 min. Bouillon (bol D), poulet et champignons, ébullition à 9, puis couvert à 3 pendant 10 min en remuant deux fois. Hors du feu : bol E, goûte, rectifie le sel et le citron.",
+      "durationMin": 20,
+      "activeMin": 8,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 5,
+      "bowls": ["A", "D", "E"],
+      "cue": "Orzo tendre avec un peu de mâche, sauce nappante.",
+      "phases": [
+        { "text": "Échalotes, ail et thym (bol A), gratte les sucs", "min": 3, "hobLevel": 5 },
+        { "text": "Orzo, remue 1 min", "min": 1, "hobLevel": 5 },
+        { "text": "Bouillon (bol D), poulet et champignons, porte à ébullition", "min": 3, "hobLevel": 9 },
+        { "text": "Couvert, ça cuit : remue au bout de 5 min", "min": 5, "hobLevel": 3, "wait": true },
+        { "text": "Remue bien le fond, recouvre", "min": 5, "hobLevel": 3, "wait": true },
+        { "text": "Hors du feu : bol E, goûte le citron", "min": 1 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Étale dans les plats pour refroidir vite (moins de 2 h), puis filme et frigo, ou en boîtes au congélateur.",
+      "durationMin": 10,
+      "activeMin": 2
+    }
+  ]
+}

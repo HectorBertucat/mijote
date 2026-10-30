@@ -1,0 +1,92 @@
+{
+  "slug": "poulet-teriyaki-riz",
+  "name": "Poulet teriyaki, riz et haricots verts",
+  "description": "Émincés de cuisse de poulet dorés à la poêle et laqués d'une sauce teriyaki maison (soja, miel, gingembre, ail), avec riz et haricots verts.",
+  "servingsUnits": 26,
+  "tags": ["poulet", "riz", "rapide", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Poulet teriyaki avec sauce maison (d'après Trois fois par jour), réécrit pour le batch cooking, haricots verts à la place du brocoli.",
+  "tips": "Cuisse plutôt que filet : elle reste moelleuse au réchauffage. La sauce caramélise vite : baisse le feu dès qu'elle nappe. Riz et haricots verts à part, poulet laqué par-dessus dans la boîte.",
+  "ingredients": [
+    { "lineRaw": "1,3 kg émincés de cuisse de poulet", "item": "Émincés de cuisse de poulet (sans os ni peau), ou filets en morceaux de 3 cm", "grams": 1300, "group": "B", "food": "haut_cuisse_poulet", "yield": { "trimPct": 3, "note": "sans os ni peau : presque rien à retirer" } },
+    { "lineRaw": "12 cl sauce soja", "item": "Sauce soja salée", "grams": 120, "group": "C", "food": "sauce_soja" },
+    { "lineRaw": "60 g miel", "item": "Miel", "grams": 60, "group": "C", "food": "miel" },
+    { "lineRaw": "1 morceau gingembre", "item": "Gingembre frais, râpé (4 cm)", "grams": 25, "group": "C", "food": "gingembre" },
+    { "lineRaw": "3 gousses d'ail", "item": "Ail, râpé", "units": 3, "group": "C", "food": "ail" },
+    { "lineRaw": "1 c. à s. maïzena", "item": "Fécule de maïs, délayée dans 10 cl d'eau", "grams": 12, "group": "C", "pantry": true, "food": "maizena" },
+    { "lineRaw": "600 g haricots verts", "item": "Haricots verts", "grams": 600, "group": "A", "food": "haricots_verts" },
+    { "lineRaw": "450 g riz basmati", "item": "Riz basmati", "grams": 450, "group": "D", "food": "riz_basmati" },
+    { "lineRaw": "huile", "item": "Huile, pour saisir", "grams": 20, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "la sauce se fait dans la même poêle" } },
+    { "lineRaw": "graines de sésame", "item": "Graines de sésame (facultatif)", "optional": true, "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : haricots verts équeutés. Bol B : poulet en morceaux, séché. Bol C : soja + miel + gingembre + ail + maïzena délayée dans 10 cl d'eau. Bol D : riz rincé.",
+      "durationMin": 14,
+      "activeMin": 14,
+      "bowls": ["A", "B", "C", "D"]
+    },
+    {
+      "kind": "boil",
+      "text": "Riz (bol D) dans la grande casserole, 1,5 fois son volume d'eau salée : ébullition à 9, couvert à 2 pendant 12 min, 5 min de repos sans ouvrir.",
+      "durationMin": 22,
+      "activeMin": 2,
+      "equipmentId": "casserole-18",
+      "equipmentAlt": ["casserole-16"],
+      "hobLevel": 9,
+      "bowls": ["D"],
+      "phases": [
+        { "text": "Riz (bol D) + eau salée, porte à ébullition", "min": 4, "hobLevel": 9 },
+        { "text": "Couvert, à 2, ça cuit", "min": 12, "hobLevel": 2, "wait": true },
+        { "text": "Hors du feu, sans ouvrir", "min": 5, "wait": true },
+        { "text": "Égrène à la fourchette", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Faitout d'eau salée sur le petit foyer à 9. Haricots verts (bol A) 7 min, encore croquants. Égoutte, eau froide.",
+      "durationMin": 18,
+      "activeMin": 3,
+      "equipmentId": "faitout",
+      "equipmentAlt": ["casserole-16"],
+      "hobLevel": 9,
+      "bowls": ["A"],
+      "phases": [
+        { "text": "Eau salée, couvercle, niveau 9", "min": 1, "hobLevel": 9 },
+        { "text": "L'eau chauffe", "min": 9, "wait": true },
+        { "text": "Haricots verts (bol A)", "min": 0.5 },
+        { "text": "Ils cuisent, encore croquants", "min": 6.5, "wait": true },
+        { "text": "Égoutte, eau froide", "min": 1 }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle vide sur le grand foyer, 2 à 3 min à 7, test de la goutte, huile. Poulet (bol B) en trois fournées de 450 g : 3 min sans toucher, retourne, 3 min ; réserve. Remets tout le poulet, sauce (bol C), à 5 : 3 min en remuant, jusqu'à ce qu'elle épaississe et laque les morceaux.",
+      "durationMin": 25,
+      "activeMin": 25,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": ["B", "C"],
+      "cue": "Sauce brillante et sirupeuse qui enrobe le poulet.",
+      "phases": [
+        { "text": "Poêle vide, préchauffe, test de la goutte", "min": 2.5, "hobLevel": 7 },
+        { "text": "Huile + un tiers du poulet (bol B), ne touche pas", "min": 3, "batch": 1 },
+        { "text": "Retourne, 3 min, réserve", "min": 3, "batch": 1 },
+        { "text": "Deuxième tiers, ne touche pas", "min": 3, "batch": 2 },
+        { "text": "Retourne, 3 min, réserve", "min": 3, "batch": 2 },
+        { "text": "Dernier tiers, ne touche pas", "min": 3, "batch": 3 },
+        { "text": "Retourne, 3 min", "min": 3, "batch": 3 },
+        { "text": "Tout le poulet + sauce (bol C), à 5, remue", "min": 3, "hobLevel": 5 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Riz étalé dans un plat, haricots verts et poulet laqué dans les leurs (moins de 2 h). Filme et frigo, ou en boîtes au congélateur.",
+      "durationMin": 10,
+      "activeMin": 2
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "slug": "couscous-poulet-merguez",
+  "name": "Couscous poulet et merguez",
+  "description": "Bouillon de légumes au ras el hanout (carottes, courgettes, navets, pois chiches) avec du poulet (cuisse) fondant, merguez grillées à part et semoule. Encore meilleur le lendemain.",
+  "servingsUnits": 34,
+  "tags": ["poulet", "merguez", "semoule", "mijoté", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Couscous maghrébin familial (poulet, merguez, sept légumes simplifiés à quatre), réécrit pour le batch cooking.",
+  "tips": "Garde la semoule à part : elle se réchauffe avec une cuillère de bouillon. Les merguez grillées à part, leur gras reste dans la poêle (6 suffisent pour le goût, le poulet fait les protéines). Émincés de cuisse : rien à désosser ni à effilocher ; sinon des filets en gros morceaux, mis 10 min avant la fin seulement.",
+  "ingredients": [
+    { "lineRaw": "1,2 kg émincés de cuisse de poulet", "item": "Émincés de cuisse de poulet (sans os ni peau)", "grams": 1200, "group": "B", "food": "haut_cuisse_poulet", "yield": { "trimPct": 3, "note": "sans os ni peau : presque rien à retirer" } },
+    { "lineRaw": "6 merguez", "item": "Merguez (6)", "grams": 330, "units": 6, "group": "F", "food": "merguez", "yield": { "panLossPct": 35, "note": "grillées à part, le gras fondu reste dans la poêle" } },
+    { "lineRaw": "500 g semoule moyenne", "item": "Semoule moyenne", "grams": 500, "group": "G", "food": "semoule" },
+    { "lineRaw": "500 g carottes", "item": "Carottes, en tronçons de 4 cm", "grams": 500, "group": "C", "food": "carotte" },
+    { "lineRaw": "3 courgettes", "item": "Courgettes, en gros tronçons", "grams": 600, "units": 3, "group": "D", "food": "courgette" },
+    { "lineRaw": "2 navets", "item": "Navets, en quartiers", "grams": 300, "units": 2, "group": "C", "food": "navet" },
+    { "lineRaw": "1 boîte pois chiches", "item": "Pois chiches (1 boîte, égouttés)", "grams": 265, "group": "D", "food": "pois_chiches" },
+    { "lineRaw": "2 oignons", "item": "Oignons, émincés", "grams": 300, "units": 2, "group": "A", "food": "oignon" },
+    { "lineRaw": "3 gousses d'ail", "item": "Ail, écrasé", "units": 3, "group": "A", "food": "ail" },
+    { "lineRaw": "2 c. à s. concentré de tomate", "item": "Concentré de tomate", "grams": 30, "group": "A", "pantry": true, "food": "concentre_tomate" },
+    { "lineRaw": "ras el hanout", "item": "Ras el hanout (2 c. à s.), curcuma (1 c. à c.), cannelle (½ c. à c.)", "group": "A", "pantry": true, "food": "zero" },
+    { "lineRaw": "1 cube bouillon de volaille", "item": "Bouillon de volaille (1 cube dans 1,5 L d'eau)", "grams": 10, "units": 1, "pantry": true, "food": "bouillon_cube" },
+    { "lineRaw": "huile d'olive", "item": "Huile", "grams": 30, "pantry": true, "food": "huile", "yield": { "panLossPct": 0, "note": "dans le bouillon et la semoule : tout est mangé" } },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignons + ail + concentré + épices. Bol B : poulet salé. Bol C : carottes et navets. Bol D : courgettes et pois chiches égouttés. Bol F : merguez. Bol G : semoule.",
+      "durationMin": 18,
+      "activeMin": 18,
+      "bowls": ["A", "B", "C", "D", "F", "G"]
+    },
+    {
+      "kind": "braise",
+      "text": "Cocotte sur le grand foyer, 3 min à 7. Huile, poulet (bol B) en deux fournées, 4 min pour colorer ; réserve. À 5 : bol A, 4 min. Poulet, carottes et navets (bol C), bouillon chaud à hauteur, couvert à 3 pendant 25 min. Bol D, encore 15 min.",
+      "durationMin": 58,
+      "activeMin": 18,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["A", "B", "C", "D"],
+      "cue": "Carottes tendres, poulet qui se coupe à la cuillère.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 7 },
+        { "text": "Huile + moitié du poulet (bol B), colore, réserve", "min": 4, "batch": 1 },
+        { "text": "Le reste du poulet, colore, réserve", "min": 4, "batch": 2 },
+        { "text": "À 5 : bol A, remue", "min": 4, "hobLevel": 5 },
+        { "text": "Poulet, bol C, bouillon à hauteur, couvert", "min": 2, "hobLevel": 3 },
+        { "text": "Ça mijote", "min": 25, "hobLevel": 3, "wait": true },
+        { "text": "Bol D", "min": 1, "hobLevel": 3 },
+        { "text": "Ça mijote encore", "min": 14, "hobLevel": 3, "wait": true }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle sur le foyer moyen à 6, sans huile : merguez (bol F) 10 min en les retournant. Laisse le gras dans la poêle, coupe-les en tronçons.",
+      "durationMin": 11,
+      "activeMin": 4,
+      "equipmentId": "poele-28",
+      "hobLevel": 6,
+      "bowls": ["F"],
+      "cue": "Bien dorées sur toutes les faces.",
+      "phases": [
+        { "text": "Merguez (bol F) dans la poêle froide, niveau 6", "min": 1, "hobLevel": 6 },
+        { "text": "Elles grillent, retourne-les de temps en temps", "min": 9, "wait": true },
+        { "text": "Sors-les, coupe en tronçons", "min": 1 }
+      ]
+    },
+    {
+      "kind": "rest",
+      "text": "Semoule (bol G) dans un grand saladier, sel, 1 c. à s. d'huile, autant d'eau bouillante que de semoule (500 ml), couverte 5 min, puis égrène à la fourchette.",
+      "durationMin": 8,
+      "activeMin": 3,
+      "bowls": ["G"]
+    },
+    {
+      "kind": "cool",
+      "text": "Poulet, légumes et merguez avec un peu de bouillon dans les plats, semoule à part. Refroidis à découvert (moins de 2 h), filme et frigo ou congélateur.",
+      "durationMin": 10,
+      "activeMin": 3
+    }
+  ]
+}

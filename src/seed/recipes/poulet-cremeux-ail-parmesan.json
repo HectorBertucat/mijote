@@ -1,0 +1,94 @@
+{
+  "slug": "poulet-cremeux-ail-parmesan",
+  "name": "Poulet crémeux ail et parmesan, pommes de terre rôties",
+  "description": "Poulet doré dans une sauce crémeuse à l'ail et au parmesan, pommes de terre rôties au four et légumes verts. Un plat complet dans chaque boîte.",
+  "servingsUnits": 25,
+  "tags": ["poulet", "pommes de terre", "four", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": false,
+  "status": "to_try",
+  "source": "Classique « creamy garlic parmesan chicken » avec pommes de terre et légumes verts, réécrit pour le batch cooking avec de la crème légère.",
+  "tips": "Les légumes verts : haricots verts ou brocoli, selon les goûts du foyer (la fiche compte des haricots verts). La sauce à la crème légère se tient au réchauffage si elle a été liée à la fécule ; elle supporte mal la congélation (elle tranche), d'où le frigo seulement.",
+  "ingredients": [
+    { "lineRaw": "1 kg filets de poulet", "item": "Filets de poulet, en morceaux de 3 cm", "grams": 1000, "group": "C", "food": "filet_poulet" },
+    { "lineRaw": "1,2 kg pommes de terre", "item": "Pommes de terre à chair ferme, en quartiers", "grams": 1200, "group": "A", "food": "pomme_de_terre" },
+    { "lineRaw": "600 g haricots verts", "item": "Haricots verts (ou brocoli en fleurettes)", "grams": 600, "group": "B", "food": "haricots_verts" },
+    { "lineRaw": "40 cl crème légère", "item": "Crème légère 15 %", "grams": 400, "group": "D", "food": "creme_legere" },
+    { "lineRaw": "20 cl lait demi-écrémé", "item": "Lait demi-écrémé", "grams": 200, "group": "D", "food": "lait_demi" },
+    { "lineRaw": "80 g parmesan râpé", "item": "Parmesan râpé", "grams": 80, "group": "D", "food": "parmesan" },
+    { "lineRaw": "1 c. à s. maïzena", "item": "Fécule de maïs, délayée dans le lait", "grams": 12, "group": "D", "pantry": true, "food": "maizena" },
+    { "lineRaw": "6 gousses d'ail", "item": "Ail, haché", "units": 6, "group": "D", "food": "ail" },
+    { "lineRaw": "herbes de Provence, paprika", "item": "Herbes de Provence (2 c. à c.), paprika (1 c. à c.)", "group": "A", "pantry": true, "food": "zero" },
+    { "lineRaw": "huile d'olive", "item": "Huile (3 c. à s. pour les pommes de terre, 1 pour le poulet)", "grams": 40, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "pommes de terre au four, sauce dans la poêle du poulet" } },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Four à 220 °C. Bol A : pommes de terre en quartiers + 3 c. à s. d'huile + herbes + paprika + sel. Bol B : haricots verts équeutés. Bol C : poulet en morceaux de 3 cm, séché, salé, poivré. Bol D : ail haché ; à côté, crème + lait + maïzena + parmesan mélangés.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": ["A", "B", "C", "D"]
+    },
+    {
+      "kind": "bake",
+      "text": "Pommes de terre (bol A) étalées dans les deux grands plats, 35 min à 220 °C, niveaux 2 et 4, retournées et inversées à mi-cuisson.",
+      "durationMin": 37,
+      "activeMin": 3,
+      "equipmentId": "oven",
+      "ovenTemp": 220,
+      "bowls": ["A"],
+      "cue": "Dorées et croustillantes sur les bords, tendres au couteau.",
+      "phases": [
+        { "text": "Pommes de terre (bol A) étalées, au four (niveaux 2 et 4)", "min": 2 },
+        { "text": "Ça rôtit", "min": 17, "wait": true },
+        { "text": "Retourne-les, inverse les plats", "min": 1 },
+        { "text": "Ça rôtit encore", "min": 16, "wait": true },
+        { "text": "Sors-les", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Faitout d'eau salée sur le foyer moyen à 9. Haricots verts (bol B) 7 min : encore croquants. Égoutte, passe-les sous l'eau froide.",
+      "durationMin": 16,
+      "activeMin": 3,
+      "equipmentId": "faitout",
+      "equipmentAlt": ["casserole-18"],
+      "hobLevel": 9,
+      "bowls": ["B"],
+      "phases": [
+        { "text": "Eau salée, couvercle, niveau 9", "min": 1, "hobLevel": 9 },
+        { "text": "L'eau chauffe", "min": 7, "wait": true },
+        { "text": "Haricots verts (bol B)", "min": 0.5 },
+        { "text": "Ils cuisent, encore croquants", "min": 6.5, "wait": true },
+        { "text": "Égoutte, eau froide", "min": 1 }
+      ]
+    },
+    {
+      "kind": "sear",
+      "text": "Poêle vide sur le grand foyer, 2 à 3 min à 7. Test de la goutte, puis 1 c. à s. d'huile. Poulet (bol C) en deux fournées de 500 g : 3 min sans toucher, retourne, 2 min ; réserve. Baisse à 4, ail 1 min, puis la crème du bol D : 3 min en grattant les sucs, jusqu'à ce qu'elle nappe. Remets le poulet, 2 min.",
+      "durationMin": 18,
+      "activeMin": 18,
+      "equipmentId": "poele-28",
+      "hobLevel": 7,
+      "bowls": ["C", "D"],
+      "cue": "Sauce qui nappe la cuillère, poulet juste cuit (blanc à cœur).",
+      "phases": [
+        { "text": "Poêle vide, préchauffe, test de la goutte", "min": 2.5, "hobLevel": 7 },
+        { "text": "Huile + moitié du poulet (bol C), ne touche pas", "min": 3, "batch": 1 },
+        { "text": "Retourne, 2 min, réserve", "min": 2, "batch": 1 },
+        { "text": "Le reste du poulet, ne touche pas", "min": 3, "batch": 2 },
+        { "text": "Retourne, 2 min, réserve", "min": 2, "batch": 2 },
+        { "text": "Baisse à 4 : ail (bol D), 1 min", "min": 1, "hobLevel": 4 },
+        { "text": "Crème du bol D, gratte les sucs, ça épaissit", "min": 3, "hobLevel": 4 },
+        { "text": "Remets le poulet, 2 min", "min": 1.5, "hobLevel": 4 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Dans chaque plat : pommes de terre, haricots verts, poulet en sauce par-dessus. Refroidis à découvert (moins de 2 h), filme et frigo.",
+      "durationMin": 10,
+      "activeMin": 4
+    }
+  ]
+}

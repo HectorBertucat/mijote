@@ -1,0 +1,95 @@
+{
+  "slug": "gratin-facon-moussaka",
+  "name": "Gratin façon moussaka",
+  "description": "Aubergines rôties au four, pommes de terre, sauce de bœuf maigre à la tomate et à la cannelle, recouvertes d'une crème de skyr aux œufs et au parmesan qui gratine. Plus léger et plus protéiné que la béchamel.",
+  "servingsUnits": 25,
+  "tags": ["bœuf", "légumes", "four", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "D'après la moussaka grecque (aubergines, viande hachée à la cannelle, gratin), réécrite pour le batch cooking avec du bœuf à 5 % et une crème de skyr à la place de la béchamel.",
+  "tips": "Les aubergines rôties au four plutôt que frites : elles boivent beaucoup moins d'huile. Pinceau ou mains, mais pas plus que les 4 c. à s. prévues. Coupe les parts une fois froid : ça se tient.",
+  "ingredients": [
+    { "lineRaw": "1 kg viande hachée pur bœuf 5%", "item": "Bœuf haché 5 % MG", "grams": 1000, "group": "C", "food": "boeuf_hache_5" },
+    { "lineRaw": "4 aubergines", "item": "Aubergines, en tranches de 1 cm", "grams": 1300, "units": 4, "group": "A", "food": "aubergine" },
+    { "lineRaw": "800 g pommes de terre", "item": "Pommes de terre à chair ferme, en tranches de 5 mm", "grams": 800, "group": "B", "food": "pomme_de_terre" },
+    { "lineRaw": "2 x 400 g pulpe de tomates", "item": "Pulpe de tomate (2 boîtes)", "grams": 800, "group": "D", "food": "pulpe_tomate" },
+    { "lineRaw": "1 c. à s. concentré de tomate", "item": "Concentré de tomate", "grams": 15, "group": "D", "pantry": true, "food": "concentre_tomate" },
+    { "lineRaw": "1 oignon", "item": "Oignon, haché", "grams": 150, "units": 1, "group": "D", "food": "oignon" },
+    { "lineRaw": "3 gousses d'ail", "item": "Ail, haché", "units": 3, "group": "D", "food": "ail" },
+    { "lineRaw": "cannelle, origan", "item": "Cannelle (1 c. à c.), origan (1 c. à c.), cumin (½ c. à c.)", "group": "D", "pantry": true, "food": "zero" },
+    { "lineRaw": "500 g skyr nature", "item": "Skyr nature", "grams": 500, "group": "E", "food": "skyr" },
+    { "lineRaw": "2 oeufs", "item": "Œufs", "grams": 120, "units": 2, "group": "E", "food": "oeuf" },
+    { "lineRaw": "50 g parmesan râpé", "item": "Parmesan râpé", "grams": 50, "group": "E", "food": "parmesan" },
+    { "lineRaw": "huile d'olive", "item": "Huile (4 c. à s. pour les aubergines et les pommes de terre, 1 pour la viande)", "grams": 50, "pantry": true, "food": "huile", "yield": { "panLossPct": 0, "note": "au four et dans la sauce : tout est mangé" } },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre, muscade", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Four à 220 °C. Bol A : aubergines en tranches de 1 cm. Bol B : pommes de terre en tranches de 5 mm. Bol C : bœuf. Bol D : oignon + ail + pulpe + concentré + épices. Bol E : skyr + œufs + parmesan + muscade, fouettés.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": ["A", "B", "C", "D", "E"]
+    },
+    {
+      "kind": "bake",
+      "text": "Aubergines (bol A) et pommes de terre (bol B) étalées sur les deux plaques ou dans les deux plats, huile, sel : 25 min à 220 °C, niveaux 2 et 4, inversées à mi-cuisson.",
+      "durationMin": 28,
+      "activeMin": 5,
+      "equipmentId": "oven",
+      "ovenTemp": 220,
+      "bowls": ["A", "B"],
+      "cue": "Aubergines fondantes et dorées, pommes de terre tendres.",
+      "phases": [
+        { "text": "Bols A et B étalés, huile, sel, au four (niveaux 2 et 4)", "min": 4 },
+        { "text": "Ça rôtit", "min": 12, "wait": true },
+        { "text": "Inverse les plaques", "min": 0.5 },
+        { "text": "Ça rôtit encore", "min": 11, "wait": true },
+        { "text": "Sors-les", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "braise",
+      "text": "Pendant ce temps, cocotte sur le grand foyer, 3 min à 7. Huile, bœuf (bol C) en galette : 3 min sans toucher, puis émiette et laisse dorer 4 min. Bol D, sel, poivre, mijote à 3 pendant 15 min.",
+      "durationMin": 26,
+      "activeMin": 11,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 7,
+      "bowls": ["C", "D"],
+      "cue": "Sauce épaisse, plus de jus qui coule.",
+      "phases": [
+        { "text": "Cocotte vide, préchauffe", "min": 3, "hobLevel": 7 },
+        { "text": "Huile + bœuf (bol C) en galette, ne touche pas", "min": 3, "hobLevel": 7 },
+        { "text": "Émiette, laisse dorer", "min": 4, "hobLevel": 7 },
+        { "text": "Bol D, sel, poivre", "min": 1, "hobLevel": 3 },
+        { "text": "Ça mijote, remue de temps en temps", "min": 15, "hobLevel": 3, "wait": true }
+      ]
+    },
+    {
+      "kind": "bake",
+      "text": "Four à 190 °C. Dans les deux plats : pommes de terre, la moitié des aubergines, la viande, le reste des aubergines, puis la crème du bol E. 30 min, niveaux 2 et 4, inversés à mi-cuisson.",
+      "durationMin": 40,
+      "activeMin": 8,
+      "equipmentId": "plat-grand",
+      "ovenTemp": 190,
+      "bowls": ["E"],
+      "cue": "Dessus doré et pris, bords qui bouillonnent.",
+      "phases": [
+        { "text": "Montage : pommes de terre, aubergines, viande, aubergines", "min": 6 },
+        { "text": "Crème du bol E dessus, au four", "min": 1.5 },
+        { "text": "Ça gratine", "min": 15, "wait": true },
+        { "text": "Inverse les plats", "min": 0.5 },
+        { "text": "Ça gratine encore", "min": 15, "wait": true },
+        { "text": "Dessus doré et pris : sors-les", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Repos 15 min, refroidis à découvert (moins de 2 h), coupe en parts une fois froid, filme et frigo ou congélateur.",
+      "durationMin": 20,
+      "activeMin": 3
+    }
+  ]
+}

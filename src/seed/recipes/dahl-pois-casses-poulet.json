@@ -1,0 +1,76 @@
+{
+  "slug": "dahl-pois-casses-poulet",
+  "name": "Dahl de pois cassés au poulet, riz basmati",
+  "description": "Pois cassés fondus au lait de coco, curcuma, cumin et gingembre, avec des dés de poulet pour les protéines. Riz basmati à part.",
+  "servingsUnits": 33,
+  "tags": ["poulet", "légumineuses", "riz", "mijoté", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "D'après le dal indien (pois cassés ou lentilles mijotés aux épices et au lait de coco), réécrit pour le batch cooking, avec du poulet ajouté.",
+  "tips": "Sans le poulet, c'est le dahl végétarien classique, mais une part n'apporte alors qu'environ 30 g de protéines : il faut compléter ailleurs dans la journée. Le dahl épaissit beaucoup en refroidissant : un peu d'eau au réchauffage. Riz à part, il se garde mieux.",
+  "ingredients": [
+    { "lineRaw": "400 g pois cassés", "item": "Pois cassés, rincés", "grams": 400, "group": "C", "food": "pois_casses" },
+    { "lineRaw": "900 g filets de poulet", "item": "Filets de poulet, en dés de 2 cm", "grams": 900, "group": "D", "food": "filet_poulet" },
+    { "lineRaw": "40 cl lait de coco", "item": "Lait de coco (1 boîte de 400 ml)", "grams": 400, "group": "E", "food": "lait_coco" },
+    { "lineRaw": "400 g riz basmati", "item": "Riz basmati", "grams": 400, "group": "F", "food": "riz_basmati" },
+    { "lineRaw": "400 g pulpe de tomates", "item": "Pulpe de tomate (1 boîte)", "grams": 400, "group": "C", "food": "pulpe_tomate" },
+    { "lineRaw": "2 oignons", "item": "Oignons, émincés", "grams": 300, "units": 2, "group": "A", "food": "oignon" },
+    { "lineRaw": "4 gousses d'ail", "item": "Ail, râpé", "units": 4, "group": "A", "food": "ail" },
+    { "lineRaw": "1 morceau gingembre", "item": "Gingembre frais, râpé (4 cm)", "grams": 25, "group": "A", "food": "gingembre" },
+    { "lineRaw": "curcuma, cumin, garam masala", "item": "Cumin (2 c. à c.), curcuma (2 c. à c.), garam masala ou curry (2 c. à c.)", "group": "A", "pantry": true, "food": "zero" },
+    { "lineRaw": "1 cube bouillon de légumes", "item": "Bouillon (1 cube dans 1,2 L d'eau chaude)", "grams": 10, "units": 1, "group": "C", "pantry": true, "food": "bouillon_cube" },
+    { "lineRaw": "huile", "item": "Huile", "grams": 25, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "épices et poulet dans la cocotte du dahl" } },
+    { "lineRaw": "coriandre", "item": "Coriandre fraîche (facultatif)", "optional": true, "food": "zero" },
+    { "lineRaw": "sel", "item": "Sel", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Bol A : oignons émincés + ail et gingembre râpés + épices. Bol C : pois cassés rincés + pulpe + bouillon chaud. Bol D : poulet en dés, salé. Bol E : lait de coco. Bol F : riz rincé.",
+      "durationMin": 12,
+      "activeMin": 12,
+      "bowls": ["A", "C", "D", "E", "F"]
+    },
+    {
+      "kind": "braise",
+      "text": "Cocotte sur le grand foyer à 5 : huile, bol A 6 min jusqu'à ce que les oignons soient fondants et les épices parfumées. Bol C, ébullition à 9, puis couvert à 3 pendant 35 min en remuant de temps en temps (ça attache). Poulet (bol D) et lait de coco (bol E), encore 12 min à découvert.",
+      "durationMin": 58,
+      "activeMin": 12,
+      "equipmentId": "cocotte",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 5,
+      "bowls": ["A", "C", "D", "E"],
+      "cue": "Pois cassés fondus en purée épaisse, poulet blanc à cœur.",
+      "phases": [
+        { "text": "Huile + bol A, remue", "min": 6, "hobLevel": 5 },
+        { "text": "Bol C, porte à ébullition", "min": 3, "hobLevel": 9 },
+        { "text": "Couvert, ça mijote : remue au fond de temps en temps", "min": 35, "hobLevel": 3, "wait": true },
+        { "text": "Poulet (bol D) et lait de coco (bol E)", "min": 1.5, "hobLevel": 4 },
+        { "text": "À découvert, le poulet cuit dans le dahl", "min": 12, "hobLevel": 4, "wait": true }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Riz (bol F) dans la grande casserole, 1,5 fois son volume d'eau salée : ébullition à 9, puis couvert à 2 pendant 12 min, et 5 min de repos hors du feu sans ouvrir.",
+      "durationMin": 22,
+      "activeMin": 2,
+      "equipmentId": "casserole-18",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 9,
+      "bowls": ["F"],
+      "phases": [
+        { "text": "Riz (bol F) + eau salée, porte à ébullition", "min": 4, "hobLevel": 9 },
+        { "text": "Couvert, à 2, ça cuit", "min": 12, "hobLevel": 2, "wait": true },
+        { "text": "Hors du feu, sans ouvrir", "min": 5, "wait": true },
+        { "text": "Égrène à la fourchette", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Dahl dans un plat, riz étalé dans un autre pour refroidir vite (moins de 2 h). Filme et frigo, ou en boîtes au congélateur.",
+      "durationMin": 10,
+      "activeMin": 2
+    }
+  ]
+}

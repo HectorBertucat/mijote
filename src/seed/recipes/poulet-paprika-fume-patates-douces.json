@@ -1,0 +1,74 @@
+{
+  "slug": "poulet-paprika-fume-patates-douces",
+  "name": "Poulet au paprika fumé, patates douces rôties et riz",
+  "description": "Poulet mariné au paprika fumé, à l'ail et au miel, rôti au four avec des cubes de patate douce, servi sur du riz avec une sauce skyr à l'ail.",
+  "servingsUnits": 28,
+  "tags": ["poulet", "patate douce", "riz", "four", "batch"],
+  "fridgeDays": 4,
+  "freezerOk": true,
+  "status": "to_try",
+  "source": "Classique « plaque au four » poulet paprika fumé et patates douces, réécrit pour le batch cooking.",
+  "tips": "Le poulet va au four après les patates douces, pour ne pas sécher : 18 min suffisent. Sauce skyr à part, dans un petit pot, à ajouter après réchauffage.",
+  "ingredients": [
+    { "lineRaw": "1,2 kg filets de poulet", "item": "Filets de poulet, en morceaux de 3 cm", "grams": 1200, "group": "B", "food": "filet_poulet" },
+    { "lineRaw": "1 kg patates douces", "item": "Patates douces, en cubes de 2 cm", "grams": 1000, "group": "A", "food": "patate_douce" },
+    { "lineRaw": "400 g riz basmati", "item": "Riz basmati", "grams": 400, "group": "D", "food": "riz_basmati" },
+    { "lineRaw": "200 g skyr nature", "item": "Skyr nature, pour la sauce", "grams": 200, "group": "C", "food": "skyr" },
+    { "lineRaw": "1 oignon rouge", "item": "Oignon rouge, en quartiers", "grams": 150, "units": 1, "group": "A", "food": "oignon" },
+    { "lineRaw": "4 gousses d'ail", "item": "Ail, râpé (3 pour la marinade, 1 pour la sauce)", "units": 4, "group": "B", "food": "ail" },
+    { "lineRaw": "paprika fumé", "item": "Paprika fumé (1 c. à s.), cumin (1 c. à c.), origan (1 c. à c.)", "group": "B", "pantry": true, "food": "zero" },
+    { "lineRaw": "1 c. à s. miel", "item": "Miel, dans la marinade", "grams": 20, "group": "B", "pantry": true, "food": "miel" },
+    { "lineRaw": "huile d'olive", "item": "Huile (3 c. à s. pour les patates douces, 1 pour le poulet)", "grams": 40, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "au four : presque tout reste sur les légumes" } },
+    { "lineRaw": "persil", "item": "Persil ou ciboulette, pour la sauce (facultatif)", "optional": true, "group": "C", "food": "zero" },
+    { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
+  ],
+  "steps": [
+    {
+      "kind": "prep",
+      "text": "Four à 220 °C. Bol A : patates douces en cubes + oignon rouge + 3 c. à s. d'huile + sel. Bol B : poulet + 3 gousses d'ail + paprika fumé + cumin + origan + miel + 1 c. à s. d'huile + sel. Bol C : skyr + 1 gousse d'ail + herbes + sel. Bol D : riz rincé.",
+      "durationMin": 15,
+      "activeMin": 15,
+      "bowls": ["A", "B", "C", "D"]
+    },
+    {
+      "kind": "bake",
+      "text": "Patates douces (bol A) étalées dans les deux grands plats, niveaux 2 et 4 : 15 min. Ajoute le poulet (bol B) par-dessus, inverse les plats, encore 18 min.",
+      "durationMin": 35,
+      "activeMin": 4,
+      "equipmentId": "oven",
+      "ovenTemp": 220,
+      "bowls": ["A", "B"],
+      "cue": "Patates douces caramélisées sur les bords, poulet blanc à cœur et doré.",
+      "phases": [
+        { "text": "Patates douces (bol A) étalées, au four (niveaux 2 et 4)", "min": 2 },
+        { "text": "Elles rôtissent", "min": 13, "wait": true },
+        { "text": "Poulet (bol B) par-dessus, inverse les plats", "min": 2 },
+        { "text": "Ça rôtit", "min": 17, "wait": true },
+        { "text": "Sors-les", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "boil",
+      "text": "Riz (bol D) dans la grande casserole, 1,5 fois son volume d'eau salée : ébullition à 9, couvert à 2 pendant 12 min, 5 min de repos sans ouvrir.",
+      "durationMin": 22,
+      "activeMin": 2,
+      "equipmentId": "casserole-18",
+      "equipmentAlt": ["faitout"],
+      "hobLevel": 9,
+      "bowls": ["D"],
+      "phases": [
+        { "text": "Riz (bol D) + eau salée, porte à ébullition", "min": 4, "hobLevel": 9 },
+        { "text": "Couvert, à 2, ça cuit", "min": 12, "hobLevel": 2, "wait": true },
+        { "text": "Hors du feu, sans ouvrir", "min": 5, "wait": true },
+        { "text": "Égrène à la fourchette", "min": 0.5 }
+      ]
+    },
+    {
+      "kind": "cool",
+      "text": "Riz étalé dans un plat, poulet et patates douces dans les leurs (moins de 2 h). Sauce skyr (bol C) dans un pot à part. Filme et frigo, ou en boîtes au congélateur (sans la sauce).",
+      "durationMin": 10,
+      "activeMin": 3,
+      "bowls": ["C"]
+    }
+  ]
+}

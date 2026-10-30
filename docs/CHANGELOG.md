@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 2026-10-30 : douze recettes de batch cooking
+- Douze fiches ajoutées à `src/seed/recipes/` (statut « à essayer ») : trois one pot d'orzo au poulet (épinards-parmesan, champignons-citron, épicé au chorizo), cannelloni bolognaise, gratin façon moussaka, poulet crémeux ail-parmesan, couscous poulet-merguez, dahl de pois cassés au poulet, butter chicken express, poulet au paprika fumé et patates douces, poulet basquaise, poulet teriyaki. Des classiques réécrits pour le batch cooking (source citée sur chaque fiche), autour de 145 kcal et 11 à 13 g de protéines par unité : environ 30 % des calories viennent des protéines.
+- Table nutritionnelle : 17 aliments de plus (merguez, chorizo, bœuf haché 5 %, pois cassés, semoule, patate douce, épinards, aubergine, brocoli, navet, tomates séchées, citron, parmesan, mozzarella, skyr, lait demi-écrémé, lait de coco), valeurs Ciqual. Le calcul ne change pas (`NUTRITION_VERSION` inchangée).
+- Un dessin pour chacun (`src/lib/illus/art.ts`), avec huit jetons de couleur `--i-*` de plus (aubergine, citron, pois cassés, patate douce, coco), admis aussi pour les dessins de l'IA.
+- Tests : plafonds de durée mesurés pour les nouvelles paires de recettes (153 paires, toutes planifiées sans erreur) ; le test de la cuisine compte les fiches au lieu d'en attendre six.
+
 ## 2026-10-28 : guide visuel du rythme
 - En séance guidée, une bille suit la courbe du tempo (comme l'écran d'une machine de sport) : on voit venir chaque phase, au même instant que la figure et les bips (`src/lib/training/rhythm.ts`, `RhythmGuide.tsx`).
 
