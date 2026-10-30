@@ -81,17 +81,28 @@ export const FOODS = {
   persil: f("Persil", 40, 3, 6, 0.8, 4),
   citron_vert: f("Citron vert (jus et zeste)", 30, 0.4, 8, 0.2, 0.3, 60),
   citron: f("Citron jaune (jus et zeste)", 30, 0.4, 8, 0.2, 0.3, 120),
+  banane: f("Banane (sans la peau)", 90, 1.1, 20, 0.3, 2, 120),
+  pomme: f("Pomme", 54, 0.3, 11.5, 0.2, 1.4, 150),
   // Laitiers, matières grasses
   ricotta: f("Ricotta", 140, 8, 4, 10),
   emmental_rape: f("Emmental râpé", 380, 28, 0, 29),
   parmesan: f("Parmesan", 395, 33.5, 0, 28.5),
   mozzarella: f("Mozzarella", 240, 18, 1, 18.5, 0, 125),
   skyr: f("Skyr nature 0 %", 63, 10.5, 4, 0.2),
+  yaourt: f("Yaourt nature", 52, 4.3, 5.5, 1.2, 0, 125),
   lait_demi: f("Lait demi-écrémé", 46, 3.3, 4.8, 1.6),
   lait_coco: f("Lait de coco", 190, 1.8, 3, 19),
   creme_legere: f("Crème légère 15 %", 165, 2.8, 4, 15),
   beurre: f("Beurre", 740, 0.7, 0.6, 82),
   huile: f("Huile", 900, 0, 0, 100, 0, undefined, { panLossPct: 30 }), // défaut : saisie à la poêle (PAN_LOSS.saisie)
+  // Petit-déjeuner, en-cas (étiquette moyenne pour les poudres de protéine)
+  pain: f("Pain (baguette)", 270, 9, 55, 1.5, 2.7),
+  pain_complet: f("Pain complet", 245, 9, 43, 3, 7),
+  flocons_avoine: f("Flocons d'avoine", 370, 13.5, 58.5, 7, 10),
+  whey: f("Protéine en poudre (whey)", 380, 75, 8, 6, 0.5),
+  proteine_vegetale: f("Protéine en poudre végétale (pois, riz)", 375, 72, 6, 6.5, 3),
+  confiture: f("Confiture", 245, 0.4, 60, 0.1, 1),
+  amandes: f("Amandes", 620, 25, 7, 52, 12),
   // Épicerie
   sucre: f("Sucre", 400, 0, 100, 0),
   miel: f("Miel", 320, 0.3, 80, 0),

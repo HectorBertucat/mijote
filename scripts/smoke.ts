@@ -119,6 +119,7 @@ async function main() {
     for (const p of ["/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins"])
       await page(p, undefined);
     await page("/recettes", undefined, /Léa/);
+    await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
     await page("/sante/entrainement?vue=programme", "mijote.profil=lea", /Changer de programme/);
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
     check((await get("/bienvenue")).status === 307, "mise en route faite → /bienvenue renvoie à l'accueil");

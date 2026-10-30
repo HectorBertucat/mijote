@@ -5,8 +5,9 @@ SQLite + Drizzle, une migration initiale (`src/lib/db/migrations/0000_init.sql`)
 ## 1. Personnes, préférences, équipement
 | Table | Champs principaux | Rôle |
 |---|---|---|
-| `people` | id, name, portion_units (part de base), notes, profil Santé (sex, birth_date, height_cm, activity, goal, rate_pct, protein_g_per_kg, protein_g), outside_kcal/outside_protein_g (mangé par jour hors batch), setup_done_at (mise en route faite) | Le foyer, créé à la mise en route (`/bienvenue`), `rank` = ordre ; la part réelle d'une recette suit la cible (`src/lib/eaters`) |
+| `people` | id, name, portion_units (part de base), notes, profil Santé (sex, birth_date, height_cm, activity, goal, rate_pct, protein_g_per_kg, protein_g), outside_kcal/outside_protein_g (mangé par jour hors batch : repli quand la personne n'a pas d'habitude), setup_done_at (mise en route faite) | Le foyer, créé à la mise en route (`/bienvenue`), `rank` = ordre ; la part réelle d'une recette suit la cible (`src/lib/eaters`) |
 | `preferences` | id, person_id?, kind (`like`, `dislike`, `avoid_task`, `rule`), text, tags | Goûts, tâches pénibles, règles de cuisine |
+| `food_templates` | id, person_id? (nul : tout le foyer), label, meal (`breakfast`, `snack`…), items (json : aliment de la table nutritionnelle → grammes, migration 0002), kcal, protein_g, fat_g, carbs_g (recalculés depuis items), weekdays (0 = lundi), position, archived | Habitudes hors batch : proposées d'office dans le journal les jours prévus, elles font le hors batch du jour (`src/lib/eaters/habits.ts`) ; sans items, chiffres saisis (anciennes habitudes) |
 | `equipment` | id, kind (`hob`, `oven`, `pan`, `pot`, `dish`, `appliance`, `utensil`), name, dims_json, capacity_l, max_batch_g, count, owned | Foyers, four, poêle, cocotte, casseroles, plats… décrits par la mise en route (`src/lib/kitchen/presets.ts`). Les récipients standard existent toujours (les recettes les citent) ; `owned = false` : absent de cette cuisine |
 | `equipment_fit` | equipment_id, hob_id | Quel récipient va sur quel foyer |
 

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8c999378-f896-4cfd-a0d0-c467ea4f334a",
+  "id": "b0fee029-5977-405f-8b69-ea4763ac5e7e",
   "prevId": "af6086bd-a354-4754-8663-1a3a507e1982",
   "tables": {
     "adjust_proposals": {
@@ -1200,6 +1200,14 @@
         },
         "weekdays": {
           "name": "weekdays",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
+        "items": {
+          "name": "items",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -3484,14 +3492,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "days": {
-          "name": "days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 7
         }
       },
       "indexes": {

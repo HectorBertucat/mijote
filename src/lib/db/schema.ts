@@ -518,7 +518,9 @@ export const foodLog = sqliteTable(
   (t) => [index("idx_food_log_person_date").on(t.personId, t.date)]
 );
 
-// Habitudes cochées en un tap (shaker du matin…). person_id nul = pour tout le monde.
+// Habitudes hors batch (shaker du matin, petit-déjeuner…), cochées en un tap dans le journal.
+// person_id nul = pour tout le monde. items : les aliments (src/lib/eaters/habits.ts) ; quand il y
+// en a, kcal et macros en sont recalculés ; vides = une ancienne habitude aux chiffres saisis.
 export const foodTemplates = sqliteTable("food_templates", {
   id: text("id").primaryKey(),
   personId: text("person_id").references(() => people.id),
@@ -528,7 +530,8 @@ export const foodTemplates = sqliteTable("food_templates", {
   proteinG: real("protein_g").notNull().default(0),
   fatG: real("fat_g"),
   carbsG: real("carbs_g"),
-  weekdays: json<number[]>("weekdays").notNull().default(sql`'[]'`), // 0 = lundi ; jours où il est proposé d'office
+  weekdays: json<number[]>("weekdays").notNull().default(sql`'[]'`), // 0 = lundi ; jours où il est pris (proposé d'office, compté dans le hors batch)
+  items: json<{ food: string; grams: number }[]>("items").notNull().default(sql`'[]'`),
   position: integer("position").notNull().default(0),
   archived: integer("archived", { mode: "boolean" }).notNull().default(false),
 });

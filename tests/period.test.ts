@@ -185,3 +185,13 @@ test("en base : une période nouvelle reçoit sa longueur, une existante garde l
   assert.equal(loadWeek(db, "2026-11-05").days, 14);
   assert.equal(loadWeek(db, "2026-11-02").days, 7);
 });
+
+test("hors batch par jour de la semaine : une période qui commence un jeudi prend l'habitude du bon jour", () => {
+  // Shaker du lundi au vendredi (0 à 4), rien le week-end.
+  const shaker = Array.from({ length: 7 }, (_, d) => (d < 5 ? { kcal: 300, protein: 40 } : { kcal: 0, protein: 0 }));
+  const slots = [0, 2].map((day) => ({ day, meal: "dinner" as const, personId: "alex", portionUnits: 1, recipeId: "r" }));
+  const start = "2026-11-05"; // un jeudi
+  const [wk] = weekNutrition(slots, [{ id: "r", kcalUnit: 100, proteinUnit: 10 }], ["alex"], new Map([["alex", shaker]]), 4, (d) => weekdayOf(addDays(start, d)));
+  assert.equal(wk.byDay[0]!.macros.protein, 50, "jeudi : repas + shaker");
+  assert.equal(wk.byDay[2]!.macros.protein, 10, "samedi : repas seul");
+});

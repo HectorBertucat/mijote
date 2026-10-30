@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { Alert, buttonClass, Card, ChipLink, Chips, Icon, Macro, MacroRow, RecipeTile, StampSemainePrete } from "@/components/ui";
 import { db } from "@/lib/db/client";
 import { addDays, COOK_DAY, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
-import { clampDays, defaultPeriod, isClassicWeek, isDay, neighbour, periodDays, periodHeading, periodLabel } from "@/lib/week/period";
+import { clampDays, defaultPeriod, isClassicWeek, isDay, neighbour, periodDays, periodHeading, periodLabel, weekdayOf } from "@/lib/week/period";
 import { periodPlans, weekView } from "@/lib/week/store";
 import { composerHref } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
@@ -72,21 +72,22 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   // Repère de chacun (src/lib/eaters) : la cible de Santé quand la dépense est mesurée ; le repère
   // estimé par formule dès que le profil existe.
   const eaterOf = new Map(eaters.map((e) => [e.id, e]));
-  const outside = new Map(eaters.filter((e) => e.outside).map((e) => [e.id, e.outside!]));
+  // Hors batch jour par jour quand il vient des habitudes (le shaker de semaine ne compte pas le dimanche).
+  const outside = new Map(eaters.filter((e) => e.outside).map((e) => [e.id, e.outsideByDay ?? e.outside!]));
   const nutrition = selected.length
     ? weekNutrition(
         grid,
         [...bySlug.values()], // grammes ajoutés : macros recalculées des recettes retenues
         people.map((p) => p.id),
         outside,
-        N
+        N,
+        (d) => weekdayOf(addDays(w, d))
       ).map((wk) => {
         const e = eaterOf.get(wk.personId);
         return { id: wk.personId, name: people.find((p) => p.id === wk.personId)?.name ?? wk.personId, week: wk, ref: e ? dayRefOf(e) : null };
       })
     : null;
-  // Seul le hors batch manque : la part prend une valeur par défaut raisonnable, pas de quoi alerter ici.
-  const toSetup = eaters.filter((e) => e.missing.some((m) => m !== "ce que tu manges hors batch") && e.source !== "fixe");
+  const toSetup = eaters.filter((e) => e.missing.length > 0 && e.source !== "fixe");
   const eatenUnits = a.recipes.reduce((s, r) => s + r.unitsUsed, 0) + a.uncovered.reduce((s, x) => s + x.portionUnits, 0);
 
   // Cases de la grille (une par jour et repas), pour le composant client.

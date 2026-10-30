@@ -6,6 +6,7 @@ import type { Db } from "@/lib/db/open";
 import { dayLogs, foodLog, foodTemplates, mealSlots, people, recipes, weekPlans } from "@/lib/db/schema";
 import { addDays } from "@/lib/week/propose";
 import { dayIndexIn, MAX_DAYS, weekdayOf } from "@/lib/week/period";
+import { listHabits } from "@/lib/eaters/setup";
 
 export type LogMeal = "breakfast" | "lunch" | "dinner" | "snack";
 export const MEAL_LABEL: Record<LogMeal, string> = { breakfast: "Matin", lunch: "Midi", dinner: "Soir", snack: "À côté" };
@@ -58,13 +59,8 @@ export function plannedMeals(db: Db, personId: string, date: string): PlannedMea
 export const listEntries = (db: Db, personId: string, date: string) =>
   db.select().from(foodLog).where(and(eq(foodLog.personId, personId), eq(foodLog.date, date))).orderBy(asc(foodLog.createdAt)).all();
 
-export const listTemplates = (db: Db, personId: string) =>
-  db
-    .select()
-    .from(foodTemplates)
-    .where(and(eq(foodTemplates.archived, false), or(eq(foodTemplates.personId, personId), isNull(foodTemplates.personId))))
-    .orderBy(asc(foodTemplates.position))
-    .all();
+/** Les habitudes de la personne (src/lib/eaters/setup.ts) : elles font aussi son hors batch. */
+export const listTemplates = listHabits;
 
 /** Extras récents (saisis ou estimés), pour les remettre en un tap. Un par libellé, le plus récent. */
 export function recentExtras(db: Db, personId: string, limit = 8) {
@@ -163,15 +159,6 @@ export function isComplete(db: Db, personId: string, date: string) {
 export function setComplete(db: Db, personId: string, date: string, complete: boolean) {
   db.insert(dayLogs).values({ personId, date, complete }).onConflictDoUpdate({ target: [dayLogs.personId, dayLogs.date], set: { complete } }).run();
 }
-
-export function addTemplate(db: Db, t: { personId: string; label: string; meal: LogMeal; kcal: number; proteinG: number; weekdays?: number[] }) {
-  const position = db.select({ p: foodTemplates.position }).from(foodTemplates).orderBy(desc(foodTemplates.position)).get()?.p ?? 0;
-  db.insert(foodTemplates)
-    .values({ id: randomUUID(), personId: t.personId, label: t.label.trim().slice(0, 120), meal: t.meal, kcal: Math.round(t.kcal), proteinG: t.proteinG, weekdays: t.weekdays ?? [], position: position + 1 })
-    .run();
-}
-
-export const archiveTemplate = (db: Db, id: string) => db.update(foodTemplates).set({ archived: true }).where(eq(foodTemplates.id, id)).run();
 
 // ─── Vue du jour (pur) ───
 

@@ -4,8 +4,10 @@ import { SetupForm } from "@/components/sante/SetupForm";
 import { db } from "@/lib/db/client";
 import { activePerson } from "@/lib/health/active";
 import { getPerson, listWeighIns } from "@/lib/health/store";
-import { eaterOf } from "@/lib/eaters/store";
-import { listDislikes } from "@/lib/eaters/setup";
+import { adviceFor, eaterOf } from "@/lib/eaters/store";
+import { listDislikes, listHabits } from "@/lib/eaters/setup";
+import { counts, daysLabel } from "@/lib/eaters/habits";
+import { AdviceCard } from "@/components/sante/AdviceCard";
 import { portionOf, unitsLabel } from "@/lib/eaters/core";
 import { listRecipes } from "@/lib/recipes/queries";
 import { joinFr } from "@/lib/week/tastes";
@@ -23,6 +25,7 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
   const active = await activePerson();
   const person = (p ? getPerson(db, p) : null) ?? active;
   const e = eaterOf(db, person);
+  const habits = listHabits(db, person.id);
   const lastKg = listWeighIns(db, person.id).at(-1)?.kg ?? null;
   const examples = listRecipes(db)
     .filter((r) => r.status !== "archived" && r.kcalUnit != null && !r.parentId)
@@ -62,10 +65,13 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
                 <span className="text-ink-2">({SOURCE[e.source!]})</span>.
               </p>
             )}
-            {e.outside && (
+            {e.outside ? (
               <p>
-                Hors batch : <span className="num">~{fr(e.outside.kcal)} kcal</span>, <span className="num">{fr(e.outside.protein)} g</span> de protéines.
+                Hors batch : <span className="num">~{fr(e.outside.kcal)} kcal</span>, <span className="num">{fr(e.outside.protein)} g</span> de protéines
+                {e.outsideSource === "habitudes" ? " (tes habitudes, en moyenne sur la semaine)" : ""}.
               </p>
+            ) : (
+              <p className="text-ink-2">Hors batch : un petit-déjeuner moyen, tant que tu n&apos;as rien noté.</p>
             )}
             <p>
               Un repas du batch :{" "}
@@ -79,6 +85,7 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
               de protéines{e.source === "fixe" && <span className="text-ink-2"> ({SOURCE.fixe})</span>}.
             </p>
           </div>
+          <AdviceCard advice={adviceFor(db, e)} link />
           {examples.length > 0 && (
             <div className="grid gap-1.5">
               <b className="text-[14px] text-ink-2">Ta part de quelques recettes</b>
@@ -113,6 +120,7 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
         name={person.name}
         lastKg={lastKg}
         outside={e.outside}
+        habits={e.outsideSource === "habitudes" ? habits.filter(counts).map((h) => `${h.label}, ${daysLabel(h.weekdays)}`) : null}
         dislikes={listDislikes(db, person.id).map((d) => ({ id: d.id, text: d.text }))}
         values={{ sex: person.sex, birthDate: person.birthDate, heightCm: person.heightCm, activity: person.activity, goal: person.goal, ratePct: person.ratePct, proteinGPerKg: person.proteinGPerKg, proteinG: person.proteinG, targetWeightKg: person.targetWeightKg, targetDate: person.targetDate, sportPlan: planOf(person), constraints: person.constraints }}
       />

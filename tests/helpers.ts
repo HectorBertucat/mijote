@@ -62,7 +62,24 @@ export function seedTest(db: Db) {
     .run();
   for (const p of TEST_PREFERENCES) db.insert(preferences).values(p).onConflictDoNothing().run();
   db.insert(foodTemplates)
-    .values({ id: "tpl-shaker-alex", personId: "alex", label: "Shaker du matin (skyr, lait, protéine, banane)", meal: "breakfast", kcal: 335, proteinG: 43, carbsG: 38, fatG: 5, weekdays: [0, 1, 2, 3, 4] })
+    .values({
+      id: "tpl-shaker-alex",
+      personId: "alex",
+      label: "Shaker du matin (skyr, lait, protéine, banane)",
+      meal: "breakfast",
+      // Macros recalculées depuis les aliments (src/lib/eaters/habits.ts).
+      items: [
+        { food: "skyr", grams: 150 },
+        { food: "lait_demi", grams: 200 },
+        { food: "whey", grams: 25 },
+        { food: "banane", grams: 60 },
+      ],
+      kcal: 336,
+      proteinG: 41.8,
+      carbsG: 29.6,
+      fatG: 5.2,
+      weekdays: [0, 1, 2, 3, 4],
+    })
     .onConflictDoNothing()
     .run();
   for (const w of WORKOUTS) db.insert(workouts).values(w).onConflictDoNothing().run();
