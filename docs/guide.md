@@ -6,7 +6,16 @@ Mijote suit une semaine de batch cooking : on choisit, on achète, on cuisine en
 
 À la première ouverture, `/bienvenue` demande :
 - **Le foyer** : un prénom et une taille de part (petite, moyenne, grande) par personne. Le reste (sexe, âge, taille, poids, activité, objectif) est facultatif ici et se complète dans Santé.
-- **La cuisine** : type de plaque, nombre de foyers et de niveaux, four et ses niveaux, poêle, cocotte, faitout, casseroles, plats à four, et si on cuisine parfois à deux (deuxième planche, deuxième grand couteau). Le planificateur de session n'utilise que ce qui est coché.
+- **La cuisine**, pas à pas, une question par écran (pensé pour le téléphone) :
+  1. la plaque (induction, gaz, vitrocéramique, électrique) ;
+  2. les foyers : un préréglage courant (3 foyers dont un grand de 28 cm, 4 foyers, 2 foyers, 5 foyers ; au gaz, 2 à 5 feux) ou le diamètre de chacun, avec « comment mesurer », et les niveaux de puissance ;
+  3. le four : gradins, chaleur tournante ;
+  4. les poêles : matière (inox, fonte, antiadhésive) et diamètre ; la plus grande en inox ou en fonte sert à saisir ;
+  5. les casseroles (diamètre, contenance) et le faitout ;
+  6. la cocotte en fonte (contenance, passe au four ou non) et les plats à four ;
+  7. les appareils : air fryer (contenance du panier), mixeur plongeant, blender, petit hachoir, robot, et le reste ; si on cuisine parfois à deux (deuxième planche, deuxième grand couteau).
+
+  Chaque étape a un choix par défaut et un bouton **Je ne sais pas** : la valeur courante sert et la rubrique est marquée « à vérifier » au récapitulatif. Le planificateur de session n'utilise que ce qui est décrit : un récipient va sur les foyers de sa taille, la cocotte finit au four si elle y passe, et l'air fryer cuit à côté du four.
 - **La maison et les courses** : un nom (facultatif) et le magasin (« le drive Leclerc de Rennes ») : l'IA s'en sert pour proposer des produits qu'on trouve vraiment.
 
 Tout se retrouve dans **Réglages** (icône curseurs, en haut).

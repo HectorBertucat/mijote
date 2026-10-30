@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-30 : la cuisine, pas à pas
+- Description de la cuisine en parcours guidé (mise en route et Réglages) : une question par écran, choix par défaut, « Je ne sais pas » toujours possible (rubrique « à vérifier » au récapitulatif), aides « comment savoir » et « comment mesurer ».
+- Plaque : type, préréglages courants (3 foyers dont un grand de 28 cm, 4, 2, 5 foyers ; feux de gaz), diamètre de chaque foyer, dessin de la plaque à l'échelle. Four : gradins, chaleur tournante. Poêles (inox, fonte, antiadhésive ; diamètre ; la fournée suit la taille), casseroles (diamètre, contenance), faitout et cocotte (contenance, passe au four), plats à four. Appareils : air fryer (contenance), mixeur plongeant, blender, petit hachoir, robot, autocuiseur, cuiseur à riz, balance.
+- Nouveau format du réglage `kitchen` (`KitchenConfig` dans `src/lib/kitchen/presets.ts`, relu par `normalizeKitchen`) ; l'ancien format est traduit sans perte. Compatibilités foyer × récipient d'après les tailles réelles (`vesselFitsHob`), casseroles rangées sur le rôle de leur taille (une seule grande casserole = `casserole-18`). Un nom de récipient jamais retouché suit la description ; un nom donné à la main reste.
+- Planificateur (`PLAN_VERSION` 4) : l'air fryer (`air-fryer`, appareil) est un récipient, sans foyer ni four ; rechange four ↔ air fryer avec conversion de la température et de la durée (`convertForSwap`), seulement si l'étape tient dans le panier. Noms courts des casseroles : petite, moyenne, grande. Documenté dans docs/recettes.md.
+- Tests : `tests/cuisine.test.ts` (préréglages, compatibilités, ancien format, air fryer dans le plan).
+
 ## 2026-10-30 : habitudes hors batch
 - Ce qu'une personne mange hors des repas du batch devient une seule source : ses **habitudes** (shaker, petit-déjeuner, en-cas), composées d'aliments de la table nutritionnelle, avec leurs jours. Les macros sont calculées en code (`src/lib/eaters/habits.ts`, testé dans `tests/habitudes.test.ts`). Ce sont les modèles du journal (`food_templates`, colonne `items`, migration `0002_habitudes`) : proposées d'office dans Santé › Aujourd'hui les jours prévus.
 - Hors batch d'un jour = la somme des habitudes prises ce jour-là. Le repère d'un repas du batch prend la moyenne de la semaine (les parts sont cuites d'avance, identiques chaque jour) ; le bilan de la Semaine compte jour par jour (le shaker de semaine ne compte plus le dimanche). Sans habitude, le chiffre libre (`people.outside_kcal`) sert de repli, puis la valeur par défaut (20 % de la journée).

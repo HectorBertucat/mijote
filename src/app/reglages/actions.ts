@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
 import { ACTIVITY_LABEL, GOAL_LABEL, type Activity, type Goal } from "@/lib/health/core";
 import { addPerson, removePerson, renamePerson } from "@/lib/household";
-import { HOB_LABEL, type HobType, type KitchenConfig } from "@/lib/kitchen/presets";
+import { normalizeKitchen, type KitchenConfig } from "@/lib/kitchen/presets";
 import { applyKitchen } from "@/lib/kitchen/store";
 import { SETTING, setSetting } from "@/lib/settings";
 import { listPeople } from "@/lib/health/store";
@@ -69,17 +69,8 @@ export async function removePersonAction(id: string): Promise<FormState> {
 }
 
 export async function saveKitchenAction(c: KitchenConfig): Promise<FormState> {
-  const hobType: HobType = c.hobType in HOB_LABEL ? c.hobType : "induction";
-  applyKitchen(db, {
-    hobType,
-    hobs: c.hobs,
-    levels: c.levels,
-    oven: !!c.oven,
-    ovenLevels: c.ovenLevels,
-    vessels: { ...c.vessels, poele: !!c.vessels.poele, cocotte: !!c.vessels.cocotte, faitout: !!c.vessels.faitout },
-    extras: { microOndes: !!c.extras.microOndes, congelateur: !!c.extras.congelateur, mixeur: !!c.extras.mixeur },
-    duo: !!c.duo,
-  });
+  // La cuisine vient du navigateur : relue et bornée avant d'être appliquée.
+  applyKitchen(db, normalizeKitchen(c));
   refresh();
   return { ok: true, message: "Cuisine enregistrée." };
 }

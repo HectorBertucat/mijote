@@ -61,7 +61,7 @@ export interface PlannerIngredient {
 }
 
 /** À incrémenter quand un changement du planificateur doit refaire le plan des sessions ouvertes (réimport des fiches au démarrage). */
-export const PLAN_VERSION = 3;
+export const PLAN_VERSION = 4;
 
 export interface PlannerStep {
   kind: StepKind;
@@ -324,14 +324,23 @@ const SHORT_NAMES: Record<string, string> = {
   "poele-28": "Poêle",
   cocotte: "Cocotte",
   faitout: "Faitout",
-  "casserole-14": "Casserole 1",
-  "casserole-16": "Casserole 2",
-  "casserole-18": "Casserole 3",
+  "casserole-14": "Petite casserole",
+  "casserole-16": "Casserole moyenne",
+  "casserole-18": "Grande casserole",
   "plat-grand": "Grand plat",
   "plat-moyen": "Plat moyen",
   "plat-four": "Plat à four",
   oven: "Four",
+  "air-fryer": "Air fryer",
 };
+
+/**
+ * Appareils qui cuisent comme un récipient (une recette à la fois, leur propre température, ni foyer
+ * ni four). L'air fryer est un petit four ventilé : environ 20 °C et 20 % de temps de moins qu'au four.
+ */
+export const COOK_APPLIANCES = new Set(["air-fryer"]);
+export const AIR_FRYER = { tempDelta: -20, timeFactor: 0.8, minTemp: 140, maxTemp: 220 };
+const isVessel = (e: { id: string; kind: string } | undefined) => Boolean(e && (["pan", "pot", "dish"].includes(e.kind) || (e.kind === "appliance" && COOK_APPLIANCES.has(e.id))));
 export const shortName = (id: string | null, fallback?: string | null) => (id ? (SHORT_NAMES[id] ?? fallback ?? id) : null);
 
 export function formatQty(grams: number | null | undefined, units: number | null | undefined): string | null {
@@ -410,9 +419,45 @@ function swapsOf(r: PlannerRecipe, ri: number, res: PlannerResources): Swap[] {
   for (const from of new Set(r.steps.map((s) => s.equipmentId).filter((x): x is string => Boolean(x)))) {
     const mine = r.steps.filter((s) => s.equipmentId === from);
     const common = (mine[0].equipmentAlt ?? []).filter((to) => to !== from && known.has(to) && mine.every((s) => s.equipmentAlt?.includes(to)));
-    for (const to of common) out.push({ r: ri, from, to });
+    for (const to of common) {
+      // Un appareil (air fryer) ne prend que ce qui tient dans son panier, en une fournée.
+      const max = COOK_APPLIANCES.has(to) ? res.equipment.find((e) => e.id === to)?.maxBatchG : null;
+      if (max && mine.some((s) => gramsOf(r, s.bowls) > max)) continue;
+      out.push({ r: ri, from, to });
+    }
   }
   return out;
+}
+
+/** Grammes que cuit une étape : ses bols, sinon tout ce qui n'est ni en bol ni au placard. */
+function gramsOf(r: PlannerRecipe, bowls: string[] | undefined): number {
+  const ofBowls = r.ingredients.filter((i) => i.group && (bowls ?? []).includes(i.group));
+  const pool = ofBowls.length ? ofBowls : r.ingredients.filter((i) => !i.group && !i.pantry);
+  return pool.reduce((s, i) => s + (i.grams ?? 0), 0) * (r.scale ?? 1);
+}
+
+/**
+ * Une étape passée du four (plat ou four) à l'air fryer, ou l'inverse : température et durée
+ * converties, et les « 200 °C », « 25 min » du texte avec. Les autres rechanges ne changent rien.
+ */
+export function convertForSwap(s: PlannerStep, from: string, to: string): PlannerStep {
+  const toFryer = COOK_APPLIANCES.has(to) && !COOK_APPLIANCES.has(from);
+  const fromFryer = COOK_APPLIANCES.has(from) && !COOK_APPLIANCES.has(to);
+  if ((!toFryer && !fromFryer) || s.ovenTemp == null) return s;
+  const round5 = (n: number) => Math.round(n / 5) * 5;
+  const temp = toFryer ? Math.max(AIR_FRYER.minTemp, Math.min(AIR_FRYER.maxTemp, round5(s.ovenTemp + AIR_FRYER.tempDelta))) : round5(s.ovenTemp - AIR_FRYER.tempDelta);
+  const f = toFryer ? AIR_FRYER.timeFactor : 1 / AIR_FRYER.timeFactor;
+  const min = (n: number) => Math.max(1, Math.round(n * f));
+  const text = s.text
+    .replace(new RegExp(`(?<!\\d)${s.ovenTemp}(\\s?°C)`, "g"), `${temp}$1`)
+    .replace(/(?<![\d,])(\d+)(?: (à) (\d+))? min\b/g, (_m, a: string, w?: string, b?: string) => (b ? `${min(Number(a))} ${w} ${min(Number(b))} min` : `${min(Number(a))} min`));
+  return {
+    ...s,
+    text,
+    ovenTemp: temp,
+    durationMin: s.durationMin != null ? min(s.durationMin) : s.durationMin,
+    activeMin: s.activeMin != null ? Math.min(s.activeMin, min(s.durationMin ?? s.activeMin)) : s.activeMin,
+  };
 }
 
 /** « la cocotte » → « le faitout » dans le texte d'une étape. */
@@ -424,11 +469,14 @@ export function swapVesselText(text: string, from: string, to: string): string {
   const fl = f.toLowerCase();
   const tl = t.toLowerCase();
   let out = text;
+  const fMasc = art(f).startsWith("le ");
   const pairs: [string, string][] = [
-    [`de ${art(f)}`, masc ? `du ${tl}` : `de ${art(t)}`],
-    [`à ${art(f)}`, masc ? `au ${tl}` : `à ${art(t)}`],
+    [fMasc ? `du ${fl}` : `de ${art(f)}`, masc ? `du ${tl}` : `de ${art(t)}`],
+    [fMasc ? `au ${fl}` : `à ${art(f)}`, masc ? `au ${tl}` : `à ${art(t)}`],
     [art(f), art(t)],
   ];
+  // « Enfourne le plat » ne se dit pas d'un air fryer.
+  if (COOK_APPLIANCES.has(to)) pairs.unshift([`enfourne ${art(f)}`, `mets le tout dans ${art(t)}`]);
   for (const [a, b] of pairs) {
     out = out.replace(new RegExp(`(?<!\\p{L})${a}(?!\\p{L})`, "gu"), b);
     out = out.replace(new RegExp(`(?<!\\p{L})${a[0].toUpperCase()}${a.slice(1)}(?!\\p{L})`, "gu"), b[0].toUpperCase() + b.slice(1));
@@ -447,7 +495,9 @@ function applySwaps(input: PlannerRecipe[], swaps: Swap[]): PlannerRecipe[] {
       ...r,
       steps: r.steps.map((s) => {
         const sw = mine.find((x) => x.from === s.equipmentId);
-        return sw ? { ...s, equipmentId: sw.to, text: swapVesselText(s.text, sw.from, sw.to), equipmentAlt: null } : s;
+        if (!sw) return s;
+        const c = convertForSwap(s, sw.from, sw.to);
+        return { ...c, equipmentId: sw.to, text: swapVesselText(c.text, sw.from, sw.to), equipmentAlt: null };
       }),
     };
   });
@@ -476,7 +526,7 @@ export function planSession(input: PlannerRecipe[], res: PlannerResources, opts:
     if (opts.braiseOnHob !== false) {
       const temps = new Map<number, number[]>();
       rs.forEach((r, ri) => {
-        for (const s of r.steps) if (s.kind !== "prep" && s.ovenTemp != null) temps.set(s.ovenTemp, [...new Set([...(temps.get(s.ovenTemp) ?? []), ri])]);
+        for (const s of r.steps) if (s.kind !== "prep" && s.ovenTemp != null && !COOK_APPLIANCES.has(s.equipmentId ?? "")) temps.set(s.ovenTemp, [...new Set([...(temps.get(s.ovenTemp) ?? []), ri])]);
       });
       if (temps.size >= 2 && new Set([...temps.values()].flat()).size >= 2)
         rs.forEach((r, ri) => {
@@ -504,7 +554,7 @@ export function planSession(input: PlannerRecipe[], res: PlannerResources, opts:
     const temps = new Map<number, string[]>();
     input.forEach((x, xi) => {
       if (xi === braise) return;
-      for (const s of x.steps) if (s.kind !== "prep" && s.ovenTemp != null) temps.set(s.ovenTemp, [...new Set([...(temps.get(s.ovenTemp) ?? []), x.name])]);
+      for (const s of x.steps) if (s.kind !== "prep" && s.ovenTemp != null && !COOK_APPLIANCES.has(s.equipmentId ?? "")) temps.set(s.ovenTemp, [...new Set([...(temps.get(s.ovenTemp) ?? []), x.name])]);
     });
     const others = [...temps.entries()].map(([t, names]) => `${names.join(", ")} à ${t} °C`);
     decisions.push(`${r.name} braise sur la plaque : cocotte couverte sur le grand foyer, niveau ${HOB_BRAISE_LEVEL}, au lieu du four. Le four reste libre pour ${others.join(" et ")}.`);
@@ -835,7 +885,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       if (s.equipmentId && !e) {
         errors.push({ kind: "unknown_equipment", message: `${r.name}, étape ${si + 1} : équipement inconnu « ${s.equipmentId} ».`, stepIds: [id] });
       }
-      const vessel = e && ["pan", "pot", "dish"].includes(e.kind) ? e.id : null;
+      const vessel = e && isVessel(e) ? e.id : null;
       const vesselHobs = vessel ? hobFitsOf(vessel) : [];
       const vesselOven = vessel ? res.fits.some((f) => f.equipmentId === vessel && f.hobId === "oven") || e?.kind === "dish" : false;
       // Braiser sur la plaque : le braisage au four reste sur le foyer.
@@ -902,6 +952,9 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
         notes: [],
         refDur: sf && dur !== refDur ? refDur : undefined,
       };
+      if (vessel && COOK_APPLIANCES.has(vessel) && s.ovenTemp != null) {
+        w.notes.push(`${shortName(vessel, e?.name)} à ${s.ovenTemp} °C, en une couche ; secoue ou retourne à mi-cuisson.`);
+      }
       if (onHobBraise) {
         w.notes.push(`Braisage sur la plaque : couvercle, petit frémissement au niveau ${HOB_BRAISE_LEVEL} (le four reste libre pour l'autre recette).`);
       }
@@ -1242,11 +1295,8 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       const e = src.equipmentId ? eq.get(src.equipmentId) : undefined;
       let batches: number | null = null;
       const max = w.vessel ? eq.get(w.vessel)?.maxBatchG : null;
-      if (max && src.kind === "sear" && w.dur >= 5) {
-        const scale = r.scale ?? 1;
-        const ofBowls = r.ingredients.filter((i) => i.group && (src.bowls ?? []).includes(i.group));
-        const pool = ofBowls.length ? ofBowls : r.ingredients.filter((i) => !i.group && !i.pantry);
-        const g = pool.reduce((s, i) => s + (i.grams ?? 0), 0) * scale;
+      if (max && (src.kind === "sear" || COOK_APPLIANCES.has(w.vessel!)) && w.dur >= 5) {
+        const g = gramsOf(r, src.bowls);
         if (g > max) {
           batches = Math.ceil(g / max);
           if (!/fournée/i.test(src.text)) {
@@ -1377,7 +1427,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     prepTasks.sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0) || (a.person ?? "").localeCompare(b.person ?? ""));
     const byVessel = new Map<string, PlanStep[]>();
     for (const s of steps) {
-      const v = s.equipmentId && ["pan", "pot", "dish"].includes(eq.get(s.equipmentId)?.kind ?? "") ? s.equipmentId : null;
+      const v = s.equipmentId && isVessel(eq.get(s.equipmentId)) ? s.equipmentId : null;
       if (v && s.person) byVessel.set(v, [...(byVessel.get(v) ?? []), s]);
     }
     for (const [v, list] of byVessel) {
@@ -1517,7 +1567,7 @@ export function validatePlan(plan: Pick<SessionPlan, "steps" | "recipes"> & Part
         stepIds: [a.id, b.id],
       });
     }
-  const vessels = plan.steps.filter((s) => s.equipmentId && ["pan", "pot", "dish"].includes(eq.get(s.equipmentId)?.kind ?? ""));
+  const vessels = plan.steps.filter((s) => s.equipmentId && isVessel(eq.get(s.equipmentId)));
   for (let i = 0; i < vessels.length; i++)
     for (let j = i + 1; j < vessels.length; j++) {
       const a = vessels[i];
@@ -1573,5 +1623,5 @@ function gestureText(t: PrepTask): string {
 }
 
 function article(name: string) {
-  return /^(Poêle|Cocotte|Casserole|Planche|Seconde)/.test(name) ? `la ${name}` : /^[AEIOUYÉ]/.test(name) ? `l'${name}` : `le ${name}`;
+  return /^(Poêle|Cocotte|Casserole|Petite|Grande|Planche|Seconde)/.test(name) ? `la ${name}` : /^[AEIOUYÉ]/.test(name) ? `l'${name}` : `le ${name}`;
 }

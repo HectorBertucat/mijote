@@ -24,7 +24,7 @@ export function Settings({ first = false }: { first?: boolean }) {
           {first ? "2. " : ""}La cuisine
         </h2>
         <p className="text-[14px] text-ink-2">Le planificateur de session répartit les étapes sur ces foyers, ce four et ces récipients.</p>
-        <KitchenForm initial={loadKitchen(db)} />
+        <KitchenForm initial={loadKitchen(db)} guided={first} />
       </section>
       <section className="grid gap-2.5" aria-labelledby="courses">
         <h2 id="courses" className="text-[20px] font-extrabold">
