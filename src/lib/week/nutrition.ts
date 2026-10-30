@@ -6,8 +6,9 @@
 //   la part d'une personne = ses unités (meal_slots.units) × macros par unité ;
 // - « par jour » = moyenne sur les jours où la personne mange au moins un repas du batch
 //   (les repas pris ailleurs ne sont pas connus : on ne les compte pas, on le dit) ;
-// - chacun ajoute chaque jour ce qu'il a dit manger hors batch (petit-déjeuner, en-cas :
-//   people.outside_kcal), quand il l'a dit ;
+// - chacun ajoute chaque jour ce qu'il mange hors batch (petit-déjeuner, en-cas), quand il l'a
+//   dit : ses habitudes du jour (une liste de 7, 0 = lundi : le shaker ne compte que les jours où
+//   il est pris), sinon son chiffre libre, le même chaque jour (people.outside_kcal) ;
 // - repère par jour = la cible du jour calculée dans Santé (dayRef), comparée aux 2 repas
 //   principaux + le hors batch ; sans cible, pas de repère.
 import { round, type Macros } from "@/lib/nutrition/compute";
@@ -92,7 +93,9 @@ const add = (a: Macros, b: Macros, k = 1) => {
 };
 const div = (m: Macros, n: number) => round({ kcal: m.kcal / n, protein: m.protein / n, carbs: m.carbs / n, fat: m.fat / n, fiber: m.fiber / n });
 
-export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personIds?: string[], outside?: Map<string, { kcal: number; protein: number }>): PersonWeek[] {
+type OutsideDay = { kcal: number; protein: number };
+
+export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personIds?: string[], outside?: Map<string, OutsideDay | OutsideDay[]>): PersonWeek[] {
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const ids = personIds ?? [...new Set(slots.map((s) => s.personId))];
   return ids.map((personId) => {
@@ -119,11 +122,18 @@ export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personId
       n++;
     }
     const out = outside?.get(personId);
-    const extra: Macros | null = out ? { kcal: out.kcal, protein: out.protein, carbs: 0, fat: 0, fiber: 0 } : null;
+    const extraOf = (day: number): Macros | null => {
+      const o = Array.isArray(out) ? out[day] : out;
+      return o ? { kcal: o.kcal, protein: o.protein, carbs: 0, fat: 0, fiber: 0 } : null;
+    };
     const dayTotal = { ...meals };
-    if (extra) add(dayTotal, extra, days.size);
-    const byDay = perDayList.map((d) => {
+    for (const d of days) {
+      const extra = extraOf(d);
+      if (extra) add(dayTotal, extra);
+    }
+    const byDay = perDayList.map((d, day) => {
       if (!d) return null;
+      const extra = extraOf(day);
       if (extra) add(d.macros, extra);
       return { meals: d.meals, macros: round(d.macros) };
     });
@@ -132,7 +142,7 @@ export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personId
       meals: n,
       unknownMeals: unknown,
       days: days.size,
-      outsideDays: extra ? days.size : 0,
+      outsideDays: out ? days.size : 0,
       perMeal: n ? div(meals, n) : null,
       perDay: days.size ? div(dayTotal, days.size) : null,
       byDay,

@@ -12,9 +12,9 @@ import { AiCapReachedError } from "@/lib/ai";
 import { estimateMeal, type MealEstimate } from "@/lib/health/estimate";
 import { ImportPayload, ingest } from "@/lib/health/ingest";
 import { CF_ID, CF_SECRET, resetHistory, rotateLink, setSetting } from "@/lib/health/link";
-import { addEntry, addRecipeEntry, addTemplate, archiveTemplate, deleteEntry, listTemplates, setComplete, setEntryUnits, type LogMeal } from "@/lib/health/log";
+import { addEntry, addRecipeEntry, deleteEntry, listTemplates, setComplete, setEntryUnits, type LogMeal } from "@/lib/health/log";
 import { deleteWorkout, saveWorkout } from "@/lib/training/store";
-import { addDislikes, markSetupDone, removeDislike, setOutside } from "@/lib/eaters/setup";
+import { addDislikes, markSetupDone, removeDislike, removeHabit, saveHabit, setNothingOutside, setOutside, type HabitInput } from "@/lib/eaters/setup";
 import { askCoach, clearCoach, getCoachMessage, setCoachStatus } from "@/lib/health/coach";
 import type { GoalProposal, SportPlanItem } from "@/lib/health/goals";
 import { applyPatch, check } from "@/lib/health/objectives";
@@ -257,15 +257,32 @@ export async function markComplete(personId: string, date: string, complete: boo
   return done(complete ? "Journée complète : elle compte pour la cible." : "Journée marquée incomplète : elle ne compte pas.");
 }
 
-export async function saveHabit(personId: string, h: { label: string; meal: LogMeal; kcal: number; proteinG: number; weekdays: number[] }): Promise<Result> {
-  if (!h.label.trim()) return { ok: false, message: "Donne un nom à l'habitude." };
-  addTemplate(db, { personId, ...h });
-  return done(`Habitude « ${h.label} » ajoutée.`);
+// ─── Habitudes hors batch (Santé › Habitudes) : elles font le hors batch, donc la part ───
+
+const habitsDone = (message: string): Result => {
+  revalidatePath("/", "layout");
+  return { ok: true, message };
+};
+
+export async function saveHabitAction(personId: string, id: string | null, h: HabitInput): Promise<Result> {
+  if (!getPerson(db, personId)) return { ok: false, message: "Profil inconnu." };
+  try {
+    saveHabit(db, personId, h, id);
+    return habitsDone(id ? `« ${h.label.trim()} » modifiée : les parts suivent.` : `« ${h.label.trim()} » ajoutée : les parts suivent.`);
+  } catch (e) {
+    return fail(e);
+  }
 }
 
-export async function dropHabit(id: string): Promise<Result> {
-  archiveTemplate(db, id);
-  return done("Habitude retirée.");
+export async function dropHabit(personId: string, id: string): Promise<Result> {
+  removeHabit(db, personId, id);
+  return habitsDone("Habitude retirée.");
+}
+
+export async function nothingOutside(personId: string): Promise<Result> {
+  if (!getPerson(db, personId)) return { ok: false, message: "Profil inconnu." };
+  setNothingOutside(db, personId);
+  return habitsDone("Rien hors batch : les deux repas font la journée.");
 }
 
 // ─── Apple Santé : historique lu dans l'export, envoyé par paquets depuis le navigateur ───

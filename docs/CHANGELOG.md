@@ -1,5 +1,13 @@
 # Journal des changements
 
+## 2026-10-30 : habitudes hors batch
+- Ce qu'une personne mange hors des repas du batch devient une seule source : ses **habitudes** (shaker, petit-déjeuner, en-cas), composées d'aliments de la table nutritionnelle, avec leurs jours. Les macros sont calculées en code (`src/lib/eaters/habits.ts`, testé dans `tests/habitudes.test.ts`). Ce sont les modèles du journal (`food_templates`, colonne `items`, migration `0002_habitudes`) : proposées d'office dans Santé › Aujourd'hui les jours prévus.
+- Hors batch d'un jour = la somme des habitudes prises ce jour-là. Le repère d'un repas du batch prend la moyenne de la semaine (les parts sont cuites d'avance, identiques chaque jour) ; le bilan de la Semaine compte jour par jour (le shaker de semaine ne compte plus le dimanche). Sans habitude, le chiffre libre (`people.outside_kcal`) sert de repli, puis la valeur par défaut (20 % de la journée).
+- Nouvelle page Santé › Hors batch (`/sante/habitudes`) : modèles « Shaker protéiné », « Petit-déjeuner classique », « Rien hors batch », éditeur d'aliments et de jours, hors batch jour par jour.
+- Conseil déterministe (sans IA), sur cette page et dans la mise en route : avec la cible du jour, les repas du batch (ceux de la Semaine, sinon la part des recettes de la bibliothèque) et les habitudes, il dit ce qui manque (≥ 15 g de protéines ou ≥ 250 kcal par jour) et de quoi le couvrir (« il manque ~40 g de protéines par jour : un shaker le matin les couvre »), sinon qu'aucun complément n'est utile (`adviceOf`).
+- Un hors batch non dit n'est plus un manque : plus d'alerte « part à affiner » pour lui, ni dans la mise en route ni dans la Semaine.
+- Table nutritionnelle : banane, pomme, yaourt nature, pain, pain complet, flocons d'avoine, protéine en poudre (whey et végétale, étiquette moyenne), confiture, amandes, chacun avec son dessin. Le calcul ne change pas (`NUTRITION_VERSION` inchangée).
+
 ## 2026-10-30 : importer une recette depuis un texte collé
 - Recettes › Importer (`/atelier/importer`) : on colle la légende d'un post ou la page d'un blog, avec son lien facultatif. Rien n'est téléchargé ni lu sur le réseau social : le texte collé suffit, le lien devient la source de la fiche (sans paramètres de suivi).
 - Garde-fous en code, sans appel ni coût : texte vide, trop court ou sans quantités repérables refusé ; hashtags retirés ; texte tronqué au-delà de 6 000 caractères ; limite d'imports par jour (`AI_IMPORTS_PER_DAY`, 10 par défaut), coût estimé affiché.

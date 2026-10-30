@@ -15,7 +15,7 @@ En haut à droite, le **sélecteur de profil** dit qui utilise cet appareil : la
 
 ## 2. Le profil de chacun (Santé › Démarrer)
 
-Pour une part juste, chacun donne sa taille, son poids, son objectif, et ce qu'il mange hors batch (petit-déjeuner, en-cas). Mijote estime la dépense (formule), puis la **mesure** dès qu'il y a assez de pesées et de journées notées : la cible s'ajuste chaque lundi. La part de chaque recette en découle, au demi-« unité » près.
+Pour une part juste, chacun donne sa taille, son poids, son objectif, et ce qu'il mange hors batch (petit-déjeuner, en-cas). Le plus juste : noter ses **habitudes** dans Santé › Hors batch (un shaker du lundi au vendredi, un petit-déjeuner le week-end…), composées d'aliments ; leurs calories et protéines sont calculées, et une carte dit s'il manque des protéines ou des calories une fois mangés les repas du batch (« un shaker le matin les couvre »), ou qu'aucun complément n'est utile. Sans rien noter, un petit-déjeuner moyen est compté. Mijote estime la dépense (formule), puis la **mesure** dès qu'il y a assez de pesées et de journées notées : la cible s'ajuste chaque lundi. La part de chaque recette en découle, au demi-« unité » près.
 
 Une **unité** est une fraction d'une recette : on pèse la marmite, on divise par le nombre d'unités de la fiche, et chacun prend ses unités. Une part d'adulte fait 4 à 5 unités.
 
@@ -61,7 +61,8 @@ Les durées réelles sont mesurées et corrigent les estimations des sessions su
 ## 7. Santé
 
 - **Vue d'ensemble** : poids et tendance lissée, rythme, cible de la semaine expliquée.
-- **Aujourd'hui** : les repas prévus de la semaine se cochent en un tap ; « Autre chose » pour un écart (estimé par l'IA si besoin).
+- **Aujourd'hui** : les repas prévus de la semaine et les habitudes du jour se cochent en un tap ; « Autre chose » pour un écart (estimé par l'IA si besoin).
+- **Hors batch** : les habitudes (shaker, petit-déjeuner, en-cas) et leurs jours ; elles font la part de chaque recette.
 - **Objectifs** : un coach (IA) aide à fixer poids visé, rythme, protéines et sport réaliste ; chaque proposition est vérifiée (rythme sûr, jamais sous le métabolisme de base, IMC sain) avant d'être appliquée.
 - **Apple Santé** : un Raccourci iOS envoie pesées, pas et séances (page Santé › Apple Santé, pas à pas).
 

@@ -64,7 +64,8 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   // Repère de chacun (src/lib/eaters) : la cible de Santé quand la dépense est mesurée ; le repère
   // estimé par formule dès que le profil existe.
   const eaterOf = new Map(eaters.map((e) => [e.id, e]));
-  const outside = new Map(eaters.filter((e) => e.outside).map((e) => [e.id, e.outside!]));
+  // Hors batch jour par jour quand il vient des habitudes (le shaker de semaine ne compte pas le dimanche).
+  const outside = new Map(eaters.filter((e) => e.outside).map((e) => [e.id, e.outsideByDay ?? e.outside!]));
   const nutrition = selected.length
     ? weekNutrition(
         grid,
@@ -76,8 +77,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
         return { id: wk.personId, name: people.find((p) => p.id === wk.personId)?.name ?? wk.personId, week: wk, ref: e ? dayRefOf(e) : null };
       })
     : null;
-  // Seul le hors batch manque : la part prend une valeur par défaut raisonnable, pas de quoi alerter ici.
-  const toSetup = eaters.filter((e) => e.missing.some((m) => m !== "ce que tu manges hors batch") && e.source !== "fixe");
+  const toSetup = eaters.filter((e) => e.missing.length > 0 && e.source !== "fixe");
   const eatenUnits = a.recipes.reduce((s, r) => s + r.unitsUsed, 0) + a.uncovered.reduce((s, x) => s + x.portionUnits, 0);
 
   // Cases de la grille (une par jour et repas), pour le composant client.

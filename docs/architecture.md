@@ -58,7 +58,7 @@ src/
 tests/                 node:test, un fichier par domaine
 ```
 
-Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `week/propose.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
+Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `week/propose.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
 
 ## Données
 

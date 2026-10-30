@@ -4,7 +4,7 @@ import { gapOf, mealRef, meanGap, portionOf, portionUnits, type Eater } from "@/
 import { assign, propose, type SlotIn, type WeekRecipe } from "@/lib/week/propose";
 import { dayRefOf, weekNutrition } from "@/lib/week/nutrition";
 import { openDb } from "@/lib/db/open";
-import { people, weighIns } from "@/lib/db/schema";
+import { foodTemplates, people, weighIns } from "@/lib/db/schema";
 import { eaterOf } from "@/lib/eaters/store";
 import { addDislikes, listDislikes, removeDislike, setOutside } from "@/lib/eaters/setup";
 import { seedTest } from "./helpers";
@@ -99,7 +99,9 @@ test("mangeur en base : formule dès la première pesée, ce qui manque est dit"
   seedTest(db);
   let j = eaterOf(db, db.select().from(people).where(eq(people.id, "sam")).get()!);
   assert.equal(j.ref, null);
-  assert.ok(j.missing.includes("taille") && j.missing.includes("poids") && j.missing.includes("ce que tu manges hors batch"));
+  assert.ok(j.missing.includes("taille") && j.missing.includes("poids"));
+  // Un hors batch non dit n'est pas un manque : la valeur par défaut suffit.
+  assert.ok(!j.missing.some((m) => /hors batch/.test(m)));
   db.update(people).set({ heightCm: 165, goal: "maintain", ratePct: 0, proteinGPerKg: 1.6 }).where(eq(people.id, "sam")).run();
   db.insert(weighIns).values({ id: "w1", personId: "sam", date: "2026-10-27", measuredAt: "2026-10-27T07:00:00Z", kg: 58, source: "manual" }).run();
   setOutside(db, "sam", 350, 12);
@@ -134,8 +136,18 @@ test("repère fixe du profil : prime sur la formule, cède à la dépense mesur�
   const a = eaterOf(db, db.select().from(people).where(eq(people.id, "alex")).get()!, new Date("2026-10-27T12:00:00Z"));
   assert.equal(a.source, "fixe");
   assert.deepEqual(a.ref, ref);
-  const day = dayRefOf(a)!;
+  // Alex a son shaker du matin (habitude, 336 kcal et 42 g, du lundi au vendredi) : il prime sur
+  // le chiffre libre, en moyenne de la semaine.
+  assert.equal(a.outsideSource, "habitudes");
+  assert.deepEqual(a.outside, { kcal: Math.round((336 * 5) / 7), protein: Math.round((42 * 5) / 7) });
+  let day = dayRefOf(a)!;
   assert.equal(day.source, "fixe");
+  assert.equal(day.kcalMin, 2 * 700 + 240);
+  // Sans habitude, le chiffre libre reprend la main.
+  db.update(foodTemplates).set({ archived: true }).where(eq(foodTemplates.personId, "alex")).run();
+  const b = eaterOf(db, db.select().from(people).where(eq(people.id, "alex")).get()!, new Date("2026-10-27T12:00:00Z"));
+  assert.equal(b.outsideSource, "chiffre");
+  day = dayRefOf(b)!;
   assert.equal(day.kcalMin, 2 * 700 + 335);
   assert.equal(day.proteinMax, 2 * 68 + 43);
 });
