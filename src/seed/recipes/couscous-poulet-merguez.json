@@ -12,7 +12,7 @@
   "ingredients": [
     { "lineRaw": "1,2 kg émincés de cuisse de poulet", "item": "Émincés de cuisse de poulet (sans os ni peau)", "grams": 1200, "group": "B", "food": "haut_cuisse_poulet", "yield": { "trimPct": 3, "note": "sans os ni peau : presque rien à retirer" } },
     { "lineRaw": "6 merguez", "item": "Merguez (6)", "grams": 330, "units": 6, "group": "F", "food": "merguez", "yield": { "panLossPct": 35, "note": "grillées à part, le gras fondu reste dans la poêle" } },
-    { "lineRaw": "500 g semoule moyenne", "item": "Semoule moyenne", "grams": 500, "group": "G", "food": "semoule" },
+    { "lineRaw": "500 g semoule moyenne", "item": "Semoule moyenne", "grams": 500, "group": "G", "food": "semoule", "side": true },
     { "lineRaw": "500 g carottes", "item": "Carottes, en tronçons de 4 cm", "grams": 500, "group": "C", "food": "carotte" },
     { "lineRaw": "3 courgettes", "item": "Courgettes, en gros tronçons", "grams": 600, "units": 3, "group": "D", "food": "courgette" },
     { "lineRaw": "2 navets", "item": "Navets, en quartiers", "grams": 300, "units": 2, "group": "C", "food": "navet" },

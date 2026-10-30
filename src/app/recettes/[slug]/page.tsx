@@ -25,6 +25,8 @@ import { cookedCounts, getRecipe, listPeople } from "@/lib/recipes/queries";
 import { inSeason, parisMonth } from "@/lib/recipes/season";
 import { householdMembers, householdUnits, loadEaters } from "@/lib/eaters/store";
 import { portionOf } from "@/lib/eaters/core";
+import { potModel } from "@/lib/boxes/store";
+import { PotSplit } from "@/components/boxes/PotSplit";
 import { recipeColor } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,8 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
   const plan = planCookUsage(db, r.id);
   const input = loadRecipeInput(db, slug)!;
   const family = familyOf(db, r.id);
+  // Calculette : la marmite pesée → les grammes de chaque boîte (src/lib/boxes).
+  const pot = potModel(db, r.slug);
 
   const activeMin = steps.reduce((s, x) => s + (x.step.activeMin ?? 0), 0);
   const perUnit = r.kcalUnit != null ? { kcal: r.kcalUnit, protein: r.proteinUnit ?? 0, carbs: r.carbsUnit ?? 0, fat: r.fatUnit ?? 0, fiber: r.fiberUnit ?? 0 } : null;
@@ -214,6 +218,12 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
                       ingredients={ingredients.map((i) => ({ item: i.item, foodId: i.foodId, grams: i.grams, units: i.units, yield: i.yield }))}
                     />
                   </AdjustSlot>
+                )}
+                {pot && (
+                  <Card as="section" pad="md" className="grid gap-3" aria-label="En boîtes">
+                    <CardTitle>En boîtes</CardTitle>
+                    <PotSplit model={pot} color={color} head={false} />
+                  </Card>
                 )}
                 {cost && <RecipeCostPanel cost={cost} plan={plan} />}
               </FicheSection>

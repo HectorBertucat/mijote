@@ -13,7 +13,7 @@
     { "lineRaw": "400 g pois cassés", "item": "Pois cassés, rincés", "grams": 400, "group": "C", "food": "pois_casses" },
     { "lineRaw": "900 g filets de poulet", "item": "Filets de poulet, en dés de 2 cm", "grams": 900, "group": "D", "food": "filet_poulet" },
     { "lineRaw": "40 cl lait de coco", "item": "Lait de coco (1 boîte de 400 ml)", "grams": 400, "group": "E", "food": "lait_coco" },
-    { "lineRaw": "400 g riz basmati", "item": "Riz basmati", "grams": 400, "group": "F", "food": "riz_basmati" },
+    { "lineRaw": "400 g riz basmati", "item": "Riz basmati", "grams": 400, "group": "F", "food": "riz_basmati", "side": true },
     { "lineRaw": "400 g pulpe de tomates", "item": "Pulpe de tomate (1 boîte)", "grams": 400, "group": "C", "food": "pulpe_tomate" },
     { "lineRaw": "2 oignons", "item": "Oignons, émincés", "grams": 300, "units": 2, "group": "A", "food": "oignon" },
     { "lineRaw": "4 gousses d'ail", "item": "Ail, râpé", "units": 4, "group": "A", "food": "ail" },

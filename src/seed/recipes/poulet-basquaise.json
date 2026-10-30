@@ -17,7 +17,7 @@
     { "lineRaw": "2 x 400 g pulpe de tomates", "item": "Pulpe de tomate (2 boîtes)", "grams": 800, "group": "C", "food": "pulpe_tomate" },
     { "lineRaw": "15 cl vin blanc sec", "item": "Vin blanc sec", "grams": 150, "group": "C", "pantry": true, "food": "vin_blanc_cuit" },
     { "lineRaw": "piment d'Espelette", "item": "Piment d'Espelette (1 c. à c.), thym, laurier", "group": "C", "pantry": true, "food": "zero" },
-    { "lineRaw": "450 g riz basmati", "item": "Riz basmati (ou riz long)", "grams": 450, "group": "D", "food": "riz_basmati" },
+    { "lineRaw": "450 g riz basmati", "item": "Riz basmati (ou riz long)", "grams": 450, "group": "D", "food": "riz_basmati", "side": true },
     { "lineRaw": "huile d'olive", "item": "Huile", "grams": 30, "pantry": true, "food": "huile", "yield": { "panLossPct": 0, "note": "tout mijote dans la même cocotte" } },
     { "lineRaw": "sel, poivre", "item": "Sel, poivre", "pantry": true, "food": "zero" }
   ],
