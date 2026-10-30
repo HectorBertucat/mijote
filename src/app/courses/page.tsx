@@ -4,6 +4,7 @@ import { buttonClass, cardClass, EmptyState, Icon, Macro, type PillTone } from "
 import { ListsManager } from "@/components/cart/ListsManager";
 import { db } from "@/lib/db/client";
 import { shoppingLists, weekPlans } from "@/lib/db/schema";
+import { periodLabel } from "@/lib/week/period";
 import { pantryTotals, spendingTotals } from "@/lib/costs";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { storeLabel } from "@/lib/settings";
@@ -22,12 +23,12 @@ const num = (v: number) => v.toFixed(2).replace(".", ",");
 export default function Listes() {
   const store = storeLabel(db);
   const lists = db.select().from(shoppingLists).orderBy(desc(shoppingLists.createdAt)).limit(60).all();
-  const weekOf = new Map(db.select().from(weekPlans).all().map((w) => [w.id, w.weekStart]));
+  const weekOf = new Map(db.select().from(weekPlans).all().map((w) => [w.id, w]));
   const rows = lists.map((l) => {
     const [label, tone] = STATUS[l.status] ?? [l.status, "idle" as PillTone];
     const wk = l.weekPlanId ? weekOf.get(l.weekPlanId) : null;
     const when = new Date(l.createdAt).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Paris" });
-    const week = wk ? ` · semaine du ${new Date(`${wk}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" })}` : "";
+    const week = wk ? ` · ${periodLabel(wk.weekStart, wk.days, "short")}` : "";
     return { id: l.id, title: l.title ?? "Liste de courses", sub: when + week, label, tone, ordered: l.status === "ordered" || l.status === "paid", archived: Boolean(l.archivedAt) };
   });
   const pantry = pantryTotals(db);

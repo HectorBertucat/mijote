@@ -1,0 +1,1 @@
+ALTER TABLE `week_plans` ADD `days` integer DEFAULT 7 NOT NULL;

@@ -5,34 +5,41 @@
 // La part de chacun suit sa cible et la recette (src/lib/eaters) : meal_slots.units la garde.
 import { loadAssociations } from "@/lib/products/store";
 import { randomUUID } from "crypto";
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { mealSlots, people, preferences, recipeIngredients, recipes, shoppingLists, weekPlans, weekRecipes } from "@/lib/db/schema";
 import { listRecipesWithSteps } from "@/lib/recipes/queries";
 import type { Ing } from "@/lib/shopping/build";
 import { assign, autoSize, defaultPlace, isFactor, NEXT_PLACE, propose, slotKey, swap, type Assignment, type Meal, type SlotIn, type WeekRecipe } from "./propose";
+import { clampDays, DEFAULT_DAYS, isClassicWeek, periodDays, remapPlaces, type PlanRef } from "./period";
 import { dislikeRules, exclusionsOf, type DislikeRule } from "./tastes";
 import { buildProfiles, lineResolver, totalResolver } from "./packs";
 import { scaledNutrition, selectionLeftovers, type Leftover } from "./leftovers";
 import type { PackProfiles } from "./waste";
 import { eaterMap, leadOf, loadEaters } from "@/lib/eaters/store";
 
-export function ensureWeek(db: Db, weekStart: string): string {
+const MEALS: Meal[] = ["lunch", "dinner"];
+
+/**
+ * Le plan qui commence à `weekStart`, créé s'il manque (sur `days` jours, 7 par défaut), avec un
+ * créneau par jour, repas et personne. La présence par défaut suit le jour de la semaine de la date.
+ */
+export function ensureWeek(db: Db, weekStart: string, days = DEFAULT_DAYS): string {
   const found = db.select({ id: weekPlans.id }).from(weekPlans).where(eq(weekPlans.weekStart, weekStart)).get();
-  const id = found?.id ?? randomUUID();
-  if (!found) db.insert(weekPlans).values({ id, weekStart }).onConflictDoNothing().run();
-  const planId = db.select({ id: weekPlans.id }).from(weekPlans).where(eq(weekPlans.weekStart, weekStart)).get()!.id;
+  if (!found) db.insert(weekPlans).values({ id: randomUUID(), weekStart, days: clampDays(days) }).onConflictDoNothing().run();
+  const plan = db.select({ id: weekPlans.id, days: weekPlans.days }).from(weekPlans).where(eq(weekPlans.weekStart, weekStart)).get()!;
   const ps = db.select({ id: people.id }).from(people).all();
   const rows = [];
-  for (let day = 0; day < 7; day++)
-    for (const meal of ["lunch", "dinner"] as Meal[])
-      for (const p of ps) rows.push({ id: randomUUID(), weekPlanId: planId, day, meal, personId: p.id, place: defaultPlace(day, meal, p.id) });
+  for (const d of periodDays(weekStart, plan.days))
+    for (const meal of MEALS)
+      for (const p of ps) rows.push({ id: randomUUID(), weekPlanId: plan.id, day: d.i, meal, personId: p.id, place: defaultPlace(d.weekday, meal, p.id) });
   if (rows.length) db.insert(mealSlots).values(rows).onConflictDoNothing().run();
-  return planId;
+  return plan.id;
 }
 
-export function loadWeek(db: Db, weekStart: string) {
-  const planId = ensureWeek(db, weekStart);
+export function loadWeek(db: Db, weekStart: string, days?: number) {
+  const planId = ensureWeek(db, weekStart, days);
+  const n = db.select({ days: weekPlans.days }).from(weekPlans).where(eq(weekPlans.id, planId)).get()!.days;
   const slots = db
     .select({
       id: mealSlots.id,
@@ -47,11 +54,43 @@ export function loadWeek(db: Db, weekStart: string) {
     })
     .from(mealSlots)
     .innerJoin(people, eq(people.id, mealSlots.personId))
-    .where(eq(mealSlots.weekPlanId, planId))
+    .where(and(eq(mealSlots.weekPlanId, planId), lt(mealSlots.day, n)))
     .all()
     // portionUnits = unités servies à ce repas (la part de base tant que rien n'est servi).
     .map((s) => ({ ...s, portionUnits: s.recipeId && s.slotUnits != null ? s.slotUnits : s.baseUnits }));
-  return { planId, slots };
+  return { planId, start: weekStart, days: n, slots };
+}
+
+/** Les plans connus, pour la période par défaut et la navigation (touché = recettes choisies ou période réglée). */
+export function periodPlans(db: Db): PlanRef[] {
+  const withRecipes = new Set(db.select({ id: weekRecipes.weekPlanId }).from(weekRecipes).all().map((r) => r.id));
+  return db
+    .select()
+    .from(weekPlans)
+    .all()
+    .map((p) => ({ start: p.weekStart, days: p.days, touched: withRecipes.has(p.id) || !isClassicWeek(p.weekStart, p.days) }));
+}
+
+/**
+ * Change la période du plan qui commence à `from` : même début = on allonge ou raccourcit ; autre
+ * début = le plan se déplace (ou, s'il en existe déjà un à cette date, c'est lui qu'on règle).
+ * Chaque repas garde sa présence à la même date ; les recettes retenues restent, les quantités se recalent.
+ * Renvoie le début de la période réglée.
+ */
+export function setPeriod(db: Db, from: string, next: { start: string; days: number }): string {
+  const days = clampDays(next.days);
+  const target = db.select({ id: weekPlans.id }).from(weekPlans).where(eq(weekPlans.weekStart, next.start)).get();
+  const src = next.start === from || target ? next.start : from;
+  const w = loadWeek(db, src);
+  const ps = db.select({ id: people.id }).from(people).all().map((p) => p.id);
+  const slots = remapPlaces({ start: w.start, slots: w.slots }, { start: next.start, days }, MEALS, ps, defaultPlace);
+  db.transaction((tx) => {
+    tx.update(weekPlans).set({ weekStart: next.start, days }).where(eq(weekPlans.id, w.planId)).run();
+    tx.delete(mealSlots).where(eq(mealSlots.weekPlanId, w.planId)).run();
+    if (slots.length) tx.insert(mealSlots).values(slots.map((s) => ({ id: randomUUID(), weekPlanId: w.planId, ...s }))).run();
+  });
+  resize(db, next.start);
+  return next.start;
 }
 
 export type LibRecipe = WeekRecipe & { id: string; description: string | null; carbsUnit: number | null; fatUnit: number | null; fiberUnit: number | null };
@@ -316,8 +355,8 @@ function selectedRecipes(db: Db, lib: LibRecipe[], sel: WeekSel[]) {
 }
 
 /** Tout ce que la page affiche : grille, recettes retenues avec leur répartition. */
-export function weekView(db: Db, weekStart: string) {
-  let w = loadWeek(db, weekStart);
+export function weekView(db: Db, weekStart: string, days?: number) {
+  let w = loadWeek(db, weekStart, days);
   const sel = loadSelection(db, w.planId);
   const lib = withSel(library(db), sel);
   const tastes = loadTastes(db, lib);
@@ -341,6 +380,8 @@ export function weekView(db: Db, weekStart: string) {
   );
   return {
     planId: w.planId,
+    start: w.start,
+    days: w.days,
     grid,
     selected,
     selection: sel,

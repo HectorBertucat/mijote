@@ -40,7 +40,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Cuisine → équipement | `src/lib/kitchen/` (`presets.ts` pur, `store.ts`) |
 | Mangeurs et parts | `src/lib/eaters/` (`core.ts` et `habits.ts` purs : part, habitudes hors batch, conseil ; `store.ts` : `loadEaters`, `householdMembers`, `leadOf`, `adviceFor`) |
 | Nutrition | `src/lib/nutrition/` (incrémenter `NUTRITION_VERSION` si le calcul change) |
-| Semaine | `src/lib/week/` |
+| Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus) |
 | Courses | `src/lib/shopping/`, catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
 | Session | `src/lib/session/` (`planner.ts`), `src/components/session/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |

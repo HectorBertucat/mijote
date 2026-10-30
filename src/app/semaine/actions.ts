@@ -3,13 +3,13 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
-import { isWeekStart } from "@/lib/week/propose";
-import { addRecipe, clearWeek, cyclePlace, loadSelection, loadWeek, proposeWeek, removeRecipe, setExtra, setFactor, swapRecipe } from "@/lib/week/store";
+import { isDay, parsePeriod } from "@/lib/week/period";
+import { addRecipe, clearWeek, cyclePlace, loadSelection, loadWeek, proposeWeek, removeRecipe, setExtra, setFactor, setPeriod, swapRecipe } from "@/lib/week/store";
 import { startShoppingList } from "@/lib/shopping/build";
 
 function weekOf(formData: FormData): string {
   const w = String(formData.get("w") ?? "");
-  if (!isWeekStart(w)) throw new Error("Semaine invalide.");
+  if (!isDay(w)) throw new Error("Semaine invalide.");
   return w;
 }
 
@@ -20,6 +20,16 @@ const back = (w: string, done: string, f?: FormDataEntryValue | null) =>
 export async function togglePlace(slotId: string) {
   cyclePlace(db, slotId);
   revalidatePath("/semaine");
+}
+
+/** « Du … au … » : la période change (début, nombre de jours) ; recettes et absences suivent. */
+export async function periodAction(formData: FormData) {
+  const w = weekOf(formData);
+  const p = parsePeriod(String(formData.get("from") ?? ""), String(formData.get("to") ?? ""));
+  if (!p) throw new Error("Période invalide.");
+  const start = setPeriod(db, w, p);
+  revalidatePath("/semaine");
+  back(start, `period:${p.days}`);
 }
 
 export async function proposeAction(formData: FormData) {
