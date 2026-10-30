@@ -162,8 +162,11 @@ export const recipeNotes = sqliteTable(
 
 export const weekPlans = sqliteTable("week_plans", {
   id: text("id").primaryKey(),
+  // Premier jour de la période (un lundi pour une semaine classique, n'importe quel jour sinon).
   weekStart: text("week_start").notNull().unique(),
   notes: text("notes"),
+  // Migration 0002 : nombre de jours de la période (7 = une semaine, 14 au plus, src/lib/week/period.ts).
+  days: integer("days").notNull().default(7),
 });
 
 export const mealSlots = sqliteTable(
@@ -171,7 +174,7 @@ export const mealSlots = sqliteTable(
   {
     id: text("id").primaryKey(),
     weekPlanId: text("week_plan_id").notNull().references(() => weekPlans.id, { onDelete: "cascade" }),
-    day: integer("day").notNull(), // 0 = lundi
+    day: integer("day").notNull(), // 0 = premier jour de la période (week_plans.week_start)
     meal: text("meal", { enum: ["lunch", "dinner"] }).notNull(),
     personId: text("person_id").notNull().references(() => people.id),
     place: text("place", { enum: ["home", "office", "away"] }).notNull(),

@@ -12,7 +12,8 @@ const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const LETTER = ["L", "M", "M", "J", "V", "S", "D"];
 const tone = (v: number, min: number, max: number): Tone => verdictTone(verdict(v, min, max));
 
-export function WeekNutrition({ people, stack = false }: { people: { id: string; name: string; week: PersonWeek; ref: DayRef | null }[]; stack?: boolean }) {
+/** `letters` : initiale de chaque jour de la période (lundi → dimanche par défaut). */
+export function WeekNutrition({ people, stack = false, letters = LETTER }: { people: { id: string; name: string; week: PersonWeek; ref: DayRef | null }[]; stack?: boolean; letters?: string[] }) {
   return (
     <section className="grid gap-2.5" aria-labelledby="nutri-titre">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
@@ -23,7 +24,7 @@ export function WeekNutrition({ people, stack = false }: { people: { id: string;
       </div>
       <div className={`grid gap-3 sm:grid-cols-2 ${stack ? "lg:grid-cols-1" : ""}`}>
         {people.map((p) => (
-          <PersonCard key={p.id} name={p.name} w={p.week} T={p.ref} />
+          <PersonCard key={p.id} name={p.name} w={p.week} T={p.ref} letters={letters} />
         ))}
       </div>
       <p className="text-[13px] leading-snug text-ink-2">
@@ -57,11 +58,11 @@ export function WeekNutrition({ people, stack = false }: { people: { id: string;
   );
 }
 
-function PersonCard({ name, w, T }: { name: string; w: PersonWeek; T: DayRef | null }) {
+function PersonCard({ name, w, T, letters }: { name: string; w: PersonWeek; T: DayRef | null; letters: string[] }) {
   const counts = [`${w.meals} repas`, `${w.days} jour${w.days > 1 ? "s" : ""}`].filter(Boolean).join(" · ");
   const maxDay = Math.max((T?.kcalMax ?? 2000) * 1.15, ...w.byDay.map((d) => d?.macros.kcal ?? 0));
   const bars: DayBar[] = w.byDay.map((d, i) => ({
-    label: LETTER[i],
+    label: letters[i] ?? "",
     value: d ? d.macros.kcal : null,
     tone: d && T && d.meals >= 2 ? tone(d.macros.kcal, T.kcalMin, T.kcalMax) : undefined,
     title: d ? `${fr(d.macros.kcal)} kcal · ${fr(d.macros.protein)} g de protéines · ${d.meals} repas` : "aucun repas du batch",
