@@ -253,3 +253,18 @@ test("import des recettes : le dossier de l'instance s'ajoute à la bibliothèqu
   assert.ok(bySlug.has("recette-de-l-instance"));
   assert.equal(bySlug.size, base.length + 1);
 });
+
+test("cuisine de l'ancien format réenregistrée : mesures notées à la main gardées, rien d'inventé", () => {
+  const db = fresh();
+  setSetting(db, "kitchen", JSON.stringify({ hobs: 3, oven: true, ovenLevels: 5, vessels: { poele: true, casseroles: 3, faitout: true, cocotte: true, plats: 3 }, extras: { microOndes: true, congelateur: true, mixeur: true } }));
+  applyKitchen(db, loadKitchen(db));
+  db.update(equipment).set({ owned: false }).where(eq(equipment.id, "mixeur")).run();
+  db.update(equipment).set({ dimsJson: { lengthCm: 35 } }).where(eq(equipment.id, "cocotte")).run();
+  db.update(equipment).set({ dimsJson: { levels: 5, rails: "2,4" } }).where(eq(equipment.id, "oven")).run();
+  applyKitchen(db, loadKitchen(db));
+  const row = (id: string) => db.select().from(equipment).where(eq(equipment.id, id)).get();
+  assert.equal(row("mixeur")!.owned, false, "le mixeur décoché en base ne revient pas");
+  assert.equal((row("cocotte")!.dimsJson as Record<string, unknown>).lengthCm, 35);
+  assert.equal((row("oven")!.dimsJson as Record<string, unknown>).rails, "2,4");
+  for (const id of ["balance", "robot", "autocuiseur", "cuiseur-riz"]) assert.ok(!row(id)?.owned, `${id} supposé`);
+});

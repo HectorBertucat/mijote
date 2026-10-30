@@ -371,13 +371,14 @@ export function normalizeKitchen(raw: unknown): KitchenConfig {
       blender: bool(mixers.blender, d.mixers.blender),
       hachoir: bool(mixers.hachoir, d.mixers.hachoir),
     },
+    // Un ancien réglage ne connaissait pas ces appareils : on ne les suppose pas.
     extras: {
       microOndes: bool(extras.microOndes, d.extras.microOndes),
       congelateur: bool(extras.congelateur, d.extras.congelateur),
-      autocuiseur: bool(extras.autocuiseur, d.extras.autocuiseur),
-      cuiseurRiz: bool(extras.cuiseurRiz, d.extras.cuiseurRiz),
-      robot: bool(extras.robot, d.extras.robot),
-      balance: bool(extras.balance, d.extras.balance),
+      autocuiseur: bool(extras.autocuiseur, isLegacy ? false : d.extras.autocuiseur),
+      cuiseurRiz: bool(extras.cuiseurRiz, isLegacy ? false : d.extras.cuiseurRiz),
+      robot: bool(extras.robot, isLegacy ? false : d.extras.robot),
+      balance: bool(extras.balance, isLegacy ? false : d.extras.balance),
     },
     duo: bool(x.duo, d.duo),
     unsure: Array.isArray(x.unsure) ? QUESTIONS.filter((q) => (x.unsure as unknown[]).includes(q)) : [],
