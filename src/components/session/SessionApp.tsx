@@ -1,8 +1,10 @@
 "use client";
 
 // Centre de contrôle d'une session (docs/vision.md §4.4 bis), selon la DA « Plan de travail ».
-// Une seule logique, trois vues : ordinateur (complète, barre espace = bouton principal), iPad
-// (la même au doigt), téléphone (?vue=telephone : posé à côté du feu, sombre pendant la cuisson).
+// Une seule logique, deux vues : la vue simple par défaut, téléphone d'abord (trois temps, une
+// consigne à la fois, Simple.tsx ; ?vue=telephone la garde plein écran à toutes les tailles) et la
+// vue détaillée (?vue=detail : fil, minuteurs, foyers et four ; ordinateur et iPad).
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
@@ -32,7 +34,8 @@ import { chime, clock, dur, Eyebrow, kindLabel, QrCard, recipeOf, SessionHead, S
 import { DoneView, Issues, PlanDetails, progressLine, recipesLine, ResumeChoice, sessionTitle } from "./blocks";
 import { PrepBowlRow, PrepPhase, Tomorrow } from "./Prep";
 import { CookPhase } from "./Cook";
-import { PhoneView } from "./PhoneView";
+import { SimpleView } from "./Simple";
+import type { RecipeStorage } from "@/lib/session/flow";
 import { DuoView } from "./DuoView";
 
 /** Prep la veille : durées du jour J selon qu'on le fait seul ou à deux (écran « au frigo »). */
@@ -47,7 +50,8 @@ export interface SessionProps {
   startedAt: string | null;
   initialStatus: SessionState["status"];
   initialEvents: SessionEvent[];
-  view: "full" | "phone";
+  /** simple : la vue par défaut ; phone : la même en plein écran ; full : la vue détaillée. */
+  view: "simple" | "full" | "phone";
   phoneUrl: string;
   qrSvg: string | null;
   serverNow: number;
@@ -59,6 +63,8 @@ export interface SessionProps {
   dayChoice?: DayChoice | null;
   /** Session test (pour montrer l'appli) : étiquette dans l'en-tête, rien n'est compté. */
   test?: boolean;
+  /** Le rangement : boîtes et conservation de chaque recette. */
+  storage?: RecipeStorage[];
 }
 
 export type Controls = ReturnType<typeof useControls>;
@@ -352,10 +358,18 @@ export function SessionApp(props: SessionProps) {
   // Flèche gauche (ordinateur) : retour à la sous-étape ou à l'étape d'avant, pendant la cuisson.
   const backRef = useRef<() => void>(() => {});
   backRef.current = () => {
-    if (state.status === "cooking" && props.view !== "phone") c.back();
+    if (state.status === "cooking") c.back();
   };
   modeRef.current = c.mode;
+  const simpleRef = useRef(props.view !== "full");
+  simpleRef.current = props.view !== "full";
   nextRef.current = (key?: string) => {
+    if (props.view !== "full") {
+      // Vue simple : le bouton principal de l'écran (à deux, celui de A ou de B).
+      const who = key === "KeyA" ? "A" : key === "KeyB" ? "B" : null;
+      document.querySelector<HTMLButtonElement>(who ? `[data-main="${who}"]` : "[data-main]")?.click();
+      return;
+    }
     if (c.mode === "duo") {
       // À deux : touche A ou B pour le « Fait » de chacun (espace = A).
       c.nextFor(key === "KeyB" ? "B" : "A");
@@ -376,6 +390,8 @@ export function SessionApp(props: SessionProps) {
       if ((e.code !== "Space" && !duoKey && !backKey) || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      // Vue simple : l'espace sur un bouton, un lien ou un menu qui a le focus garde son effet (clavier).
+      if (simpleRef.current && e.code === "Space" && t?.closest("button:not([data-main]), a, summary, select")) return;
       if (backKey) {
         e.preventDefault();
         backRef.current();
@@ -399,9 +415,26 @@ export function SessionApp(props: SessionProps) {
   const test = useMemo(() => (props.test ? { ended, end: () => setStatus("done") } : null), [props.test, ended, setStatus]);
   return (
     <SessionTest.Provider value={test}>
-      {props.view === "phone" ? <PhoneView plan={plan} c={c} person={props.person ?? null} choice={props.dayChoice ?? null} /> : c.mode === "duo" ? <DuoView {...props} c={c} /> : <FullView {...props} c={c} />}
-      <TimerAlert plan={plan} ringing={c.ringing} now={c.now} onStop={c.stopTimer} kitchen={props.view === "phone"} />
-      <ToastView toast={c.toast} onDone={() => c.setToast(null)} raised={props.view === "phone"} />
+      {props.view !== "full" ? (
+        <SimpleView
+          id={props.id}
+          plan={plan}
+          c={c}
+          overlay={props.view === "phone"}
+          person={props.person ?? null}
+          choice={props.dayChoice ?? null}
+          storage={props.storage ?? []}
+          qr={props.qrSvg ? { svg: props.qrSvg, url: props.phoneUrl } : null}
+          startedAt={props.startedAt}
+        />
+      ) : c.mode === "duo" ? (
+        <DuoView {...props} c={c} />
+      ) : (
+        <FullView {...props} c={c} />
+      )}
+      {/* Vue simple : ce qui sonne revient au premier plan dans l'écran lui-même. */}
+      {props.view === "full" && <TimerAlert plan={plan} ringing={c.ringing} now={c.now} onStop={c.stopTimer} />}
+      <ToastView toast={c.toast} onDone={() => c.setToast(null)} raised={props.view !== "full"} />
     </SessionTest.Provider>
   );
 }
@@ -411,6 +444,15 @@ export function SessionApp(props: SessionProps) {
 /** Pleine largeur sous l'en-tête de l'appli (le <main> du layout est limité à 64 rem). */
 export function Bleed({ children }: { children: React.ReactNode }) {
   return <div className="-mt-4 mr-[calc(50%-50vw)] ml-[calc(50%-50vw)]">{children}</div>;
+}
+
+/** Retour à la vue simple (la vue par défaut). */
+export function SimpleLink() {
+  return (
+    <Link href="?" className={buttonClass({ variant: "inverse", size: "sm" })} title="Une consigne à la fois, en grand">
+      Vue simple
+    </Link>
+  );
 }
 
 const phaseOf = (status: SessionState["status"]): Phase | null => (status === "prep" || status === "planned" ? "prep" : status === "cooking" ? "cooking" : null);
@@ -437,6 +479,7 @@ function FullView(p: SessionProps & { c: Controls }) {
         right={
           <span className="flex items-center gap-2">
             <WakePill wake={wake} />
+            <SimpleLink />
             <a href={p.phoneUrl} className={buttonClass({ variant: "inverse", size: "sm", className: "md:hidden" })}>
               <Icon name="qr" size="s" />
               Téléphone

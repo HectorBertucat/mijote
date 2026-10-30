@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-30 : session, téléphone d'abord
+- La session s'ouvre sur une vue simple, pensée pour le téléphone (`src/components/session/Simple.tsx`, `SimpleDuo.tsx`) : trois temps plein écran, Prépare (tous les bols sur le plan de travail, aliments dessinés), Cuisine (une consigne à la fois, sous-étape en très grand, minuteur en pastille, « Suivant », « Ça sonne bientôt ») et Range (boîtes et frigo), une barre de progression en trois segments, un écran de transition entre les temps et une confirmation de fin. Une attente qui sonne ramène son étape au premier plan, dans l'écran lui-même.
+- Le planificateur ne change pas. Le parcours vient d'un module pur (`src/lib/session/flow.ts` : temps en cours, avancement, ce qui sonne bientôt, une boîte par repas) ; la mise en boîtes est une note du journal (`boxed`, état `boxed` dans `state.ts`), partagée par tous les écrans.
+- À deux : le fil de chacun sur son téléphone (`?personne=A`), les deux côte à côte sur grand écran (touches A et B).
+- Grand écran : la vue simple par défaut, l'ancienne vue en option (`?vue=detail`, lien « Vue détaillée » du menu, « Vue simple » pour revenir). `?vue=telephone` garde la vue simple en plein écran. L'ancienne vue téléphone (`PhoneView.tsx`) est retirée.
+- Clavier : espace = le bouton principal de l'écran (sauf sur un bouton qui a le focus), flèche gauche = retour.
+
 ## 2026-10-30 : habitudes hors batch
 - Ce qu'une personne mange hors des repas du batch devient une seule source : ses **habitudes** (shaker, petit-déjeuner, en-cas), composées d'aliments de la table nutritionnelle, avec leurs jours. Les macros sont calculées en code (`src/lib/eaters/habits.ts`, testé dans `tests/habitudes.test.ts`). Ce sont les modèles du journal (`food_templates`, colonne `items`, migration `0002_habitudes`) : proposées d'office dans Santé › Aujourd'hui les jours prévus.
 - Hors batch d'un jour = la somme des habitudes prises ce jour-là. Le repère d'un repas du batch prend la moyenne de la semaine (les parts sont cuites d'avance, identiques chaque jour) ; le bilan de la Semaine compte jour par jour (le shaker de semaine ne compte plus le dimanche). Sans habitude, le chiffre libre (`people.outside_kcal`) sert de repli, puis la valeur par défaut (20 % de la journée).

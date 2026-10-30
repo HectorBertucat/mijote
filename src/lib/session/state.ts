@@ -42,6 +42,8 @@ export interface SessionState {
   phasesDone: Set<string>;
   /** Dernière sous-étape passée, par étape : une étape qui sort d'une attente repasse devant. */
   phaseAt: Map<string, number>;
+  /** Le rangement : recettes mises en boîtes (note « boxed »). */
+  boxed: Set<string>;
 }
 
 export function reduce(initialStatus: SessionState["status"], events: SessionEvent[]): SessionState {
@@ -57,6 +59,7 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
     timers: new Map(),
     phasesDone: new Set(),
     phaseAt: new Map(),
+    boxed: new Set(),
   };
   // L'état initial vient du statut en base ; les notes de statut le rejouent dans l'ordre.
   for (const e of events) {
@@ -121,6 +124,11 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
         break;
       }
       case "note": {
+        const box = e.payload?.boxed;
+        if (typeof box === "string") {
+          if (undo) s.boxed.delete(box);
+          else s.boxed.add(box);
+        }
         const st = e.payload?.status;
         if (typeof st === "string") {
           s.status = st as SessionState["status"];

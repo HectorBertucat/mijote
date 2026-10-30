@@ -3,18 +3,18 @@
 // Session à deux (DA « Session à deux ») : un fil par personne, A et B, en deux colonnes qui
 // défilent chacune de leur côté, avec l'élément en cours en grand et son « Fait », les relais
 // (qui libère quoi), puis ce qui vient. À droite : un QR par personne, les minuteurs, les foyers
-// et le four, les bols. Sur le téléphone (?personne=A ou B), le fil d'une seule personne.
+// et le four, les bols. Sur le téléphone, la vue simple (SimpleDuo.tsx) montre le fil d'une personne.
 // Tout passe par le même journal et la même synchro SSE que la vue seule.
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
-import { currentPhase, itemStatus, passiveMin, personFocus, personNext, stepStatus, stepTimer, threadOf, type ThreadItem } from "@/lib/session/state";
+import { currentPhase, itemStatus, passiveMin, personFocus, personNext, stepTimer, threadOf, type ThreadItem } from "@/lib/session/state";
 import { Alert, Button, Icon } from "@/components/ui";
 import type { Controls, SessionProps } from "./SessionApp";
-import { Bleed } from "./SessionApp";
+import { Bleed, SimpleLink } from "./SessionApp";
 import { DoneView, Handoff, handoffsFor, Issues, NowCard, PlanDetails, progressLine, recipesLine, sessionTitle, timerMinutes } from "./blocks";
 import { prepTitle } from "./Prep";
-import { Bowl, bowlOf, clock, dur, Eyebrow, kindLabel, PersonMono, QrCard, RecipeMark, recipeOf, Resources, SessionHead, shortName, stepTitle, TimerList, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlOf, clock, dur, Eyebrow, PersonMono, QrCard, RecipeMark, recipeOf, Resources, SessionHead, stepTitle, TimerList, useWakeLock, WakePill } from "./parts";
 
 const PEOPLE: Person[] = ["A", "B"];
 
@@ -40,6 +40,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
               </Button>
             )}
             <WakePill wake={wake} />
+            <SimpleLink />
           </span>
         }
       />
@@ -299,68 +300,14 @@ function PersonActions({ c, item, person, big }: { c: Controls; item: ThreadItem
   );
 }
 
-/** Téléphone d'une personne (DA « Téléphone de B ») : son étape en grand, ses minuteurs, ses relais, ce qui vient, « Fait » en bas. */
-export function DuoPhone({ plan, c, person, wake }: { plan: SessionPlan; c: Controls; person: Person; wake: { on: boolean; request: () => Promise<void> } }) {
-  const { focus, upcoming, timers, thread, done } = usePerson(plan, c, person);
-  const hs = handoffsFor(plan, c, person).slice(0, 2);
-  const dark = c.state.status === "cooking"; // surface .kitchen-dark de PhoneView
-  return (
-    <>
-      <SessionHead
-        compact
-        plain={dark}
-        lead={<PersonMono person={person} size={30} onInk={!dark} />}
-        title={`Fil de ${person}`}
-        sub={`${Math.min(done + 1, thread.length)} sur ${thread.length} · ${plan.recipes.map((r) => shortName(r.name)).join(" + ")}`}
-        online={c.online}
-        right={
-          <span className="flex items-center gap-2">
-            <WakePill wake={wake} onInk={!dark} />
-            <Link href="?" className="text-[13px] underline-offset-2 opacity-75 hover:underline">
-              vue complète
-            </Link>
-          </span>
-        }
-      />
-      <div className="mx-auto grid max-w-lg gap-3.5 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+8.5rem)]">
-        {timers.length > 0 && <TimerList plan={plan} timers={timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} big />}
-        {focus ? (
-          <ItemFocus plan={plan} c={c} item={focus} person={person} big />
-        ) : (
-          <div className="grid justify-items-center gap-2 rounded-[18px] border-2 border-ink p-6 text-center">
-            <Icon name="check" size="l" />
-            <b className="font-display text-[26px]">{person} a tout fini</b>
-          </div>
-        )}
-        {hs.map((h) => (
-          <Handoff key={`${h.toStepId}-${h.fromStepId}`} plan={plan} c={c} h={h} />
-        ))}
-        {upcoming && (
-          <div className="grid gap-1 rounded-[14px] border border-dashed border-line-strong px-4 py-3.5">
-            <Eyebrow>Ensuite · {clock(c.cookingStart + upcoming.startMin * 60000)}</Eyebrow>
-            <b className="font-display text-[18px] leading-snug [font-stretch:100%]">{upcoming.type === "step" ? `${upcoming.step.no}. ${kindLabel(upcoming.step.kind)} · ${upcoming.step.equipmentName ?? recipeOf(plan, upcoming.step.recipeSlug)?.name ?? ""}` : itemTitle(plan, upcoming)}</b>
-          </div>
-        )}
-      </div>
-      {focus && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-[color-mix(in_srgb,var(--c-bg)_92%,transparent)] px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md">
-          <div className="mx-auto max-w-lg">
-            <PersonActions c={c} item={focus} person={person} big />
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-/** Téléphone sans personne choisie : « Fil A » / « Fil B ». */
-export function DuoPick() {
+/** Téléphone sans personne choisie : « Fil A » / « Fil B ». `telephone` : garde la vue plein écran. */
+export function DuoPick({ telephone = true }: { telephone?: boolean }) {
   return (
     <div className="mx-auto grid max-w-lg gap-4 px-4 pt-6">
       <h1 className="text-[28px] font-extrabold">Qui es-tu ?</h1>
       <div className="grid grid-cols-2 gap-3">
         {PEOPLE.map((p) => (
-          <Link key={p} href={`?vue=telephone&personne=${p}`} className="grid min-h-40 justify-items-center content-center gap-3 rounded-[18px] border-2 border-line bg-surface p-5 hover:border-ink">
+          <Link key={p} href={`?${telephone ? "vue=telephone&" : ""}personne=${p}`} className="grid min-h-40 justify-items-center content-center gap-3 rounded-[18px] border-2 border-line bg-surface p-5 hover:border-ink">
             <PersonMono person={p} size={56} />
             <b className="font-display text-[20px]">Fil {p}</b>
           </Link>
