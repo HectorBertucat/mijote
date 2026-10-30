@@ -24,6 +24,10 @@ export const IngredientInput = z.object({
   group: z.string().nullable().optional().describe("Lettre du bol de prep (A, B, C…)"),
   optional: z.boolean().optional(),
   pantry: z.boolean().optional().describe("Placard : à vérifier chez soi, pas forcément à acheter"),
+  side: z
+    .boolean()
+    .optional()
+    .describe("Garniture cuite et gardée à part (riz, semoule, pâtes) : pesée à part en fin de session, pour régler plat et féculent de chacun"),
   food: z.string().nullable().optional().describe("Id de la table nutritionnelle (src/lib/nutrition/foods.ts), « zero » si sans apport"),
   yield: IngredientYieldInput.nullable().optional().describe("Ce qui est réellement mangé (part du paquet, parure, gras de la poêle)"),
 });

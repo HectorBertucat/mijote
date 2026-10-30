@@ -17,7 +17,7 @@
     { "lineRaw": "3 gousses d'ail", "item": "Ail, râpé", "units": 3, "group": "C", "food": "ail" },
     { "lineRaw": "1 c. à s. maïzena", "item": "Fécule de maïs, délayée dans 10 cl d'eau", "grams": 12, "group": "C", "pantry": true, "food": "maizena" },
     { "lineRaw": "600 g haricots verts", "item": "Haricots verts", "grams": 600, "group": "A", "food": "haricots_verts" },
-    { "lineRaw": "450 g riz basmati", "item": "Riz basmati", "grams": 450, "group": "D", "food": "riz_basmati" },
+    { "lineRaw": "450 g riz basmati", "item": "Riz basmati", "grams": 450, "group": "D", "food": "riz_basmati", "side": true },
     { "lineRaw": "huile", "item": "Huile, pour saisir", "grams": 20, "pantry": true, "food": "huile", "yield": { "panLossPct": 5, "note": "la sauce se fait dans la même poêle" } },
     { "lineRaw": "graines de sésame", "item": "Graines de sésame (facultatif)", "optional": true, "pantry": true, "food": "zero" }
   ],

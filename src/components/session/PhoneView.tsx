@@ -5,7 +5,9 @@
 // thème (.kitchen-dark) : l'étape en text-step, le minuteur en text-giant, deux gros boutons fixes
 // en bas. Prep : le prochain bol en grand, les bols et les gestes à cocher. Au frigo : la reprise.
 import { FridgeDone } from "./FridgeDone";
+import { SessionBoxes } from "./SessionBoxes";
 import { DropGuide, wantsDropGuide } from "./DropGuide";
+import { useContext } from "react";
 import Link from "next/link";
 import type { Person, SessionPlan } from "@/lib/session/planner";
 import { batchOf, currentPhase, passiveMin, phaseTimer, stepStatus } from "@/lib/session/state";
@@ -14,7 +16,7 @@ import type { Controls, DayChoice } from "./SessionApp";
 import { PhasePanel, ResumeChoice, timerMinutes } from "./blocks";
 import { DuringBowls, PrepBowlRow, PrepGesture, prepScope } from "./Prep";
 import { DuoPhone, DuoPick } from "./DuoView";
-import { Bowl, BowlFoods, bowlName, bowlOf, bowlOrdered, bowlQty, clock, cueParts, Eyebrow, hobName, mmss, NextCard, RecipeMark, recipeOf, SessionHead, splitStep, TimerList, useWakeLock, WakePill } from "./parts";
+import { Bowl, BowlFoods, bowlName, bowlOf, bowlOrdered, bowlQty, clock, cueParts, Eyebrow, hobName, mmss, NextCard, RecipeMark, recipeOf, SessionHead, SessionTest, splitStep, TimerList, useWakeLock, WakePill } from "./parts";
 import { StepIllu } from "@/components/illus/Illu";
 
 export function PhoneView({ plan, c, person, choice }: { plan: SessionPlan; c: Controls; person?: Person | null; choice?: DayChoice | null }) {
@@ -311,9 +313,15 @@ function PhoneFridge({ plan, c, choice, wake }: { plan: SessionPlan; c: Controls
 }
 
 function PhoneDone({ plan, c }: { plan: SessionPlan; c: Controls }) {
+  const test = useContext(SessionTest) != null;
   return (
     <div className="mx-auto grid max-w-lg justify-items-center gap-4 px-4 pt-8 text-center">
       <FridgeDone plan={plan} events={c.events} compact />
+      {!test && (
+        <div className="w-full">
+          <SessionBoxes id={c.id} plan={plan} />
+        </div>
+      )}
       <p className="text-ink-2">Le bilan prévu / réel est sur la vue complète.</p>
       <Link href="?" className="font-semibold text-accent">
         Voir le bilan

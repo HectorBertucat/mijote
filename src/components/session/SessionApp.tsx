@@ -338,7 +338,7 @@ function useControls(p: SessionProps) {
     if (n != null) send(phaseDone(st, n));
   }, [state, send, phaseDone]);
 
-  return { ...s, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer };
+  return { ...s, id: p.id, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer };
 }
 
 export function SessionApp(props: SessionProps) {

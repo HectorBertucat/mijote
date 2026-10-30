@@ -65,6 +65,7 @@ export function upsertRecipe(db: Db, raw: unknown, fixtureHash: string | null = 
         group: ing.group ?? null,
         optional: ing.optional ?? false,
         pantry: ing.pantry ?? false,
+        side: ing.side ?? false,
         foodId: ing.food ?? null,
         yield: ing.yield ?? null,
       };
