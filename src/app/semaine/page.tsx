@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Alert, buttonClass, Card, ChipLink, Chips, Icon, Macro, MacroRow, RecipeTile, StampSemainePrete } from "@/components/ui";
 import { db } from "@/lib/db/client";
-import { addDays, COOK_DAY, DAYS, daysAfterSession, defaultWeek, isWeekStart, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
-import { weekView } from "@/lib/week/store";
+import { addDays, COOK_DAY, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
+import { clampDays, defaultPeriod, isClassicWeek, isDay, neighbour, periodDays, periodHeading, periodLabel, weekdayOf } from "@/lib/week/period";
+import { periodPlans, weekView } from "@/lib/week/store";
 import { composerHref } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
 import { estimateRecipe, estimateSession } from "@/lib/session/estimate";
@@ -17,6 +18,7 @@ import { PendingButton } from "@/components/semaine/PendingButton";
 import { PartMacros } from "@/components/semaine/PartMacros";
 import { WeekGrid, type GridCell } from "@/components/semaine/WeekGrid";
 import { MenuBoard, type BoardDay } from "@/components/semaine/MenuBoard";
+import { PeriodPicker } from "@/components/semaine/PeriodPicker";
 import { fmtG } from "@/components/semaine/format";
 import { recipeColor } from "@/lib/ui";
 import { WeekNutrition } from "@/components/WeekNutrition";
@@ -32,14 +34,20 @@ const fmtMin = (m: number) => {
   const r = Math.round(m / 5) * 5;
   return r >= 60 ? `${Math.floor(r / 60)} h ${String(r % 60).padStart(2, "0")}` : `${r} min`;
 };
-const dayNum = (w: string, d: number) => Number(addDays(w, d).split("-")[2]);
 const longDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
-const titleDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
 
-export default async function Semaine({ searchParams }: { searchParams: Promise<{ w?: string; done?: string; f?: string }> }) {
-  const { w: wParam, done, f } = await searchParams;
-  const w = isWeekStart(wParam) ? wParam : defaultWeek(new Date());
-  const view = weekView(db, w);
+export default async function Semaine({ searchParams }: { searchParams: Promise<{ w?: string; n?: string; done?: string; f?: string }> }) {
+  const { w: wParam, n: nParam, done, f } = await searchParams;
+  // La période : `w` = premier jour ; `n` = nombre de jours d'une période pas encore créée (navigation).
+  const plans = periodPlans(db);
+  const def = defaultPeriod(plans, new Date());
+  const w = isDay(wParam) ? wParam : def.start;
+  const view = weekView(db, w, isDay(wParam) ? (nParam ? clampDays(Number(nParam)) : undefined) : def.days);
+  const N = view.days;
+  const pdays = periodDays(w, N);
+  const dayName = (d: number) => `${pdays[d].short} ${pdays[d].num}`;
+  const prev = neighbour(plans, w, N, -1);
+  const next = neighbour(plans, w, N, 1);
   const { grid, selected, assignment: a, library, selection, tastes, eaters } = view;
   const bySlug = new Map([...library, ...selected].map((r) => [r.slug, r]));
   const rankOf = (id: string) => {
@@ -71,7 +79,9 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
         grid,
         [...bySlug.values()], // grammes ajoutés : macros recalculées des recettes retenues
         people.map((p) => p.id),
-        outside
+        outside,
+        N,
+        (d) => weekdayOf(addDays(w, d))
       ).map((wk) => {
         const e = eaterOf.get(wk.personId);
         return { id: wk.personId, name: people.find((p) => p.id === wk.personId)?.name ?? wk.personId, week: wk, ref: e ? dayRefOf(e) : null };
@@ -81,7 +91,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   const eatenUnits = a.recipes.reduce((s, r) => s + r.unitsUsed, 0) + a.uncovered.reduce((s, x) => s + x.portionUnits, 0);
 
   // Cases de la grille (une par jour et repas), pour le composant client.
-  const cells: GridCell[] = DAYS.flatMap((_, day) =>
+  const cells: GridCell[] = pdays.flatMap(({ i: day }) =>
     MEALS.map((meal) => {
       const slots = people.map((p) => cell(day, meal, p.id)).filter((s): s is NonNullable<typeof s> => !!s);
       const dishes = [...new Set(slots.map((s) => s.slug).filter((x): x is string => !!x))].map((slug) => ({ slug, name: bySlug.get(slug)?.name ?? slug, color: recipeColor(slug) }));
@@ -96,17 +106,17 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
     })
   );
   // Ardoise du menu, et cachet « Semaine prête » : recettes choisies, tous les repas couverts, courses commandées.
-  const board: BoardDay[] = DAYS.map((_, day) => {
+  const board: BoardDay[] = pdays.map(({ i: day, short, num }) => {
     const at = (meal: Meal) => cells.find((c) => c.day === day && c.meal === meal)?.dishes.map((d) => ({ name: d.name, color: d.color })) ?? [];
-    return { label: `${DAYS[day].slice(0, 3)}.`, lunch: at("lunch"), dinner: at("dinner") };
+    return { label: N > 7 ? `${short}. ${num}` : `${short}.`, lunch: at("lunch"), dinner: at("dinner") };
   });
   const ready = selected.length > 0 && a.uncovered.length === 0 && !!view.list?.ordered && !view.list.changed;
   const toCover = cells.filter((c) => c.slots.some((s) => s.place !== "away")).length;
   const awayNote = people
     .map((p) => {
-      const away = DAYS.map((_, d) => MEALS.every((m) => cell(d, m, p.id)?.place === "away")).map((x, d) => (x ? d : -1)).filter((d) => d >= 0);
-      if (!away.length || away.length === 7) return null;
-      return `${p.name} : absence ${away.length === 1 ? `le ${DAYS[away[0]]}` : `${away.length} jours`}`;
+      const away = pdays.map(({ i: d }) => MEALS.every((m) => cell(d, m, p.id)?.place === "away")).map((x, d) => (x ? d : -1)).filter((d) => d >= 0);
+      if (!away.length || away.length === N) return null;
+      return `${p.name} : absence ${away.length === 1 ? `le ${dayName(away[0])}` : `${away.length} jours`}`;
     })
     .filter(Boolean);
 
@@ -132,25 +142,27 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
       .map(({ e, p }) => `${r.name} : ${p.verdict!.protein === "low" ? `un peu léger en protéines pour ${e.name}` : `part de ${e.name} difficile à caler`}`)
   );
   const minutes = plan ? plan.totalMin : est ? est.totalMin : null;
+  const title = periodHeading(w, N);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">Semaine du {titleDate(w)}</h1>
+            <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">{title}</h1>
             {ready && <StampSemainePrete seed={w} size={118} className="-my-3" />}
           </div>
           <p className="mt-1.5 text-ink-2">
-            <span className="num">{toEat}</span> repas · session le {longDate(addDays(w, COOK_DAY))}
+            <span className="num">{toEat}</span> repas{isClassicWeek(w, N) ? "" : <> · <span className="num">{N}</span> jour{N > 1 ? "s" : ""}</>} · session le {longDate(addDays(w, COOK_DAY))}
             {awayNote.length > 0 && ` · ${awayNote.join(", ")}`}
           </p>
         </div>
-        <nav className="flex items-center gap-1" aria-label="Changer de semaine">
-          <Link href={`/semaine?w=${addDays(w, -7)}`} className={buttonClass({ iconOnly: true })} aria-label="Semaine précédente">
+        <nav className="flex items-center gap-1" aria-label="Changer de période">
+          <PeriodPicker key={`${w}:${N}`} start={w} days={N} />
+          <Link href={`/semaine?w=${prev.start}&n=${prev.days}`} className={buttonClass({ iconOnly: true })} aria-label="Période précédente">
             <PendingMark idle={<Icon name="chev" className="rotate-180" />} />
           </Link>
-          <Link href={`/semaine?w=${addDays(w, 7)}`} className={buttonClass({ iconOnly: true })} aria-label="Semaine suivante">
+          <Link href={`/semaine?w=${next.start}&n=${next.days}`} className={buttonClass({ iconOnly: true })} aria-label="Période suivante">
             <PendingMark idle={<Icon name="chev" />} />
           </Link>
         </nav>
@@ -239,7 +251,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
               {selected.length >= 4
                 ? "Quatre recettes, même en double quantité, ne couvrent pas tout : prévois ces repas à part, ou retire des absences."
                 : "Ajoute une recette, ou « Compléter pour moi »."}{" "}
-              <span className="text-ink-2">({a.uncovered.map((s) => `${DAYS[s.day]} ${MEAL_LABEL[s.meal]} ${initial(s.personId)}`).join(", ")})</span>
+              <span className="text-ink-2">({a.uncovered.map((s) => `${dayName(s.day)} ${MEAL_LABEL[s.meal]} ${initial(s.personId)}`).join(", ")})</span>
             </Alert>
           )}
           {offTarget.length > 0 && (
@@ -339,10 +351,10 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                 <Icon name="dash" size="s" /> absent
               </span>
             </p>
-            <WeekGrid cells={cells} dates={DAYS.map((_, d) => dayNum(w, d))} proposed={selected.length > 0} />
+            <WeekGrid cells={cells} days={pdays} proposed={selected.length > 0} />
           </section>
 
-          {selected.length > 0 && <MenuBoard title={`semaine du ${titleDate(w)}`} days={board} ready={ready} />}
+          {selected.length > 0 && <MenuBoard title={periodLabel(w, N)} days={board} ready={ready} />}
 
           {selected.length > 0 && (
             <section className="grid gap-3" aria-label="Quantités">
@@ -384,7 +396,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             </section>
           )}
 
-          {nutrition && <WeekNutrition people={nutrition} stack />}
+          {nutrition && <WeekNutrition people={nutrition} stack letters={pdays.map((d) => d.letter)} />}
 
           {selected.length > 0 && (
             <Suspense key={JSON.stringify(selection)} fallback={<LeftoversSkeleton />}>
@@ -423,6 +435,7 @@ function flashText(done: string | undefined, bySlug: Map<string, { name: string 
   }
   if (kind === "swap") return b ? `${name(b)} remplace ${name(a)}.` : `Pas d'autre recette pour remplacer ${name(a)}.`;
   if (kind === "clear") return "Proposition effacée.";
+  if (kind === "period") return `Période réglée : ${a} jour${Number(a) > 1 ? "s" : ""}. Les quantités se sont recalées.`;
   if (kind === "add") return `${name(a)} ajoutée à la semaine.`;
   if (kind === "remove") return `${name(a)} retirée de la semaine.`;
   if (kind === "extra") return `${fmtG(Number(b))} ajoutés à ${name(a)} : le paquet est fini.`;

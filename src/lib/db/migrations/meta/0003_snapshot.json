@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "eac8b31d-90b1-4170-aead-76e46d4b2a94",
+  "id": "0f407285-cce6-41b9-8de4-cf0ca7ba8762",
   "prevId": "b0fee029-5977-405f-8b69-ea4763ac5e7e",
   "tables": {
     "adjust_proposals": {
@@ -1532,242 +1532,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "meal_boxes": {
-      "name": "meal_boxes",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "session_id": {
-          "name": "session_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "recipe_id": {
-          "name": "recipe_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "person_id": {
-          "name": "person_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "grams": {
-          "name": "grams",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "side_grams": {
-          "name": "side_grams",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "side_label": {
-          "name": "side_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "kcal": {
-          "name": "kcal",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "protein_g": {
-          "name": "protein_g",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "cooked_on": {
-          "name": "cooked_on",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "planned_for": {
-          "name": "planned_for",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "planned_meal": {
-          "name": "planned_meal",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "place": {
-          "name": "place",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "fridge_days": {
-          "name": "fridge_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "frozen_on": {
-          "name": "frozen_on",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "thawed_on": {
-          "name": "thawed_on",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'stock'"
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "eaten_by": {
-          "name": "eaten_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "food_log_id": {
-          "name": "food_log_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
-        }
-      },
-      "indexes": {
-        "idx_meal_boxes_status": {
-          "name": "idx_meal_boxes_status",
-          "columns": [
-            "status",
-            "place"
-          ],
-          "isUnique": false
-        },
-        "idx_meal_boxes_session": {
-          "name": "idx_meal_boxes_session",
-          "columns": [
-            "session_id",
-            "recipe_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "meal_boxes_session_id_cook_sessions_id_fk": {
-          "name": "meal_boxes_session_id_cook_sessions_id_fk",
-          "tableFrom": "meal_boxes",
-          "tableTo": "cook_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "meal_boxes_recipe_id_recipes_id_fk": {
-          "name": "meal_boxes_recipe_id_recipes_id_fk",
-          "tableFrom": "meal_boxes",
-          "tableTo": "recipes",
-          "columnsFrom": [
-            "recipe_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "meal_boxes_person_id_people_id_fk": {
-          "name": "meal_boxes_person_id_people_id_fk",
-          "tableFrom": "meal_boxes",
-          "tableTo": "people",
-          "columnsFrom": [
-            "person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "meal_boxes_eaten_by_people_id_fk": {
-          "name": "meal_boxes_eaten_by_people_id_fk",
-          "tableFrom": "meal_boxes",
-          "tableTo": "people",
-          "columnsFrom": [
-            "eaten_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "meal_slots": {
       "name": "meal_slots",
       "columns": {
@@ -2397,14 +2161,6 @@
         },
         "pantry": {
           "name": "pantry",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "side": {
-          "name": "side",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -3736,6 +3492,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "days": {
+          "name": "days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 7
         }
       },
       "indexes": {
