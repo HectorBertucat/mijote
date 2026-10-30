@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-30 : Semaine, période libre
+- La page Semaine choisit sa période « du … au … » (1 à 14 jours), avec des raccourcis 1 semaine, 10 jours, 2 semaines (« Changer la période », feuille avec deux champs date). La session a lieu la veille du premier jour (`COOK_DAY`).
+- Migration `0002_periode` : `week_plans.days` (7 par défaut) ; `week_start` devient le premier jour, n'importe quel jour ; `meal_slots.day` va de 0 à `days − 1`. Les semaines existantes restent des semaines du lundi, sur 7 jours.
+- Logique pure dans `src/lib/week/period.ts` : jours et libellés, lecture « du … au … » (plafond `MAX_DAYS` = 14), période par défaut (celle en cours tant qu'il reste plus de 3 jours, puis la suivante), navigation bout à bout, présences gardées à la même date quand la période bouge (`remapPlaces`).
+- `setPeriod` (`src/lib/week/store.ts`) allonge, raccourcit ou déplace la période ; les recettes restent, les quantités se recalent. La présence par défaut suit le jour de la semaine de la date (`defaultPlace(weekday, …)`).
+- Grille par rangées de 7 jours, menu, nutrition jour par jour (`weekNutrition(…, length)`), journal de Santé (`plannedMeals` trouve la période qui contient le jour) et listes de courses (« du 5 au 14 novembre ») suivent la période.
+
 ## 2026-10-30 : Semaine, on choisit ses recettes et c'est tout
 - La page Semaine se résume à choisir ses recettes dans la bibliothèque (filtres one pot, rapide, four, congèle, aimées, à essayer). Les quantités à cuire se calent toutes seules sur les repas (`autoSize` dans `src/lib/week/propose.ts`, jusqu'à `AUTO_MAX_FACTOR` = 2) et les repas se répartissent sans rien régler. « Compléter pour moi » garde les recettes choisies et ajoute le reste.
 - Résumé simple (repas couverts, temps en cuisine) ; avertissements seulement s'il y a lieu (repas non couverts, part trop légère en protéines ou mal calée, récipient partagé). Absences, menu, unités et nutrition sont repliés.

@@ -1,4 +1,4 @@
-// Apports de la semaine par personne, à partir des repas couverts par les recettes
+// Apports de la période (une semaine, ou jusqu'à 14 jours) par personne, à partir des repas couverts par les recettes
 // retenues (meal_slots.recipe_id). Module pur, sans accès à la base.
 //
 // Règles :
@@ -14,7 +14,7 @@ import { round, type Macros } from "@/lib/nutrition/compute";
 import type { Meal } from "./propose";
 
 export interface WeekSlot {
-  day: number; // 0 = lundi
+  day: number; // 0 = premier jour de la période
   meal: Meal;
   personId: string;
   portionUnits: number;
@@ -78,7 +78,7 @@ export interface PersonWeek {
   outsideDays: number;
   perMeal: Macros | null; // moyenne d'un repas du batch (sans le hors batch)
   perDay: Macros | null; // moyenne par jour compté (repas + hors batch)
-  /** Jour par jour (0 = lundi) : repas du batch comptés + hors batch ; null = aucun repas du batch ce jour-là. */
+  /** Jour par jour (0 = premier jour de la période) : repas du batch comptés + hors batch ; null = aucun repas du batch ce jour-là. */
   byDay: ({ meals: number; macros: Macros } | null)[];
 }
 
@@ -92,14 +92,15 @@ const add = (a: Macros, b: Macros, k = 1) => {
 };
 const div = (m: Macros, n: number) => round({ kcal: m.kcal / n, protein: m.protein / n, carbs: m.carbs / n, fat: m.fat / n, fiber: m.fiber / n });
 
-export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personIds?: string[], outside?: Map<string, { kcal: number; protein: number }>): PersonWeek[] {
+/** `length` : longueur de la période (7 pour une semaine, jusqu'à 14). */
+export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personIds?: string[], outside?: Map<string, { kcal: number; protein: number }>, length = 7): PersonWeek[] {
   const byId = new Map(recipes.map((r) => [r.id, r]));
   const ids = personIds ?? [...new Set(slots.map((s) => s.personId))];
   return ids.map((personId) => {
     const mine = slots.filter((s) => s.personId === personId && s.recipeId);
     const meals = zero();
     const days = new Set<number>();
-    const perDayList: ({ meals: number; macros: Macros } | null)[] = Array.from({ length: 7 }, () => null);
+    const perDayList: ({ meals: number; macros: Macros } | null)[] = Array.from({ length }, () => null);
     let n = 0;
     let unknown = 0;
     for (const s of mine) {
@@ -110,7 +111,7 @@ export function weekNutrition(slots: WeekSlot[], recipes: UnitMacros[], personId
       }
       const m = { kcal: r.kcalUnit, protein: r.proteinUnit ?? 0, carbs: r.carbsUnit ?? 0, fat: r.fatUnit ?? 0, fiber: r.fiberUnit ?? 0 };
       add(meals, m, s.portionUnits);
-      if (s.day >= 0 && s.day < 7) {
+      if (s.day >= 0 && s.day < length) {
         const d = (perDayList[s.day] ??= { meals: 0, macros: zero() });
         add(d.macros, m, s.portionUnits);
         d.meals++;

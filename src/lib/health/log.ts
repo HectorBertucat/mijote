@@ -1,10 +1,11 @@
 // Journal des repas (Santé > Aujourd'hui) : le prévu de la Semaine, les habitudes, les extras.
 // kcal et macros sont figés au moment du log (une fiche modifiée ensuite ne réécrit pas le passé).
 import { randomUUID } from "crypto";
-import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { dayLogs, foodLog, foodTemplates, mealSlots, people, recipes, weekPlans } from "@/lib/db/schema";
-import { mondayOf } from "@/lib/week/propose";
+import { addDays } from "@/lib/week/propose";
+import { dayIndexIn, MAX_DAYS, weekdayOf } from "@/lib/week/period";
 
 export type LogMeal = "breakfast" | "lunch" | "dinner" | "snack";
 export const MEAL_LABEL: Record<LogMeal, string> = { breakfast: "Matin", lunch: "Midi", dinner: "Soir", snack: "À côté" };
@@ -24,18 +25,24 @@ export interface PlannedMeal {
   proteinG: number | null;
 }
 
-const dayIndex = (date: string) => (new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7;
-
 /** Repas prévus dans la Semaine pour cette personne ce jour-là (présente, avec une recette). */
 export function plannedMeals(db: Db, personId: string, date: string): PlannedMeal[] {
-  const plan = db.select({ id: weekPlans.id }).from(weekPlans).where(eq(weekPlans.weekStart, mondayOf(new Date(`${date}T12:00:00Z`)))).get();
+  // La période qui contient ce jour (la plus récente si deux se chevauchent).
+  const plan = db
+    .select({ id: weekPlans.id, start: weekPlans.weekStart, days: weekPlans.days })
+    .from(weekPlans)
+    .where(and(lte(weekPlans.weekStart, date), gte(weekPlans.weekStart, addDays(date, -MAX_DAYS))))
+    .orderBy(desc(weekPlans.weekStart))
+    .all()
+    .map((p) => ({ ...p, day: dayIndexIn(p.start, p.days, date) }))
+    .find((p) => p.day != null);
   if (!plan) return [];
   const person = db.select({ units: people.portionUnits }).from(people).where(eq(people.id, personId)).get();
   const rows = db
     .select({ meal: mealSlots.meal, place: mealSlots.place, units: mealSlots.units, recipeId: recipes.id, slug: recipes.slug, name: recipes.name, kcalUnit: recipes.kcalUnit, proteinUnit: recipes.proteinUnit })
     .from(mealSlots)
     .innerJoin(recipes, eq(recipes.id, mealSlots.recipeId))
-    .where(and(eq(mealSlots.weekPlanId, plan.id), eq(mealSlots.personId, personId), eq(mealSlots.day, dayIndex(date))))
+    .where(and(eq(mealSlots.weekPlanId, plan.id), eq(mealSlots.personId, personId), eq(mealSlots.day, plan.day!)))
     .all()
     .sort((a, b) => (a.meal === b.meal ? 0 : a.meal === "lunch" ? -1 : 1));
   // La part prévue par la Semaine (selon la cible et la recette), sinon la part de base.
@@ -180,7 +187,7 @@ export const totals = (entries: Pick<LogEntry, "kcal" | "proteinG">[]): DayTotal
 
 /** Ce qui reste à cocher : repas prévus et habitudes du jour pas encore loggés. */
 export function pending(planned: PlannedMeal[], templates: Template[], entries: LogEntry[], date: string) {
-  const d = dayIndex(date);
+  const d = weekdayOf(date);
   const loggedRecipe = new Set(entries.filter((e) => e.kind === "recipe").map((e) => `${e.meal}:${e.recipeId}`));
   const loggedMeal = new Set(entries.filter((e) => e.meal !== "snack").map((e) => e.meal));
   const loggedTpl = new Set(entries.filter((e) => e.templateId).map((e) => e.templateId));

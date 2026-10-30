@@ -52,13 +52,13 @@ src/
     settings.ts        réglages de l'instance
     shopping/          liste de courses, panier, rayons
     training/          programmes, bibliothèque, générateur, IA, figures, séance partagée
-    week/              présence, proposition, restes, goûts
+    week/              période, présence, proposition, restes, goûts
   seed/                données de départ et recettes de démonstration
   proxy.ts             mot de passe facultatif, mise en route
 tests/                 node:test, un fichier par domaine
 ```
 
-Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `week/propose.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
+Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
 
 ## Données
 

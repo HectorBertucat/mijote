@@ -5,7 +5,8 @@
 // Règles :
 // - la part de chacun dépend de la recette : sa cible (Santé) ÷ kcal d'une unité, au demi près
 //   (src/lib/eaters) ; sans mangeurs connus, la part de base du créneau (people.portion_units) ;
-// - une seule session, le dimanche qui précède la semaine (J0) : lundi = J+1, dimanche = J+7 ;
+// - une seule session, la veille du premier jour de la période (J0) : premier jour = J+1,
+//   septième = J+7 (une période va jusqu'à 14 jours, src/lib/week/period.ts) ;
 // - un repas au jour J+n peut venir du frigo si n ≤ fridge_days, sinon seulement du
 //   congélateur, si la recette le supporte (docs/preferences.md : le congélateur sert
 //   au-delà d'environ J+4) ; sinon il reste « non couvert », et on le dit ;
@@ -26,7 +27,7 @@ export type Place = "home" | "office" | "away";
 
 export interface SlotIn {
   id?: string;
-  day: number; // 0 = lundi
+  day: number; // 0 = premier jour de la période
   meal: Meal;
   personId: string;
   place: Place;
@@ -66,16 +67,15 @@ export interface ScoreContext {
   eaters?: Map<string, Eater>;
 }
 
-/** Jour de la session, relatif au lundi : -1 = le dimanche d'avant. */
+/** Jour de la session, relatif au premier jour de la période : -1 = la veille (le dimanche pour une semaine du lundi). */
 export const COOK_DAY = -1;
 const DEFAULT_FRIDGE_DAYS = 3;
 
-export const DAYS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"] as const;
 export const MEAL_LABEL: Record<Meal, string> = { lunch: "midi", dinner: "soir" };
 
-/** Présence par défaut : tout le monde mange à tous les repas (midi en semaine au bureau) ; on retire ensuite les absences. */
-export function defaultPlace(day: number, meal: Meal, _personId?: string): Place {
-  return meal === "lunch" && day < 5 ? "office" : "home";
+/** Présence par défaut : tout le monde mange à tous les repas (midi en semaine au bureau) ; on retire ensuite les absences. `weekday` : 0 = lundi. */
+export function defaultPlace(weekday: number, meal: Meal, _personId?: string): Place {
+  return meal === "lunch" && weekday < 5 ? "office" : "home";
 }
 
 export const NEXT_PLACE: Record<Place, Place> = { home: "office", office: "away", away: "home" };
@@ -107,7 +107,6 @@ export function addDays(ymd: string, n: number): string {
   return t.toISOString().slice(0, 10);
 }
 
-export const isWeekStart = (s: string | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && new Date(`${s}T00:00:00Z`).getUTCDay() === 1;
 
 // ─── Répartition des unités ───
 
