@@ -12,7 +12,7 @@
   "ingredients": [
     { "lineRaw": "1,2 kg filets de poulet", "item": "Filets de poulet, en morceaux de 3 cm", "grams": 1200, "group": "B", "food": "filet_poulet" },
     { "lineRaw": "1 kg patates douces", "item": "Patates douces, en cubes de 2 cm", "grams": 1000, "group": "A", "food": "patate_douce" },
-    { "lineRaw": "400 g riz basmati", "item": "Riz basmati", "grams": 400, "group": "D", "food": "riz_basmati" },
+    { "lineRaw": "400 g riz basmati", "item": "Riz basmati", "grams": 400, "group": "D", "food": "riz_basmati", "side": true },
     { "lineRaw": "200 g skyr nature", "item": "Skyr nature, pour la sauce", "grams": 200, "group": "C", "food": "skyr" },
     { "lineRaw": "1 oignon rouge", "item": "Oignon rouge, en quartiers", "grams": 150, "units": 1, "group": "A", "food": "oignon" },
     { "lineRaw": "4 gousses d'ail", "item": "Ail, râpé (3 pour la marinade, 1 pour la sauce)", "units": 4, "group": "B", "food": "ail" },

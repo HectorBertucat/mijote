@@ -65,7 +65,7 @@ async function fakeResolve(q: string): Promise<ResolveResponse> {
 
 let n = 0;
 const ing = (recipeId: string, lineRaw: string, item: string, grams: number | null, foodId: string | null, extra: Partial<Ing> = {}): Ing => ({
-  id: `${recipeId}-i${++n}`, recipeId, position: n, lineRaw, item, grams, units: null, group: null, optional: false, pantry: false, foodId, yield: null, ...extra,
+  id: `${recipeId}-i${++n}`, recipeId, position: n, lineRaw, item, grams, units: null, group: null, optional: false, pantry: false, side: false, foodId, yield: null, ...extra,
 });
 
 const R1: LeftoverRecipe = {

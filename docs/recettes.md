@@ -52,6 +52,7 @@ Un fichier JSON par recette, validé par `src/lib/recipes/format.ts` (zod) :
 - **Bols** : `group` (ingrédient) et `bowls` (étape) relient la prep à la cuisson : « bol C ».
 - **Étapes** : `kind` parmi `prep`, `sear`, `braise`, `boil`, `bake`, `rest`, `cool`, `preheat`… `equipmentId` parmi les récipients standard : `poele-28`, `cocotte`, `faitout`, `casserole-14`, `casserole-16`, `casserole-18`, `plat-grand`, `plat-moyen`, `plat-four`, `oven`. `equipmentAlt` : récipients de rechange si celui-ci est pris ou absent de la cuisine.
 - **Sous-étapes** (`phases`) : **obligatoires** sur toute étape de cuisson. Chacune a son minuteur en session ; `wait: true` pour une attente sans geste (l'écran passe à autre chose et sonne à la fin). Règles et filet de sécurité : `src/lib/recipes/phases.ts`, test `tests/phases.test.ts`.
+- **Garniture à part** : `"side": true` sur les lignes cuites et gardées à part (riz, semoule). En fin de session, on pèse alors le plat et la garniture séparément, et l'appli règle les deux dans chaque boîte pour viser à la fois les calories et les protéines de chacun.
 - **Nutrition** : `food` = l'id de la table nutritionnelle (`src/lib/nutrition/foods.ts`, valeurs Ciqual), `zero` pour sel, eau, herbes. `yield` dit ce qui est vraiment mangé (part du paquet, parure, gras resté dans la poêle). Les macros par unité sont recalculées à l'import : ne les écris pas.
 
 ## Dessins

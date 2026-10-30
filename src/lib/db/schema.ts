@@ -115,6 +115,7 @@ export const recipeIngredients = sqliteTable(
     group: text("group"), // bol (lettre) de la prep
     optional: integer("optional", { mode: "boolean" }).notNull().default(false),
     pantry: integer("pantry", { mode: "boolean" }).notNull().default(false), // placard, à vérifier chez soi
+    side: integer("side", { mode: "boolean" }).notNull().default(false), // garniture cuite à part (riz, semoule), migration 0003
     foodId: text("food_id"), // table nutritionnelle (src/lib/nutrition/foods.ts)
     // Rendement : part du paquet utilisée, parure retirée, gras resté dans la poêle (migration 0006)
     yield: json<IngredientYield>("yield"),
@@ -263,6 +264,37 @@ export const timers = sqliteTable("timers", {
   endsAt: text("ends_at").notNull(),
   doneAt: text("done_at"),
 });
+
+// Migration 0003 : les boîtes du frigo et du congélateur, rangées en fin de session (src/lib/boxes).
+// Grammes et macros figés au rangement ; une boîte mangée garde la ligne du journal qu'elle a écrite.
+export const mealBoxes = sqliteTable(
+  "meal_boxes",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id").references(() => cookSessions.id, { onDelete: "set null" }),
+    recipeId: text("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+    name: text("name").notNull(), // nom de la recette au rangement
+    personId: text("person_id").references(() => people.id, { onDelete: "set null" }), // pour qui ; null = n'importe qui
+    grams: real("grams"), // plat, null si la marmite n'a pas été pesée
+    sideGrams: real("side_grams"), // garniture à part (riz, semoule)
+    sideLabel: text("side_label"),
+    kcal: real("kcal"),
+    proteinG: real("protein_g"),
+    cookedOn: text("cooked_on").notNull(), // YYYY-MM-DD
+    plannedFor: text("planned_for"), // repas prévu par la Semaine (YYYY-MM-DD), null = marge
+    plannedMeal: text("planned_meal", { enum: ["lunch", "dinner"] }),
+    place: text("place", { enum: ["fridge", "freezer"] }).notNull(),
+    fridgeDays: integer("fridge_days").notNull(), // jours au frigo de la recette, au rangement
+    frozenOn: text("frozen_on"),
+    thawedOn: text("thawed_on"),
+    status: text("status", { enum: ["stock", "eaten", "thrown"] }).notNull().default("stock"),
+    closedAt: text("closed_at"),
+    eatenBy: text("eaten_by").references(() => people.id, { onDelete: "set null" }),
+    foodLogId: text("food_log_id"),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("idx_meal_boxes_status").on(t.status, t.place), index("idx_meal_boxes_session").on(t.sessionId, t.recipeId)]
+);
 
 // ─── 3. Courses, achats, coûts ───
 

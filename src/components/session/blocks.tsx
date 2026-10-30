@@ -14,6 +14,7 @@ import { DurationOrigin, DurationReport } from "./Durations";
 import { Bowl, BowlFoods, bowlName, bowlOf, clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, RecipeMark, recipeOf, SessionTest, shortName, splitStep, StepCue, StepSpecs } from "./parts";
 import { StepIllu } from "@/components/illus/Illu";
 import { FridgeDone } from "./FridgeDone";
+import { SessionBoxes } from "./SessionBoxes";
 import { DropGuide, wantsDropGuide } from "./DropGuide";
 
 // ─── En-tête : titre, avancement, fin prévue ───
@@ -435,6 +436,7 @@ export function DoneView({ plan, c, startedAt }: { plan: SessionPlan; c: Control
       <div className="rounded-[18px] border-2 border-ink bg-surface p-5 pb-7">
         <FridgeDone plan={plan} events={c.events} test={test} />
       </div>
+      {!test && <SessionBoxes id={c.id} plan={plan} />}
       <div className="flex flex-wrap items-center gap-4 rounded-[18px] border border-line bg-surface p-5">
         <div className="min-w-0 flex-1">
           <p className="font-display text-[20px] leading-tight font-extrabold">{test ? "Bilan du test" : "Bilan de la session"}</p>

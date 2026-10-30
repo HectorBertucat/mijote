@@ -17,7 +17,7 @@ En haut à droite, le **sélecteur de profil** dit qui utilise cet appareil : la
 
 Pour une part juste, chacun donne sa taille, son poids, son objectif, et ce qu'il mange hors batch (petit-déjeuner, en-cas). Le plus juste : noter ses **habitudes** dans Santé › Hors batch (un shaker du lundi au vendredi, un petit-déjeuner le week-end…), composées d'aliments ; leurs calories et protéines sont calculées, et une carte dit s'il manque des protéines ou des calories une fois mangés les repas du batch (« un shaker le matin les couvre »), ou qu'aucun complément n'est utile. Sans rien noter, un petit-déjeuner moyen est compté. Mijote estime la dépense (formule), puis la **mesure** dès qu'il y a assez de pesées et de journées notées : la cible s'ajuste chaque lundi. La part de chaque recette en découle, au demi-« unité » près.
 
-Une **unité** est une fraction d'une recette : on pèse la marmite, on divise par le nombre d'unités de la fiche, et chacun prend ses unités. Une part d'adulte fait 4 à 5 unités.
+En cuisine, on ne compte pas en unités : en fin de session, on pèse la marmite et l'appli dit combien de grammes mettre dans la boîte de chacun.
 
 ## 3. Recettes
 
@@ -59,6 +59,12 @@ Le centre de contrôle. Lance-la depuis la liste validée ou le Composer :
 - **Plusieurs écrans** : ordinateur (vue complète, barre espace pour avancer), tablette (gros boutons), téléphone posé près du feu (écran sombre, toujours allumé). Un QR code ouvre la session sur un autre appareil.
 
 Les durées réelles sont mesurées et corrigent les estimations des sessions suivantes.
+
+**En boîtes** : à la fin, pèse chaque marmite cuite (récipient plein moins récipient vide), et le riz ou la semoule à part s'ils ont cuit séparément. L'appli dit combien de boîtes pour chacun et combien de grammes dans chacune (plat et riz réglés pour viser les calories et les protéines de chacun). « Ranger les boîtes » les met dans le **Frigo** : au frigo pour les repas des prochains jours, au congélo pour la fin de semaine et la marge. La fiche recette a la même calculette.
+
+## 6 bis. Frigo
+
+L'onglet **Frigo** liste les boîtes du frigo et du congélo, la plus pressée d'abord, avec sa date limite (jours au frigo de la recette, trois mois au congélo, le lendemain une fois sortie). Une faim : on pioche ici avant de commander. **Je la mange** note la boîte au journal de Santé de la personne de l'appareil (macros de la boîte) ; **Au congélo**, **Sortir au frigo** et **Jetée** d'un tap.
 
 ## 7. Santé
 

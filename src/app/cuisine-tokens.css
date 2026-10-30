@@ -64,6 +64,7 @@
   --c-sec-composer: #2342c4;
   --c-sec-courses: #c98a00;
   --c-sec-sante: #0e8a84;
+  --c-sec-frigo: #6a4fc2;
 
   /* États réservés */
   --c-ok: #17803f;
@@ -138,6 +139,8 @@
     --c-sec-composer: #7d93ff;
     --c-sec-courses: #e0b53c;
     --c-sec-sante: #4cc9c2;
+  --c-sec-frigo: #a993ff;
+    --c-sec-frigo: #a993ff;
     --c-ok: #46c073;
     --c-ok-soft: #13301f;
     --c-ok-ink: #91e0ad;
