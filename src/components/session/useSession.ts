@@ -39,6 +39,10 @@ function describeKind(e: SessionEvent, plan: SessionPlan, step: (id: string | nu
     case "timer_done":
       return "Minuteur arrêté";
     case "note":
+      if (typeof e.payload?.boxed === "string") {
+        const name = plan.recipes.find((r) => r.slug === e.payload!.boxed)?.name ?? "Recette";
+        return undo ? `${name} : à ranger` : `${name} : en boîtes`;
+      }
       if (e.payload?.status === "cooking") return plan.mode === "duo" ? "Session lancée à deux" : "Cuisson lancée";
       if (e.payload?.status === "fridge") return "Bols au frigo : à demain";
       if (e.payload?.status === "prep")

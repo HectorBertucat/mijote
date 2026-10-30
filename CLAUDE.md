@@ -42,7 +42,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Nutrition | `src/lib/nutrition/` (incrémenter `NUTRITION_VERSION` si le calcul change) |
 | Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus) |
 | Courses | `src/lib/shopping/`, catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
-| Session | `src/lib/session/` (`planner.ts`), `src/components/session/` |
+| Session | `src/lib/session/` (`planner.ts`, `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`) |
 | Boîtes, frigo | `src/lib/boxes/` (`core.ts` pur : grammes par boîte, rangement ; `store.ts`), `src/app/frigo/`, `src/components/boxes/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
 | Santé | `src/lib/health/`, docs/sante.md |

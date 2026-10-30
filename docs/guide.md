@@ -61,11 +61,14 @@ Avec un catalogue relié (avancé, [catalogue.md](catalogue.md)) : produit, prix
 
 ## 6. Session de cuisine
 
-Le centre de contrôle. Lance-la depuis la liste validée ou le Composer :
-- **Mode** : seul, à deux (chacun sa colonne de gestes), prep la veille, ou reprise à deux.
-- **Prep** : les gestes regroupés (« émince les 5 oignons »), répartis dans les bols ; un bol se coche une fois rempli.
-- **Cuisson** : le fil des étapes, avec le foyer et le niveau, le four, les minuteurs (une alerte sur tous les écrans), le schéma des foyers occupés.
-- **Plusieurs écrans** : ordinateur (vue complète, barre espace pour avancer), tablette (gros boutons), téléphone posé près du feu (écran sombre, toujours allumé). Un QR code ouvre la session sur un autre appareil.
+Lance-la depuis la liste validée ou le Composer. **Mode** : seul, à deux (chacun son fil), prep la veille, ou reprise à deux.
+
+Par défaut, la session se suit sur le téléphone, en trois temps plein écran, une barre de progression en haut et un gros bouton en bas (la barre espace au clavier) :
+1. **Prépare** : tout sur le plan de travail, bol par bol, avec les dessins des aliments et les quantités ; on touche un bol quand il est prêt.
+2. **Cuisine** : une consigne à la fois, en grand, avec son dessin, le foyer et son niveau, le minuteur en pastille (+1 min) et « Suivant ». Les sous-étapes s'enchaînent seules. « Ça sonne bientôt » montre ce qui tourne en fond ; quand une attente sonne (l'eau bout), son étape revient au premier plan. La flèche « retour » défait le dernier pas.
+3. **Range** : chaque recette en boîtes (une boîte par repas du foyer, durée au frigo, congélation), puis une confirmation de fin et le frigo plein.
+
+Un écran sobre annonce chaque temps. À deux, chacun ouvre son fil sur son téléphone ; sur grand écran, les deux fils sont côte à côte (touches A et B). Le menu (en haut à droite) ouvre la **vue détaillée** : le fil complet, tous les minuteurs, le schéma des foyers et du four, les QR codes pour les autres écrans.
 
 Les durées réelles sont mesurées et corrigent les estimations des sessions suivantes.
 
