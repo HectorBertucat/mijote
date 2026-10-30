@@ -59,6 +59,10 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Pro
             {tag && <input type="hidden" name="tag" value={tag} />}
             <Input icon="search" type="search" name="q" defaultValue={q ?? ""} placeholder="Chercher une recette" aria-label="Chercher une recette" />
           </form>
+          <Link href="/atelier/importer" className={buttonClass({ className: "max-sm:w-tap max-sm:!px-0" })} aria-label="Importer une recette depuis un texte collé">
+            <Icon name="copy" />
+            <span className="max-sm:hidden">Importer</span>
+          </Link>
           <Link href="/atelier" className={buttonClass({ variant: "primary", className: "max-sm:w-tap max-sm:!px-0" })} aria-label="Atelier : nouvelle recette">
             <Icon name="plus" />
             <span className="max-sm:hidden">Atelier</span>

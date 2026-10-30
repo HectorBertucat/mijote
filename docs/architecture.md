@@ -13,7 +13,7 @@ L'IA (API Claude, sorties JSON structurées) **rédige et propose** derrière de
 
 | Bouton | Ce que propose l'IA | Ce que vérifie le code |
 |---|---|---|
-| Ajuster / Atelier | une recette complète | ingrédients connus de la table nutritionnelle, macros recalculées, équipement réel, sous-étapes, doublons de la bibliothèque, produits du catalogue |
+| Ajuster / Atelier / Importer | une recette complète | ingrédients connus de la table nutritionnelle, macros recalculées, équipement réel, sous-étapes, doublons de la bibliothèque, produits du catalogue |
 | Coach (Santé › Objectifs) | des objectifs | rythme −1 à +0,5 %/sem., protéines 1,2–2,4 g/kg, IMC visé sain, cible jamais sous le métabolisme de base |
 | Programme sur mesure | séances, et exercices inventés avec leurs figures | ids de la bibliothèque, matériel, séries et repos bornés, durée, figures résolues par le squelette (sol, cadre, appuis, membres qui atteignent leur cible) |
 | Dessiner un aliment | un fragment SVG | liste blanche stricte de balises, attributs, couleurs (jetons du thème) et animations |

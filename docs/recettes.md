@@ -2,10 +2,19 @@
 
 ## Ajouter une recette
 
-Trois façons :
+Quatre façons :
 1. **Atelier** (avec l'IA) : décris une envie, Mijote écrit la fiche complète et la vérifie. Elle arrive « à essayer ».
 2. **Ajuster** une recette existante : la variante est rattachée à sa recette d'origine.
-3. **Un fichier** au format standard dans `src/seed/recipes/` ou dans le dossier de `MIJOTE_RECIPES_DIR` (les deux sont importés ; sur un même slug, le second gagne) : importé au démarrage, réimporté s'il change (les notes sont gardées). En ligne de commande : `pnpm import:recipes`.
+3. **Importer** (avec l'IA, bon marché) : Recettes › Importer, on colle le texte d'une recette (légende d'un post Instagram ou TikTok, page de blog copiée) et son lien. Mijote la met au format, vérifie les quantités et montre un aperçu ; elle arrive « à essayer », avec le lien en source, et « à relire » si les quantités sont douteuses.
+4. **Un fichier** au format standard dans `src/seed/recipes/` ou dans le dossier de `MIJOTE_RECIPES_DIR` (les deux sont importés ; sur un même slug, le second gagne) : importé au démarrage, réimporté s'il change (les notes sont gardées). En ligne de commande : `pnpm import:recipes`.
+
+## Importer un texte collé
+
+Rien n'est téléchargé (ni vidéo, ni page d'un réseau social) : seul le texte collé est lu, le lien est gardé tel quel comme source, sans ses paramètres de suivi (`igsh`, `utm_*`…). Le parcours (`src/lib/atelier/import.ts`) :
+
+1. **Garde-fous en code**, sans appel ni coût : texte vide, de moins de 60 caractères, ou sans au moins deux quantités repérables (« 200 g », « 2 c. à s. », « - 2 oignons ») → refus clair. Hashtags retirés, texte tronqué à 6 000 caractères. Limite d'imports par jour : `AI_IMPORTS_PER_DAY` (10 par défaut, 0 coupe l'import).
+2. **Un appel Haiku** avec le prompt système de l'Atelier (matériel de la cuisine, table nutritionnelle, goûts) : bols, sous-étapes chronométrées, récipients standard, quantités ramenées à un batch de 5 repas du foyer.
+3. **Vérification en code** : celle de l'Atelier (catalogue, nutrition recalculée, sous-étapes), puis les quantités : ingrédient sans quantité, ligne de plus de 5 kg, aliment absent de la table, 35 à 300 g d'ingrédients et 60 à 350 kcal par unité, nombre d'unités proche du batch visé. Un écart : « quantités douteuses, à relire », et l'étiquette « à relire » sur la fiche.
 
 ## Le format
 
