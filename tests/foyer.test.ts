@@ -114,13 +114,15 @@ test("réglages : écrire, relire, effacer avec une valeur vide", () => {
 
 // ─── Cuisine ───
 
+const D = DEFAULT_KITCHEN;
 const CONFIGS: [string, KitchenConfig][] = [
-  ["défaut", DEFAULT_KITCHEN],
-  ["studio : 2 foyers, pas de four", { ...DEFAULT_KITCHEN, hobs: 2, oven: false, vessels: { ...DEFAULT_KITCHEN.vessels, casseroles: 1, plats: 0 } }],
-  ["gaz 4 feux, sans niveaux", { ...DEFAULT_KITCHEN, hobType: "gaz", hobs: 4, levels: 0 }],
-  ["un seul foyer", { ...DEFAULT_KITCHEN, hobs: 1 }],
-  ["grande cuisine", { ...DEFAULT_KITCHEN, hobs: 5, levels: 12, ovenLevels: 7, extras: { microOndes: true, congelateur: true, mixeur: true } }],
-  ["valeurs absurdes", { ...DEFAULT_KITCHEN, hobs: 40, levels: -3, ovenLevels: 0, vessels: { ...DEFAULT_KITCHEN.vessels, casseroles: 9, plats: -1, poeleMaxG: 1 } }],
+  ["défaut", D],
+  ["studio : 2 foyers, pas de four", { ...D, hobSizes: [21, 16], oven: false, casseroles: [{ cm: 16, liters: null }], plats: 0 }],
+  ["gaz 4 feux, sans niveaux", { ...D, hobType: "gaz", hobSizes: [26, 21, 21, 14], levels: 0 }],
+  ["un seul foyer", { ...D, hobSizes: [18] }],
+  ["grande cuisine et air fryer", { ...D, hobSizes: [28, 21, 18, 18, 14.5], levels: 12, ovenLevels: 7, airFryerL: 5.5, mixers: { plongeant: true, blender: true, hachoir: true } }],
+  ["sans cocotte ni faitout, poêle antiadhésive", { ...D, cocotte: null, faitout: null, pans: [{ material: "antiadhesive", cm: 24 }] }],
+  ["valeurs absurdes", { ...D, hobSizes: [99, -3, 0, 18, 18, 18, 18, 18], levels: -3, ovenLevels: 0, casseroles: Array(9).fill({ cm: 4, liters: -1 }), plats: -1, poeleMaxG: 1, airFryerL: 99 }],
 ];
 
 for (const [name, c] of CONFIGS) {
@@ -129,7 +131,7 @@ for (const [name, c] of CONFIGS) {
     const ids = new Set(eq.map((e) => e.id));
     assert.equal(ids.size, eq.length, "ids uniques");
     const hobs = eq.filter((e) => e.kind === "hob");
-    assert.ok(hobs.length >= 1 && hobs.length <= 5);
+    assert.ok(hobs.length >= 1 && hobs.length <= 6);
     assert.equal(ids.has("oven"), c.oven);
     if (!c.oven) assert.ok(!eq.some((e) => e.kind === "dish"), "pas de plat à four sans four");
     for (const f of fits) assert.ok(ids.has(f.equipmentId) && ids.has(f.hobId), `${f.equipmentId} → ${f.hobId}`);
@@ -154,16 +156,16 @@ test("cuisine : une petite casserole ne va pas sur le grand foyer, la cocotte se
 test("cuisine : réglage relu avec tolérance (JSON cassé, champs manquants)", () => {
   assert.deepEqual(parseKitchen(null), DEFAULT_KITCHEN);
   assert.deepEqual(parseKitchen("{pas du json"), DEFAULT_KITCHEN);
-  const p = parseKitchen(JSON.stringify({ hobs: 2, vessels: { cocotte: false } }));
-  assert.equal(p.hobs, 2);
-  assert.equal(p.vessels.cocotte, false);
-  assert.equal(p.vessels.poele, true, "le reste prend la valeur par défaut");
+  const p = parseKitchen(JSON.stringify({ hobSizes: [21, 16], cocotte: null }));
+  assert.deepEqual(p.hobSizes, [21, 16]);
+  assert.equal(p.cocotte, null);
+  assert.deepEqual(p.pans, DEFAULT_KITCHEN.pans, "le reste prend la valeur par défaut");
 });
 
 test("cuisine appliquée : seul l'équipement coché compte, les recettes s'importent toujours", () => {
   const db = fresh();
-  applyKitchen(db, { ...DEFAULT_KITCHEN, hobs: 2, oven: false, vessels: { ...DEFAULT_KITCHEN.vessels, cocotte: false, plats: 0 } });
-  assert.equal(loadKitchen(db).hobs, 2);
+  applyKitchen(db, { ...DEFAULT_KITCHEN, hobSizes: [21, 16], oven: false, cocotte: null, plats: 0 });
+  assert.equal(loadKitchen(db).hobSizes.length, 2);
   const res = loadResources(db);
   assert.ok(!res.equipment.some((e) => e.id === "cocotte" || e.id === "oven"));
   assert.equal(res.equipment.filter((e) => e.kind === "hob").length, 2);
@@ -205,7 +207,7 @@ test("cuisine réappliquée : les noms et notes donnés aux récipients restent"
   const db = fresh();
   applyKitchen(db, DEFAULT_KITCHEN);
   db.update(equipment).set({ name: "Poêle inox de famille", notes: "Préchauffer à vide." }).where(eq(equipment.id, "poele-28")).run();
-  applyKitchen(db, { ...DEFAULT_KITCHEN, vessels: { ...DEFAULT_KITCHEN.vessels, poeleMaxG: 600 } });
+  applyKitchen(db, { ...DEFAULT_KITCHEN, poeleMaxG: 600 });
   const pan = db.select().from(equipment).where(eq(equipment.id, "poele-28")).get()!;
   assert.equal(pan.name, "Poêle inox de famille");
   assert.equal(pan.notes, "Préchauffer à vide.");
@@ -215,7 +217,7 @@ test("cuisine réappliquée : les noms et notes donnés aux récipients restent"
 test("cuisine réappliquée : un équipement ajouté à la main n'est pas retiré", () => {
   const db = fresh();
   db.insert(equipment).values({ id: "sous-vide", kind: "appliance", name: "Appareil sous-vide" }).run();
-  applyKitchen(db, { ...DEFAULT_KITCHEN, hobs: 2 });
+  applyKitchen(db, { ...DEFAULT_KITCHEN, hobSizes: [21, 16] });
   assert.equal(db.select().from(equipment).where(eq(equipment.id, "sous-vide")).get()!.owned, true);
 });
 
@@ -250,4 +252,19 @@ test("import des recettes : le dossier de l'instance s'ajoute à la bibliothèqu
   assert.equal(bySlug.get(mine.slug)!.name, "Chasseur de l'instance");
   assert.ok(bySlug.has("recette-de-l-instance"));
   assert.equal(bySlug.size, base.length + 1);
+});
+
+test("cuisine de l'ancien format réenregistrée : mesures notées à la main gardées, rien d'inventé", () => {
+  const db = fresh();
+  setSetting(db, "kitchen", JSON.stringify({ hobs: 3, oven: true, ovenLevels: 5, vessels: { poele: true, casseroles: 3, faitout: true, cocotte: true, plats: 3 }, extras: { microOndes: true, congelateur: true, mixeur: true } }));
+  applyKitchen(db, loadKitchen(db));
+  db.update(equipment).set({ owned: false }).where(eq(equipment.id, "mixeur")).run();
+  db.update(equipment).set({ dimsJson: { lengthCm: 35 } }).where(eq(equipment.id, "cocotte")).run();
+  db.update(equipment).set({ dimsJson: { levels: 5, rails: "2,4" } }).where(eq(equipment.id, "oven")).run();
+  applyKitchen(db, loadKitchen(db));
+  const row = (id: string) => db.select().from(equipment).where(eq(equipment.id, id)).get();
+  assert.equal(row("mixeur")!.owned, false, "le mixeur décoché en base ne revient pas");
+  assert.equal((row("cocotte")!.dimsJson as Record<string, unknown>).lengthCm, 35);
+  assert.equal((row("oven")!.dimsJson as Record<string, unknown>).rails, "2,4");
+  for (const id of ["balance", "robot", "autocuiseur", "cuiseur-riz"]) assert.ok(!row(id)?.owned, `${id} supposé`);
 });

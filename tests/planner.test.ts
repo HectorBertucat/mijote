@@ -223,11 +223,11 @@ test("erreurs explicites : four à deux températures, foyer incompatible, deux 
 
 test("foyer imposé incompatible : erreur du planificateur", () => {
   const r = structuredClone(saute);
-  r.steps[0] = { ...r.steps[0], hobId: "hob-28" }; // casserole 1 : petit foyer seulement
+  r.steps[0] = { ...r.steps[0], hobId: "hob-28" }; // petite casserole : petit foyer seulement
   const plan = planSession([r], RES);
   const e = plan.errors.find((x) => x.kind === "hob_fit");
   assert.ok(e, JSON.stringify(plan.errors));
-  assert.match(e.message, /Casserole 1 ne va pas sur le grand foyer/);
+  assert.match(e.message, /Petite casserole ne va pas sur le grand foyer/);
 });
 
 test("ingrédients commandés : produit dans le bol, manque signalé, réduction au prorata", () => {
