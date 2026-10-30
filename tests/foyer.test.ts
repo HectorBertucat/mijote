@@ -7,7 +7,7 @@ import path from "path";
 import os from "os";
 import { eq } from "drizzle-orm";
 import { openDb } from "@/lib/db/open";
-import { equipment, mealSlots, people, preferences, weighIns } from "@/lib/db/schema";
+import { equipment, mealSlots, people, preferences, recipes, weighIns } from "@/lib/db/schema";
 import { addPerson, personId, removePerson, renamePerson } from "@/lib/household";
 import { getSetting, isSetupDone, setSetting, SETTING, storeLabel } from "@/lib/settings";
 import { householdMembers, householdUnits, leadOf, loadEaters } from "@/lib/eaters/store";
@@ -15,7 +15,7 @@ import { DEFAULT_KITCHEN, kitchenEquipment, parseKitchen, type KitchenConfig } f
 import { applyKitchen, loadKitchen } from "@/lib/kitchen/store";
 import { loadPlannerRecipes, loadResources } from "@/lib/session/store";
 import { planSession, validatePlan } from "@/lib/session/planner";
-import { syncRecipes } from "@/seed/bootstrap";
+import { bootstrap, syncRecipes } from "@/seed/bootstrap";
 import { seedBase } from "@/seed/seed";
 import { listPeople } from "@/lib/health/store";
 import { ensureWeek } from "@/lib/week/store";
@@ -227,4 +227,27 @@ test("import des recettes : les fichiers cachés (métadonnées macOS « ._x.jso
   fs.mkdirSync(path.join(dir, ".cache"));
   fs.writeFileSync(path.join(dir, ".cache", "x.json"), "pas du json");
   assert.deepEqual(syncRecipes(db, dir).map((r) => r.file), ["chasseur-porc.json"]);
+});
+
+test("import des recettes : le dossier de l'instance s'ajoute à la bibliothèque de base, et gagne sur un même slug", () => {
+  const db = fresh();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "recettes-instance-"));
+  const mine = JSON.parse(fs.readFileSync(path.join(RECIPES, "chasseur-porc.json"), "utf8"));
+  fs.writeFileSync(path.join(dir, "chasseur.json"), JSON.stringify({ ...mine, name: "Chasseur de l'instance" }));
+  fs.writeFileSync(path.join(dir, "perso.json"), JSON.stringify({ ...mine, slug: "recette-de-l-instance", name: "Recette de l'instance" }));
+  const before = process.env.MIJOTE_RECIPES_DIR;
+  process.env.MIJOTE_RECIPES_DIR = dir;
+  try {
+    bootstrap(db);
+    bootstrap(db); // un second démarrage ne réécrit rien (pas d'aller-retour entre les deux versions)
+  } finally {
+    if (before == null) delete process.env.MIJOTE_RECIPES_DIR;
+    else process.env.MIJOTE_RECIPES_DIR = before;
+  }
+  const bySlug = new Map(db.select().from(recipes).all().map((r) => [r.slug, r]));
+  const base = fs.readdirSync(RECIPES).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(fs.readFileSync(path.join(RECIPES, f), "utf8")).slug as string);
+  for (const slug of base) assert.ok(bySlug.has(slug), `${slug} importée depuis la bibliothèque de base`);
+  assert.equal(bySlug.get(mine.slug)!.name, "Chasseur de l'instance");
+  assert.ok(bySlug.has("recette-de-l-instance"));
+  assert.equal(bySlug.size, base.length + 1);
 });
