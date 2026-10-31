@@ -1,9 +1,9 @@
 "use client";
 
-// Sélecteur de thème segmenté Auto / Clair / Sombre (icônes auto, sun, moon). Le choix vit sur l'appareil
+// Sélecteur de thème : un bouton qui fait le tour Auto / Clair / Sombre (icônes auto, sun, moon). Le choix vit sur l'appareil
 // (localStorage `mijote.theme`, absent = suivre le système), posé avant le premier rendu par le script de layout.tsx.
 import { useEffect, useState } from "react";
-import { Segmented } from "./ui/segmented";
+import { Icon } from "./ui/icon";
 
 type Mode = "system" | "light" | "dark";
 const KEY = "mijote.theme";
@@ -18,6 +18,11 @@ function apply(m: Mode) {
   } catch {}
 }
 
+const NEXT: Record<Mode, Mode> = { system: "light", light: "dark", dark: "system" };
+const LABEL: Record<Mode, string> = { system: "Thème : suit le système", light: "Thème : clair", dark: "Thème : sombre" };
+const ICON = { system: "auto", light: "sun", dark: "moon" } as const;
+
+/** Un seul bouton qui fait le tour Auto → Clair → Sombre (l'en-tête reste léger). */
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const [mode, setMode] = useState<Mode>("system");
   useEffect(() => {
@@ -25,20 +30,18 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     setMode(t === "light" || t === "dark" ? t : "system");
   }, []);
   return (
-    <Segmented<Mode>
-      label="Thème"
-      size="icon"
-      className={className}
-      value={mode}
-      onChange={(m) => {
+    <button
+      type="button"
+      onClick={() => {
+        const m = NEXT[mode];
         setMode(m);
         apply(m);
       }}
-      options={[
-        { value: "system", icon: "auto", ariaLabel: "Thème : suivre le système" },
-        { value: "light", icon: "sun", ariaLabel: "Thème clair" },
-        { value: "dark", icon: "moon", ariaLabel: "Thème sombre" },
-      ]}
-    />
+      aria-label={`${LABEL[mode]} (changer)`}
+      title={LABEL[mode]}
+      className={`grid size-tap place-items-center rounded-[8px] text-ink-2 hover:bg-surface-2 hover:text-ink ${className}`}
+    >
+      <Icon name={ICON[mode]} />
+    </button>
   );
 }

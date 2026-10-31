@@ -39,17 +39,17 @@ export function Sheet({ open, onClose, title, children, footer, headerAction, sc
         aria-labelledby={id}
         tabIndex={-1}
         style={{ "--sheet-w": `${width}px` } as CSSProperties}
-        className={`pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[88dvh] animate-sheet-up flex-col gap-3.5 rounded-t-[20px] border border-line bg-raised px-[18px] pb-[calc(18px+env(safe-area-inset-bottom))] pt-3 shadow-e3 outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[var(--sheet-w)] sm:max-w-full sm:animate-sheet-right sm:rounded-l-[16px] sm:rounded-tr-none sm:pt-[18px] ${className}`}
+        className={`pointer-events-auto absolute inset-x-0 bottom-0 flex max-h-[88dvh] animate-sheet-up flex-col gap-3.5 rounded-t-[14px] border border-line bg-raised px-5 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 shadow-float outline-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[var(--sheet-w)] sm:max-w-full sm:animate-sheet-right sm:rounded-l-[14px] sm:rounded-tr-none sm:pt-6 ${className}`}
       >
         <span aria-hidden className="mx-auto -mt-0.5 h-[5px] w-10 shrink-0 rounded-[3px] bg-line-strong sm:hidden" />
         <div className="flex items-center justify-between gap-3">
-          <h2 id={id} className="min-w-0 flex-1 text-[20px] font-bold">
+          <h2 id={id} className="min-w-0 flex-1 text-h2">
             {title}
           </h2>
           {headerAction}
           <Button variant="quiet" size="sm" iconOnly icon="x" aria-label="Fermer" onClick={onClose} />
         </div>
-        <div className="-mx-[18px] grid min-h-0 flex-1 content-start gap-3.5 overflow-y-auto px-[18px]">{children}</div>
+        <div className="-mx-5 grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5">{children}</div>
         {footer && <div className="shrink-0">{footer}</div>}
       </div>
     </div>

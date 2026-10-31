@@ -1,5 +1,5 @@
 /* ==========================================================================
-   cuisine · tokens du système graphique « Plan de travail » (v2 « Marché », 22/10/2026)
+   cuisine · tokens du système graphique « Carnet de marché » (v3, 31/10/2026, docs/design/systeme.md)
    --------------------------------------------------------------------------
    Import, dans src/app/globals.css :
        @import "tailwindcss";
@@ -28,20 +28,20 @@
 /* @raw-start */
 :root {
   /* Fonds et surfaces : « lin » (plan de travail), carte blanche, creux */
-  --c-bg: #f6f4f0;
+  --c-bg: #f3f1ec;
   --c-surface: #ffffff;
-  --c-surface-2: #eeebe5;
+  --c-surface-2: #e8e5de;
   --c-raised: #ffffff;
   --c-scrim: rgb(20 22 28 / 0.42);
 
   /* Encre : fonte bleutée */
-  --c-ink: #1b1d23;
-  --c-ink-2: #555a65;
-  --c-ink-3: #868a93;
-  --c-line: #e2ded6;
-  --c-line-strong: #c8c3b9;
-  --c-inverse: #1b1d23;
-  --c-on-inverse: #f6f4f0;
+  --c-ink: #15161a;
+  --c-ink-2: #4a4e57;
+  --c-ink-3: #878a92;
+  --c-line: #dcd8cf;
+  --c-line-strong: #bbb6ab;
+  --c-inverse: #15161a;
+  --c-on-inverse: #f3f1ec;
 
   /* Accent : bleu émail (cocotte, faïence) */
   --c-accent: #2342c4;
@@ -93,13 +93,20 @@
   --sh-2: 0 6px 16px -4px rgb(27 29 35 / 0.12), 0 2px 4px rgb(27 29 35 / 0.05);
   --sh-3: 0 24px 48px -12px rgb(27 29 35 / 0.28), 0 4px 10px rgb(27 29 35 / 0.06);
   --sh-inset: inset 0 1px 2px rgb(27 29 35 / 0.08);
+  /* La seule ombre de la v3 : ce qui flotte au-dessus de la page (tiroir, barre collante, toast, menu). */
+  --sh-float: 0 1px 0 rgb(21 22 26 / 0.04), 0 16px 40px -16px rgb(21 22 26 / 0.28);
 
-  /* Mouvement */
-  --dur-press: 110ms;
-  --dur-quick: 180ms;
-  --dur-base: 280ms;
-  --dur-slow: 480ms;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Mouvement (docs/design/systeme.md § Mouvement). Les anciens noms suivent les nouveaux. */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 280ms;
+  --dur-sheet: 460ms;
+  --dur-press: var(--dur-1);
+  --dur-quick: var(--dur-2);
+  --dur-base: var(--dur-3);
+  --dur-slow: var(--dur-sheet);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
   --ease-spring: cubic-bezier(0.3, 1.35, 0.5, 1);
 
@@ -124,7 +131,7 @@
     --c-line-strong: #454b55;
     --c-inverse: #f2f0eb;
     --c-on-inverse: #15171c;
-    --c-accent: #7d93ff;
+    --c-accent: #8ea0ff;
     --c-accent-hover: #9aabff;
     --c-accent-soft: #1f2748;
     --c-on-accent: #0c1130;
@@ -163,6 +170,7 @@
     --sh-2: 0 8px 20px -6px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
     --sh-3: 0 28px 56px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);
     --sh-inset: inset 0 1px 2px rgb(0 0 0 / 0.4);
+    --sh-float: 0 1px 0 rgb(0 0 0 / 0.3), 0 18px 44px -16px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
 }
@@ -182,7 +190,7 @@
   --c-line-strong: #454b55;
   --c-inverse: #f2f0eb;
   --c-on-inverse: #15171c;
-  --c-accent: #7d93ff;
+  --c-accent: #8ea0ff;
   --c-accent-hover: #9aabff;
   --c-accent-soft: #1f2748;
   --c-on-accent: #0c1130;
@@ -219,15 +227,15 @@
   --sh-2: 0 8px 20px -6px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
   --sh-3: 0 28px 56px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);
   --sh-inset: inset 0 1px 2px rgb(0 0 0 / 0.4);
+  --sh-float: 0 1px 0 rgb(0 0 0 / 0.3), 0 18px 44px -16px rgb(0 0 0 / 0.7);
   color-scheme: dark;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --dur-press: 1ms;
-    --dur-quick: 1ms;
-    --dur-base: 1ms;
-    --dur-slow: 1ms;
+    --dur-2: 120ms;
+    --dur-3: 120ms;
+    --dur-sheet: 120ms;
   }
 }
 /* @raw-end */
@@ -285,6 +293,7 @@
   --shadow-e2: var(--sh-2);
   --shadow-e3: var(--sh-3);
   --shadow-inset: var(--sh-inset);
+  --shadow-float: var(--sh-float);
 }
 
 @theme {
@@ -293,8 +302,9 @@
   --font-sans: var(--font-body), "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-title), "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-num: var(--font-title), "Archivo", ui-sans-serif, system-ui, sans-serif;
-  /* Écriture à la main (Caveat, --font-script) : étiquettes sur ruban et ardoise, jamais pour lire une consigne. */
-  --font-hand: var(--font-script), "Caveat", "Bradley Hand", "Segoe Print", cursive;
+  /* v3 : plus de manuscrit. Les anciennes « écritures à la main » (rubans, ardoise) deviennent des
+     étiquettes d'étiqueteuse : Archivo serrée en capitales (classe .label). Alias gardé pour ne rien casser. */
+  --font-hand: var(--font-title), "Archivo", ui-sans-serif, system-ui, sans-serif;
 
   /* Échelle de texte (rem) */
   --text-xs: 0.75rem;
@@ -317,6 +327,25 @@
   --text-step--line-height: 1.08;
   --text-giant: 6.5rem;          /* minuteur / niveau lus à 1 m */
   --text-giant--line-height: 1;
+  /* Échelle v3 (docs/design/systeme.md) : téléphone → bureau. */
+  --text-display: clamp(3.25rem, 2rem + 4.6vw, 5.5rem);
+  --text-display--line-height: 0.92;
+  --text-h1: clamp(2.375rem, 1.7rem + 2.6vw, 3.5rem);
+  --text-h1--line-height: 0.96;
+  --text-h2: clamp(1.625rem, 1.4rem + 0.8vw, 2rem);
+  --text-h2--line-height: 1.05;
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.2;
+  --text-lead: clamp(1.1875rem, 1.1rem + 0.3vw, 1.3125rem);
+  --text-lead--line-height: 1.4;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.5;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.45;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.2;
+  --text-num-xl: clamp(3.5rem, 2.6rem + 3vw, 4.5rem);
+  --text-num-xl--line-height: 0.9;
 
   /* Rayons */
   --radius-xs: 4px;
@@ -325,28 +354,33 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
   --radius-2xl: 28px;
+  /* v3 : trois rayons seulement. */
+  --radius-tag: 4px;
+  --radius-ctl: 8px;
+  --radius-panel: 14px;
 
   /* Espacements : base Tailwind de 4 px conservée (p-1 = 4 px…).
      Rythme recommandé : 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64. */
   --spacing-tap: 44px;
   --spacing-kitchen: 64px;
 
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-in-out: cubic-bezier(0.6, 0, 0.3, 1);
   --ease-spring: cubic-bezier(0.3, 1.35, 0.5, 1);
 
-  --animate-pop: pop 260ms var(--ease-spring);
+  --animate-pop: pop var(--dur-2) var(--ease-out);
   --animate-strike: strike 280ms var(--ease-out) forwards;
   --animate-settle: settle 480ms var(--ease-out);
   --animate-tick: tick 480ms var(--ease-out);
   --animate-swap-in: swap-in 320ms var(--ease-out);
   --animate-timer-done: timer-done 1s var(--ease-in-out) infinite;
   --animate-toast-in: toast-in 280ms var(--ease-spring);
-  --animate-sheet-right: sheet-right 320ms var(--ease-out);
-  --animate-sheet-up: sheet-up 320ms var(--ease-out);
+  --animate-sheet-right: sheet-right var(--dur-sheet) var(--ease-sheet);
+  --animate-sheet-up: sheet-up var(--dur-sheet) var(--ease-sheet);
   --animate-spin: spin 0.8s linear infinite;
 
-  @keyframes pop { 0% { transform: scale(0.9); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+  @keyframes pop { 0% { transform: translateY(6px); opacity: 0 } 100% { transform: none; opacity: 1 } }
   @keyframes strike { from { background-size: 0% 2px } to { background-size: 100% 2px } }
   @keyframes settle { 0% { background-color: var(--c-accent-soft) } 100% { background-color: transparent } }
   @keyframes tick { 0% { transform: translateY(-0.18em); opacity: 0.2 } 100% { transform: none; opacity: 1 } }
@@ -376,15 +410,20 @@
   }
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
-    font-stretch: 112%;
-    letter-spacing: -0.015em;
+    font-stretch: 125%;
+    font-weight: 800;
+    letter-spacing: -0.04em;
     text-wrap: balance;
   }
+  h3 { font-stretch: 100%; font-weight: 700; letter-spacing: -0.015em; }
   /* Chiffres : tabulaires partout où ils s'alignent ; .num-tight pour les gros chiffres condensés */
   .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
-  .num-tight { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-stretch: 78%; letter-spacing: -0.01em; }
-  :focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
+  .num-tight { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-stretch: 75%; font-weight: 750; letter-spacing: -0.01em; }
+  /* Étiquette : Archivo serrée, capitales, approchée (repères, onglets, étiquettes de plat). */
+  .label { font-family: var(--font-display); font-stretch: 75%; font-weight: 650; font-size: var(--text-label); line-height: 1.2; letter-spacing: 0.06em; text-transform: uppercase; }
+  ::selection { background: var(--c-accent-soft); color: var(--c-ink); }
+  :focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; border-radius: var(--radius-tag); }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+    *, *::before, *::after { animation-iteration-count: 1 !important; transition-property: opacity, color, background-color, border-color !important; }
   }
 }
