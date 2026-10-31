@@ -3,7 +3,8 @@
 // Fin de session : on pèse chaque marmite, l'appli dit les grammes de chaque boîte et les range
 // au frigo ou au congélo (src/lib/boxes). Les marmites sont lues à l'ouverture de l'écran.
 // Une section de page (filets, pas de carte) : une marmite après l'autre.
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { DishArts } from "./parts";
 import { PotSplit } from "@/components/boxes/PotSplit";
 import { loadSessionPots } from "@/app/frigo/actions";
 import type { SessionPlan } from "@/lib/session/planner";
@@ -12,6 +13,7 @@ type Pots = Awaited<ReturnType<typeof loadSessionPots>>;
 
 export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: SessionPlan; kitchen?: boolean }) {
   const [data, setData] = useState<Pots | undefined>(undefined);
+  const dishes = useContext(DishArts);
   useEffect(() => {
     let live = true;
     loadSessionPots(id).then((d) => live && setData(d));
@@ -33,7 +35,7 @@ export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: 
       <ol className="grid content-start md:col-span-8">
         {data.pots.map((m) => (
           <li key={m.recipeId} className="border-t border-line-strong py-6 first:pt-6">
-            <PotSplit model={m} color={colorOf(m.slug)} session={id} stored={data.stored[m.recipeId] ?? null} kitchen={kitchen} />
+            <PotSplit model={m} color={colorOf(m.slug)} session={id} stored={data.stored[m.recipeId] ?? null} kitchen={kitchen} art={dishes[m.slug]} />
           </li>
         ))}
       </ol>

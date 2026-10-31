@@ -177,6 +177,8 @@ export type Phase = "prep" | "cooking";
 /** `plain` : sur la surface sombre du téléphone en cuisson, la bande reste sombre (pas d'inversion claire). */
 /** Session test (pour montrer l'appli) : une étiquette discrète dans chaque en-tête, et « Finir le test » sur grand écran. */
 export const SessionTest = createContext<{ ended: boolean; end: () => void } | null>(null);
+/** La boîte de chaque plat (DishBox, rendue par la page serveur), par slug ; à défaut, BoxGlyph. */
+export const DishArts = createContext<Record<string, ReactNode>>({});
 
 function TestTag({ compact }: { compact: boolean }) {
   const t = useContext(SessionTest);

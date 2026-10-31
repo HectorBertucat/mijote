@@ -9,6 +9,8 @@ import { mealsOf, type RecipeStorage } from "@/lib/session/flow";
 import { recipes } from "@/lib/db/schema";
 import { householdUnits, loadEaters } from "@/lib/eaters/store";
 import { inArray } from "drizzle-orm";
+import { DishBox } from "@/components/ui/dish";
+import { listDishRecipes } from "@/lib/recipes/queries";
 import type { DayChoice } from "@/components/session/SessionApp";
 // Styles de la session (consigne et cadrans lus à un mètre, mouvement) : ici, pas dans les composants que les tests importent.
 import "@/components/session/session.css";
@@ -63,6 +65,13 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
     const units = row.units * r.scale;
     return [{ slug: r.slug, units, meals: mealsOf(units, perMeal), fridgeDays: row.fridgeDays, freezerOk: row.freezerOk }];
   });
+  // La boîte de chaque plat, dessinée ici (le dessin reste côté serveur).
+  const dishes = Object.fromEntries(
+    [...listDishRecipes(db).values()].flatMap((d) => {
+      const r = s.plan.recipes.find((x) => x.slug === d.slug);
+      return r ? [[d.slug, <DishBox key={d.slug} recipe={d} size="sm" color={r.color} />]] : [];
+    })
+  );
   return (
     <SessionApp
       id={id}
@@ -79,6 +88,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
       dayChoice={dayChoice}
       test={s.test}
       storage={storage}
+      dishes={dishes}
     />
   );
 }

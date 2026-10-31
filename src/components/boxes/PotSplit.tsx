@@ -3,7 +3,7 @@
 // La marmite pesée → les grammes par boîte de chacun (src/lib/boxes/core.ts, calcul pur partagé avec
 // le serveur). En fin de session, un bouton range les boîtes au frigo et au congélo ; sur la fiche,
 // c'est seulement une calculette.
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { BoxGlyph } from "./BoxGlyph";
@@ -17,7 +17,7 @@ const num = (v: string) => {
 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n > 1 ? many : one}`;
 
-export function PotSplit({ model, color, session, stored, head = true, kitchen = false }: { model: PotModel; color: string; session?: string; stored?: StoredPot | null; head?: boolean; /** Fin de session : bouton de cuisine (64 px). */ kitchen?: boolean }) {
+export function PotSplit({ model, color, session, stored, head = true, kitchen = false, art }: { model: PotModel; color: string; session?: string; stored?: StoredPot | null; head?: boolean; /** Fin de session : bouton de cuisine (64 px). */ kitchen?: boolean; /** La boîte du plat (DishBox) ; à défaut, BoxGlyph. */ art?: ReactNode }) {
   const [dish, setDish] = useState(stored?.dishG ? String(Math.round(stored.dishG)) : "");
   const [side, setSide] = useState(stored?.sideG ? String(Math.round(stored.sideG)) : "");
   const [saved, setSaved] = useState<{ ok: boolean; message: string } | null>(stored?.count ? { ok: true, message: `${plural(stored.count, "boîte rangée", "boîtes rangées")}${stored.open < stored.count ? `, dont ${stored.count - stored.open} déjà sortie${stored.count - stored.open > 1 ? "s" : ""}` : ""}.` } : null);
@@ -42,7 +42,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
     <div className="grid gap-6" data-pot={model.slug}>
       {head && (
         <div className="flex items-center gap-4">
-          <BoxGlyph color={color} size={48} />
+          {art ?? <BoxGlyph color={color} size={48} />}
           <h3 className="min-w-0 flex-1 text-h3">{model.name}</h3>
         </div>
       )}

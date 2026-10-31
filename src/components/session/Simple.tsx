@@ -24,7 +24,7 @@ import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
-import { Bowl, bowlName, bowlOf, clock, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlName, bowlOf, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
 
 export interface SimpleProps {
   id: string;
@@ -898,6 +898,7 @@ export function RingBar({ plan, c, t, who }: { plan: SessionPlan; c: Controls; t
 // ─── 3. Range : boîtes et frigo ───
 
 function StoreScreen({ plan, c, storage }: { plan: SessionPlan; c: Controls; storage: RecipeStorage[] }) {
+  const dishes = useContext(DishArts);
   return (
     <div className={`${COLUMN} grid gap-8 pt-6 md:grid-cols-12 md:gap-6`}>
       <div className="grid content-start gap-4 md:col-span-4">
@@ -918,7 +919,7 @@ function StoreScreen({ plan, c, storage }: { plan: SessionPlan; c: Controls; sto
                 className={`sx-row w-full items-center px-3 py-4 md:-mx-3 md:w-[calc(100%+24px)] ${done ? "opacity-50" : ""} [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1`}
               >
                 <span className="flex items-center gap-4">
-                  <BoxGlyph color={r.color} size={56} />
+                  {dishes[r.slug] ?? <BoxGlyph color={r.color} size={56} />}
                   <span className="grid min-w-0 gap-1">
                     <b className="text-h3 leading-tight">{r.name}</b>
                     <span className="text-[17px] text-ink-2">{s ? storageLine(s) : "en boîtes, au frigo"}</span>

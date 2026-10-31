@@ -30,7 +30,7 @@ import {
 import { resumeSession } from "@/app/session/actions";
 import { buttonClass, Icon } from "@/components/ui";
 import { useNow, useSession } from "./useSession";
-import { chime, clock, dur, Eyebrow, kindLabel, QrCard, recipeOf, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
+import { chime, clock, DishArts, dur, Eyebrow, kindLabel, QrCard, recipeOf, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
 import { DoneView, Issues, PlanDetails, progressLine, recipesLine, ResumeChoice, sessionTitle } from "./blocks";
 import { PrepBowlRow, PrepPhase, Tomorrow } from "./Prep";
 import { CookPhase } from "./Cook";
@@ -65,6 +65,8 @@ export interface SessionProps {
   test?: boolean;
   /** Le rangement : boîtes et conservation de chaque recette. */
   storage?: RecipeStorage[];
+  /** La boîte de chaque plat (DishBox), rendue côté serveur, par slug. */
+  dishes?: Record<string, React.ReactNode>;
 }
 
 export type Controls = ReturnType<typeof useControls>;
@@ -415,6 +417,7 @@ export function SessionApp(props: SessionProps) {
   const test = useMemo(() => (props.test ? { ended, end: () => setStatus("done") } : null), [props.test, ended, setStatus]);
   return (
     <SessionTest.Provider value={test}>
+      <DishArts.Provider value={props.dishes ?? {}}>
       {props.view !== "full" ? (
         <SimpleView
           id={props.id}
@@ -435,6 +438,7 @@ export function SessionApp(props: SessionProps) {
       {/* Vue simple : ce qui sonne revient au premier plan dans l'écran lui-même. */}
       {props.view === "full" && <TimerAlert plan={plan} ringing={c.ringing} now={c.now} onStop={c.stopTimer} />}
       <ToastView toast={c.toast} onDone={() => c.setToast(null)} raised={props.view !== "full"} />
+      </DishArts.Provider>
     </SessionTest.Provider>
   );
 }

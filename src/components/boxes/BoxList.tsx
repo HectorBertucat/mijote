@@ -4,7 +4,7 @@
 // pareilles, même plat, même mangeur, même date, sont regroupées « ×3 »), la date limite en grand à
 // droite, « Je la mange » d'un geste (au journal de Santé du profil de l'appareil) ; passer au congélo
 // ou en sortir, jetée (deux gestes) en retrait. Le bouton plein d'encre : la plus pressée du frigo seulement. Pas de pastilles : la date et un mot disent l'urgence.
-import { useOptimistic, useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition, type ReactNode } from "react";
 import { Button } from "@/components/ui";
 import { eatBoxAction, moveBoxAction, throwBoxAction } from "@/app/frigo/actions";
 import { useToast } from "@/components/cart/Toast";
@@ -37,7 +37,7 @@ function groups(boxes: StockBox[]): Group[] {
   return out;
 }
 
-export function BoxList({ boxes, colors, today, eater }: { boxes: StockBox[]; colors: Record<string, string>; today: string; eater: string }) {
+export function BoxList({ boxes, colors, arts = {}, today, eater }: { boxes: StockBox[]; colors: Record<string, string>; /** La boîte de chaque plat (DishBox), rendue par la page, par slug. */ arts?: Record<string, ReactNode>; today: string; eater: string }) {
   const [shown, hide] = useOptimistic(boxes, (cur: StockBox[], id: string) => cur.filter((b) => b.id !== id));
   const [, start] = useTransition();
   const [confirm, setConfirm] = useState<string | null>(null);
@@ -58,8 +58,8 @@ export function BoxList({ boxes, colors, today, eater }: { boxes: StockBox[]; co
           const lim = limitOf(b, today);
           const frozen = b.place === "freezer";
           return (
-            <li key={key} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-3 border-t border-line py-4" data-box={id}>
-              <BoxGlyph color={(b.slug && colors[b.slug]) || "var(--c-ink-3)"} size={48} frozen={frozen} className="mt-1" />
+            <li key={key} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-3 border-t border-line py-4" data-box={id}>
+              {(b.slug && arts[b.slug]) || <BoxGlyph color={(b.slug && colors[b.slug]) || "var(--c-ink-3)"} size={56} frozen={frozen} />}
               <div className="grid min-w-0 gap-1">
                 <b className="text-[17px] leading-snug">
                   {b.name}

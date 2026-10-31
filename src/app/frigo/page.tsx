@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BoxList } from "@/components/boxes/BoxList";
 import { buttonClass, EmptyState } from "@/components/ui";
+import { DishBox } from "@/components/ui/dish";
+import { listDishRecipes } from "@/lib/recipes/queries";
 import { db } from "@/lib/db/client";
 import { listStock } from "@/lib/boxes/store";
 import { activePerson } from "@/lib/health/active";
@@ -19,6 +21,9 @@ export default async function Frigo() {
   const boxes = listStock(db, today);
   const eater = (await activePerson())?.name ?? "";
   const colors = Object.fromEntries(boxes.filter((b) => b.slug).map((b) => [b.slug!, recipeColor(b.slug!)]));
+  // La boîte de chaque plat, dessinée ici (le dessin reste côté serveur).
+  const slugs = new Set(boxes.map((b) => b.slug));
+  const arts = Object.fromEntries([...listDishRecipes(db).values()].filter((d) => slugs.has(d.slug)).map((d) => [d.slug, <DishBox key={d.slug} recipe={d} size="sm" />]));
   const places = [
     { id: "fridge", title: "Frigo", empty: "Rien au frigo. Sors une boîte du congélo la veille.", boxes: boxes.filter((b) => b.place === "fridge") },
     { id: "freezer", title: "Congélo", empty: "Rien au congélo.", boxes: boxes.filter((b) => b.place === "freezer") },
@@ -56,7 +61,7 @@ export default async function Frigo() {
                 {p.title}
                 <span className="num-tight text-[0.8em] text-ink-3">{p.boxes.length}</span>
               </h2>
-              {p.boxes.length ? <BoxList boxes={p.boxes} colors={colors} today={today} eater={eater} /> : <p className="border-y border-line py-4 text-[17px] text-ink-2">{p.empty}</p>}
+              {p.boxes.length ? <BoxList boxes={p.boxes} colors={colors} arts={arts} today={today} eater={eater} /> : <p className="border-y border-line py-4 text-[17px] text-ink-2">{p.empty}</p>}
             </section>
           ))}
         </div>
