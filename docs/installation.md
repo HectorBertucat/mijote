@@ -79,7 +79,7 @@ WantedBy=multi-user.target
 
 ## 3. Accès depuis l'extérieur et HTTPS
 
-Le Wake Lock (écran qui reste allumé en cuisine), l'installation sur l'écran d'accueil et le Raccourci Apple Santé demandent **HTTPS**. Trois façons simples :
+Le Wake Lock (écran qui reste allumé en cuisine), l'installation sur l'écran d'accueil et l'app Apple Santé demandent **HTTPS**. Trois façons simples :
 
 1. **Tailscale** (le plus simple, rien d'ouvert sur Internet) : installe Tailscale sur le serveur et les téléphones, puis `tailscale serve --bg 3010` donne une adresse `https://<machine>.<tailnet>.ts.net`.
 2. **Cloudflare Tunnel** : `cloudflared tunnel --url http://localhost:3010`, puis un nom de domaine ; ajoute Cloudflare Access pour la connexion (dans ce cas `MIJOTE_PASSWORD` peut rester vide).

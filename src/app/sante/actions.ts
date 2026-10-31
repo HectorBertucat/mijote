@@ -299,9 +299,9 @@ export async function importExportBatch(
   return { ok: true, weights: r.weights, steps: r.steps, workouts: r.workouts, message: "Importé." };
 }
 
-// ---------- Raccourci Apple Santé ----------
+// ---------- Apple Santé (app Mijote Santé) ----------
 
-/** Jeton de service Cloudflare du Raccourci : saisi une fois, recopié dans chaque code d'installation. */
+/** Jeton de service Cloudflare d'Apple Santé : saisi une fois, recopié dans chaque code d'installation. */
 export async function saveCloudflareToken(form: FormData): Promise<Result> {
   const id = String(form.get("clientId") ?? "").trim();
   const secret = String(form.get("clientSecret") ?? "").trim();
@@ -316,13 +316,13 @@ export async function newHealthKey(personId: string): Promise<Result> {
   if (!getPerson(db, personId)) return { ok: false, message: "Profil inconnu." };
   rotateLink(db, personId);
   revalidatePath("/sante/apple");
-  return { ok: true, message: "Nouvelle clé : recopie le code dans le Raccourci." };
+  return { ok: true, message: "Nouvelle clé : l'ancien code est refusé, scanne le nouveau dans l'app Mijote Santé." };
 }
 
 export async function redoHistory(personId: string): Promise<Result> {
   resetHistory(db, personId);
   revalidatePath("/sante/apple");
-  return { ok: true, message: "Le prochain envoi relira 6 mois." };
+  return { ok: true, message: "Au prochain envoi, l'app renverra tout l'historique (sans doublon)." };
 }
 
 // ---------- Entraînement ----------

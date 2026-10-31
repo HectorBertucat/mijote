@@ -92,7 +92,7 @@ Le bouton en forme de bulle, en haut (⌘I au clavier, ou « Demander » dans �
 - **Aujourd'hui** : les repas prévus de la semaine et les habitudes du jour se cochent en un tap ; « Autre chose » pour un écart (estimé par l'IA si besoin).
 - **Hors batch** : les habitudes (shaker, petit-déjeuner, en-cas) et leurs jours ; elles font la part de chaque recette.
 - **Objectifs** : un coach (IA) aide à fixer poids visé, rythme, protéines et sport réaliste ; chaque proposition est vérifiée (rythme sûr, jamais sous le métabolisme de base, IMC sain) avant d'être appliquée.
-- **Apple Santé** : un Raccourci iOS envoie pesées, pas et séances (page Santé › Apple Santé, pas à pas).
+- **Apple Santé** : l'app iPhone Mijote Santé envoie pesées, pas, séances, sommeil et cœur ; on la relie en scannant le code de la page Santé › Apple Santé.
 
 ## 8. Sport
 

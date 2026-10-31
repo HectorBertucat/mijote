@@ -13,7 +13,6 @@
     "import:recipes": "tsx --env-file-if-exists=.env.local scripts/import-recipes.ts",
     "test": "tsx --test tests/*.test.ts tests/*.test.tsx",
     "list:demo": "tsx --env-file-if-exists=.env.local scripts/list-demo.ts",
-    "shortcut:build": "tsx scripts/shortcut.ts",
     "illus:coverage": "tsx scripts/illus-coverage.ts",
     "plan:audit": "tsx scripts/plan-audit.ts",
     "changelog": "tsx scripts/changelog.ts",

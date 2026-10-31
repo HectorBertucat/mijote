@@ -35,7 +35,6 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Dessins manquants | `pnpm illus:coverage` |
 | Audit du planificateur | `pnpm plan:audit` |
 | Journal (vérifier, afficher ; `--fold` sur main) | `pnpm changelog` |
-| Raccourci Apple Santé | `pnpm shortcut:build` puis signer sur un Mac (docs/sante.md) |
 
 ## Où regarder
 | Besoin | Fichier |
@@ -54,6 +53,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Assistant (partout, ⌘I) | `src/lib/assistant/` (`core.ts` pur : contexte, outils, `checkAction` ; `store.ts` : instantané, conversation, exécution), `src/app/api/assistant/route.ts` (flux), `src/components/assistant/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
 | Santé | `src/lib/health/`, docs/sante.md |
+| Apple Santé (app iPhone, import) | `src/lib/health/import-api.ts` (GET/POST), `ingest-v2.ts` (format v2 : bornes, dédoublonnage), `ingest.ts` (v1), `link.ts` (clé, code d'installation), `samples.ts` et `sleep.ts` (lecture), `src/app/sante/apple/` |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |
 | Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
 | Chargement, transitions de page | `loading.tsx` de chaque rubrique, kit `src/components/ui/skeleton.tsx`, `src/components/PageTransition.tsx`, onglets `src/components/Nav.tsx` |

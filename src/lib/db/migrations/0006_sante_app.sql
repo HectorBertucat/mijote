@@ -1,0 +1,1 @@
+ALTER TABLE `health_links` ADD `history_complete_at` text;

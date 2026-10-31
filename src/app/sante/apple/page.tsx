@@ -1,13 +1,13 @@
-import { de, HowCalc, KeyFigure, Section, Verdict } from "@/components/sante/carnet";
-import { existsSync } from "fs";
+import { de, HowCalc, KeyFigure, Row, Section, Verdict } from "@/components/sante/carnet";
 import { headers } from "next/headers";
-import path from "path";
+import QRCode from "qrcode";
 import { ExportImport } from "@/components/sante/ExportImport";
-import { CloudflareForm, CopyCode, InstallLink, LinkTools } from "@/components/sante/InstallShortcut";
-import { CF_ID, CF_SECRET, ensureLink, getSetting, installCode, syncWindow } from "@/lib/health/link";
+import { CloudflareForm, CopyCode, LinkTools } from "@/components/sante/AppleLink";
+import { CF_ID, CF_SECRET, ensureLink, getSetting, installCode } from "@/lib/health/link";
 import { db } from "@/lib/db/client";
+import type { HealthKind } from "@/lib/db/schema";
 import { activePerson } from "@/lib/health/active";
-import { lastReceived, recentDaily, recentWorkouts } from "@/lib/health/samples";
+import { lastReceived, receivedCounts, recentDaily, recentWorkouts } from "@/lib/health/samples";
 import { todayParis } from "@/lib/health/store";
 import { addDays } from "@/lib/week/propose";
 import { demoEnabled } from "@/lib/demo/core";
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 const ago = (iso: string | null) => {
   if (!iso) return null;
   const h = (Date.now() - Date.parse(iso)) / 3600000;
-  return h < 1 ? "il y a moins d’une heure" : h < 48 ? `il y a ${Math.round(h)}\u00a0h` : `il y a ${Math.round(h / 24)} jours`;
+  return h < 1 ? "il y a moins d’une heure" : h < 48 ? `il y a ${Math.round(h)} h` : `il y a ${Math.round(h / 24)} jours`;
 };
 const fmt = (d: string) => new Date(d.length === 10 ? `${d}T12:00:00Z` : d).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
 
@@ -32,7 +32,26 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 }
 const K = ({ children }: { children: React.ReactNode }) => <code className="rounded-[4px] bg-surface-2 px-1 py-0.5 text-small">{children}</code>;
 
-const SHORTCUT_FILE = "raccourcis/sante-mijote.shortcut";
+/** Ce qui a été reçu, dans l’ordre de l’écran : nom, et ce que compte une ligne. */
+const RECEIVED: [HealthKind | "body_mass", string, string][] = [
+  ["body_mass", "Poids", "pesées"],
+  ["steps", "Pas", "jours"],
+  ["workout", "Séances", "séances"],
+  ["sleep", "Sommeil", "phases"],
+  ["resting_hr", "FC au repos", "mesures"],
+  ["hrv_sdnn", "Variabilité cardiaque", "mesures"],
+  ["vo2max", "VO2max", "mesures"],
+  ["body_fat", "Masse grasse", "mesures"],
+  ["lean_mass", "Masse maigre", "mesures"],
+  ["active_kcal", "Énergie active", "jours"],
+  ["basal_energy", "Énergie au repos", "jours"],
+  ["exercise_min", "Minutes d’exercice", "jours"],
+  ["walk_run_m", "Marche et course", "jours"],
+  ["diet_energy", "Énergie consommée", "jours"],
+  ["diet_protein", "Protéines", "jours"],
+  ["water", "Eau", "jours"],
+  ["menstrual", "Cycle", "jours notés"],
+];
 
 /** Adresse publique de l’appli (MIJOTE_PUBLIC_URL), sinon celle par laquelle on consulte la page. */
 async function publicUrl(): Promise<string> {
@@ -43,13 +62,12 @@ async function publicUrl(): Promise<string> {
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }
-const NEXT: Record<number, string> = { 180: "les 6 derniers mois (premier envoi)", 35: "le dernier mois", 7: "les 7 derniers jours" };
 
 export default async function Apple() {
   if (demoEnabled())
     return (
       <DemoNotice title="Apple Santé reste chez toi">
-        Sur ton instance, un Raccourci iPhone envoie les pesées, les pas et les séances à Mijote, avec une clé par personne. La démo ne reçoit rien de l’extérieur.
+        Sur ton instance, l’app Mijote Santé de l’iPhone envoie les pesées, les pas, les séances et le sommeil à Mijote, avec une clé par personne. La démo ne reçoit rien de l’extérieur.
       </DemoNotice>
     );
   const person = await activePerson();
@@ -57,13 +75,15 @@ export default async function Apple() {
   const clientSecret = getSetting(db, CF_SECRET);
   const cfSaved = clientId ? `${clientId.slice(0, 6)}…${clientId.slice(-12)}` : null;
   const link = ensureLink(db, person.id);
-  const code = installCode({ url: `${await publicUrl()}/api/sante/import`, person: person.name, key: link.key, clientId: clientId ?? "", clientSecret: clientSecret ?? "" });
-  const shortcutHref = existsSync(path.join(process.cwd(), "public", SHORTCUT_FILE)) ? `/${SHORTCUT_FILE}` : null;
+  const code = installCode({ url: `${await publicUrl()}/api/sante/import`, key: link.key, clientId: clientId ?? "", clientSecret: clientSecret ?? "" });
+  const qr = await QRCode.toString(code, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
   const last = lastReceived(db, person.id);
+  const lastAt = link.lastSyncAt ?? ([last.weight, last.sample].filter(Boolean).sort().pop() || null);
+  const counts = receivedCounts(db, person.id);
+  const received = RECEIVED.filter(([k]) => counts[k]);
   const since = addDays(todayParis(), -6);
   const steps = recentDaily(db, person.id, "steps", since);
   const workouts = recentWorkouts(db, person.id, 6);
-  const lastAt = [last.weight, last.sample].filter(Boolean).sort().pop() ?? null;
   const avgSteps = steps.length ? Math.round(steps.reduce((s, x) => s + x.value, 0) / steps.length) : null;
 
   return (
@@ -71,11 +91,14 @@ export default async function Apple() {
       <section aria-labelledby="as" className="grid gap-8 lg:grid-cols-12 lg:gap-6">
         <div className="grid content-start gap-4 lg:col-span-7">
           <h2 id="as" className="text-h2">Apple Santé</h2>
-          <p className="text-lead text-ink-2">Un Raccourci de l’iPhone envoie les pesées, les pas par jour et les séances.</p>
-          {lastAt ? <Verdict tone="ok">{`dernier envoi ${ago(lastAt)}`}</Verdict> : <Verdict tone="idle">rien reçu pour l’instant</Verdict>}
-          {link && <p className="text-small text-ink-2">Prochain envoi : {NEXT[syncWindow(link, new Date())]}.</p>}
+          <p className="text-lead text-ink-2">L’app Mijote Santé, sur l’iPhone, envoie ce que tu choisis dans Santé : pesées, pas, séances, sommeil, cœur.</p>
+          <div className="flex flex-wrap gap-2">
+            {lastAt ? <Verdict tone="ok">{`dernier envoi ${ago(lastAt)}`}</Verdict> : <Verdict tone="idle">rien reçu pour l’instant</Verdict>}
+            {link.historyCompleteAt ? <Verdict tone="ok">historique complet reçu</Verdict> : <Verdict tone="idle">historique complet attendu</Verdict>}
+          </div>
           <HowCalc title="Ce qui sert, ce qui ne sert pas">
-            <p>Une balance connectée écrit déjà les pesées dans Santé : elles arrivent ici. Les calories «{"\u202f"}actives{"\u202f"}» de la montre ne servent pas à la cible : la balance mesure mieux la dépense.</p>
+            <p>Les pesées font la courbe et la cible. Le sommeil, la fréquence cardiaque au repos, la variabilité cardiaque, la VO2max et la masse grasse s’affichent dans Santé ; les pas et les séances comptent pour les objectifs d’activité.</p>
+            <p>Les calories «{" "}actives{" "}» et «{" "}au repos{" "}» de la montre ne servent pas à la cible : la balance mesure mieux la dépense. Les apports et le cycle, si tu les envoies, sont gardés ici et ne sont montrés ni à l’assistant ni au coach.</p>
           </HowCalc>
         </div>
         {(avgSteps != null || workouts.length > 0) && (
@@ -86,66 +109,65 @@ export default async function Apple() {
         )}
       </section>
 
-      <Section title={`Installer sur l’iPhone ${de(person.name)}`} id="rc">
-        {!code ? null : (
+      <div className="grid gap-12 lg:grid-cols-12 lg:gap-6">
+        <Section title={`Relier l’iPhone ${de(person.name)}`} id="app" className="lg:col-span-7">
           <div className="grid gap-6">
-            <p className="max-w-[62ch] text-ink-2">À faire sur l’iPhone {de(person.name)}, avec le bon profil choisi en haut. Le Raccourci est le même pour tout le monde : c’est le code qui dit à qui vont les données.</p>
-            <ol className="grid border-t border-line">
-              <Step n={1}>
-                <div className="grid gap-3">
-                  <span>Copie le code. Si tu es sur un autre téléphone, envoie-le plutôt (AirDrop, Messages).</span>
-                  <CopyCode code={code!} personName={person.name} />
-                </div>
-              </Step>
-              <Step n={2}>
-                <div className="grid gap-3">
-                  <span>
-                    Ajoute le Raccourci <b>Santé → Mijote</b>.
-                  </span>
-                  <div>
-                    <InstallLink href={shortcutHref} />
-                  </div>
-                </div>
-              </Step>
-              <Step n={3}>
-                Lance-le une fois depuis l’app Raccourcis. Il garde le code, demande l’accès à Santé (autorise <b>Poids</b>, <b>Nombre de pas</b> et <b>Entraînements</b>), puis envoie les 6 derniers mois : compte une ou deux minutes.
-              </Step>
-              <Step n={4}>
-                Pour qu’il tourne seul : Raccourcis → <b>Automatisation</b> → <b>+</b> → <b>App</b> → l’app de ta balance → <b>Est fermée</b>, puis <b>Exécuter immédiatement</b> et le Raccourci <b>Santé → Mijote</b>. Sans balance le matin : <b>Alarme</b> → <b>Est arrêtée</b>.
-              </Step>
-            </ol>
-            <p className="max-w-[62ch] text-small text-ink-2">Ensuite, chaque envoi relit les 7 derniers jours, et le dernier mois une fois par semaine. Envoyer deux fois la même chose ne crée pas de doublon.</p>
+            <div className="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
+              <span
+                role="img"
+                aria-label={`Code d’installation ${de(person.name)}, à scanner dans l’app Mijote Santé`}
+                className="block w-[200px] rounded-[8px] border border-line bg-white p-2 [&>svg]:h-auto [&>svg]:w-full"
+                dangerouslySetInnerHTML={{ __html: qr }}
+              />
+              <ol className="grid border-t border-line">
+                <Step n={1}>Ouvre l’app Mijote Santé sur l’iPhone {de(person.name)}.</Step>
+                <Step n={2}>Scanne ce code, ou copie-le et colle-le dans l’app. C’est le code qui dit à qui vont les données : un par personne.</Step>
+                <Step n={3}>Choisis ce que tu envoies et autorise l’accès à Santé. La première fois, l’app envoie tout l’historique par paquets ; ensuite, seulement ce qui change.</Step>
+              </ol>
+            </div>
+            <CopyCode code={code} personName={person.name} />
+            <p className="max-w-[62ch] text-small text-ink-2">«{" "}Tout renvoyer{" "}» redemande l’historique complet au prochain envoi, sans créer de doublon. «{" "}Changer la clé{" "}» refuse l’ancien code : à refaire si le code a circulé.</p>
             <LinkTools personId={person.id} />
           </div>
-        )}
-      </Section>
-
-      <div className="grid gap-12 lg:grid-cols-2 lg:gap-6">
-        <Section title="Tout l’historique" id="hist" aside={<span className="label text-ink-2">Facultatif</span>}>
-          <p className="max-w-[62ch] text-ink-2">
-            Dans l’app Santé : ta photo en haut à droite → <b>Exporter toutes les données de santé</b>, puis enregistre <K>export.zip</K> dans Fichiers. Choisis-le ici : il est lu sur ton appareil, seules les pesées, les séances et les pas par jour sont envoyés au profil {de(person.name)}. Utile pour remonter plus loin que les 6 mois du Raccourci.
-          </p>
-          <ExportImport personId={person.id} personName={person.name} />
         </Section>
 
-        <Section title="Derrière Cloudflare Access" id="cf" aside={<span className="label text-ink-2">Facultatif</span>}>
-          {!cfSaved && (
-            <>
-              <p className="max-w-[62ch] text-ink-2">Seulement si ton appli est protégée par Cloudflare Access. Le Raccourci ne peut pas se connecter comme toi : on lui donne un jeton limité au seul chemin d’import, le même pour tout le foyer.</p>
-              <ol className="grid border-t border-line">
-                <Step n={1}>
-                  Dans Cloudflare Zero Trust : <b>Access → Service credentials → Service tokens → Create</b>. Nom <K>Raccourci santé</K>, durée <K>Non-expiring</K>.
-                </Step>
-                <Step n={2}>
-                  <b>Access → Applications → Add an application → Self-hosted</b>. Ton domaine, chemin <K>api/sante/import</K>. Une seule règle : action <b>Service Auth</b>, Include → <b>Service Token</b> → <K>Raccourci santé</K>.
-                </Step>
-                <Step n={3}>Colle ici le Client ID et le Client Secret. Ils sont gardés dans l’appli et recopiés dans chaque code d’installation.</Step>
-              </ol>
-            </>
+        <Section title="Reçu" id="recu" className="lg:col-span-5">
+          {received.length ? (
+            <dl className="grid border-t border-line">
+              {received.map(([k, label, unit]) => (
+                <Row key={k} k={label}>
+                  <span className="num">{counts[k]!.toLocaleString("fr-FR")}</span> {unit}
+                </Row>
+              ))}
+            </dl>
+          ) : (
+            <p className="text-body text-ink-2">Rien pour l’instant {de(person.name)}.</p>
           )}
-          <CloudflareForm saved={cfSaved} />
         </Section>
       </div>
+
+      <Section title="Derrière Cloudflare Access" id="cf" aside={<span className="label text-ink-2">Facultatif</span>}>
+        <p className="max-w-[62ch] text-ink-2">Seulement si ton instance est protégée par Cloudflare Access : l’app ne peut pas se connecter comme toi, elle passe avec un jeton de service limité au seul chemin d’import, le même pour tout le foyer, recopié dans chaque code.</p>
+        {!cfSaved && (
+          <ol className="grid border-t border-line">
+            <Step n={1}>
+              Dans Cloudflare Zero Trust : <b>Access → Service credentials → Service tokens → Create</b>. Nom <K>Mijote Santé</K>, durée <K>Non-expiring</K>.
+            </Step>
+            <Step n={2}>
+              <b>Access → Applications → Add an application → Self-hosted</b>. Ton domaine, chemin <K>api/sante/import</K>. Une seule règle : action <b>Service Auth</b>, Include → <b>Service Token</b> → <K>Mijote Santé</K>.
+            </Step>
+            <Step n={3}>Colle ici le Client ID et le Client Secret. Le code ci-dessus les contient ensuite : rescanne-le dans l’app.</Step>
+          </ol>
+        )}
+        <CloudflareForm saved={cfSaved} />
+      </Section>
+
+      <HowCalc title="Importer un export de Santé">
+        <p>
+          L’historique vient de l’app. Sans elle : dans l’app Santé, ta photo en haut à droite → <b>Exporter toutes les données de santé</b>, puis enregistre <K>export.zip</K> dans Fichiers. Choisis-le ici : il est lu sur ton appareil, seules les pesées, les séances et les pas par jour sont envoyés au profil {de(person.name)}.
+        </p>
+        <ExportImport personId={person.id} personName={person.name} />
+      </HowCalc>
     </div>
   );
 }

@@ -43,6 +43,13 @@
       "when": 1793453267206,
       "tag": "0005_assistant",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793487745526,
+      "tag": "0006_sante_app",
+      "breakpoints": true
     }
   ]
 }

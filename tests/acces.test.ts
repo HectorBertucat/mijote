@@ -29,7 +29,7 @@ test("avec mot de passe : redirection vers /connexion (avec la suite), 401 pour 
     const ok = await proxy(req("/recettes", `${AUTH_COOKIE}=${await authToken()}`));
     assert.equal(ok.status, 200);
     // Chemins publics : connexion, import Apple Santé (il exige sa propre clé), manifeste.
-    for (const p of ["/connexion", "/api/sante/import", "/manifest.webmanifest", "/raccourcis/sante-mijote.shortcut"]) assert.equal((await proxy(req(p))).status, 200, p);
+    for (const p of ["/connexion", "/api/sante/import", "/manifest.webmanifest"]) assert.equal((await proxy(req(p))).status, 200, p);
     assert.ok(!PUBLIC_PATHS.some((r) => r.test("/api/sante/seance")), "le reste de l'API santé est protégé");
   } finally {
     delete process.env.MIJOTE_PASSWORD;

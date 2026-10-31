@@ -16,4 +16,4 @@ export async function authToken(password = process.env.MIJOTE_PASSWORD ?? ""): P
 }
 
 /** Chemins ouverts sans connexion : la page de connexion, l'import Apple Santé (clé par personne), les fichiers publics. */
-export const PUBLIC_PATHS = [/^\/connexion/, /^\/api\/health$/, /^\/api\/sante\/import/, /^\/raccourcis\//, /^\/manifest\.webmanifest$/, /^\/icon/, /^\/apple-icon/, /^\/lancement$/];
+export const PUBLIC_PATHS = [/^\/connexion/, /^\/api\/health$/, /^\/api\/sante\/import/, /^\/manifest\.webmanifest$/, /^\/icon/, /^\/apple-icon/, /^\/lancement$/];

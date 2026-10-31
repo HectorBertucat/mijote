@@ -19,6 +19,7 @@ import { cookEvents, cookSessions, recipes, shoppingLists } from "@/lib/db/schem
 import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
 import { generateProgram } from "@/lib/training/generate";
+import { ensureLink } from "@/lib/health/link";
 
 const ROOT = process.cwd();
 const STANDALONE = path.join(ROOT, ".next/standalone");
@@ -145,6 +146,14 @@ async function main() {
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
     check((await get("/bienvenue")).status === 307, "mise en route faite → /bienvenue renvoie à l'accueil");
     check((await get("/api/sante/import", undefined)).status === 401, "import Apple Santé sans clé → 401");
+    // L'app Mijote Santé : un paquet v2 minimal avec la clé de Léa, puis le GET qui ne demande plus l'historique.
+    const santeKey = { "X-Mijote-Key": ensureLink(db, lea).key, "Content-Type": "application/json" };
+    const v2 = { version: 2, batch: { id: "smoke", index: 0, last: true, history: "complete" }, samples: [{ uuid: "smoke-1", type: "body_mass", start: new Date().toISOString(), value: 60.2, unit: "kg" }], daily: [{ type: "steps", date: new Date().toISOString().slice(0, 10), value: 4200, unit: "count" }] };
+    const sent = await fetch(`${BASE}/api/sante/import`, { method: "POST", headers: santeKey, body: JSON.stringify(v2) });
+    const sentBody = (await sent.json()) as { accepted?: { samples: number; daily: number } };
+    check(sent.status === 200 && sentBody.accepted?.samples === 1 && sentBody.accepted?.daily === 1, `import Apple Santé v2 → ${sent.status}`);
+    const state = (await (await fetch(`${BASE}/api/sante/import`, { headers: santeKey })).json()) as { v2?: boolean; history?: string; lastSyncAt?: string };
+    check(state.v2 === true && state.history == null && !!state.lastSyncAt, "import Apple Santé : GET v2, historique complet reçu");
     // Sans ANTHROPIC_API_KEY : pas d'assistant (ni bouton, ni route), tout le reste marche.
     const ask = await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) });
     check(ask.status === 404, "assistant sans clé → 404");

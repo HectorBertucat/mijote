@@ -1,13 +1,14 @@
 "use client";
 
-// Installer le Raccourci « Santé → cuisine » sur l’iPhone de la personne choisie : copier son code
-// (ou l’envoyer à son téléphone), ajouter le Raccourci, le lancer une fois. Le code contient la clé de
-// la personne et le jeton Cloudflare : il ne sort de l’appli que par le presse-papiers ou le partage.
+// Relier l’app Mijote Santé de l’iPhone à la personne choisie : son code d’installation (scanné en QR code
+// sur la page, ou copié, ou envoyé à son téléphone), le jeton Cloudflare, « Tout renvoyer » et « Changer la
+// clé ». Le code contient la clé de la personne et le jeton : il ne sort de l’appli que par l’écran, le
+// presse-papiers ou le partage.
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, buttonClass, Field, Input } from "@/components/ui";
+import { Button, Field, Input } from "@/components/ui";
 import { newHealthKey, redoHistory, saveCloudflareToken } from "@/app/sante/actions";
-import { de } from "./carnet";
+import { de, HowCalc } from "./carnet";
 
 export function CopyCode({ code, personName }: { code: string; personName: string }) {
   const [state, setState] = useState<"idle" | "done" | "error">("idle");
@@ -29,23 +30,16 @@ export function CopyCode({ code, personName }: { code: string; personName: strin
           Copier le code {de(personName)}
         </Button>
         {canShare && (
-          <Button icon="link" onClick={() => navigator.share({ title: `Code Santé → cuisine (${personName})`, text: code }).catch(() => {})}>
+          <Button icon="link" onClick={() => navigator.share({ title: `Code Mijote Santé (${personName})`, text: code }).catch(() => {})}>
             Envoyer à son iPhone
           </Button>
         )}
       </div>
-      {state === "error" && <p className="text-small text-ko-ink">Copie refusée par le navigateur : appuie longuement sur le code ci-dessous et copie-le.</p>}
-      {state === "error" && <code className="block break-all rounded-[8px] bg-surface-2 p-2 text-[12px]">{code}</code>}
+      {state === "error" && <p className="text-small text-ko-ink">Copie refusée par le navigateur : sélectionne le code ci-dessous et copie-le.</p>}
+      <HowCalc title="Le code en texte">
+        <code className="block select-all break-all rounded-[8px] bg-surface-2 p-2 text-[12px] text-ink">{code}</code>
+      </HowCalc>
     </div>
-  );
-}
-
-export function InstallLink({ href }: { href: string | null }) {
-  if (!href) return <p className="text-small text-ink-2">Le fichier du Raccourci n’est pas encore en ligne : il doit d’abord être signé sur le Mac.</p>;
-  return (
-    <a className={buttonClass({ variant: "primary" })} href={href} download="Santé → cuisine.shortcut">
-      Ajouter le Raccourci
-    </a>
   );
 }
 
@@ -113,10 +107,10 @@ export function LinkTools({ personId }: { personId: string }) {
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-2">
         <Button size="sm" icon="refresh" disabled={pending} onClick={() => run(redoHistory)}>
-          Relire 6 mois au prochain envoi
+          Tout renvoyer
         </Button>
         <Button size="sm" variant="quiet" icon="lock" disabled={pending} onClick={() => run(newHealthKey)}>
-          Nouvelle clé
+          Changer la clé
         </Button>
       </div>
       {message && <p className="text-small text-ink-2">{message}</p>}
