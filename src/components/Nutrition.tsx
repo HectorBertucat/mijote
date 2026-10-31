@@ -65,7 +65,7 @@ export function nutritionData({ perUnit, coverage, ingredients, servingsUnits, p
   return { portions, contrib, notEaten, coverage };
 }
 
-export function NutritionPanel(props: { perUnit: Macros; coverage: number | null; ingredients: Ing[]; servingsUnits: number; eaters?: Eater[] }) {
+export function NutritionPanel({ bare, ...props }: { perUnit: Macros; coverage: number | null; ingredients: Ing[]; servingsUnits: number; eaters?: Eater[]; bare?: boolean }) {
   const people = props.eaters?.length ? nutritionPeople(props.eaters, props.perUnit) : DEFAULT_PEOPLE;
-  return <NutritionView data={nutritionData({ ...props, people })} people={people} />;
+  return <NutritionView data={nutritionData({ ...props, people })} people={people} bare={bare} />;
 }

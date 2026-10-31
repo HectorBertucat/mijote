@@ -7,7 +7,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Alert, Button, buttonClass, Chip, Chips, Icon, Input, Pill, Tag } from "@/components/ui";
 import { useSectionCount } from "@/components/FicheSections";
-import { CardTitle, fmtQty } from "@/components/RecipeParts";
+import { fmtQty } from "@/components/RecipeParts";
+import { BlockTitle, HowCalculated } from "@/components/fiche/Block";
 import type { IngredientProducts, ProductView } from "@/lib/products/fiche";
 import type { CatalogChoice } from "@/lib/shopping/cart";
 import { acceptAction, acceptBestAction, forgetAction, overrideAction, preferAction, refuseAction, searchProductsAction } from "@/app/recettes/[slug]/produits-actions";
@@ -35,24 +36,24 @@ export function ProductsBoard({ slug, initial }: { slug: string; initial: Ingred
   const proposable = todo.filter((i) => i.candidates.some((c) => c.tone !== "ko" && !c.otherType)).length;
 
   return (
-    <section className="grid gap-4 rounded-[14px] border border-line bg-surface px-4 py-4 shadow-e1 sm:px-5">
-      <CardTitle
+    <section className="grid gap-6" aria-label="Produits du drive">
+      <BlockTitle
         aside={
           buy.length > 0 && (
-            <Pill tone={todo.length ? "warn" : "ok"} icon={todo.length ? "alert" : "check"}>
-              <span className="num">
-                {buy.length - todo.length} / {buy.length}
-              </span>{" "}
-              associés
-            </Pill>
+            <span className={`num inline-flex items-center gap-2 font-semibold ${todo.length ? "text-warn-ink" : "text-ok-ink"}`}>
+              <Icon name={todo.length ? "alert" : "check"} size="s" />
+              {buy.length - todo.length} sur {buy.length} associés
+            </span>
           )
         }
       >
         Produits du drive
-      </CardTitle>
-      <p className="-mt-2 max-w-[72ch] text-[14px] text-ink-2">
-        Un produit accepté vaut pour toutes les recettes qui contiennent l&apos;ingrédient. La liste de courses prend le préféré <Icon name="star" size={14} className="inline -translate-y-px" />, sinon le meilleur des acceptés pour le besoin, jamais un produit refusé.
-      </p>
+      </BlockTitle>
+      <HowCalculated title="Comment la liste choisit">
+        <p className="max-w-[72ch]">
+          Un produit accepté vaut pour toutes les recettes qui contiennent l’ingrédient. La liste de courses prend le préféré <Icon name="star" size={14} className="inline -translate-y-px" />, sinon le meilleur des acceptés pour le besoin, jamais un produit refusé.
+        </p>
+      </HowCalculated>
 
       {todo.length > 0 ? (
         <Alert

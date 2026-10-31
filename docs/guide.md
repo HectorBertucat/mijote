@@ -34,11 +34,11 @@ En cuisine, on ne compte pas en unités : en fin de session, on pèse la marmite
 
 ## 3. Recettes
 
-La bibliothèque montre pour chaque recette la part de chacun, colorée selon sa cible (vert : dans la cible). Une fiche donne :
-- les **bols de prep** (A, B, C…) : tout est épluché et coupé avant de cuire ;
+La bibliothèque est une liste : pour chaque plat, ses aliments dessinés, le temps actif, les calories de ta part (verdict de ta cible : dans la cible, sous, au-dessus) et deux repères au plus (jamais cuisinée, à relire, notes, se congèle…). On filtre par étiquette ou on cherche un plat, un ingrédient. Une fiche se lit comme une page de livre de cuisine. En tête, trois chiffres : temps actif, calories de ta part, prix de la part (ou le nombre de repas tant qu'il n'y a pas de prix). Puis :
+- les **ingrédients**, regroupés par **bol de prep** (A, B, C…) : tout est épluché et coupé avant de cuire ; le placard est replié en bas ;
 - les **étapes** avec récipient, foyer, niveau, durée et repère visuel ; les étapes de cuisson sont découpées en **sous-étapes chronométrées** ;
-- la **nutrition** par part, ce qui pèse le plus, ce qui ne se mange pas (parures, gras resté dans la poêle) ;
-- le **coût** par part ;
+- la **nutrition** par part et ce qui pèse le plus ; le détail (ce qui ne se mange pas, la méthode) est sous « Comment c’est calculé » ;
+- le **coût** par part, la calculette **En boîtes** et les variantes ;
 - les **notes**, un tap pendant ou après la cuisson.
 
 **Ajuster** (avec l'IA) propose une variante : −150 kcal, +15 g de protéines, plus de légumes, sans ce qu'une personne n'aime pas… La proposition est vérifiée en code (nutrition, équipement, catalogue) et s'affiche en « avant → après » ; on la garde comme variante ou on l'ignore.
