@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Alert, Card, Pill, verdictTone } from "@/components/ui";
+import { verdictTone } from "@/components/ui";
+import { de, HowCalc, KeyFigure, NB, NNB, Note, Row, Section, Verdict } from "@/components/sante/carnet";
 import { SetupForm } from "@/components/sante/SetupForm";
 import { db } from "@/lib/db/client";
 import { activePerson } from "@/lib/health/active";
@@ -19,7 +20,7 @@ const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const SOURCE = { sante: "dépense mesurée par la balance", fixe: "repère fixe du profil", estimation: "estimation par formule, affinée par tes pesées" } as const;
 const WORD = { ok: "dans ta cible", low: "un peu juste", high: "au-dessus" } as const;
 
-/** Mise en route d'un mangeur (?p=<id>) : ce qui manque, le formulaire, et ce qui en découle. */
+/** Mise en route d’un mangeur (?p=<id>) : ce qui manque, le formulaire, et ce qui en découle. */
 export default async function Demarrer({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams;
   const active = await activePerson();
@@ -34,96 +35,90 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
     .map((r) => ({ r, part: portionOf(e, r) }));
 
   return (
-    <div className="grid gap-5">
-      <div className="grid max-w-2xl gap-2">
-        <h2 className="text-[22px] font-extrabold tracking-[-0.02em]">Mise en route · {person.name}</h2>
-        {person.id !== active.id && <p className="text-[14px] text-ink-2">Tu remplis le profil de {person.name} (le profil choisi en haut reste {active.name}).</p>}
-        <p className="text-ink-2">
-          Chaque recette est cuite en unités (le plat cuit, pesé, divisé en parts égales). Ta part de chaque recette se calcule sur ta cible : ce que tu manges au midi et au soir, en kcal, divisé par les kcal d&apos;une unité de ce plat. Les protéines disent si le plat te convient.
-        </p>
+    <div className="grid gap-12 lg:gap-18">
+      <div className="grid max-w-[62ch] gap-4">
+        <h2 className="text-h2">Mise en route{person.id !== active.id && ` · ${person.name}`}</h2>
+        {person.id !== active.id && <p className="text-small text-ink-2">Tu remplis le profil {de(person.name)} (le profil choisi en haut reste {active.name}).</p>}
+        <p className="text-lead text-ink-2">Quelques chiffres, ton objectif, ce que tu manges à côté : ta part de chaque recette suivra ta cible.</p>
+        <HowCalc>
+          <p>Chaque recette est cuite en unités : le plat cuit, pesé, divisé en parts égales. Ta part se calcule sur ta cible : ce que tu manges au midi et au soir, en kcal, divisé par les kcal d’une unité de ce plat. Les protéines disent si le plat te convient.</p>
+        </HowCalc>
       </div>
 
       {e.missing.length > 0 ? (
-        <Alert tone="warn" title={e.ref ? "Ta part est déjà calculée, mais elle peut être plus juste" : "Ta part reste à la taille habituelle"}>
+        <Note tone="warn" title={e.ref ? "Ta part est déjà calculée, mais elle peut être plus juste" : "Ta part reste à la taille habituelle"}>
           Il manque {joinFr(e.missing)}.
-        </Alert>
+        </Note>
       ) : (
         e.setupDone && (
-          <Alert tone="ok" title="Tout est réglé">
-            Ta part suit ta cible, et la Semaine la reprend toute seule. Pèse-toi une fois par semaine au moins, et coche « Journée complète » dans <Link href="/sante/aujourdhui" className="font-semibold underline">Aujourd&apos;hui</Link> : la cible s&apos;ajuste à ta vraie dépense.
-          </Alert>
+          <Note title="Tout est réglé">
+            Ta part suit ta cible, et la Semaine la reprend toute seule. Pèse-toi une fois par semaine au moins, et coche «{NNB}Journée complète{NNB}» dans{" "}
+            <Link href="/sante/aujourdhui" className="font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
+              Aujourd’hui
+            </Link>{" "}
+            : la cible s’ajuste à ta vraie dépense.
+          </Note>
         )
       )}
 
-      {e.ref && (
-        <Card as="section" pad="md" className="grid max-w-2xl scroll-mt-20 gap-3" id="ta-part">
-          <h3 className="text-[18px] font-bold">Ta part, aujourd&apos;hui</h3>
-          <div className="grid gap-1 text-[15px]">
-            {e.dayTarget && (
-              <p>
-                Cible du jour : <b className="num">{fr(e.dayTarget.kcal)} kcal</b> et <b className="num">{fr(e.dayTarget.proteinG)} g</b> de protéines{" "}
-                <span className="text-ink-2">({SOURCE[e.source!]})</span>.
-              </p>
-            )}
-            {e.outside ? (
-              <p>
-                Hors batch : <span className="num">~{fr(e.outside.kcal)} kcal</span>, <span className="num">{fr(e.outside.protein)} g</span> de protéines
-                {e.outsideSource === "habitudes" ? " (tes habitudes, en moyenne sur la semaine)" : ""}.
-              </p>
-            ) : (
-              <p className="text-ink-2">Hors batch : un petit-déjeuner moyen, tant que tu n&apos;as rien noté.</p>
-            )}
-            <p>
-              Un repas du batch :{" "}
-              <b className="num">
-                {fr(e.ref.kcalMin)}-{fr(e.ref.kcalMax)} kcal
-              </b>{" "}
-              et{" "}
-              <b className="num">
-                {e.ref.proteinMin}-{e.ref.proteinMax} g
-              </b>{" "}
-              de protéines{e.source === "fixe" && <span className="text-ink-2"> ({SOURCE.fixe})</span>}.
-            </p>
-          </div>
-          <AdviceCard advice={adviceFor(db, e)} link />
-          {examples.length > 0 && (
-            <div className="grid gap-1.5">
-              <b className="text-[14px] text-ink-2">Ta part de quelques recettes</b>
-              <ul className="grid gap-1">
-                {examples.map(({ r, part }) => (
-                  <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-dashed border-line py-1.5 text-[14px] last:border-b-0">
-                    <Link href={`/recettes/${r.slug}`} className="min-w-0 font-semibold hover:underline">
-                      {r.name}
-                    </Link>
-                    <span className="flex items-baseline gap-2 tabular-nums">
-                      <b>{unitsLabel(part.units)}</b>
-                      <span>
-                        {part.kcal} kcal · {part.protein} g
-                      </span>
-                      {part.verdict && (
-                        <Pill tone={verdictTone(part.verdict.protein === "low" ? "low" : part.verdict.kcal)}>
-                          {part.verdict.protein === "low" ? "peu de protéines" : WORD[part.verdict.kcal]}
-                        </Pill>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+      <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-6">
+        {e.ref && (
+          <Section title="Ta part, aujourd’hui" id="ta-part" className="scroll-mt-20 lg:order-2 lg:col-span-5 lg:col-start-8">
+            <div className="grid grid-cols-2 gap-6">
+              {e.dayTarget && <KeyFigure size="lg" label="Cible du jour" value={fr(e.dayTarget.kcal)} unit="kcal" sub={`${fr(e.dayTarget.proteinG)}${NB}g de protéines`} />}
+              <KeyFigure size="lg" label="Un repas du batch" value={`${fr(e.ref.kcalMin)}–${fr(e.ref.kcalMax)}`} unit="kcal" sub={`${e.ref.proteinMin}–${e.ref.proteinMax}${NB}g de protéines`} />
             </div>
-          )}
-        </Card>
-      )}
+            <dl className="grid border-t border-line">
+              {e.source && <Row k="D’où vient la cible">{SOURCE[e.source]}</Row>}
+              <Row k="Hors batch">
+                {e.outside ? (
+                  <>
+                    <span className="num">{`~${fr(e.outside.kcal)}${NB}kcal, ${fr(e.outside.protein)}${NB}g`}</span>
+                    {e.outsideSource === "habitudes" && <span className="block text-small text-ink-2">tes habitudes, en moyenne sur la semaine</span>}
+                  </>
+                ) : (
+                  <span className="text-ink-2">un petit-déjeuner moyen, tant que tu n’as rien noté</span>
+                )}
+              </Row>
+            </dl>
+            <AdviceCard advice={adviceFor(db, e)} link />
+            {examples.length > 0 && (
+              <div className="grid gap-2">
+                <span className="label text-ink-2">Ta part de quelques recettes</span>
+                <ul className="grid border-t border-line">
+                  {examples.map(({ r, part }) => (
+                    <li key={r.id} className="grid gap-1 border-b border-line py-3">
+                      <span className="flex items-baseline justify-between gap-4">
+                        <Link href={`/recettes/${r.slug}`} className="min-w-0 font-bold hover:underline hover:underline-offset-4">
+                          {r.name}
+                        </Link>
+                        <b className="num whitespace-nowrap">{unitsLabel(part.units)}</b>
+                      </span>
+                      <span className="flex flex-wrap items-baseline justify-between gap-x-4 text-small text-ink-2">
+                        <span className="num">{`${part.kcal}${NB}kcal · ${part.protein}${NB}g`}</span>
+                        {part.verdict && <Verdict tone={verdictTone(part.verdict.protein === "low" ? "low" : part.verdict.kcal)}>{part.verdict.protein === "low" ? "peu de protéines" : WORD[part.verdict.kcal]}</Verdict>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Section>
+        )}
 
-      <SetupForm
-        key={person.id}
-        personId={person.id}
-        name={person.name}
-        lastKg={lastKg}
-        outside={e.outside}
-        habits={e.outsideSource === "habitudes" ? habits.filter(counts).map((h) => `${h.label}, ${daysLabel(h.weekdays)}`) : null}
-        dislikes={listDislikes(db, person.id).map((d) => ({ id: d.id, text: d.text }))}
-        values={{ sex: person.sex, birthDate: person.birthDate, heightCm: person.heightCm, activity: person.activity, goal: person.goal, ratePct: person.ratePct, proteinGPerKg: person.proteinGPerKg, proteinG: person.proteinG, targetWeightKg: person.targetWeightKg, targetDate: person.targetDate, sportPlan: planOf(person), constraints: person.constraints }}
+        <div className="lg:order-1 lg:col-span-7">
+          <SetupForm
+          key={person.id}
+          personId={person.id}
+          name={person.name}
+          lastKg={lastKg}
+          outside={e.outside}
+          habits={e.outsideSource === "habitudes" ? habits.filter(counts).map((h) => `${h.label}, ${daysLabel(h.weekdays)}`) : null}
+          dislikes={listDislikes(db, person.id).map((d) => ({ id: d.id, text: d.text }))}
+          values={{ sex: person.sex, birthDate: person.birthDate, heightCm: person.heightCm, activity: person.activity, goal: person.goal, ratePct: person.ratePct, proteinGPerKg: person.proteinGPerKg, proteinG: person.proteinG, targetWeightKg: person.targetWeightKg, targetDate: person.targetDate, sportPlan: planOf(person), constraints: person.constraints }}
       />
+        </div>
+      </div>
     </div>
   );
 }

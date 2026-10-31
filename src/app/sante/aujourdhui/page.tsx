@@ -28,20 +28,22 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Promi
   const slugById = new Map(lib.map((r) => [r.id, r.slug]));
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
-      <div className="flex items-center gap-2">
-        <Link href={`/sante/aujourdhui?jour=${addDays(date, -1)}`} className={buttonClass({ variant: "quiet", size: "sm", iconOnly: true })} aria-label="Jour précédent">
-          <Icon name="chev" className="rotate-180" />
-        </Link>
-        <h2 className="text-[18px] font-bold first-letter:uppercase">{date === today ? "Aujourd'hui" : fmt(date)}</h2>
-        {date < today && (
-          <Link href={`/sante/aujourdhui?jour=${addDays(date, 1)}`} className={buttonClass({ variant: "quiet", size: "sm", iconOnly: true })} aria-label="Jour suivant">
-            <Icon name="chev" />
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8">
+      <div className="flex flex-wrap items-center gap-4">
+        <h2 className="text-h2 first-letter:uppercase">{date === today ? "Aujourd’hui" : fmt(date)}</h2>
+        <span className="flex gap-1">
+          <Link href={`/sante/aujourdhui?jour=${addDays(date, -1)}`} className={buttonClass({ variant: "secondary", size: "sm", iconOnly: true })} aria-label="Jour précédent">
+            <Icon name="chev" className="rotate-180" />
           </Link>
-        )}
+          {date < today && (
+            <Link href={`/sante/aujourdhui?jour=${addDays(date, 1)}`} className={buttonClass({ variant: "secondary", size: "sm", iconOnly: true })} aria-label="Jour suivant">
+              <Icon name="chev" />
+            </Link>
+          )}
+        </span>
         {date !== today && (
-          <Link href="/sante/aujourdhui" className="ml-auto text-[14px] font-semibold text-accent">
-            Revenir à aujourd'hui
+          <Link href="/sante/aujourdhui" className="ml-auto text-small font-bold text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
+            Revenir à aujourd’hui
           </Link>
         )}
       </div>

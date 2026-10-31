@@ -2,7 +2,7 @@
 
 // Séance à deux sur un seul écran (le MacBook) : chacun sa séance, côte à côte, avec son programme,
 // son horloge et ses repos ; chacun la pilote depuis son téléphone (QR en haut de sa moitié). Les deux
-// ne finissent pas en même temps : celle qui est finie se replie en colonne étroite, l'autre prend la
+// ne finissent pas en même temps : celle qui est finie se replie en colonne étroite, l’autre prend la
 // place, et on sort quand les deux sont terminées.
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/ui";
@@ -32,8 +32,8 @@ export function DuoSession({ panes, onEnd }: { panes: DuoPane[]; onEnd: () => vo
           {done.includes(x.row.id) ? (
             <div className="grid h-full content-center justify-items-center gap-2 p-6 text-center">
               <Icon name="check" size={28} className="text-ok" />
-              <b className="text-[17px]">{x.name} a fini</b>
-              <span className="text-[14px] text-ink-2">Séance enregistrée ou arrêtée.</span>
+              <b className="text-body">{x.name} a fini</b>
+              <span className="text-small text-ink-2">Séance enregistrée ou arrêtée.</span>
             </div>
           ) : (
             <LiveSession program={x.program} initial={x.row} workouts={x.workouts} view="ecran" pane={{ name: x.name }} onEnd={() => setDone((d) => (d.includes(x.row.id) ? d : [...d, x.row.id]))} />

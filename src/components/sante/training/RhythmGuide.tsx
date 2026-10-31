@@ -29,9 +29,18 @@ export function RhythmGuide({ motion, t, end = null, active, className = "" }: {
   // Bip : la bille grossit pendant le premier dixième de seconde d'une phase.
   const justStarted = active && marks.some((m) => t - m.at >= 0 && t - m.at < 0.12);
   const next = marks.find((m) => m.at > t);
+  // Un mot par début de phase à venir, seulement s'il a la place (sinon les mots se chevauchent).
+  const labelled = new Set<number>();
+  let free = BALL_X + 24;
+  for (const m of marks) {
+    const x = xOf(m.at - t);
+    if (m.at <= t || x < free) continue;
+    labelled.add(m.at);
+    free = x + 4 + m.label.length * 7 + 12;
+  }
   return (
-    <figure className={`grid gap-1 ${className}`} aria-label={next ? `Rythme : ${next.label} dans ${Math.max(0, next.at - t).toFixed(1)} s` : "Rythme"}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full overflow-visible rounded-[14px] bg-surface-2" role="img" aria-hidden>
+    <figure className={`grid gap-2 ${className}`} aria-label={next ? `Rythme : ${next.label} dans ${Math.max(0, next.at - t).toFixed(1)} s` : "Rythme"}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full overflow-visible rounded-[8px] bg-surface-2" role="img" aria-hidden>
         {/* Haut et bas du geste. */}
         <line x1="0" x2={W} y1={yOf(1)} y2={yOf(1)} className="stroke-line" strokeWidth="1" strokeDasharray="2 6" />
         <line x1="0" x2={W} y1={yOf(0)} y2={yOf(0)} className="stroke-line" strokeWidth="1" strokeDasharray="2 6" />
@@ -42,8 +51,8 @@ export function RhythmGuide({ motion, t, end = null, active, className = "" }: {
           return (
             <g key={`${m.at.toFixed(2)}`} className={soon ? "text-ink-2" : "text-faint"}>
               <line x1={x} x2={x} y1={4} y2={H - 4} className={m.rep ? "stroke-accent" : "stroke-line-strong"} strokeWidth={m.rep ? 2 : 1} strokeDasharray={m.rep ? undefined : "3 4"} opacity={soon ? 0.9 : 0.35} />
-              {soon && x - BALL_X > 24 && (
-                <text x={x + 4} y={12} className="fill-current" fontSize="11" fontWeight="700">
+              {soon && labelled.has(m.at) && (
+                <text x={x + 4} y={12} className="fill-current" fontSize="12" fontWeight="700">
                   {m.label}
                 </text>
               )}
@@ -57,7 +66,7 @@ export function RhythmGuide({ motion, t, end = null, active, className = "" }: {
         <circle cx={BALL_X} cy={y} r={4} className="fill-surface" />
       </svg>
       {next && (
-        <figcaption className="flex items-baseline justify-between text-[13px] text-ink-2 tabular-nums">
+        <figcaption className="flex items-baseline justify-between text-small text-ink-2 tabular-nums">
           <span>
             Ensuite : <b className="text-ink">{next.label}</b>
           </span>

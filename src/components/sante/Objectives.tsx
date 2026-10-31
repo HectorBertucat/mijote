@@ -1,9 +1,11 @@
 // Résumé des objectifs et historique d'activité (vue d'ensemble, page Objectifs). Sans état, côté serveur.
+// Mise en page carnet : sections à filet, lignes de définition, barres d'encre.
 import Link from "next/link";
-import { buttonClass, Card, DayBars, Pill } from "@/components/ui";
+import { buttonClass } from "@/components/ui";
 import { GOAL_LABEL } from "@/lib/health/core";
 import { frDate } from "@/lib/health/goal-format";
 import { projection, SPORTS, weekAgainstPlan, weeklyCounts, type Session, type SportPlanItem } from "@/lib/health/goals";
+import { NB, Row, Section, signed, Verdict } from "./carnet";
 
 const fr = (x: number, d = 1) => x.toFixed(d).replace(".", ",");
 const shortDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
@@ -19,60 +21,62 @@ export interface GoalSummary {
   constraints: string | null;
 }
 
-export function GoalCard({ g, sessions, monday, today, coachLink = true }: { g: GoalSummary; sessions: Session[]; monday: string; today: string; coachLink?: boolean }) {
+export function GoalCard({ g, sessions, monday, today, coachLink = true, className = "" }: { g: GoalSummary; sessions: Session[]; monday: string; today: string; coachLink?: boolean; className?: string }) {
   const eta = g.targetWeightKg != null && g.trendKg != null ? projection(g.trendKg, g.targetWeightKg, g.ratePct, today) : null;
   const late = eta && g.targetDate && eta.date > g.targetDate;
   const week = weekAgainstPlan(sessions, g.plan, monday);
   const empty = !g.goal && g.targetWeightKg == null && !g.plan.length;
   return (
-    <Card pad="md" className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[18px] font-bold">Objectifs</h2>
-        {g.goal && <Pill tone="idle" icon="scale">{GOAL_LABEL[g.goal]}</Pill>}
-      </div>
+    <Section title="Objectifs" id="objectifs" aside={g.goal && <span className="label text-ink-2">{GOAL_LABEL[g.goal]}</span>} className={className}>
       {empty ? (
-        <p className="text-[14px] text-ink-2">Pas encore d'objectifs. Le coach t'aide à les fixer en quelques messages, à partir de tes vraies données.</p>
+        <p className="text-body text-ink-2">Pas encore d’objectifs. Le coach t’aide à les fixer en quelques messages, à partir de tes vraies données.</p>
       ) : (
-        <dl className="grid gap-2 text-[14px]">
+        <dl className="grid border-t border-line">
           {g.targetWeightKg != null && (
-            <div className="grid gap-0.5">
-              <dt className="text-ink-2">Poids visé</dt>
-              <dd>
-                <b className="text-[16px]">{fr(g.targetWeightKg)} kg</b>
-                {g.trendKg != null && <span className="text-ink-2"> · encore {fr(Math.abs(g.trendKg - g.targetWeightKg))} kg</span>}
-                {eta && eta.weeks > 0 && <span className="text-ink-2"> · vers le {frDate(eta.date)} ({eta.weeks} sem.)</span>}
-                {eta && eta.weeks === 0 && <span className="text-ok-ink"> · atteint</span>}
-                {g.trendKg != null && !eta && <span className="text-warn-ink"> · le rythme ne va pas dans ce sens</span>}
-                {late && <span className="block text-[13px] text-warn-ink">Après l'échéance souhaitée ({frDate(g.targetDate!)}) : à ce rythme, il faut plus de temps.</span>}
-              </dd>
-            </div>
+            <Row k="Poids visé">
+              <b className="num-tight text-[24px] leading-none">
+                {fr(g.targetWeightKg)}
+                {NB}kg
+              </b>
+              <span className="mt-1 block text-small text-ink-2">
+                {g.trendKg != null && `encore ${fr(Math.abs(g.trendKg - g.targetWeightKg))}${NB}kg`}
+                {eta && eta.weeks > 0 && `, vers le ${frDate(eta.date)} (${eta.weeks}${NB}sem.)`}
+              </span>
+              {eta && eta.weeks === 0 && <Verdict tone="ok" className="mt-2">atteint</Verdict>}
+              {g.trendKg != null && !eta && <Verdict tone="warn" className="mt-2">le rythme ne va pas dans ce sens</Verdict>}
+              {late && <span className="mt-2 block text-small text-warn-ink">Après l’échéance souhaitée ({frDate(g.targetDate!)}) : à ce rythme, il faut plus de temps.</span>}
+            </Row>
           )}
           {g.goal && (
-            <div className="grid gap-0.5">
-              <dt className="text-ink-2">Rythme et protéines</dt>
-              <dd>
-                {`${g.ratePct > 0 ? "+" : ""}${fr(g.ratePct, 2)} % du poids/sem.`}
-                {g.proteinText && ` · ${g.proteinText}`}
-              </dd>
-            </div>
+            <Row k="Rythme">
+              <span className="num">
+                {signed(g.ratePct, 2)}
+                {NB}% du poids par semaine
+              </span>
+            </Row>
           )}
+          {g.proteinText && <Row k="Protéines">{g.proteinText}</Row>}
           {week.length > 0 && (
-            <div className="grid gap-1">
-              <dt className="text-ink-2">Sport cette semaine</dt>
-              <dd className="flex flex-wrap gap-1.5">
-                {week.map((w) => (
-                  <Pill key={w.kind} tone={w.planned && w.done >= w.planned ? "ok" : "idle"} icon={w.planned && w.done >= w.planned ? "check" : "clock"}>
-                    {`${SPORTS[w.kind]} ${w.done}${w.planned ? `/${w.planned}` : ""}`}
-                  </Pill>
-                ))}
-              </dd>
-            </div>
+            <Row k="Sport cette semaine">
+              <ul className="grid gap-1">
+                {week.map((w) => {
+                  const met = w.planned && w.done >= w.planned;
+                  return (
+                    <li key={w.kind} className="flex flex-wrap items-baseline gap-x-3">
+                      <span>
+                        {SPORTS[w.kind]} <span className="num text-ink-2">{`${w.done}${w.planned ? `${NB}/${NB}${w.planned}` : ""}`}</span>
+                      </span>
+                      {met ? <Verdict tone="ok">tenu</Verdict> : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            </Row>
           )}
           {g.constraints && (
-            <div className="grid gap-0.5">
-              <dt className="text-ink-2">Ce que tu peux faire</dt>
-              <dd className="whitespace-pre-wrap">{g.constraints}</dd>
-            </div>
+            <Row k="Ce que tu peux faire">
+              <span className="whitespace-pre-wrap text-small">{g.constraints}</span>
+            </Row>
           )}
         </dl>
       )}
@@ -86,51 +90,60 @@ export function GoalCard({ g, sessions, monday, today, coachLink = true }: { g: 
           Modifier à la main
         </Link>
       </div>
-    </Card>
+    </Section>
   );
 }
 
-export function ActivityCard({ sessions, plan, monday }: { sessions: Session[]; plan: SportPlanItem[]; monday: string }) {
+export function ActivityCard({ sessions, plan, monday, className = "", compact = false }: { sessions: Session[]; plan: SportPlanItem[]; monday: string; className?: string; compact?: boolean }) {
   const weeks = weeklyCounts(sessions, monday, 12);
   const target = plan.reduce((s, p) => s + p.perWeek, 0);
   const max = Math.max(target + 1, ...weeks.map((w) => w.count), 3);
   const recent = sessions.slice(0, 6);
+  const H = 120;
   return (
-    <Card pad="md" className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[18px] font-bold">Activité</h2>
-        {target > 0 && <span className="text-[13px] text-ink-2">{`visé ${target} séance${target > 1 ? "s" : ""}/sem.`}</span>}
-      </div>
+    <Section title="Activité" id="activite" aside={target > 0 && <span className="label text-ink-2">{`visé ${target} séance${target > 1 ? "s" : ""} par semaine`}</span>} className={className}>
       {sessions.length ? (
-        <>
-          <DayBars
-            days={weeks.map((w) => ({
-              label: String(Number(w.weekStart.slice(8, 10))),
-              value: w.count,
-              tone: target ? (w.count >= target ? "ok" : undefined) : undefined,
-              title: `Semaine du ${frDate(w.weekStart)} : ${w.count} séance${w.count > 1 ? "s" : ""}`,
-            }))}
-            max={max}
-            target={target || undefined}
-          />
-          <p className="text-[12px] text-faint">Séances par semaine sur 12 semaines (lundi de chaque semaine), carnet et Apple Santé réunis.</p>
-          <ul className="grid gap-1 text-[14px]">
-            {recent.map((s, i) => (
-              <li key={`${s.date}-${i}`} className="flex flex-wrap justify-between gap-x-3">
-                <span>
-                  {s.label}
-                  {s.minutes ? <span className="text-ink-2"> · {s.minutes} min</span> : null}
+        <div className={`grid gap-12 ${compact ? "" : "lg:grid-cols-12 lg:gap-6"}`}>
+          <figure className={`grid gap-3 ${compact ? "" : "lg:col-span-7"}`}>
+            <div className="relative" style={{ height: H }}>
+              <ol className="absolute inset-0 grid items-end gap-2" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }} aria-label="Séances par semaine, sur 12 semaines">
+                {weeks.map((w, i) => {
+                  const now = i === weeks.length - 1;
+                  return (
+                    <li key={w.weekStart} className="grid h-full content-end justify-items-center gap-1" title={`Semaine du ${frDate(w.weekStart)} : ${w.count} séance${w.count > 1 ? "s" : ""}`}>
+                      {w.count > 0 && <span className={`num text-[12px] ${now ? "text-ink" : "text-ink-3"}`}>{w.count}</span>}
+                      <i aria-hidden className={`block w-full max-w-6 ${w.count ? (now ? "bg-ink" : "bg-ink-2") : "h-px bg-line-strong"}`} style={w.count ? { height: `${(w.count / max) * (H - 20)}px` } : undefined} />
+                      <span className="sr-only">{`Semaine du ${frDate(w.weekStart)} : ${w.count}`}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+              {target > 0 && <span aria-hidden className="pointer-events-none absolute inset-x-0 border-t border-dashed border-ink-3" style={{ bottom: (target / max) * (H - 20) }} />}
+            </div>
+            <div className="grid gap-2 text-[12px] text-ink-3" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }} aria-hidden>
+              {weeks.map((w, i) => (
+                <span key={w.weekStart} className="num text-center">
+                  {i % 2 === 0 || i === weeks.length - 1 ? Number(w.weekStart.slice(8, 10)) : ""}
                 </span>
-                <span className="text-ink-2">{shortDay(s.date)}</span>
+              ))}
+            </div>
+            <figcaption className="text-small text-ink-2">Séances par semaine, du lundi au dimanche ; carnet et Apple Santé réunis.</figcaption>
+          </figure>
+          <ul className={`reveal grid content-start border-t border-line ${compact ? "" : "lg:col-span-5"}`}>
+            {recent.map((s, i) => (
+              <li key={`${s.date}-${i}`} className="flex items-baseline justify-between gap-4 border-b border-line py-3">
+                <span className="min-w-0">
+                  <b className="font-bold">{s.label}</b>
+                  {s.minutes ? <span className="num text-ink-2">{` · ${s.minutes}${NB}min`}</span> : null}
+                </span>
+                <span className="whitespace-nowrap text-small text-ink-2">{shortDay(s.date)}</span>
               </li>
             ))}
           </ul>
-        </>
+        </div>
       ) : (
-        <p className="text-[14px] text-ink-2">
-          Aucune séance encore. Les séances guidées de l'onglet Entraînement s'ajoutent seules ; les autres (natation, course…) viennent d'Apple Santé, par le Raccourci ou l'export.
-        </p>
+        <p className="max-w-[62ch] text-body text-ink-2">Aucune séance encore. Les séances guidées de l’onglet Entraînement s’ajoutent seules ; la natation, la course ou le vélo viennent d’Apple Santé.</p>
       )}
-    </Card>
+    </Section>
   );
 }

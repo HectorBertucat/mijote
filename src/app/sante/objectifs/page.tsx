@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui";
+import { Section } from "@/components/sante/carnet";
 import { Coach, type CoachView } from "@/components/sante/Coach";
 import { ActivityCard, GoalCard } from "@/components/sante/Objectives";
 import { db } from "@/lib/db/client";
@@ -11,7 +11,7 @@ import { todayParis } from "@/lib/health/store";
 
 export const dynamic = "force-dynamic";
 
-const STARTERS = ["Aide-moi à fixer mes objectifs", "Je veux perdre du ventre", "Combien de protéines pour moi ?", "Quel sport je peux tenir ?", "Où j'en suis ?"];
+const STARTERS = ["Aide-moi à fixer mes objectifs", "Je veux perdre du ventre", "Combien de protéines pour moi\u00a0?", "Quel sport je peux tenir\u00a0?", "Où j’en suis\u00a0?"];
 
 export default async function Objectifs() {
   const person = await activePerson();
@@ -35,17 +35,18 @@ export default async function Objectifs() {
   const sessions = listSessions(db, person.id);
   const g = goalSummary(db, person);
   return (
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-      <Card pad="md" className="grid gap-3">
-        <div>
-          <h2 className="text-[18px] font-bold">Coach</h2>
-          <p className="text-[13px] text-ink-2">Il lit ta courbe, ton journal et tes séances. Ce qu'il propose est vérifié par l'appli (rythme, protéines, poids sain, plancher calorique) avant que tu l'appliques.</p>
-        </div>
+    <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-6">
+      <Section
+        title="Coach"
+        id="coach"
+        className="lg:col-span-7 lg:pr-6"
+        aside={<span className="label text-ink-2">Chaque proposition est vérifiée</span>}
+      >
         <Coach personId={person.id} personName={person.name} messages={messages} starters={STARTERS} />
-      </Card>
-      <div className="grid gap-5">
+      </Section>
+      <div className="grid gap-12 lg:col-span-5">
         <GoalCard g={g} sessions={sessions} monday={currentMonday()} today={todayParis()} coachLink={false} />
-        <ActivityCard sessions={sessions} plan={g.plan} monday={currentMonday()} />
+        <ActivityCard sessions={sessions} plan={g.plan} monday={currentMonday()} compact />
       </div>
     </div>
   );

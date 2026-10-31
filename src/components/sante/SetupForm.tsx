@@ -1,6 +1,6 @@
 "use client";
 
-// Mise en route d'un mangeur : tout ce qu'il faut pour que sa part de chaque recette suive sa cible.
+// Mise en route d’un mangeur : tout ce qu’il faut pour que sa part de chaque recette suive sa cible.
 // Un seul formulaire en étapes numérotées (lisible au doigt sur téléphone comme au clavier).
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -12,18 +12,18 @@ import { ACTIVITY_LABEL, DEFAULT_RATE, GOAL_LABEL, type Activity, type Goal } fr
 import { OUTSIDE_PRESETS } from "@/lib/eaters/setup";
 import type { ProfileValues } from "./ProfileForm";
 
-const SELECT = "min-h-12 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[16px] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
+const SELECT = "min-h-12 w-full rounded-[8px] border border-line-strong bg-surface px-3 text-body text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
 const str = (v: number | null | undefined) => (v == null ? "" : String(v).replace(".", ","));
 
 function Step({ n, title, help, children }: { n: number; title: string; help?: string; children: React.ReactNode }) {
   return (
-    <fieldset className="grid gap-3.5 rounded-[14px] border border-line bg-surface p-4">
+    <fieldset className="grid gap-6 border-t border-line-strong pt-4">
       <legend className="sr-only">{title}</legend>
-      <div className="flex items-start gap-3" aria-hidden>
-        <span className="num grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft font-bold text-accent">{n}</span>
-        <div>
-          <b className="block text-[17px]">{title}</b>
-          {help && <span className="text-[14px] text-ink-2">{help}</span>}
+      <div className="grid grid-cols-[48px_minmax(0,1fr)] items-start gap-4" aria-hidden>
+        <span className="num-tight text-[48px] leading-[0.8] text-ink-3">{n}</span>
+        <div className="grid gap-1">
+          <b className="text-h3">{title}</b>
+          {help && <span className="text-small text-ink-2">{help}</span>}
         </div>
       </div>
       {children}
@@ -64,7 +64,7 @@ export function SetupForm({
 
   return (
     <form
-      className="grid max-w-2xl gap-4"
+      className="grid max-w-2xl gap-12"
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
@@ -72,7 +72,7 @@ export function SetupForm({
         fd.set("goal", goal);
         if (proteinMode === "fixed") fd.set("proteinGPerKg", "");
         else fd.set("proteinG", "");
-        // Avec des habitudes, le hors batch en vient : le chiffre libre n'est pas touché.
+        // Avec des habitudes, le hors batch en vient : le chiffre libre n’est pas touché.
         fd.set("outsideKcal", habits ? "" : outK);
         fd.set("outsideProteinG", habits ? "" : outP);
         for (const id of removed) fd.append("removeDislike", id);
@@ -93,8 +93,8 @@ export function SetupForm({
       <input type="hidden" name="sportPlan" value={JSON.stringify(values.sportPlan ?? [])} />
       <input type="hidden" name="constraints" value={values.constraints ?? ""} />
       <Step n={1} title={`${name}, en quelques chiffres`} help="Pour estimer ta dépense les premières semaines ; ensuite, la balance la mesure.">
-        <div className="grid gap-1.5">
-          <span className="text-[14px] font-semibold">Sexe</span>
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Sexe</span>
           <Segmented<"m" | "f" | "">
             label="Sexe"
             value={sex}
@@ -108,7 +108,7 @@ export function SetupForm({
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Date de naissance">{(id) => <Input id={id} name="birthDate" type="date" defaultValue={values.birthDate ?? ""} required />}</Field>
           <Field label="Taille (cm)">{(id) => <Input id={id} name="heightCm" inputMode="decimal" num defaultValue={str(values.heightCm)} placeholder="168" required />}</Field>
-          <Field label={lastKg != null ? `Poids aujourd'hui (dernier : ${str(lastKg)} kg)` : "Poids aujourd'hui (kg)"}>
+          <Field label={lastKg != null ? `Poids aujourd’hui (dernier : ${str(lastKg)} kg)` : "Poids aujourd’hui (kg)"}>
             {(id) => <Input id={id} name="kg" inputMode="decimal" num placeholder={lastKg != null ? "facultatif" : "60,5"} required={lastKg == null} />}
           </Field>
         </div>
@@ -140,8 +140,8 @@ export function SetupForm({
         <Field label="Rythme (% du poids par semaine)" help="Négatif pour perdre. −0,5 % pour perdre, −0,4 % en recomposition, +0,25 % pour prendre du muscle.">
           {(id, d) => <Input id={id} aria-describedby={d} name="ratePct" inputMode="decimal" num value={rate} onChange={(e) => setRate(e.target.value)} placeholder="−0,4" />}
         </Field>
-        <div className="grid gap-1.5">
-          <span className="text-[14px] font-semibold">Protéines</span>
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Protéines</span>
           <Segmented<"perkg" | "fixed">
             label="Protéines"
             value={proteinMode}
@@ -156,19 +156,19 @@ export function SetupForm({
           ) : (
             <Input aria-label="Protéines en grammes par jour" name="proteinG" inputMode="decimal" num defaultValue={str(values.proteinG)} placeholder="110" />
           )}
-          <span className="text-[13px] text-ink-2">1,6 g/kg suffit pour la plupart ; jusqu&apos;à 2,2 g/kg en déficit avec du renforcement.</span>
+          <span className="text-small text-ink-2">1,6 g/kg suffit pour la plupart ; jusqu’à 2,2 g/kg en déficit avec du renforcement.</span>
         </div>
       </Step>
 
       <Step n={3} title="Hors des repas du batch" help="Le batch couvre le midi et le soir. Ce que tu manges à côté (petit-déjeuner, en-cas) est retiré de ta cible avant de la partager entre les deux repas.">
         {habits ? (
           <div className="grid gap-2">
-            <ul className="grid gap-1 text-[15px]">
+            <ul className="grid gap-1 text-body">
               {habits.map((h) => (
                 <li key={h}>{h}</li>
               ))}
             </ul>
-            <Link href={`/sante/habitudes?p=${personId}`} className="text-[15px] font-semibold text-accent hover:underline">
+            <Link href={`/sante/habitudes?p=${personId}`} className="font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
               Modifier mes habitudes
             </Link>
           </div>
@@ -185,10 +185,10 @@ export function SetupForm({
                     setOutK(String(p.kcal));
                     setOutP(String(p.protein));
                   }}
-                  className={`grid min-h-tap gap-0.5 rounded-[12px] border px-3 py-2.5 text-left transition-colors duration-[var(--dur-quick)] ${preset === p.id ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-line-strong"}`}
+                  className={`grid min-h-tap gap-1 rounded-[8px] border px-3 py-3 text-left transition-colors duration-[var(--dur-quick)] ${preset === p.id ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-line-strong"}`}
                 >
-                  <b className="text-[15px]">{p.label}</b>
-                  <span className="text-[13px] text-ink-2">
+                  <b className="text-body">{p.label}</b>
+                  <span className="text-small text-ink-2">
                     {p.hint} · <span className="num">~{p.kcal} kcal</span>
                   </span>
                 </button>
@@ -226,16 +226,16 @@ export function SetupForm({
                 )}
               </Field>
             </div>
-            <Link href={`/sante/habitudes?p=${personId}`} className="text-[14px] font-semibold text-accent hover:underline">
+            <Link href={`/sante/habitudes?p=${personId}`} className="text-small font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
               Ou détaille tes habitudes (shaker, petit-déjeuner, en-cas) et leurs jours
             </Link>
           </>
         )}
       </Step>
 
-      <Step n={4} title="Ce que tu n'aimes pas" help="Une recette qui en contient ne t'est pas servie dans la Semaine.">
+      <Step n={4} title="Ce que tu n’aimes pas" help="Une recette qui en contient ne t’est pas servie dans la Semaine.">
         {dislikes.length > 0 && (
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             {dislikes.map((d) => (
               <Check
                 key={d.id}
@@ -254,7 +254,7 @@ export function SetupForm({
                 {d.text}
               </Check>
             ))}
-            <span className="text-[13px] text-ink-2">Décoche pour retirer.</span>
+            <span className="text-small text-ink-2">Décoche pour retirer.</span>
           </div>
         )}
         <Field label="Ajouter" help="Séparés par des virgules : « poivron, champignons ».">
@@ -263,7 +263,7 @@ export function SetupForm({
       </Step>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" variant="primary" state={pending ? "loading" : "idle"} loadingLabel="J'enregistre…">
+        <Button type="submit" variant="primary" state={pending ? "loading" : "idle"} loadingLabel="J’enregistre…">
           Enregistrer et calculer mes parts
         </Button>
       </div>

@@ -4,7 +4,8 @@
 // ce que la vérification de l'appli a corrigé, et on applique d'un tap.
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Chip, Pill, Textarea } from "@/components/ui";
+import { Button, Icon, Textarea } from "@/components/ui";
+import { de, Row, Verdict } from "./carnet";
 import { applyCoachProposal, dismissCoachProposal, restartCoach, sendToCoach } from "@/app/sante/actions";
 
 export interface CoachView {
@@ -30,35 +31,28 @@ function Proposal({ m, last }: { m: CoachView; last: boolean }) {
       router.refresh();
     });
   return (
-    <div className="grid gap-3 rounded-[14px] border border-line-strong bg-surface p-3.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <b className="text-[15px]">Objectifs proposés</b>
-        {m.status === "applied" && <Pill tone="ok" icon="check">appliqués</Pill>}
-        {m.status === "dismissed" && <Pill tone="idle" icon="x">ignorés</Pill>}
+    <div className="grid gap-4 border-t-2 border-ink pt-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="label text-ink">Objectifs proposés</span>
+        {m.status === "applied" && <Verdict tone="ok">appliqués</Verdict>}
+        {m.status === "dismissed" && <Verdict tone="idle">ignorés</Verdict>}
       </div>
-      {m.why && <p className="text-[14px] text-ink-2">{m.why}</p>}
-      <dl className="grid gap-1.5 text-[14px]">
+      {m.why && <p className="text-small text-ink-2">{m.why}</p>}
+      <dl className="grid border-t border-line">
         {m.changes.map((c) => (
-          <div key={c.label} className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-2">
-            <dt className="text-ink-2">{c.label}</dt>
-            <dd>
-              {c.before && <span className="text-faint line-through">{c.before}</span>}
-              {c.before && " → "}
-              <b>{c.after}</b>
-            </dd>
-          </div>
+          <Row key={c.label} k={c.label}>
+            {c.before && <span className="text-ink-3 line-through">{c.before}</span>}
+            {c.before && <span className="text-ink-3">{" → "}</span>}
+            <b>{c.after}</b>
+          </Row>
         ))}
-        {m.eta && (
-          <div className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-2">
-            <dt className="text-ink-2">Arrivée prévue</dt>
-            <dd>{m.eta}</dd>
-          </div>
-        )}
+        {m.eta && <Row k="Arrivée prévue">{m.eta}</Row>}
       </dl>
       {m.notes.length > 0 && (
-        <ul className="grid gap-1 rounded-[10px] bg-warn-soft px-3 py-2 text-[13px] text-warn-ink">
+        <ul className="grid gap-1 border-l-2 border-warn pl-4 text-small">
+          <li className="label text-warn-ink">Corrigé par l’appli</li>
           {m.notes.map((n) => (
-            <li key={n}>Vérifié par l'appli : {n}</li>
+            <li key={n}>{n}</li>
           ))}
         </ul>
       )}
@@ -72,7 +66,7 @@ function Proposal({ m, last }: { m: CoachView; last: boolean }) {
           </Button>
         </div>
       )}
-      {error && <p className="text-[13px] text-ko-ink">{error}</p>}
+      {error && <p className="text-small text-ko-ink">{error}</p>}
     </div>
   );
 }
@@ -83,7 +77,7 @@ export function Coach({ personId, personName, messages, starters }: { personId: 
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [, start] = useTransition();
-  const end = useRef<HTMLDivElement>(null);
+  const end = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -109,57 +103,64 @@ export function Coach({ personId, personName, messages, starters }: { personId: 
   const quick = sending ? [] : last?.role === "coach" ? last.suggestions : messages.length ? [] : starters;
 
   return (
-    <div className="grid gap-3">
-      <div className="grid gap-3" aria-live="polite">
+    <div className="grid gap-8">
+      <ol className="grid gap-8" aria-live="polite">
         {messages.length === 0 && !sending && (
-          <p className="rounded-[14px] bg-surface-2 p-3.5 text-[15px] text-ink-2">
-            Dis au coach ce que tu veux, avec tes mots : perdre du ventre, prendre du muscle, tenir 3 séances, manger plus de protéines… Il connaît ta courbe, ton journal et tes séances. Il propose des objectifs, l'appli les vérifie, et tu les appliques d'un tap.
-          </p>
+          <li className="grid max-w-[56ch] gap-3">
+            <span className="label text-ink-2">Coach</span>
+            <p className="text-lead">Dis-moi ce que tu veux, avec tes mots : perdre du ventre, prendre du muscle, tenir trois séances, manger plus de protéines.</p>
+            <p className="text-small text-ink-2">Je lis ta courbe, ton journal et tes séances. Je propose des objectifs, l’appli les vérifie, et tu les appliques d’un geste.</p>
+          </li>
         )}
         {messages.map((m) =>
           m.role === "user" ? (
-            <p key={m.id} className="max-w-[85%] justify-self-end whitespace-pre-wrap rounded-[14px] rounded-br-[4px] bg-accent-soft px-3.5 py-2.5 text-[15px]">
-              {m.text}
-            </p>
+            <UserLine key={m.id} text={m.text} />
           ) : (
-            <div key={m.id} className="grid max-w-[min(100%,40rem)] gap-2.5">
-              <p className="whitespace-pre-wrap text-[15px] leading-[1.6]">{m.text}</p>
+            <li key={m.id} className="grid max-w-[min(100%,40rem)] gap-3">
+              <span className="label text-ink-2">Coach</span>
+              <p className="whitespace-pre-wrap text-body">{m.text}</p>
               {m.changes.length > 0 && <Proposal m={m} last={m.id === last?.id} />}
-            </div>
+            </li>
           )
         )}
         {sending && (
           <>
-            <p className="max-w-[85%] justify-self-end whitespace-pre-wrap rounded-[14px] rounded-br-[4px] bg-accent-soft px-3.5 py-2.5 text-[15px]">{sending}</p>
-            <p className="text-[14px] text-ink-2">
-              <span className="motion-safe:animate-pulse">Le coach regarde tes données…</span>
-            </p>
+            <UserLine text={sending} />
+            <li className="grid gap-3">
+              <span className="label text-ink-2">Coach</span>
+              <p className="text-body text-ink-2">
+                <span className="motion-safe:animate-pulse">Je regarde tes données…</span>
+              </p>
+            </li>
           </>
         )}
-        <div ref={end} />
-      </div>
+        <li ref={end} aria-hidden className="h-0" />
+      </ol>
 
       {quick.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <ul className="grid max-w-[40rem] border-t border-line" aria-label="Réponses rapides">
           {quick.map((s) => (
-            <Chip key={s} onClick={() => send(s)}>
-              {s}
-            </Chip>
+            <li key={s} className="border-b border-line">
+              <button type="button" onClick={() => send(s)} className="-mx-3 flex min-h-tap w-[calc(100%+24px)] items-center justify-between gap-4 rounded-[8px] px-3 py-3 text-left font-bold text-ink-2 hover:bg-surface-2 hover:text-ink">
+                {s}
+                <Icon name="chev" size="s" className="text-ink-3" />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-      {error && <p className="text-[14px] text-ko-ink">{error}</p>}
+      {error && <p className="text-small text-ko-ink">{error}</p>}
 
       <form
-        className="grid gap-2"
+        className="grid gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           send(text);
         }}
       >
         <Textarea
-          aria-label={`Message au coach de ${personName}`}
-          rows={2}
+          aria-label={`Message au coach ${de(personName)}`}
+          rows={3}
           value={text}
           placeholder="Écris au coach…"
           onChange={(e) => setText(e.target.value)}
@@ -192,5 +193,15 @@ export function Coach({ personId, personName, messages, starters }: { personId: 
         </div>
       </form>
     </div>
+  );
+}
+
+/** Ce que la personne a écrit : aligné à droite, sur le creux du papier. */
+function UserLine({ text }: { text: string }) {
+  return (
+    <li className="grid max-w-[85%] justify-self-end gap-2 justify-items-end">
+      <span className="label text-ink-3">Toi</span>
+      <p className="whitespace-pre-wrap rounded-[8px] bg-surface-2 px-4 py-3 text-body">{text}</p>
+    </li>
   );
 }

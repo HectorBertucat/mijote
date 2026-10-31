@@ -33,9 +33,9 @@ export function QuickLog({ personId, kind, placeholder }: { personId: string; ki
       </label>
       <span className="relative w-32">
         <Input id={`ql-${kind}`} inputMode="decimal" num value={value} onChange={(e) => setValue(e.target.value)} placeholder={placeholder} className="pr-10" />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[14px] text-ink-2">{unit}</span>
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-small text-ink-2">{unit}</span>
       </span>
-      <Button type="submit" variant="primary" state={pending ? "loading" : "idle"}>
+      <Button type="submit" variant="primary" className="min-h-12" state={pending ? "loading" : "idle"}>
         Noter
       </Button>
       {node}

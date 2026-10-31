@@ -5,7 +5,8 @@
 // apparaissent dans le carnet et dans « Cette semaine ».
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, EmptyState, Pill, Segmented, Sheet, Tabs, type IconName } from "@/components/ui";
+import { Button, EmptyState, Segmented, Sheet, Tabs } from "@/components/ui";
+import { de, NB, NNB, Verdict } from "../carnet";
 import { useToast } from "@/components/cart/Toast";
 import { removeWorkout } from "@/app/sante/actions";
 import { lastFor, levelFor, nextType, ready, type Exercise, type Program, type Workout } from "@/lib/training/program";
@@ -87,7 +88,7 @@ export function Training({ personId, personName, programId, programs, builder, w
 
   if (!program)
     return (
-      <div className="grid gap-4">
+      <div className="grid gap-12">
         <EmptyState icon="kb" title={`Pas encore de programme pour ${personName}`}>
           Choisis un modèle ou crée un programme sur mesure : chaque exercice a sa figure animée, au bon tempo. Les séances notées dans Apple Santé (marche, vélo…) s'affichent aussi ici.
         </EmptyState>
@@ -122,7 +123,7 @@ export function Training({ personId, personName, programId, programs, builder, w
 
   return (
     <MotionsContext value={motions}>
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12">
       <Tabs items={VIEWS} value={view} onChange={pick} label="Entraînement" />
       {view === "seance" && <Start p={program} workouts={workouts} apple={apple} weekStart={weekStart} onStart={start} />}
       {view === "seance" && partner && partnerProgram && <DuoStart me={{ name: personName, p: program, workouts }} other={{ name: partner.name, p: partnerProgram, workouts: partner.workouts }} starting={starting} onStart={startDuo} />}
@@ -158,40 +159,54 @@ function Start({ p, workouts, apple, weekStart, onStart }: { p: Program; workout
   const also = p.alsoTrack;
   const alsoWeek = also ? apple.filter((a) => a.start.slice(0, 10) >= weekStart && sportName(a.type) === also.sport).length : 0;
   return (
-    <div className="grid gap-4">
-      <p className="text-[17px] leading-snug">
-        Pose le téléphone, lance la séance : chaque exercice s'anime au bon tempo, le rythme guidé compte tes répétitions avec un bip, et le repos se chronomètre tout seul.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Pill tone={progWeek >= p.perWeek ? "ok" : "idle"} icon="kb">
-          {p.short} cette semaine : {progWeek}/{p.perWeek}
-        </Pill>
-        {also && (
-          <Pill tone={alsoWeek >= also.target ? "ok" : "idle"} icon={also.icon as IconName}>
-            {also.sport} : {alsoWeek}/{also.target}
-          </Pill>
-        )}
-        {last && (
-          <span className="self-center text-[14px] text-ink-2">
-            Dernière séance : {p.sessions[last.type]?.name ?? last.type}, {fmtDay(last.date)}
-          </span>
-        )}
+    <div className="grid gap-12">
+      <div className="grid gap-8 lg:grid-cols-12 lg:gap-6">
+        <p className="text-lead lg:col-span-7">Pose le téléphone, lance la séance : chaque exercice s’anime au bon tempo, le rythme guidé compte tes répétitions avec un bip, et le repos se chronomètre seul.</p>
+        <dl className="grid grid-cols-2 gap-6 lg:col-span-5 lg:border-l lg:border-line lg:pl-6">
+          <div className="grid content-start gap-2">
+            <dt className="label text-ink-2">{p.short} cette semaine</dt>
+            <dd className="num-tight text-[48px] leading-[0.9]">
+              {progWeek}
+              <span className="text-[0.4em] text-ink-2">{`${NB}/${NB}${p.perWeek}`}</span>
+            </dd>
+            {progWeek >= p.perWeek && <Verdict tone="ok">semaine tenue</Verdict>}
+          </div>
+          {also && (
+            <div className="grid content-start gap-2">
+              <dt className="label text-ink-2">{also.sport}</dt>
+              <dd className="num-tight text-[48px] leading-[0.9]">
+                {alsoWeek}
+                <span className="text-[0.4em] text-ink-2">{`${NB}/${NB}${also.target}`}</span>
+              </dd>
+              {alsoWeek >= also.target && <Verdict tone="ok">tenu</Verdict>}
+            </div>
+          )}
+          {last && <p className="col-span-2 text-small text-ink-2">Dernière séance : {p.sessions[last.type]?.name ?? last.type}, {fmtDay(last.date)}</p>}
+        </dl>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-12 sm:grid-cols-2 sm:gap-6">
         {Object.entries(p.sessions).map(([t, s]) => {
           const on = t === next;
           return (
-            <Card key={t} pad="md" className={`grid content-start gap-3 ${on ? "ring-2 ring-accent" : ""}`}>
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-[22px] font-extrabold">{s.name}</h2>
-                {on && <Pill tone="ok">Celle du jour</Pill>}
+            <section key={t} aria-labelledby={`seance-${t}`} className={`grid content-start gap-6 border-t-2 pt-4 ${on ? "border-ink" : "border-line-strong"}`}>
+              <div className="flex items-baseline justify-between gap-4">
+                <h2 id={`seance-${t}`} className="text-h2">
+                  {s.name}
+                </h2>
+                {on && <span className="label text-accent">Celle du jour</span>}
               </div>
               <p className="text-ink-2">{s.sub}</p>
-              <ol className="grid list-decimal gap-1 pl-5 text-[15px]">
-                {s.blocks.map((b) => (
-                  <li key={b.label}>
-                    <b>{b.label}</b> : {b.items.map((i) => p.exercises[i].short).join(" + ")}
-                    {b.sets ? ` · ${b.sets} tours` : b.emom ? ` · ${b.emom.rounds} × ${b.emom.reps}` : ""}
+              <ol className="grid border-t border-line">
+                {s.blocks.map((b, i) => (
+                  <li key={b.label} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-4 border-b border-line py-3">
+                    <span className="num-tight text-[20px] leading-none text-ink-3">{i + 1}</span>
+                    <span className="min-w-0">
+                      <b>{b.label}</b>
+                      <span className="block text-small text-ink-2">
+                        {b.items.map((x) => p.exercises[x].short).join(" + ")}
+                        {b.sets ? ` · ${b.sets}${NB}tours` : b.emom ? ` · ${b.emom.rounds}${NB}×${NB}${b.emom.reps}` : ""}
+                      </span>
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -200,7 +215,7 @@ function Start({ p, workouts, apple, weekStart, onStart }: { p: Program; workout
                   Lancer la séance {t}
                 </Button>
               </div>
-            </Card>
+            </section>
           );
         })}
       </div>
@@ -216,17 +231,15 @@ function DuoStart({ me, other, starting, onStart }: { me: { name: string; p: Pro
   const [theirs, setTheirs] = useState(() => nextType(other.p, other.workouts));
   const row = (x: typeof me, v: string, set: (t: string) => void) => (
     <div className="flex flex-wrap items-center gap-3">
-      <b className="min-w-[70px] text-[17px]">{x.name}</b>
-      <Segmented label={`Séance de ${x.name}`} value={v} onChange={set} options={Object.entries(x.p.sessions).map(([t, s]) => ({ value: t, label: s.name }))} />
+      <b className="min-w-18 text-h3">{x.name}</b>
+      <Segmented label={`Séance ${de(x.name)}`} value={v} onChange={set} options={Object.entries(x.p.sessions).map(([t, s]) => ({ value: t, label: s.name }))} />
     </div>
   );
   return (
-    <Card pad="md" className="grid content-start gap-3">
-      <h2 className="text-[22px] font-extrabold">Séance à deux</h2>
-      <p className="text-ink-2">
-        L'écran se partage en deux : chacun sa séance, son rythme et ses repos. Chacun scanne le QR de sa moitié pour piloter depuis son téléphone.
-      </p>
-      <div className="grid gap-2">
+    <section aria-labelledby="duo" className="grid content-start gap-6 border-t border-line-strong pt-4">
+      <h2 id="duo" className="text-h2">Séance à deux</h2>
+      <p className="max-w-[62ch] text-ink-2">L’écran se partage en deux : chacun sa séance, son rythme et ses repos. Chacun scanne le QR de sa moitié pour piloter depuis son téléphone.</p>
+      <div className="grid gap-3">
         {row(me, mine, setMine)}
         {row(other, theirs, setTheirs)}
       </div>
@@ -235,7 +248,7 @@ function DuoStart({ me, other, starting, onStart }: { me: { name: string; p: Pro
           Lancer à deux
         </Button>
       </div>
-    </Card>
+    </section>
   );
 }
 
@@ -247,18 +260,18 @@ function Library({ p, workouts }: { p: Program; workouts: Workout[] }) {
   const l = open ? lastFor(workouts, open) : null;
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="reveal grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
         {p.order.map((id) => {
           const x = p.exercises[id];
           return (
-            <button key={id} type="button" onClick={() => setOpen(id)} className="grid content-start gap-1.5 rounded-[16px] border border-line bg-surface p-3 text-left transition-[border-color,transform] duration-[var(--dur-quick)] hover:border-line-strong active:scale-[0.99]">
-              <LoopingFigure ex={id} />
-              <b className="text-[15px] leading-tight">{x.name}</b>
-              <span className="text-[13px] text-ink-2">{x.muscles}</span>
-              <span className="flex flex-wrap gap-1.5">
-                <span className="text-[13px] font-semibold tabular-nums">{dose(p, id, x)}</span>
-                {ready(p, workouts, id) && <Pill tone="ok">Prêt à monter</Pill>}
+            <button key={id} type="button" onClick={() => setOpen(id)} className="group grid content-start gap-2 rounded-[8px] text-left">
+              <span className="block rounded-[8px] border border-line transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] group-hover:border-ink">
+                <LoopingFigure ex={id} />
               </span>
+              <b className="text-h3 leading-tight group-hover:underline group-hover:underline-offset-4">{x.name}</b>
+              <span className="text-small text-ink-2">{x.muscles}</span>
+              <span className="num text-small font-bold">{dose(p, id, x)}</span>
+              {ready(p, workouts, id) && <Verdict tone="ok">prêt à monter</Verdict>}
             </button>
           );
         })}
@@ -267,31 +280,41 @@ function Library({ p, workouts }: { p: Program; workouts: Workout[] }) {
         {open && e && (
           <div className="grid gap-4">
             <LoopingFigure ex={open} className="mx-auto w-full max-w-[320px]" />
-            <div className="flex flex-wrap gap-2">
-              <Pill tone="idle">
-                {e.reps[0]}–{e.reps[1]} {e.unit === "s" ? "s" : "reps"}
-                {e.uni ? " par côté" : ""}
-              </Pill>
-              <Pill tone="idle" icon="clock">
-                {e.tempo}
-              </Pill>
-            </div>
-            <p className="text-[14px] text-ink-2">{e.muscles}</p>
+            <dl className="grid grid-cols-2 gap-6 border-y border-line py-4">
+              <div className="grid gap-1">
+                <dt className="label text-ink-2">Dose</dt>
+                <dd className="num-tight text-[24px] leading-none">
+                  {e.reps[0]}–{e.reps[1]}
+                  <span className="text-small font-bold text-ink-2">{`${NB}${e.unit === "s" ? "s" : "reps"}${e.uni ? " par côté" : ""}`}</span>
+                </dd>
+              </div>
+              <div className="grid gap-1">
+                <dt className="label text-ink-2">Tempo</dt>
+                <dd className="num-tight text-[24px] leading-none">{e.tempo}</dd>
+              </div>
+            </dl>
+            <p className="text-small text-ink-2">{e.muscles}</p>
             {e.guide ? <Guide g={e.guide} /> : <Section title="Comment faire" items={e.cues} />}
             <Section title="Erreurs fréquentes" items={e.errors} />
-            <div className="grid gap-1.5">
-              <b>Échelle de progression</b>
-              <p className="text-[13px] text-ink-2">Passe au cran suivant quand tu fais le haut de la fourchette sur toutes les séries.</p>
-              <ol className="grid list-decimal gap-1 pl-5 text-[15px]">
-                {e.ladder.map((v, i) => (
-                  <li key={v}>
-                    {v} {l && i === levelFor(workouts, open) && <Pill tone="ok">Ton cran</Pill>}
-                  </li>
-                ))}
+            <div className="grid gap-2">
+              <b className="label text-ink-2">Échelle de progression</b>
+              <p className="text-small text-ink-2">Passe au cran suivant quand tu fais le haut de la fourchette sur toutes les séries.</p>
+              <ol className="grid border-t border-line">
+                {e.ladder.map((v, i) => {
+                  const mine = l && i === levelFor(workouts, open);
+                  return (
+                    <li key={v} className={`grid grid-cols-[24px_minmax(0,1fr)] gap-x-3 border-b border-line py-2 ${mine ? "font-bold" : ""}`}>
+                      <span className="num text-ink-3">{i + 1}</span>
+                      <span>
+                        {v} {mine && <span className="label ml-2 text-accent">ton cran</span>}
+                      </span>
+                    </li>
+                  );
+                })}
               </ol>
             </div>
             {l && (
-              <p className="text-[14px] text-ink-2">
+              <p className="text-small text-ink-2">
                 <b className="text-ink">Dernière fois</b> ({fmtDay(l.date)}) : <span className="tabular-nums">{l.sets.join(" · ")}</span>
               </p>
             )}
@@ -321,9 +344,9 @@ function Guide({ g }: { g: NonNullable<Exercise["guide"]> }) {
     <div className="grid gap-3">
       {rows.map(([t, v]) =>
         v ? (
-          <div key={t} className="grid gap-0.5">
-            <b>{t}</b>
-            <p className="text-[15px] leading-snug">{v}</p>
+          <div key={t} className="grid gap-1">
+            <b className="label text-ink-2">{t}</b>
+            <p>{v}</p>
           </div>
         ) : null
       )}
@@ -333,9 +356,9 @@ function Guide({ g }: { g: NonNullable<Exercise["guide"]> }) {
 
 function Section({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="grid gap-1.5">
-      <b>{title}</b>
-      <ul className="grid list-disc gap-1 pl-5 text-[15px] leading-snug">
+    <div className="grid gap-2">
+      <b className="label text-ink-2">{title}</b>
+      <ul className="grid list-disc gap-1 pl-6">
         {items.map((c) => (
           <li key={c}>{c}</li>
         ))}
@@ -359,18 +382,18 @@ function Carnet({ p, workouts, apple }: { p: Program; workouts: Workout[]; apple
       </EmptyState>
     );
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-12 lg:gap-18">
       {done.length > 0 && (
-        <section className="grid gap-2">
-          <h2 className="text-[20px] font-extrabold">Où j'en suis</h2>
-          <Card pad="sm" className="overflow-x-auto">
-            <table className="w-full text-left text-[15px]">
-              <thead className="text-[13px] text-ink-2">
-                <tr>
-                  <th className="px-2 py-1.5 font-semibold">Exercice</th>
-                  <th className="px-2 py-1.5 font-semibold">Dernières séries</th>
-                  <th className="hidden px-2 py-1.5 font-semibold sm:table-cell">Variante</th>
-                  <th className="px-2 py-1.5 font-semibold">Prochaine fois</th>
+        <section aria-labelledby="ou" className="grid gap-6 border-t border-line-strong pt-4">
+          <h2 id="ou" className="text-h2">Où j’en suis</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="label text-ink-2">
+                  <th className="py-2 pr-4 font-[inherit]">Exercice</th>
+                  <th className="py-2 pr-4 font-[inherit]">Dernières séries</th>
+                  <th className="hidden py-2 pr-4 font-[inherit] sm:table-cell">Variante</th>
+                  <th className="py-2 font-[inherit]">Prochaine fois</th>
                 </tr>
               </thead>
               <tbody>
@@ -378,31 +401,32 @@ function Carnet({ p, workouts, apple }: { p: Program; workouts: Workout[]; apple
                   const l = lastFor(workouts, id)!;
                   return (
                     <tr key={id} className="border-t border-line">
-                      <td className="px-2 py-1.5">{p.exercises[id].short}</td>
-                      <td className="whitespace-nowrap px-2 py-1.5 tabular-nums">
+                      <td className="py-3 pr-4 font-bold">{p.exercises[id].short}</td>
+                      <td className="num whitespace-nowrap py-3 pr-4">
                         {l.sets.join(" · ")}
                         {p.exercises[id].unit === "s" ? " s" : ""}
                       </td>
-                      <td className="hidden px-2 py-1.5 text-ink-2 sm:table-cell">{p.exercises[id].ladder[l.level]}</td>
-                      <td className="px-2 py-1.5">{ready(p, workouts, id) ? <Pill tone="ok">Monte d'un cran</Pill> : <span className="text-ink-2">Continue</span>}</td>
+                      <td className="hidden py-3 pr-4 text-small text-ink-2 sm:table-cell">{p.exercises[id].ladder[l.level]}</td>
+                      <td className="py-3">{ready(p, workouts, id) ? <Verdict tone="ok">monte d’un cran</Verdict> : <span className="text-small text-ink-2">Continue</span>}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </Card>
+          </div>
         </section>
       )}
       {workouts.length > 0 && (
-        <section className="grid gap-2">
-          <h2 className="text-[20px] font-extrabold">Séances {p.short.toLowerCase()}</h2>
+        <section aria-labelledby="seances" className="grid gap-6 border-t border-line-strong pt-4">
+          <h2 id="seances" className="text-h2">Les séances</h2>
+          <ul className="reveal grid border-t border-line">
           {workouts.map((w) => (
-            <Card key={w.id} pad="sm" className="grid gap-1 px-3">
-              <div className="flex flex-wrap items-center gap-2">
+            <li key={w.id} className="grid gap-1 border-b border-line py-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <b>
                   {p.sessions[w.type]?.name ?? w.type} · {fmtDay(w.date)}
                 </b>
-                <span className="text-[14px] tabular-nums text-ink-2">{w.minutes ?? "?"} min</span>
+                <span className="num text-small text-ink-2">{`${w.minutes ?? "?"}${NB}min`}</span>
                 <Button
                   size="sm"
                   variant={sure === w.id ? "danger" : "quiet"}
@@ -421,7 +445,7 @@ function Carnet({ p, workouts, apple }: { p: Program; workouts: Workout[]; apple
                   {sure === w.id ? "Confirmer" : "Supprimer"}
                 </Button>
               </div>
-              <p className="text-[14px] text-ink-2">
+              <p className="text-small text-ink-2">
                 {w.entries.map((e, i) => (
                   <span key={e.ex}>
                     {i > 0 && " · "}
@@ -429,9 +453,10 @@ function Carnet({ p, workouts, apple }: { p: Program; workouts: Workout[]; apple
                   </span>
                 ))}
               </p>
-              {w.note && <p className="text-[14px] italic">{w.note}</p>}
-            </Card>
+              {w.note && <p className="text-small">«{NNB}{w.note}{NNB}»</p>}
+            </li>
           ))}
+          </ul>
         </section>
       )}
       <AppleList apple={apple} />
@@ -443,19 +468,20 @@ function Carnet({ p, workouts, apple }: { p: Program; workouts: Workout[]; apple
 function AppleList({ apple }: { apple: AppleWorkout[] }) {
   if (!apple.length) return null;
   return (
-    <section className="grid gap-2">
-      <h2 className="text-[20px] font-extrabold">Depuis Apple Santé</h2>
-      <Card pad="sm" className="grid gap-1 px-3">
+    <section aria-labelledby="apple" className="grid gap-6 border-t border-line-strong pt-4">
+      <h2 id="apple" className="text-h2">Depuis Apple Santé</h2>
+      <ul className="grid border-t border-line">
         {apple.map((a) => (
-          <div key={a.start} className="flex items-center gap-3 border-b border-line py-1.5 last:border-0">
-            <span className="w-28 shrink-0 text-[14px] text-ink-2">{fmtDay(a.start.slice(0, 10))}</span>
-            <b className="text-[15px]">{sportName(a.type)}</b>
-            <span className="ml-auto text-[14px] tabular-nums text-ink-2">
-              {Math.round(a.minutes)} min{a.distanceM ? ` · ${a.distanceM >= 1000 ? `${(a.distanceM / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(a.distanceM)} m`}` : ""}
+          <li key={a.start} className="flex items-baseline gap-4 border-b border-line py-3">
+            <span className="w-28 shrink-0 text-small text-ink-2">{fmtDay(a.start.slice(0, 10))}</span>
+            <b>{sportName(a.type)}</b>
+            <span className="num ml-auto text-small text-ink-2">
+              {`${Math.round(a.minutes)}${NB}min`}
+              {a.distanceM ? ` · ${a.distanceM >= 1000 ? `${(a.distanceM / 1000).toFixed(1).replace(".", ",")}${NB}km` : `${Math.round(a.distanceM)}${NB}m`}` : ""}
             </span>
-          </div>
+          </li>
         ))}
-      </Card>
+      </ul>
     </section>
   );
 }
@@ -466,16 +492,16 @@ const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 function Programme({ p }: { p: Program }) {
   return (
-    <div className="grid gap-5">
-      <section className="grid gap-2">
-        <h2 className="text-[20px] font-extrabold">La semaine</h2>
-        <Card pad="sm" className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-center text-[14px]">
-            <thead className="text-ink-2">
+    <div className="grid gap-12 lg:gap-18">
+      <section aria-labelledby="semaine" className="grid gap-6 border-t border-line-strong pt-4">
+        <h2 id="semaine" className="text-h2">La semaine</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-center text-small">
+            <thead className="label text-ink-2">
               <tr>
                 <th />
                 {DAYS.map((d) => (
-                  <th key={d} className="py-1.5 font-semibold">
+                  <th key={d} className="py-2 font-[inherit]">
                     {d}
                   </th>
                 ))}
@@ -484,30 +510,34 @@ function Programme({ p }: { p: Program }) {
             <tbody>
               {p.weekPlan.map((w, i) => (
                 <tr key={i} className="border-t border-line">
-                  <th className="px-2 py-2 text-left font-semibold text-ink-2">Semaine {i + 1}</th>
+                  <th className="py-3 pr-2 text-left font-bold text-ink-2">Semaine {i + 1}</th>
                   {w.map((v, j) => (
-                    <td key={j} className="px-1 py-2">
-                      <span className={`inline-block rounded-[8px] px-1.5 py-0.5 ${v.includes(" · ") ? "bg-accent-soft font-bold text-ink" : p.alsoTrack && v.includes(p.alsoTrack.sport) ? "text-ink" : "text-faint"}`}>{v}</span>
+                    <td key={j} className="px-1 py-3">
+                      <span className={`inline-block ${/repos/i.test(v) ? "text-faint" : p.alsoTrack && v.includes(p.alsoTrack.sport) ? "text-ink-2" : "num-tight text-[17px] text-ink"}`}>{v}</span>
                     </td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
-        </Card>
-        <p className="text-[14px] text-ink-2">{p.weekNote}</p>
+        </div>
+        <p className="max-w-[62ch] text-small text-ink-2">{p.weekNote}</p>
       </section>
-      <section className="grid gap-3 sm:grid-cols-2">
-        {p.principles.map((c) => (
-          <Card key={c.title} pad="md" className={`grid content-start gap-1.5 ${c.wide ? "sm:col-span-2" : ""}`}>
-            <h3 className="text-[17px] font-bold">{c.title}</h3>
-            <p className="text-[15px] text-ink-2">{c.text}</p>
-          </Card>
-        ))}
+      <section aria-labelledby="principes" className="grid gap-6 border-t border-line-strong pt-4">
+        <h2 id="principes" className="text-h2">Les principes</h2>
+        <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2">
+          {p.principles.map((c, i) => (
+            <div key={c.title} className={`grid content-start grid-cols-[32px_minmax(0,1fr)] gap-x-4 gap-y-2 ${c.wide ? "sm:col-span-2" : ""}`}>
+              <span className="num-tight row-span-2 text-[24px] leading-none text-ink-3">{i + 1}</span>
+              <h3 className="text-h3">{c.title}</h3>
+              <p className="max-w-[62ch] text-ink-2">{c.text}</p>
+            </div>
+          ))}
+        </div>
       </section>
       {p.checkpoint && (
-        <p className="text-[15px]">
-          <b>Point d'étape : {new Date(`${p.checkpoint}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}.</b> <span className="text-ink-2">Dis-le dans le projet : je lirai le carnet, le poids et le tour de taille directement ici.</span>
+        <p>
+          <b>Point d’étape : {new Date(`${p.checkpoint}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}.</b> <span className="text-ink-2">Dis-le dans le projet : je lirai le carnet, le poids et le tour de taille directement ici.</span>
         </p>
       )}
     </div>
