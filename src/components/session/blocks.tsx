@@ -59,14 +59,14 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
   return (
     <article
       key={step.id}
-      className={`grid animate-pop gap-3.5 rounded-[18px] border-2 border-[var(--rc)] bg-surface ${size === "lg" ? "p-5 sm:p-[22px]" : "p-4"}`}
+      className={`sx-swap grid gap-4 rounded-[14px] border border-line bg-surface ${size === "lg" ? "p-6" : "p-4"}`}
       style={{ "--rc": recipe?.color ?? "var(--c-ink)" } as CSSProperties}
       aria-live="polite"
     >
-      <div className="flex flex-wrap items-center gap-2 text-[13px] font-bold uppercase tracking-[0.1em] text-ink-2">
+      <div className="flex flex-wrap items-center gap-2 label text-ink-2">
         <RecipeMark plan={plan} slug={step.recipeSlug} />
         <span>
-          {st === "todo" ? "À lancer" : "Maintenant"} · étape {step.no}
+          <span className={st === "todo" ? "" : "text-accent"}>{st === "todo" ? "À lancer" : "Maintenant"}</span> · étape {step.no}
           {recipe ? ` · ${shortName(recipe.name)}` : ""}
           {batch ? ` · fournée ${batch.at} sur ${batch.of}` : ""}
         </span>
@@ -76,10 +76,10 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       </div>
       <div className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={step.text} size={size === "lg" ? "xl" : "l"} live={st === "active"} className="illu-tile shrink-0 max-sm:size-[72px]" style={{ "--tile": recipe?.color ?? "var(--c-ink-3)" }} />
-        <h2 className={`min-w-0 font-display leading-[1.06] font-extrabold tracking-[-0.025em] [font-stretch:92%] ${size === "lg" ? "text-[clamp(1.9rem,3.4vw,var(--text-step))]" : "text-[26px]"}`}>{head}</h2>
+        <h2 className={`sx-consigne min-w-0 ${size === "lg" ? "sx-consigne-sm" : "!text-[26px]"}`}>{head}</h2>
       </div>
       {/* Avec des sous-étapes, le texte complet passe au second plan : elles disent quoi faire. */}
-      {rest && <p className={`leading-snug ${step.phases?.length ? "text-[15px] text-ink-2" : size === "lg" ? "text-[19px]" : "text-[16px]"}`}>{rest}</p>}
+      {rest && <p className={`leading-snug ${step.phases?.length ? "text-[17px] text-ink-2" : size === "lg" ? "text-[19px]" : "text-[17px]"}`}>{rest}</p>}
       <PhasePanel c={c} step={step} />
       {wantsDropGuide(step, currentPhase(state, step), st === "active") && <DropGuide />}
       <StepSpecs plan={plan} step={step} />
@@ -117,13 +117,13 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
   const t = n != null ? phaseTimer(state, step.id, n) : undefined;
   const batches = Math.max(0, ...step.phases.map((p) => p.batch ?? 0));
   return (
-    <ol className="grid gap-1.5" aria-label="Sous-étapes">
+    <ol className="grid gap-2" aria-label="Sous-étapes">
       {step.phases.map((ph, i) => {
         const done = state.phasesDone.has(`${i}:${step.id}`);
         // Fournées : un intertitre à chaque nouvelle fournée.
         const head =
           batches > 1 && ph.batch && ph.batch !== step.phases![i - 1]?.batch ? (
-            <li key={`b${i}`} className={`px-1 pt-1.5 text-[12px] font-bold uppercase tracking-[0.1em] ${onInk ? "" : "text-ink-2"}`} aria-hidden>
+            <li key={`b${i}`} className={`px-1 pt-2 label ${onInk ? "" : "text-ink-2"}`} aria-hidden>
               Fournée {ph.batch} sur {batches}
             </li>
           ) : null;
@@ -136,11 +136,11 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
   function rowOf(ph: NonNullable<PlanStep["phases"]>[number], i: number, done: boolean) {
         if (i === n)
           return (
-            <li key={i} className="grid animate-pop gap-2.5 rounded-[14px] border-2 border-hot bg-hot-soft px-4 py-3" aria-current="step">
+            <li key={i} className="grid animate-pop gap-3 rounded-[8px] border-l-[3px] border-accent bg-surface-2 px-4 py-3" aria-current="step">
               <div className="flex items-start justify-between gap-3">
                 <StepIllu kind={step.kind} text={ph.text} size="l" live className="shrink-0 max-sm:size-12" />
                 <div className="grid min-w-0 flex-1 gap-1">
-                  <span className="text-[12px] font-bold uppercase tracking-[0.1em] text-hot-ink">
+                  <span className="label text-accent">
                     {batches > 1 && ph.batch ? `Fournée ${ph.batch} sur ${batches} · ` : ""}
                     {i + 1} sur {step.phases!.length}
                     {ph.wait ? " · attente, fais autre chose" : ""}
@@ -148,7 +148,7 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
                   <b className="text-[clamp(1.25rem,2.4vw,1.6rem)] leading-tight">{ph.text}</b>
                   {ph.hobLevel != null && <Induction level={ph.hobLevel} />}
                 </div>
-                <span className={`num-tight shrink-0 text-[clamp(2.6rem,7vw,3.6rem)] leading-none font-extrabold ${t && t.endsAt - now < 15000 ? "text-hot" : "text-hot-ink"}`} aria-live="off">
+                <span className={`num-tight shrink-0 text-[clamp(2.6rem,7vw,3.6rem)] leading-none font-extrabold text-ink`} aria-live="off">
                   {t ? mmss(Math.max(0, t.endsAt - now)) : `${fmtMin(ph.min)}`}
                 </span>
               </div>
@@ -171,7 +171,7 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
             </li>
           );
         return (
-          <li key={i} className={`flex items-center gap-2.5 px-1 text-[15px] ${done ? "opacity-55" : onInk ? "" : "text-ink-2"}`}>
+          <li key={i} className={`flex items-center gap-3 px-1 text-[17px] ${done ? "opacity-55" : onInk ? "" : "text-ink-2"}`}>
             <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[12px] font-bold ${done ? "bg-accent text-on-accent" : "border border-line-strong"}`}>{done ? <Icon name="check" size="s" /> : i + 1}</span>
             <span className={`min-w-0 flex-1 ${done ? "line-through decoration-1" : ""} ${ph.wait ? "italic" : ""}`}>{ph.text}</span>
             <span className="num shrink-0">
@@ -196,11 +196,11 @@ export function StepActions({ c, step, compact }: { c: Controls; step: PlanStep;
   const ph = st === "active" ? currentPhase(c.state, step) : null;
   const morePhases = ph != null && ph < step.phases!.length - 1;
   return (
-    <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto]">
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
       <Button variant="primary" size="kitchen" icon={st === "todo" ? "play" : "check"} onClick={c.next} data-action="fait" className="w-full">
         {st === "todo" ? "Commencer" : morePhases ? "Sous-étape suivante" : auto ? `Fait · minuteur ${timerMinutes(step)} min` : "Fait, étape suivante"}
       </Button>
-      <div className="flex gap-2.5">
+      <div className="flex gap-3">
         {/* Retour : ordinateur seulement (le téléphone garde deux boutons). */}
         <Button size="kitchen" variant="secondary" onClick={c.back} className="hidden flex-1 lg:inline-flex" title="Revenir à la sous-étape ou à l'étape d'avant (flèche gauche)">
           <Icon name="chev" className="rotate-180" /> Retour
@@ -212,9 +212,9 @@ export function StepActions({ c, step, compact }: { c: Controls; step: PlanStep;
         )}
       </div>
       {!compact && (
-        <p className="hidden text-[13px] text-ink-2 sm:col-span-2 lg:block">
-          <kbd className="rounded-[5px] border border-line bg-surface-2 px-1.5 font-sans text-[12px]">espace</kbd> = bouton principal ·{" "}
-          <kbd className="rounded-[5px] border border-line bg-surface-2 px-1.5 font-sans text-[12px]">←</kbd> = retour
+        <p className="hidden text-small text-ink-2 sm:col-span-2 lg:block">
+          <kbd className="rounded-[8px] border border-line bg-surface-2 px-2 font-sans text-[12px]">espace</kbd> = bouton principal ·{" "}
+          <kbd className="rounded-[8px] border border-line bg-surface-2 px-2 font-sans text-[12px]">←</kbd> = retour
         </p>
       )}
     </div>
@@ -223,7 +223,7 @@ export function StepActions({ c, step, compact }: { c: Controls; step: PlanStep;
 
 export function AllDone({ c }: { c: Controls }) {
   return (
-    <div className="grid animate-pop justify-items-center gap-3 rounded-[18px] border-2 border-ink bg-surface p-6 text-center">
+    <div className="grid animate-pop justify-items-center gap-3 rounded-[14px] border-2 border-ink bg-surface p-6 text-center">
       <span className="grid size-16 place-items-center rounded-full bg-accent-soft text-accent">
         <Icon name="check" size="l" />
       </span>
@@ -268,7 +268,7 @@ export function Summary({ plan }: { plan: SessionPlan }) {
   return (
     <dl className="grid grid-cols-3 gap-2">
       {cells.map(([l, v]) => (
-        <div key={l} className="rounded-[12px] border border-line bg-surface px-3 py-2">
+        <div key={l} className="rounded-[8px] border border-line bg-surface px-3 py-2">
           <dt className="text-[12px] text-ink-2">{l}</dt>
           <dd className="num text-[20px] font-extrabold">{v}</dd>
         </div>
@@ -299,7 +299,7 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
     <>
       {plan.errors.length > 0 && (
         <Alert tone="ko" title="Le plan ne tient pas" role="alert">
-          <ul className="mt-0.5 list-disc space-y-0.5 pl-5">
+          <ul className="mt-1 list-disc space-y-1 pl-6">
             {plan.errors.map((e, i) => (
               <li key={i}>{e.message}</li>
             ))}
@@ -308,7 +308,7 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
       )}
       {plan.shortages.length > 0 && (
         <Alert tone="warn" title="Il manque des ingrédients à la commande">
-          <ul className="mt-0.5 space-y-0.5">
+          <ul className="mt-1 space-y-1">
             {plan.shortages.map((s) => (
               <li key={s.recipeIngredientId} className="num">
                 {s.item} : {Math.round(s.gramsBought)} g commandés sur {Math.round(s.gramsNeeded)} g ({recipeOf(plan, s.recipeSlug)?.name})
@@ -339,7 +339,7 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
         </Alert>
       )}
       {plan.warnings.length > 0 && (
-        <div className="rounded-[12px] border border-line bg-surface px-3.5 py-2.5 text-[14px]">
+        <div className="rounded-[8px] border border-line bg-surface px-4 py-3 text-[14px]">
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center justify-between gap-2 text-left text-ink-2">
             <span className="flex items-center gap-2">
               <Icon name="info" size="s" />
@@ -348,7 +348,7 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
             <Icon name={open ? "minus" : "plus"} size="s" />
           </button>
           {open && (
-            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 animate-pop">
+            <ul className="mt-2 list-disc space-y-1 pl-6 animate-pop">
               {plan.warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
@@ -363,12 +363,12 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
 /** Le plan en entier, replié pendant la cuisson : durées, origine des durées, choix du planificateur. */
 export function PlanDetails({ plan, open = false }: { plan: SessionPlan; open?: boolean }) {
   return (
-    <details open={open} className="group rounded-[14px] border border-line bg-surface px-3.5 py-3 text-[14px]">
+    <details open={open} className="group rounded-[14px] border border-line bg-surface px-4 py-3 text-[14px]">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-bold [&::-webkit-details-marker]:hidden">
         Le plan
         <Icon name="chev" size="s" className="transition-transform group-open:rotate-90" />
       </summary>
-      <div className="mt-3 grid gap-2.5">
+      <div className="mt-3 grid gap-3">
         <Summary plan={plan} />
         <DurationOrigin plan={plan} />
         <Decisions plan={plan} />
@@ -389,29 +389,29 @@ export function ResumeChoice({ plan, c, choice, big }: { plan: SessionPlan; c: C
   useEffect(() => {
     if (stale) router.refresh();
   }, [stale, router]);
-  const card = `grid w-full content-start gap-1.5 rounded-[16px] border-2 border-line bg-surface px-4 text-left transition-[border-color,transform] duration-[var(--dur-quick)] hover:border-accent active:scale-[0.98] disabled:opacity-50 ${big ? "min-h-28 py-4" : "min-h-24 py-3.5"}`;
+  const card = `grid w-full content-start gap-2 rounded-[14px] border-2 border-line bg-surface px-4 text-left transition-[border-color,transform] duration-[var(--dur-quick)] hover:border-accent active:scale-[0.98] disabled:opacity-50 ${big ? "min-h-28 py-4" : "min-h-24 py-4"}`;
   return (
     <div className="grid gap-2">
       <Eyebrow>Le jour J, tu cuisines…</Eyebrow>
-      <div className="grid gap-2.5 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <button type="button" disabled={busy} onClick={() => c.resume("solo")} className={card} data-action="reprendre-seul">
-          <span className="flex items-center gap-2.5">
+          <span className="flex items-center gap-3">
             <Icon name="flame" size={big ? "l" : "m"} className="text-accent" />
             <b className={`font-display ${big ? "text-[24px]" : "text-[20px]"}`}>Seul</b>
           </span>
-          <span className="num text-[15px] text-ink-2">
+          <span className="num text-[17px] text-ink-2">
             {dur(solo.prepMin)} de prep, puis {dur(solo.cookingMin)} de cuisson · <b className="text-ink">{dur(solo.totalMin)}</b>
           </span>
         </button>
         <button type="button" disabled={busy} onClick={() => c.resume("duo")} className={card} data-action="reprendre-a-deux">
-          <span className="flex items-center gap-2.5">
-            <span className="flex -space-x-1.5">
+          <span className="flex items-center gap-3">
+            <span className="flex -space-x-2">
               <PersonMono person="A" size={big ? 30 : 26} />
               <PersonMono person="B" size={big ? 30 : 26} />
             </span>
             <b className={`font-display ${big ? "text-[24px]" : "text-[20px]"}`}>{c.resuming === "duo" ? "Je refais le plan à deux…" : "À deux"}</b>
           </span>
-          <span className="num text-[15px] text-ink-2">
+          <span className="num text-[17px] text-ink-2">
             {choice?.duo ? (
               <>
                 <b className="text-ink">{dur(choice.duo.totalMin)}</b> · A {dur(choice.duo.aMin)} en action, B {dur(choice.duo.bMin)}
@@ -432,15 +432,13 @@ export function ResumeChoice({ plan, c, choice, big }: { plan: SessionPlan; c: C
 export function DoneView({ plan, c, startedAt }: { plan: SessionPlan; c: Controls; startedAt: string | null }) {
   const test = useContext(SessionTest) != null;
   return (
-    <div className="grid gap-5">
-      <div className="rounded-[18px] border-2 border-ink bg-surface p-5 pb-7">
-        <FridgeDone plan={plan} events={c.events} test={test} />
-      </div>
+    <div className="grid gap-12">
+      <FridgeDone plan={plan} events={c.events} test={test} />
       {!test && <SessionBoxes id={c.id} plan={plan} />}
-      <div className="flex flex-wrap items-center gap-4 rounded-[18px] border border-line bg-surface p-5">
+      <div className="flex flex-wrap items-center gap-4 border-t border-line pt-6">
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[20px] leading-tight font-extrabold">{test ? "Bilan du test" : "Bilan de la session"}</p>
-          <p className="text-ink-2">{test ? "Le bilan prévu / réel, comme pour une vraie session. Rien n'est compté : les prochaines sessions gardent leurs durées." : "Le bilan prévu / réel, geste par geste et étape par étape. Ces durées corrigent les prochaines sessions."}</p>
+          <h2 className="text-h2">{test ? "Bilan du test" : "Bilan de la session"}</h2>
+          <p className="mt-2 text-[17px] text-ink-2">{test ? "Prévu et réel, comme pour une vraie session. Rien n'est compté." : "Prévu et réel, geste par geste. Ces durées corrigent les prochaines sessions."}</p>
         </div>
         <Button variant="quiet" icon="refresh" onClick={() => c.setStatus("cooking")}>
           Rouvrir la session

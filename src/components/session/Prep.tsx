@@ -33,7 +33,7 @@ export function prepScope(plan: SessionPlan, c: Controls) {
 export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; aside?: React.ReactNode }) {
   const p = prepScope(plan, c);
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-6">
       {p.veille && (
         <Alert tone="info" icon="moonset" title={p.evening ? "Prep la veille" : "Le jour J"}>
           {p.evening
@@ -43,8 +43,8 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
       )}
       {!p.evening && plan.prep.notes.map((n) => <Alert key={n} tone="warn" icon="flame">{n}</Alert>)}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <section className="grid content-start gap-2.5" aria-label="Gestes">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <section className="grid content-start gap-3" aria-label="Gestes">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-[26px] font-bold">{p.evening ? "Ce soir, gestes regroupés" : p.resumed ? "Le reste de la prep" : "Gestes regroupés"}</h2>
             <span className="num shrink-0 text-ink-2">
@@ -55,13 +55,13 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
             <PrepGesture key={t.id} plan={plan} c={c} t={t} big />
           ))}
           {p.doneEve.length > 0 && (
-            <details className="group rounded-[14px] border border-line bg-surface px-3.5 py-3">
+            <details className="group rounded-[14px] border border-line bg-surface px-4 py-3">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-bold [&::-webkit-details-marker]:hidden">
                 <Icon name="moonset" size="s" />
                 Fait la veille · {p.doneEve.length} geste{p.doneEve.length > 1 ? "s" : ""}
                 <Icon name="chev" size="s" className="ml-auto transition-transform group-open:rotate-90" />
               </summary>
-              <div className="mt-2.5 grid gap-2">
+              <div className="mt-3 grid gap-2">
                 {p.doneEve.map((t) => (
                   <PrepGesture key={t.id} plan={plan} c={c} t={t} />
                 ))}
@@ -71,7 +71,7 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
           {p.later.length > 0 && <Tomorrow tasks={p.later} />}
         </section>
 
-        <section className="grid content-start gap-2.5" aria-label="Bols">
+        <section className="grid content-start gap-3" aria-label="Bols">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-[26px] font-bold">{p.evening ? "Bols pour le frigo" : "Bols"}</h2>
             <span className="num shrink-0 text-ink-2">
@@ -94,13 +94,13 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
         </section>
       </div>
 
-      <details className="group rounded-[14px] border border-line bg-surface px-3.5 py-3 text-[14px]">
+      <details className="group rounded-[14px] border border-line bg-surface px-4 py-3 text-[14px]">
         <summary className="flex cursor-pointer list-none items-center gap-2 font-bold [&::-webkit-details-marker]:hidden">
           <Icon name="book" size="s" />
           Prep des fiches d&apos;origine
           <Icon name="chev" size="s" className="ml-auto transition-transform group-open:rotate-90" />
         </summary>
-        <div className="mt-2.5 grid gap-3">
+        <div className="mt-3 grid gap-3">
           {plan.prep.sources.map((s) => (
             <div key={s.recipeSlug} className="grid gap-1">
               <b>{recipeOf(plan, s.recipeSlug)?.name}</b>
@@ -124,8 +124,8 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
             Passer à la cuisson
           </Button>
         )}
-        <span className="hidden text-[13px] text-ink-2 lg:inline">
-          <kbd className="rounded-[5px] border border-line bg-surface-2 px-1.5 text-[12px]">espace</kbd> = bol suivant prêt
+        <span className="hidden text-small text-ink-2 lg:inline">
+          <kbd className="rounded-[8px] border border-line bg-surface-2 px-2 text-[12px]">espace</kbd> = bol suivant prêt
         </span>
       </div>
     </div>
@@ -145,12 +145,12 @@ export function DuringBowls({ plan }: { plan: SessionPlan }) {
 /** Prep la veille, le soir : ce qui attend demain (et pourquoi). */
 export function Tomorrow({ tasks, title = "Demain, juste avant de cuire" }: { tasks: PrepTask[]; title?: string }) {
   return (
-    <div className="grid gap-2 rounded-[14px] border border-dashed border-line-strong px-4 py-3.5">
-      <Eyebrow className="flex items-center gap-1.5">
+    <div className="grid gap-2 rounded-[14px] border border-dashed border-line-strong px-4 py-4">
+      <Eyebrow className="flex items-center gap-2">
         <Icon name="sun" size="s" />
         {title}
       </Eyebrow>
-      <ul className="grid gap-1.5 text-[15px]">
+      <ul className="grid gap-2 text-[17px]">
         {tasks.map((t) => (
           <li key={t.id}>
             <b>{prepTitle(t)}</b>
@@ -174,7 +174,7 @@ export function PrepGesture({ plan, c, t, big }: { plan: SessionPlan; c: Control
       aria-label={`${prepTitle(t)}${done ? ", fait" : ""}`}
       className={`w-full items-start rounded-[14px] border border-line bg-surface transition-opacity duration-[var(--dur-base)] ${big ? "p-4" : "p-3"} ${done ? "opacity-55" : ""} [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1`}
     >
-      <span className="grid gap-1.5">
+      <span className="grid gap-2">
         <span className="flex items-center justify-between gap-3">
           {t.kind === "cut" && t.items[0] ? (
             <FoodIllu food={t.items[0].food} item={t.title} size={big ? "m" : 34} live={!done && big} className="shrink-0" />
@@ -182,18 +182,18 @@ export function PrepGesture({ plan, c, t, big }: { plan: SessionPlan; c: Control
             <StepIllu kind="prep" text={t.text ?? t.title} size={big ? "m" : 34} className="shrink-0" />
           )}
           <b className={`min-w-0 flex-1 font-display leading-tight [font-stretch:100%] ${big ? "text-[20px]" : "text-[17px]"}`}>{prepTitle(t)}</b>
-          <span className="num shrink-0 text-[13px] text-ink-2">
+          <span className="num shrink-0 text-small text-ink-2">
             {t.total ? `${t.total} · ` : ""}
             {dur(t.minutes)}
           </span>
         </span>
         {t.kind === "cut" ? (
-          <span className="grid gap-1.5">
+          <span className="grid gap-2">
             {t.items.map((i, k) => {
               const b = i.bowl ? bowlOf(plan, i.bowl) : undefined;
               return (
-                <span key={k} className="flex items-center gap-2.5 text-[15px]">
-                  {b ? <Bowl bowl={b} size="sm" /> : <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-dashed border-line-strong text-[11px] text-ink-2" title="sur le plateau">·</span>}
+                <span key={k} className="flex items-center gap-3 text-[17px]">
+                  {b ? <Bowl bowl={b} size="sm" /> : <span className="grid size-7 shrink-0 place-items-center rounded-full border-2 border-dashed border-line-strong text-[12px] text-ink-2" title="sur le plateau">·</span>}
                   <span className="min-w-0">
                     {i.qty && <b className="num">{i.qty} </b>}
                     {i.gesture}
@@ -207,7 +207,7 @@ export function PrepGesture({ plan, c, t, big }: { plan: SessionPlan; c: Control
             })}
           </span>
         ) : (
-          <span className="flex items-start gap-2.5 text-[15px] text-ink-2">
+          <span className="flex items-start gap-3 text-[17px] text-ink-2">
             {t.bowls?.map((l) => {
               const b = bowlOf(plan, l);
               return b ? <Bowl key={l} bowl={b} size="sm" /> : null;
@@ -216,7 +216,7 @@ export function PrepGesture({ plan, c, t, big }: { plan: SessionPlan; c: Control
           </span>
         )}
         {(t.tools?.length || t.eveReason) && (
-          <span className="text-[13px] text-ink-2">
+          <span className="text-small text-ink-2">
             {t.tools?.join(" · ")}
             {t.tools?.length && t.eve && t.eveReason ? " · " : ""}
             {t.eve && t.eveReason}
@@ -239,7 +239,7 @@ export function PrepBowlRow({ plan, c, b, fridge }: { plan: SessionPlan; c: Cont
       type="button"
       onClick={() => c.toggleBowl(b.letter)}
       aria-pressed={r}
-      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-line px-3.5 py-3 text-left transition-colors last:border-0 hover:bg-[color-mix(in_srgb,var(--c-surface)_94%,var(--c-ink))]"
+      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-line px-4 py-3 text-left transition-colors last:border-0 hover:bg-[color-mix(in_srgb,var(--c-surface)_94%,var(--c-ink))]"
     >
       <Bowl bowl={b} size="lg" />
       <span className="min-w-0">
@@ -249,7 +249,7 @@ export function PrepBowlRow({ plan, c, b, fridge }: { plan: SessionPlan; c: Cont
           {bowlQty(b) && <span className="num font-medium text-ink-2"> · {bowlQty(b)}</span>}
         </b>
         <BowlFoods bowl={b} size="s" className="my-1" />
-        <span className="block text-[13px] text-ink-2">
+        <span className="block text-small text-ink-2">
           {used ? (
             <>
               Sert à l&apos;<b className="text-ink">étape {used.no}</b> · {shortName(recipe?.name)}
@@ -259,24 +259,24 @@ export function PrepBowlRow({ plan, c, b, fridge }: { plan: SessionPlan; c: Cont
           )}
         </span>
         {ordered && (
-          <span className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-2">
+          <span className="mt-1 flex items-center gap-2 text-[12px] text-ink-2">
             <Icon name="basket" size="s" />
             {ordered}
           </span>
         )}
       </span>
       {inFridge ? (
-        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent-soft pr-2 pl-1.5 text-[13px] font-semibold text-accent">
+        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent-soft pr-2 pl-2 text-small font-semibold text-accent">
           <Icon name="fridge" size={14} />
           au frigo
         </span>
       ) : r ? (
-        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent-soft pr-2 pl-1.5 text-[13px] font-semibold text-accent">
+        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent-soft pr-2 pl-2 text-small font-semibold text-accent">
           <Icon name="check" size={14} strokeWidth={2.4} />
           prêt
         </span>
       ) : (
-        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-surface-2 pr-2 pl-1.5 text-[13px] font-semibold text-ink-2">
+        <span className="inline-flex h-6 items-center gap-1 rounded-full bg-surface-2 pr-2 pl-2 text-small font-semibold text-ink-2">
           <Icon name="refresh" size={14} />à faire
         </span>
       )}

@@ -5,7 +5,8 @@
 // c'est seulement une calculette.
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Alert, Button, Field, Input, RecipeTile } from "@/components/ui";
+import { Alert, Button, Field, Input } from "@/components/ui";
+import { BoxGlyph } from "./BoxGlyph";
 import { gramsLabel, placeFor, splitPot, type PotModel, type Weights } from "@/lib/boxes/core";
 import type { StoredPot } from "@/lib/boxes/store";
 import { storeSessionBoxes } from "@/app/frigo/actions";
@@ -16,7 +17,7 @@ const num = (v: string) => {
 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n > 1 ? many : one}`;
 
-export function PotSplit({ model, color, session, stored, head = true }: { model: PotModel; color: string; session?: string; stored?: StoredPot | null; head?: boolean }) {
+export function PotSplit({ model, color, session, stored, head = true, kitchen = false }: { model: PotModel; color: string; session?: string; stored?: StoredPot | null; head?: boolean; /** Fin de session : bouton de cuisine (64 px). */ kitchen?: boolean }) {
   const [dish, setDish] = useState(stored?.dishG ? String(Math.round(stored.dishG)) : "");
   const [side, setSide] = useState(stored?.sideG ? String(Math.round(stored.sideG)) : "");
   const [saved, setSaved] = useState<{ ok: boolean; message: string } | null>(stored?.count ? { ok: true, message: `${plural(stored.count, "boîte rangée", "boîtes rangées")}${stored.open < stored.count ? `, dont ${stored.count - stored.open} déjà sortie${stored.count - stored.open > 1 ? "s" : ""}` : ""}.` } : null);
@@ -38,78 +39,78 @@ export function PotSplit({ model, color, session, stored, head = true }: { model
     });
 
   return (
-    <div className="grid gap-4" data-pot={model.slug}>
+    <div className="grid gap-6" data-pot={model.slug}>
       {head && (
-        <div className="flex items-center gap-3">
-          <RecipeTile color={color} name={model.name} size="sm" />
-          <b className="min-w-0 flex-1 font-display text-[18px] leading-tight">{model.name}</b>
+        <div className="flex items-center gap-4">
+          <BoxGlyph color={color} size={48} />
+          <h3 className="min-w-0 flex-1 text-h3">{model.name}</h3>
         </div>
       )}
-      <div className={`grid gap-3 sm:max-w-md ${model.side ? "grid-cols-2" : ""}`}>
-        <Field label={model.side ? "Plat cuit" : "Marmite cuite"}>
-          {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={dish} onChange={(e) => setDish(e.target.value)} data-field="plat" />}
-        </Field>
-        {model.side && (
-          <Field label={`${sideName[0].toUpperCase()}${sideName.slice(1)} cuit`}>
-            {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={side} onChange={(e) => setSide(e.target.value)} data-field="garniture" />}
+      <div className="grid gap-3">
+        <div className={`grid gap-4 ${model.side ? "grid-cols-2 sm:max-w-md" : "max-w-[280px]"}`}>
+          <Field label={model.side ? "Plat cuit" : "Marmite cuite"}>
+            {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={dish} onChange={(e) => setDish(e.target.value)} data-field="plat" />}
           </Field>
-        )}
+          {model.side && (
+            <Field label={`${sideName[0].toUpperCase()}${sideName.slice(1)} cuit`}>
+              {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={side} onChange={(e) => setSide(e.target.value)} data-field="garniture" />}
+            </Field>
+          )}
+        </div>
+        <p className="text-small text-ink-2">Pèse le récipient plein, retire le poids du récipient vide.</p>
       </div>
-      <p className="text-small text-ink-2">Pèse le récipient plein, retire le poids du récipient vide.</p>
 
-      <ul className="border-t border-line-strong" aria-live="polite">
+      <ul className="grid border-b border-line" aria-live="polite">
         {split.byPerson.map((p) => (
-          <li key={p.personId} className="grid gap-1 border-b border-line py-4">
-            <span className="flex flex-wrap items-baseline gap-x-2">
-              <b className="text-[16px]">{p.name}</b>
-              <span className="num text-[16px]">
-                {plural(p.count, "boîte")}
-                {weighed && (
-                  <>
-                    {" "}de <b>{gramsLabel(p.dishG ?? 0)}</b>
-                    {p.sideG != null && (
-                      <>
-                        {" "}+ <b>{gramsLabel(p.sideG)}</b> de {sideName}
-                      </>
-                    )}
-                  </>
-                )}
-              </span>
+          <li key={p.personId} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1 border-t border-line py-3">
+            <b className="text-[17px]">{p.name}</b>
+            <span className="num text-right text-[17px]">
+              {plural(p.count, "boîte")}
+              {weighed && (
+                <>
+                  {" "}de <b className="num-tight text-[28px] leading-none">{gramsLabel(p.dishG ?? 0)}</b>
+                  {p.sideG != null && (
+                    <>
+                      {" "}+ <b className="num-tight text-[28px] leading-none">{gramsLabel(p.sideG)}</b> de {sideName}
+                    </>
+                  )}
+                </>
+              )}
             </span>
             {p.kcal != null && (
-              <span className="num text-[13px] text-ink-2">
-                ≈ {p.kcal} kcal · {p.protein} g de protéines la boîte
+              <span className="num col-span-2 text-small text-ink-2">
+                ≈&nbsp;{p.kcal}&nbsp;kcal · {p.protein}&nbsp;g de protéines la boîte
               </span>
             )}
           </li>
         ))}
       </ul>
-      {!weighed && <p className="text-[14px] text-ink-2">Pèse {model.side ? `le plat et le ${sideName}` : "la marmite"} pour avoir les grammes de chaque boîte.</p>}
-      {weighed && model.side && weights.sideG == null && <p className="text-[14px] text-ink-2">Sans le poids du {sideName}, il se partage à l&apos;œil, dans la même proportion.</p>}
+      {!weighed && <p className="text-small text-ink-2">Pèse {model.side ? `le plat et le ${sideName}` : "la marmite"} pour avoir les grammes de chaque boîte.</p>}
+      {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids du {sideName}, il se partage à l&apos;œil, dans la même proportion.</p>}
       {split.fill < 0.97 && (
         <Alert tone="warn" title="Moins que prévu">
           La marmite ne couvre pas les {planned} repas prévus : chaque boîte est plus petite que la part visée.
         </Alert>
       )}
-      {bounded && weighed && <p className="text-[13px] text-ink-2">Le {sideName} reste entre la moitié et le double de la proportion de la marmite : la part vise les calories, les protéines au plus près.</p>}
+      {bounded && weighed && <p className="text-small text-ink-2">Le {sideName} reste entre la moitié et le double de la proportion de la marmite : la part vise les calories, les protéines au plus près.</p>}
 
       {session && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" icon="fridge" state={pending ? "loading" : "idle"} loadingLabel="Je range…" onClick={store} data-action="ranger-boites">
+        <div className="flex flex-wrap items-center gap-4">
+          <Button variant="primary" size={kitchen ? "kitchen" : "md"} icon="fridge" state={pending ? "loading" : "idle"} loadingLabel="Je range…" onClick={store} data-action="ranger-boites">
             {saved?.ok ? "Ranger à nouveau" : `Ranger ${plural(split.boxes.length, "boîte")}`}
           </Button>
-          <span className="num text-[14px] text-ink-2">
+          <span className="num text-[17px] text-ink-2">
             {[inFridge ? `${inFridge} au frigo` : null, inFreezer ? `${inFreezer} au congélo` : null].filter(Boolean).join(" · ")}
           </span>
         </div>
       )}
       {saved && (
-        <p className={`text-[14px] ${saved.ok ? "text-ink-2" : "text-ko-ink"}`} role="status">
+        <p className={`text-[17px] ${saved.ok ? "text-ink-2" : "text-ko-ink"}`} role="status">
           {saved.message}
           {saved.ok && (
             <>
               {" "}
-              <Link href="/frigo" className="font-semibold text-accent">
+              <Link href="/frigo" className="font-bold text-accent underline-offset-4 hover:underline">
                 Voir le frigo
               </Link>
             </>

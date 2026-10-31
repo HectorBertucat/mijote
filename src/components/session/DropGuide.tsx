@@ -13,8 +13,8 @@ export function wantsDropGuide(step: PlanStep, phase: number | null, active: boo
 export function DropGuide({ onInk = false }: { onInk?: boolean }) {
   const pan = onInk ? "var(--c-ink-3)" : "var(--i-steel-2)";
   return (
-    <div className={`grid gap-2 rounded-[14px] border px-3.5 py-3 ${onInk ? "border-line" : "border-line bg-surface-2"}`}>
-      <b className="text-[15px]">Le test de la goutte</b>
+    <div className={`grid gap-2 rounded-[14px] border px-4 py-3 ${onInk ? "border-line" : "border-line bg-surface-2"}`}>
+      <b className="text-[17px]">Le test de la goutte</b>
       <div className="grid grid-cols-2 gap-3">
         <figure className="grid justify-items-center gap-1 text-center">
           <svg viewBox="0 0 120 56" width="100%" className="max-w-[150px]" aria-hidden fill="none">
@@ -25,7 +25,7 @@ export function DropGuide({ onInk = false }: { onInk?: boolean }) {
               <path d="M44 28c-2-3 2-5 0-8M66 30c-2-3 2-5 0-8M78 32c-2-3 2-5 0-8" stroke="var(--i-steam)" strokeWidth="2.2" strokeLinecap="round" />
             </g>
           </svg>
-          <figcaption className="text-[13px] leading-tight text-ink-2">
+          <figcaption className="text-small leading-tight text-ink-2">
             <b className="block text-ink">Elles grésillent</b>
             pas encore chaud
           </figcaption>
@@ -39,13 +39,13 @@ export function DropGuide({ onInk = false }: { onInk?: boolean }) {
               <circle cx="72" cy="36" r="4" fill="var(--i-water)" />
             </g>
           </svg>
-          <figcaption className="text-[13px] leading-tight text-ink-2">
+          <figcaption className="text-small leading-tight text-ink-2">
             <b className="block text-ink">Elles perlent et dansent</b>
             c&apos;est prêt : baisse d&apos;un cran
           </figcaption>
         </figure>
       </div>
-      <p className="text-[13px] text-ink-2">Poêle à sec, niveau 6 à 7, 2 à 3 min. Quand elles dansent : un cran de moins, l&apos;huile, et la viande dès que l&apos;huile ondule. Ensuite n&apos;y touche plus : elle se décolle seule quand la croûte est faite.</p>
+      <p className="text-small text-ink-2">Poêle à sec, niveau 6 à 7, 2 à 3 min. Quand elles dansent : un cran de moins, l&apos;huile, et la viande dès que l&apos;huile ondule. Ensuite n&apos;y touche plus : elle se décolle seule quand la croûte est faite.</p>
     </div>
   );
 }

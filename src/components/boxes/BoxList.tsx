@@ -1,22 +1,40 @@
 "use client";
 
-// Les boîtes d'un lieu (frigo ou congélo) : la plus pressée d'abord, « Je la mange » d'un tap (au
-// journal de Santé du profil de l'appareil), passer au congélo ou en sortir, jetée (deux taps).
+// Les boîtes d'un lieu (frigo ou congélo), la plus pressée d'abord : une ligne par boîte (les boîtes
+// pareilles, même plat, même mangeur, même date, sont regroupées « ×3 »), la date limite en grand à
+// droite, « Je la mange » d'un geste (au journal de Santé du profil de l'appareil) ; passer au congélo
+// ou en sortir, jetée (deux gestes) en retrait. Le bouton plein d'encre : la plus pressée du frigo seulement. Pas de pastilles : la date et un mot disent l'urgence.
 import { useOptimistic, useState, useTransition } from "react";
-import { Button, Pill, RecipeTile } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { eatBoxAction, moveBoxAction, throwBoxAction } from "@/app/frigo/actions";
 import { useToast } from "@/components/cart/Toast";
-import { gramsLabel } from "@/lib/boxes/core";
+import { daysBetween, gramsLabel } from "@/lib/boxes/core";
 import type { StockBox } from "@/lib/boxes/store";
+import { BoxGlyph } from "./BoxGlyph";
 
-const day = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { ...o, timeZone: "UTC" });
+const day = (d: string) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
 const MEAL = { lunch: "midi", dinner: "soir" } as const;
 
-function limitText(b: StockBox, today: string) {
-  if (b.freshness === "past") return `à jeter depuis ${day(b.limit)}`;
-  if (b.limit === today) return "à manger aujourd'hui";
-  if (b.freshness === "soon") return "à manger demain au plus tard";
-  return `jusqu'au ${day(b.limit)}`;
+/** La date limite : un mot d'étiquette et une date en grand. Proche : le jour de la semaine ; loin : le jour et le mois. */
+function limitOf(b: StockBox, today: string): { label: string; big: string; tone: string } {
+  if (b.freshness === "past") return { label: "À jeter depuis", big: fmt(b.limit, { day: "numeric", month: "short" }), tone: "text-ko-ink" };
+  if (b.limit === today) return { label: "À manger", big: "aujourd’hui", tone: "text-warn-ink" };
+  if (b.freshness === "soon") return { label: "À manger", big: "demain", tone: "text-warn-ink" };
+  const near = daysBetween(today, b.limit) <= 6;
+  return { label: "Jusqu’au", big: near ? fmt(b.limit, { weekday: "short", day: "numeric" }) : fmt(b.limit, { day: "numeric", month: "short" }), tone: "" };
+}
+
+type Group = { key: string; box: StockBox; ids: string[] };
+const groupKey = (b: StockBox) => [b.name, b.personId, b.grams, b.sideGrams, b.limit, b.place, b.thawed, b.plannedFor, b.plannedMeal].join("|");
+function groups(boxes: StockBox[]): Group[] {
+  const out: Group[] = [];
+  for (const b of boxes) {
+    const g = out.find((x) => x.key === groupKey(b));
+    if (g) g.ids.push(b.id);
+    else out.push({ key: groupKey(b), box: b, ids: [b.id] });
+  }
+  return out;
 }
 
 export function BoxList({ boxes, colors, today, eater }: { boxes: StockBox[]; colors: Record<string, string>; today: string; eater: string }) {
@@ -33,46 +51,52 @@ export function BoxList({ boxes, colors, today, eater }: { boxes: StockBox[]; co
 
   return (
     <>
-      <ul className="grid overflow-hidden rounded-[14px] border border-line bg-surface [&>li:last-child]:border-b-0">
-        {shown.map((b) => {
+      <ul className="grid border-b border-line">
+        {groups(shown).map(({ key, box: b, ids }, gi) => {
+          const id = ids[0];
           const qty = [b.grams != null ? gramsLabel(b.grams) : null, b.sideGrams != null ? `${gramsLabel(b.sideGrams)} de ${b.sideLabel ?? "garniture"}` : null].filter(Boolean).join(" + ");
+          const lim = limitOf(b, today);
+          const frozen = b.place === "freezer";
           return (
-            <li key={b.id} className="grid gap-2.5 border-b border-line px-3.5 py-3" data-box={b.id}>
-              <div className="flex min-w-0 items-start gap-3">
-                <RecipeTile color={(b.slug && colors[b.slug]) || "var(--c-ink-3)"} name={b.name} size="sm" />
-                <div className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="font-semibold leading-snug">{b.name}</span>
-                  <span className="num text-[14px] text-ink-2">
-                    {[b.personName ? `pour ${b.personName}` : null, qty || null, b.kcal != null ? `≈ ${Math.round(b.kcal)} kcal` : null].filter(Boolean).join(" · ")}
+            <li key={key} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-3 border-t border-line py-4" data-box={id}>
+              <BoxGlyph color={(b.slug && colors[b.slug]) || "var(--c-ink-3)"} size={48} frozen={frozen} className="mt-1" />
+              <div className="grid min-w-0 gap-1">
+                <b className="text-[17px] leading-snug">
+                  {b.name}
+                  {ids.length > 1 && <span className="num-tight ml-2 text-[20px] text-ink-2">×{ids.length}</span>}
+                </b>
+                <span className="num text-small text-ink-2">
+                  {[b.personName ? `pour ${b.personName}` : null, qty || null, b.kcal != null ? `≈ ${Math.round(b.kcal)} kcal` : null].filter(Boolean).join(" · ")}
+                </span>
+                {(b.plannedFor || b.thawed) && (
+                  <span className="text-small text-ink-2">
+                    {[b.plannedFor && b.plannedMeal ? `prévue ${day(b.plannedFor)} ${MEAL[b.plannedMeal]}` : null, b.thawed ? "décongelée" : null].filter(Boolean).join(" · ")}
                   </span>
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-2">
-                    {b.freshness === "ok" ? <span>{limitText(b, today)}</span> : <Pill tone={b.freshness === "past" ? "ko" : "warn"}>{limitText(b, today)}</Pill>}
-                    {b.plannedFor && b.plannedMeal && <span>· prévue {day(b.plannedFor)} {MEAL[b.plannedMeal]}</span>}
-                    {b.thawed && <span>· décongelée</span>}
-                  </span>
-                </div>
+                )}
               </div>
-              <div className="flex flex-wrap gap-1.5 pl-10">
-                <Button size="sm" variant="primary" icon="check" onClick={() => act(b.id, () => eatBoxAction(b.id))} title={`Noté au journal de ${eater}`} data-action="manger">
+              <p className={`grid justify-items-end text-right ${lim.tone}`}>
+                <span className={`label ${lim.tone ? "" : "text-ink-2"}`}>{lim.label}</span>
+                <span className="num-tight text-[28px] leading-none">{lim.big}</span>
+              </p>
+              <div className="col-span-2 col-start-2 flex flex-wrap items-center gap-2">
+                <Button variant={gi === 0 && !frozen ? "primary" : "secondary"} icon="check" onClick={() => act(id, () => eatBoxAction(id))} title={eater ? `Noté au journal de ${eater}` : undefined} data-action="manger">
                   Je la mange
                 </Button>
-                {b.place === "fridge" ? (
-                  <Button size="sm" icon="snow" onClick={() => act(b.id, () => moveBoxAction(b.id, "freezer"))} data-action="congeler">
-                    Au congélo
-                  </Button>
-                ) : (
-                  <Button size="sm" icon="fridge" onClick={() => act(b.id, () => moveBoxAction(b.id, "fridge"))} data-action="decongeler">
+                {frozen ? (
+                  <Button variant="quiet" icon="fridge" onClick={() => act(id, () => moveBoxAction(id, "fridge"))} data-action="decongeler">
                     Sortir au frigo
                   </Button>
+                ) : (
+                  <Button variant="quiet" icon="snow" onClick={() => act(id, () => moveBoxAction(id, "freezer"))} data-action="congeler">
+                    Au congélo
+                  </Button>
                 )}
-                {confirm === b.id ? (
-                  <Button size="sm" variant="danger" icon="trash" onClick={() => act(b.id, () => throwBoxAction(b.id))} data-action="jeter-oui">
+                {confirm === id ? (
+                  <Button variant="danger" icon="trash" onClick={() => act(id, () => throwBoxAction(id))} data-action="jeter-oui">
                     Oui, jetée
                   </Button>
                 ) : (
-                  <Button size="sm" variant="quiet" icon="trash" onClick={() => setConfirm(b.id)} data-action="jeter">
-                    Jetée
-                  </Button>
+                  <Button variant="quiet" iconOnly icon="trash" onClick={() => setConfirm(id)} aria-label="Jetée" title="Jetée" data-action="jeter" />
                 )}
               </div>
             </li>

@@ -10,6 +10,8 @@ import { recipes } from "@/lib/db/schema";
 import { householdUnits, loadEaters } from "@/lib/eaters/store";
 import { inArray } from "drizzle-orm";
 import type { DayChoice } from "@/components/session/SessionApp";
+// Styles de la session (consigne et cadrans lus à un mètre, mouvement) : ici, pas dans les composants que les tests importent.
+import "@/components/session/session.css";
 
 const busy = (plan: SessionPlan, p: "A" | "B") =>
   plan.prep.tasks.filter((t) => t.person === p).reduce((x, t) => x + t.minutes, 0) + plan.steps.filter((x) => x.person === p).reduce((x, st) => x + st.activeMin, 0);

@@ -26,28 +26,28 @@ export function ModePicker({ plans, defaultMode = "solo" }: { plans?: Partial<Re
   const any = plans?.solo ?? plans?.duo ?? plans?.veille;
   return (
     <fieldset className="grid gap-2">
-      <legend className="mb-2 text-[12px] font-bold uppercase tracking-[0.1em] text-ink-2">Mode</legend>
+      <legend className="mb-2 label text-ink-2">Mode</legend>
       <div className="grid gap-2 sm:grid-cols-3" role="radiogroup">
         {modes.map((m) => {
           const plan = plans?.[m];
           return (
             <label
               key={m}
-              className="grid min-h-[92px] cursor-pointer content-start gap-1 rounded-[14px] border-2 border-line bg-surface px-3.5 py-3 transition-[border-color,background-color,transform] duration-[var(--dur-quick)] hover:border-line-strong active:scale-[0.98] has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus"
+              className="grid min-h-[92px] cursor-pointer content-start gap-1 rounded-[14px] border-2 border-line bg-surface px-4 py-3 transition-[border-color,background-color,transform] duration-[var(--dur-quick)] hover:border-line-strong active:scale-[0.98] has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus"
             >
               <input type="radio" name="mode" value={m} defaultChecked={m === defaultMode} className="sr-only" />
               <span className="flex items-center gap-2">
                 <Icon name={ICON[m]} size="s" className="text-accent" />
-                <b className="font-display text-[16px] [font-stretch:100%]">{MODE_LABELS[m]}</b>
+                <b className="font-display text-[17px] [font-stretch:100%]">{MODE_LABELS[m]}</b>
               </span>
-              {plan ? <span className="num text-[20px] leading-tight font-extrabold">{fmt(m === "veille" ? (plan.prep.eveMin ?? 0) : plan.totalMin)}{m === "veille" ? <span className="text-[13px] font-semibold text-ink-2"> le soir</span> : null}</span> : null}
-              <span className="text-[13px] leading-snug text-ink-2">{modeHint(m, plan) && m !== "solo" ? modeHint(m, plan) : WHAT[m]}</span>
+              {plan ? <span className="num text-[20px] leading-tight font-extrabold">{fmt(m === "veille" ? (plan.prep.eveMin ?? 0) : plan.totalMin)}{m === "veille" ? <span className="text-small font-semibold text-ink-2"> le soir</span> : null}</span> : null}
+              <span className="text-small leading-snug text-ink-2">{modeHint(m, plan) && m !== "solo" ? modeHint(m, plan) : WHAT[m]}</span>
             </label>
           );
         })}
       </div>
       {/* D'où viennent ces durées : la référence, ou les dernières sessions terminées. */}
-      {any && <DurationOrigin plan={any} className="pt-0.5" />}
+      {any && <DurationOrigin plan={any} className="pt-1" />}
     </fieldset>
   );
 }

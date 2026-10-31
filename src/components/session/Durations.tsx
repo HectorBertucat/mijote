@@ -22,11 +22,11 @@ export function DurationOrigin({ plan, className = "" }: { plan: Pick<SessionPla
   return (
     <details className={`group text-xs text-muted ${className}`}>
       <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-        <span className="mr-1.5 inline-block size-2 rounded-full bg-accent align-middle" aria-hidden />
+        <span className="mr-2 inline-block size-2 rounded-full bg-accent align-middle" aria-hidden />
         <span className="font-medium text-ink">{o.text}</span>
         <span className="ml-1 group-open:hidden">· {o.detail.length} correction{o.detail.length > 1 ? "s" : ""}, voir</span>
       </summary>
-      <ul className="mt-1.5 space-y-0.5 pl-3.5">
+      <ul className="mt-2 space-y-1 pl-4">
         {o.detail.map((d) => (
           <li key={d}>{d}</li>
         ))}
@@ -41,7 +41,7 @@ function Gap({ row }: { row: ReportRow }) {
   const d = row.realMin - row.plannedMin;
   const small = Math.abs(d) < Math.max(0.5, row.plannedMin * 0.1);
   return (
-    <span className={`num inline-flex h-6 items-center rounded-full px-2 text-[13px] font-semibold ${small ? "bg-surface-2 text-ink-2" : d > 0 ? "border border-line-strong text-ink" : "bg-accent-soft text-accent"}`}>
+    <span className={`num inline-flex h-6 items-center rounded-full px-2 text-small font-semibold ${small ? "bg-surface-2 text-ink-2" : d > 0 ? "border border-line-strong text-ink" : "bg-accent-soft text-accent"}`}>
       {small ? "≈ prévu" : `${d > 0 ? "+" : "−"}${fmt(Math.abs(d))}`}
     </span>
   );
@@ -49,9 +49,9 @@ function Gap({ row }: { row: ReportRow }) {
 
 function Rows({ rows }: { rows: ReportRow[] }) {
   return (
-    <ul className="divide-y divide-line overflow-hidden rounded-[14px] border border-line bg-surface text-[15px]">
+    <ul className="divide-y divide-line overflow-hidden rounded-[14px] border border-line bg-surface text-[17px]">
       {rows.map((r) => (
-        <li key={r.ref} className="flex flex-col gap-1 px-3.5 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+        <li key={r.ref} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
           <span className="min-w-0 flex-1">
             <span className="block truncate">{r.label}</span>
             {(r.phase === "veille" || r.shared || (r.realMin != null && !r.kept) || r.perKg != null) && (
@@ -87,18 +87,18 @@ export function DurationReport({ plan, events, startedAt }: { plan: SessionPlan;
   const stepRows = steps.filter((r) => r.realMin != null);
   return (
     <div className="space-y-4">
-      <p className="text-[15px] text-ink-2">
+      <p className="text-[17px] text-ink-2">
         Mesuré : {measured(gestures)} geste{measured(gestures) > 1 ? "s" : ""} de prep sur {gestures.length}, {stepRows.length} étape{stepRows.length > 1 ? "s" : ""} sur {steps.length}. Un geste dure
         du « fait » d&apos;avant au sien ; un bol coché sans ses gestes se partage entre eux au prorata.
       </p>
       {gestures.length > 0 && (
-        <section className="space-y-1.5">
+        <section className="space-y-2">
           <h2 className="text-[20px] font-bold">Gestes de prep</h2>
           <Rows rows={gestures} />
         </section>
       )}
       {steps.length > 0 && (
-        <section className="space-y-1.5">
+        <section className="space-y-2">
           <h2 className="text-[20px] font-bold">Étapes</h2>
           <Rows rows={stepRows.length ? stepRows : steps} />
           {stepRows.length < steps.length && stepRows.length > 0 && (

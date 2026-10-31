@@ -1,5 +1,13 @@
 # Journal des changements
 
+## 2026-10-31 : session et frigo au système « Carnet de marché »
+- Session, vue simple : la consigne en Atkinson très grand (`.sx-consigne`), les cadrans lus à un mètre en Archivo serrée géante (`.sx-giant` : minuteur, niveau du foyer avec ses neuf crans, four), l'étiquette du plat et l'étape en cours en cocotte ; « Ça sonne bientôt » en lignes à filets (et au-dessus de la consigne sur téléphone quand ça sonne dans moins de 2 min), « Ensuite » sur une ligne. Grille de 12 sur grand écran (consigne 7, à côté 5 ; prep et rangement en 4/8).
+- Transitions des trois temps et confirmation de fin : un aplat d'encre plein écran, le numéro du temps en chiffre géant et le titre en `display`. Un minuteur qui sonne : aplat tomate (la seule urgence), la consigne qui suit et le temps écoulé en géant ; même aplat pour l'alarme de la vue détaillée.
+- Fin de session : le frigo dessiné et le cachet « Fait maison », « Le frigo est plein. » en très grand, la durée réelle, les étiquettes des plats ; puis « Peser, puis ranger » en filets (grammes par boîte en chiffres serrés, bouton de cuisine).
+- La boîte de verre dessinée (`src/components/boxes/BoxGlyph.tsx`) remplace le monogramme dans la session, le rangement, le frigo et la vue détaillée.
+- Frigo : frigo et congélo en 7/5, la plus pressée d'abord et en une phrase en tête, date limite en grand à droite (« demain », « jusqu'au 29 janv. »), boîtes pareilles regroupées (« ×3 »), « Je la mange » plein d'encre seulement sur la plus pressée, plus de pastilles.
+- Vue détaillée allégée : étiquettes `.label`, espacements et rayons à l'échelle, sous-étape en cours en cocotte (plus en tomate), consigne en Atkinson ; plus de verre dépoli sur la barre du bas.
+- Mouvement (`src/components/session/session.css`, chargé par la page) : la consigne suivante glisse de 8 px (200 ms), ce qui sonne remonte en 280 ms, rien au clavier, fondus seuls avec `prefers-reduced-motion`.
 ## 2026-10-31 : Santé en carnet
 - Santé passe au système « Carnet de marché » : plus de cartes blanches en grille, des sections à filet (`Section`), de l’air et des mises en page asymétriques (5/7, 8/4, 7/5). Petits composants de zone dans `src/components/sante/carnet.tsx` : chiffre clé (`KeyFigure`), verdict en mot (`Verdict`), note à filet (`Note`), ligne de définition (`Row`), explication repliée (`HowCalc`), élision (`de`).
 - Vue d’ensemble : la tendance du poids, la cible du jour et les protéines en très grand (Archivo serrée) ; courbe du poids en un trait d’encre, pesées en points discrets, sans aplat, dessinée à la largeur réelle (axes lisibles sur téléphone), un repère par mois ; barres d’activité d’encre. Les explications de calcul passent derrière « Comment c’est calculé ».

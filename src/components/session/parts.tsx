@@ -12,6 +12,7 @@ import { STEP_LABELS } from "@/lib/recipes/format";
 import { BowlBadge, Button, Cue, Icon, Induction, OvenLevel, RecipeTile, Segmented, SpecChip, Timer, Toast, formatClock, type IconName } from "@/components/ui";
 import type { Toast as ToastData } from "./useSession";
 import { FoodIllu, StepIllu, type IlluSize } from "@/components/illus/Illu";
+import { BoxGlyph } from "@/components/boxes/BoxGlyph";
 
 // ─── Formats ───
 
@@ -111,12 +112,12 @@ export function PersonMono({ person, size = 26, onInk = false }: { person: Perso
 
 /** Petit titre en capitales espacées (DA `.eyebrow`). */
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <span className={`text-[12px] font-bold uppercase tracking-[0.1em] text-ink-2 ${className}`}>{children}</span>;
+  return <span className={`label text-ink-2 ${className}`}>{children}</span>;
 }
 
 export function LiveDot({ online }: { online: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[13px]" title={online ? "Synchronisé avec les autres écrans" : "Reconnexion…"}>
+    <span className="inline-flex items-center gap-2 text-small" title={online ? "Synchronisé avec les autres écrans" : "Reconnexion…"}>
       <span className={`size-2.5 shrink-0 rounded-full bg-current ${online ? "k-live" : "opacity-40"}`} aria-hidden />
       {online ? "en direct" : "reconnexion…"}
     </span>
@@ -159,7 +160,7 @@ export function WakePill({ wake, onInk = true }: { wake: { on: boolean; request:
     <button
       type="button"
       onClick={() => void wake.request()}
-      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[13px] font-semibold ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
+      className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-small font-semibold ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
       title={wake.on ? "L'écran reste allumé pendant la session" : "Toucher pour garder l'écran allumé"}
     >
       <Icon name={wake.on ? "lock" : "sun"} size="s" />
@@ -181,12 +182,12 @@ function TestTag({ compact }: { compact: boolean }) {
   const t = useContext(SessionTest);
   if (!t) return null;
   return (
-    <span className="flex shrink-0 items-center gap-1.5">
-      <span className={`rounded-full border border-current font-semibold uppercase tracking-[0.08em] opacity-70 ${compact ? "px-1.5 text-[10px] leading-[14px]" : "px-2 py-px text-[12px]"}`} title="Session test : rien n'est compté">
+    <span className="flex shrink-0 items-center gap-2">
+      <span className={`rounded-full border border-current font-semibold uppercase tracking-[0.08em] opacity-70 ${compact ? "px-2 text-[10px] leading-[14px]" : "px-2 py-px text-[12px]"}`} title="Session test : rien n'est compté">
         test
       </span>
       {!compact && !t.ended && (
-        <button type="button" onClick={t.end} className="text-[13px] underline-offset-2 opacity-75 hover:underline hover:opacity-100">
+        <button type="button" onClick={t.end} className="text-small underline-offset-2 opacity-75 hover:underline hover:opacity-100">
           finir le test
         </button>
       )}
@@ -196,17 +197,17 @@ function TestTag({ compact }: { compact: boolean }) {
 
 export function SessionHead({ title, sub, online, phase, onPhase, right, lead, compact = false, plain = false }: { title: ReactNode; sub?: ReactNode; online: boolean; phase?: Phase | null; onPhase?: (p: Phase) => void; right?: ReactNode; lead?: ReactNode; compact?: boolean; plain?: boolean }) {
   return (
-    <div className={`flex flex-wrap items-center gap-x-3.5 gap-y-2 ${plain ? "border-b border-line bg-surface text-ink" : "bg-inverse text-on-inverse"} ${compact ? "px-3.5 py-2.5" : "px-4 py-3 sm:px-5"}`} data-session-head>
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${plain ? "border-b border-line bg-surface text-ink" : "bg-inverse text-on-inverse"} ${compact ? "px-4 py-3" : "px-4 py-3 sm:px-6"}`} data-session-head>
       {lead ?? <span className={`size-2.5 shrink-0 rounded-full bg-current ${online ? "k-live" : "opacity-40"}`} title={online ? "en direct" : "reconnexion…"} aria-label={online ? "En direct" : "Reconnexion"} />}
       <div className="min-w-0 flex-1">
-        <b className={`block truncate font-display [font-stretch:100%] ${compact ? "text-[16px]" : "text-[17px]"}`}>{title}</b>
+        <b className={`block truncate font-display [font-stretch:100%] text-[17px]`}>{title}</b>
         {compact ? (
-          <div className="flex min-w-0 items-center gap-1.5 text-[13px]">
+          <div className="flex min-w-0 items-center gap-2 text-small">
             <TestTag compact />
             {sub && <span className="truncate opacity-75">{sub}</span>}
           </div>
         ) : (
-          sub && <div className="truncate text-[13px] opacity-75">{sub}</div>
+          sub && <div className="truncate text-small opacity-75">{sub}</div>
         )}
       </div>
       {!compact && <TestTag compact={false} />}
@@ -272,7 +273,7 @@ export function StepCue({ cue, className = "" }: { cue: string; className?: stri
 export function NextCard({ plan, step, at, eyebrow }: { plan: SessionPlan; step: PlanStep; at?: number; eyebrow?: ReactNode }) {
   const bits = [step.bowls.length ? `bol${step.bowls.length > 1 ? "s" : ""} ${step.bowls.join(", ")}` : null, shortName(recipeOf(plan, step.recipeSlug)?.name) || null, step.equipmentName].filter(Boolean);
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-dashed border-line-strong px-4 py-3.5">
+    <div className="flex items-center gap-3 rounded-[14px] border border-dashed border-line-strong px-4 py-4">
       <StepIllu kind={step.kind} text={step.text} size="m" className="shrink-0" />
       <div className="grid min-w-0 content-start gap-1">
         <Eyebrow>{eyebrow ?? <>Ensuite · étape {step.no}{at ? ` · ${clock(at)}` : ""}</>}</Eyebrow>
@@ -286,15 +287,15 @@ export function NextCard({ plan, step, at, eyebrow }: { plan: SessionPlan; step:
 export function TakeBowl({ bowl, ready, label = "Bol à prendre" }: { bowl: PlanBowl; ready?: boolean; label?: string }) {
   const ordered = bowlOrdered(bowl);
   return (
-    <div className="flex items-center gap-3.5 rounded-[14px] border border-line bg-surface p-3.5">
+    <div className="flex items-center gap-4 rounded-[14px] border border-line bg-surface p-4">
       <Bowl bowl={bowl} size="xl" ready={ready} />
       <div className="min-w-0">
         <Eyebrow>{label}</Eyebrow>
         <b className="block font-display text-[20px] leading-tight [font-stretch:100%]">{bowlName(bowl)}</b>
         {bowlQty(bowl) && <span className="num block text-[14px] text-ink-2">{bowlQty(bowl)}</span>}
-        <BowlFoods bowl={bowl} live className="mt-1.5" />
+        <BowlFoods bowl={bowl} live className="mt-2" />
         {ordered && (
-          <span className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-2">
+          <span className="mt-1 flex items-center gap-2 text-[12px] text-ink-2">
             <Icon name="basket" size="s" />
             {ordered}
           </span>
@@ -317,7 +318,7 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
   const pan = active.find((s) => s.equipmentId === "poele-28");
   const nextOven = inOven.length ? null : nextOn((x) => Boolean(x.oven) || x.kind === "preheat");
   return (
-    <div className="grid gap-2.5" aria-label="Foyers et four">
+    <div className="grid gap-3" aria-label="Foyers et four">
       <div className="flex items-end justify-center gap-3 rounded-[14px] bg-surface-2 p-3">
         {plan.hobs.map((h) => {
           const s = onHob(h.id);
@@ -327,23 +328,23 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
           return (
             <div key={h.id} className="grid justify-items-center gap-1">
               <div
-                className={`relative grid place-items-center rounded-full text-center text-[11px] leading-tight transition-[background-color,border-color] duration-[var(--dur-slow)] ${s ? "border-[3px] border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_12%,var(--c-surface))] text-ink" : "border-2 border-dashed border-line-strong text-ink-2"}`}
+                className={`relative grid place-items-center rounded-full text-center text-[12px] leading-tight transition-[background-color,border-color] duration-[var(--dur-slow)] ${s ? "border-[3px] border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_12%,var(--c-surface))] text-ink" : "border-2 border-dashed border-line-strong text-ink-2"}`}
                 style={{ width: px, height: px, ...(s ? rc(stepColor(plan, s)) : {}) }}
                 title={s ? `Étape ${s.no} · ${s.equipmentName ?? ""}` : "libre"}
               >
-                {lv && <span className="num absolute -top-2 -right-1.5 grid h-6 min-w-6 place-items-center rounded-[8px] bg-inverse px-1.5 text-[14px] font-extrabold text-on-inverse">{lv}</span>}
+                {lv && <span className="num absolute -top-2 -right-1.5 grid h-6 min-w-6 place-items-center rounded-[8px] bg-inverse px-2 text-[14px] font-extrabold text-on-inverse">{lv}</span>}
                 <span className="px-1">
                   <b className="block text-[12px]">{s ? (s.equipmentName ?? kindLabel(s.kind)) : "libre"}</b>
                   {String(h.diameterCm ?? "").replace(".", ",")} cm
                 </span>
               </div>
-              {n && <span className="max-w-[7rem] truncate text-[11px] text-faint">puis {n.equipmentName ?? `ét. ${n.no}`} · {clock(cookingStart + n.startMin * 60000)}</span>}
+              {n && <span className="max-w-[7rem] truncate text-[12px] text-faint">puis {n.equipmentName ?? `ét. ${n.no}`} · {clock(cookingStart + n.startMin * 60000)}</span>}
             </div>
           );
         })}
       </div>
-      <div className="grid gap-1 rounded-[10px] border-2 border-line-strong px-2.5 py-2 text-[12px]">
-        <div className="flex justify-between text-[13px] font-bold">
+      <div className="grid gap-1 rounded-[8px] border-2 border-line-strong px-3 py-2 text-[12px]">
+        <div className="flex justify-between text-small font-bold">
           <span>Four · chaleur tournante</span>
           <span className="num">{temp ? `${temp} °C` : "éteint"}</span>
         </div>
@@ -353,11 +354,11 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
             <div key={lvl} className="grid grid-cols-[16px_minmax(0,1fr)] items-center gap-2 text-faint">
               <span className="num">{lvl}</span>
               {s ? (
-                <i className="flex h-5 items-center truncate rounded-[3px] border-2 border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_18%,var(--c-surface))] px-1.5 text-[11px] not-italic text-ink" style={rc(stepColor(plan, s))}>
+                <i className="flex h-5 items-center truncate rounded-[4px] border-2 border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_18%,var(--c-surface))] px-2 text-[12px] not-italic text-ink" style={rc(stepColor(plan, s))}>
                   {s.equipmentName} · {shortName(recipeOf(plan, s.recipeSlug)?.name)}
                 </i>
               ) : (
-                <i className="h-3.5 rounded-[3px] border-b-2 border-line-strong" />
+                <i className="h-3.5 rounded-[4px] border-b-2 border-line-strong" />
               )}
             </div>
           );
@@ -365,13 +366,13 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
         {preheat && <span className="text-ink-2">Préchauffage en cours</span>}
         {nextOven && <span className="text-ink-2">Ensuite : {nextOven.kind === "preheat" ? "préchauffage" : nextOven.equipmentName} vers {clock(cookingStart + nextOven.startMin * 60000)}</span>}
       </div>
-      <div className="flex items-center justify-between gap-2 rounded-[10px] border border-line px-2.5 py-2 text-[13px]">
-        <span className="flex items-center gap-1.5 font-bold">
+      <div className="flex items-center justify-between gap-2 rounded-[8px] border border-line px-3 py-2 text-small">
+        <span className="flex items-center gap-2 font-bold">
           <Icon name="pan" size="s" />
           Poêle 28
         </span>
         {pan ? (
-          <span className="flex min-w-0 items-center gap-1.5" style={rc(stepColor(plan, pan))}>
+          <span className="flex min-w-0 items-center gap-2" style={rc(stepColor(plan, pan))}>
             <span className="size-2.5 shrink-0 rounded-full bg-[var(--rc)]" aria-hidden />
             <span className="truncate">
               étape {pan.no} · {shortName(recipeOf(plan, pan.recipeSlug)?.name)}
@@ -390,7 +391,7 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
 
 /** Minuteurs du kit, à l'heure du serveur (tous les écrans sonnent à la même seconde) : +1 min et arrêter. */
 export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d'origine. */ onReset?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
-  if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-3.5 py-3 text-[14px] text-ink-2">Aucun minuteur en cours : « Suivant » les lance.</p> : null;
+  if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[14px] text-ink-2">Aucun minuteur en cours : « Suivant » les lance.</p> : null;
   return (
     <div className="grid gap-2">
       {timers.map((t) => {
@@ -492,31 +493,31 @@ export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { pl
   const after = t.phase != null && step?.phases?.[t.phase]?.wait ? step.phases[t.phase + 1] : undefined;
   return (
     <div className={`fixed inset-0 z-50 ${kitchen ? "kitchen-dark" : ""}`} role="alertdialog" aria-modal="true" aria-label="Minuteur terminé">
-      <div className="flex h-full flex-col gap-4 overflow-y-auto bg-inverse px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1.25rem)] text-on-inverse animate-[k-fade_200ms_ease-out]">
+      <div className="sx-ring flex h-full flex-col gap-6 overflow-y-auto bg-hot px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1.25rem)] text-on-hot">
         <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4">
           <div className="flex justify-between text-[14px] opacity-70">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-2">
               <Icon name="bell" size="s" />
               {after ? `fini : ${t.label}` : "minuteur fini"}
             </span>
             <span className="num">il y a {mmss(now - t.endsAt)}</span>
           </div>
-          <h1 className="font-display text-[clamp(2.25rem,7vw,3.25rem)] leading-[1.02] font-extrabold tracking-[-0.02em] [font-stretch:88%]">{after ? after.text : t.label}</h1>
+          <h1 className="sx-consigne">{after ? after.text : t.label}</h1>
           {step && (
             <p className="text-[18px] opacity-75">
               {recipe ? `${recipe.name} · ` : ""}étape {step.no} · {stepTitle(plan, step)}
             </p>
           )}
           <div className="my-auto grid place-items-center py-4">
-            <span className="num-tight grid size-[min(220px,52vw)] animate-pulse place-items-center rounded-full border-[14px] border-current text-[clamp(3.5rem,14vw,5rem)] font-extrabold">00:00</span>
+            <span className="sx-giant" aria-hidden>+{mmss(now - t.endsAt)}</span>
           </div>
           {others.map((o) => (
-            <button key={o.id} type="button" onClick={() => onStop(o)} className="flex min-h-14 items-center justify-between gap-3 rounded-[14px] border border-[color-mix(in_srgb,var(--c-on-inverse)_40%,transparent)] px-4 text-left text-[17px] font-semibold">
+            <button key={o.id} type="button" onClick={() => onStop(o)} className="flex min-h-14 items-center justify-between gap-3 rounded-[14px] border border-[color-mix(in_srgb,currentColor_35%,transparent)] px-4 text-left text-[17px] font-semibold">
               <span className="min-w-0 truncate">Aussi fini : {o.label}</span>
               <span className="shrink-0 text-[14px] opacity-75">arrêter</span>
             </button>
           ))}
-          <Button variant="on-inverse" size="kitchen" block icon="check" onClick={() => onStop(t)} className="!min-h-24 text-[24px]">
+          <Button variant="ink" size="kitchen" block icon="check" onClick={() => onStop(t)} className="!min-h-24 text-[24px]">
             {after ? "C'est parti, sur tous les écrans" : "Arrêter, sur tous les écrans"}
           </Button>
         </div>
@@ -530,7 +531,7 @@ export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { pl
 /** Relais à deux (DA `.handoff`) : qui libère quoi, et quand. */
 export function HandoffRow({ from, children, at }: { from: Person; children: ReactNode; at?: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-[12px] bg-accent-soft px-3 py-2.5 text-[14px]">
+    <div className="flex items-center gap-3 rounded-[8px] bg-accent-soft px-3 py-3 text-[14px]">
       <PersonMono person={from} />
       <span className="min-w-0 flex-1">{children}</span>
       {at && <span className="num shrink-0 text-[12px] text-ink-2">{at}</span>}
@@ -541,8 +542,8 @@ export function HandoffRow({ from, children, at }: { from: Person; children: Rea
 /** QR code pour ouvrir la vue téléphone. Le fond reste blanc : un QR doit être sombre sur clair pour se lire (seule couleur fixe de la session). */
 export function QrCard({ svg, url, children }: { svg: string; url: string; children: ReactNode }) {
   return (
-    <a href={url} className="grid justify-items-center gap-2 rounded-[14px] border border-line bg-surface p-3.5 text-[14px] hover:border-line-strong" title="Scanner avec le téléphone, ou cliquer pour ouvrir la vue téléphone ici">
-      <span className="block w-[104px] rounded-[10px] border border-line bg-white p-1.5 [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+    <a href={url} className="grid justify-items-center gap-2 rounded-[14px] border border-line bg-surface p-4 text-[14px] hover:border-line-strong" title="Scanner avec le téléphone, ou cliquer pour ouvrir la vue téléphone ici">
+      <span className="block w-[104px] rounded-[8px] border border-line bg-white p-2 [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
       <span className="flex items-center gap-2 font-bold">{children}</span>
     </a>
   );
@@ -571,9 +572,12 @@ export function ToastView({ toast, onDone, raised = false }: { toast: ToastData 
   );
 }
 
-/** Étiquette de recette en petit (DA `.rtile sm`), aux couleurs du plan. */
+/** La boîte du plat en petit (signature « La boîte », à la place du monogramme), aux couleurs du plan. */
 export function RecipeMark({ plan, slug, size = "sm" }: { plan: SessionPlan; slug: string | null | undefined; size?: "sm" | "md" }) {
   const r = recipeOf(plan, slug);
-  if (!r) return <RecipeTile color="var(--c-ink-3)" size={size}>·</RecipeTile>;
-  return <RecipeTile color={r.color} name={r.name} size={size} />;
+  return (
+    <span title={r?.name} className="inline-flex shrink-0">
+      <BoxGlyph color={r?.color ?? "var(--c-ink-3)"} size={size === "md" ? 40 : 30} />
+    </span>
+  );
 }
