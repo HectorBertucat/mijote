@@ -63,16 +63,22 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
-      # Couches gardées dans le cache d'Actions : l'étape des dépendances (apt, pnpm install,
-      # compilation de better-sqlite3) n'est refaite que si package.json ou le verrou changent.
+      # Seule l'étape des dépendances (apt, pnpm install, compilation de better-sqlite3) va dans le
+      # cache d'Actions : elle ne change qu'avec package.json ou le verrou. Exporter aussi le build
+      # (refait à chaque commit) coûtait plusieurs minutes d'envoi pour ~15 s gagnées.
+      - name: Dépendances de l'image (en cache)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: deps
+          cache-from: type=gha,scope=deps
+          cache-to: type=gha,mode=max,scope=deps,ignore-error=true
       - name: Construire l'image
         uses: docker/build-push-action@v7
         with:
           context: .
           load: true
           tags: mijote:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Lancer le conteneur et vérifier la mise en route
         run: |
           docker run -d --name mijote -p 3010:3010 -e MIJOTE_PASSWORD=ci mijote:ci
