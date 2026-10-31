@@ -53,6 +53,9 @@ SQLite + Drizzle, une migration initiale (`src/lib/db/migrations/0000_init.sql`)
 | `training_live` | id, person_id, state, version, updated_at, ended_at | Séance en cours partagée entre écrans |
 | `food_art` | key (nom normalisé), label, category, svg | Dessins d'aliments créés par l'IA, filtrés par `sanitizeIllu` |
 | `assistant_messages` | id, person_id (cascade), role (`user`, `assistant`), text, actions (json : actions proposées, leur vérification, leur sort `proposed`/`applied`/`dismissed`/`refused`), page, model, created_at ; index (person_id, created_at) | Conversation de l'assistant, une par personne, 30 messages gardés (migration 0005, `src/lib/assistant/`) |
+| `weigh_ins` | id, person_id, date, measured_at, kg, source (`manual`, `health`, `import`), external_id (`w:<instant>` du Raccourci et de l'export, `hk:<uuid>` de l'app) | Pesées ; celles d'Apple Santé dédoublonnées par (person_id, external_id) |
+| `health_samples` | id, person_id, kind (`steps`, `active_kcal`, `basal_energy`, `exercise_min`, `walk_run_m`, `diet_energy`, `diet_protein`, `water`, `workout`, `sleep`, `body_fat`, `lean_mass`, `resting_hr`, `hrv_sdnn`, `vo2max`, `menstrual`), start, end, value, unit, meta (json : nom de séance, phase de sommeil, source), external_id (`<kind>:<date>` pour un total du jour, `hk:<uuid>` pour un échantillon de l'app, `workout:<instant>` pour une séance du Raccourci) | Ce qu'envoie Apple Santé (`src/lib/health/ingest-v2.ts`) ; unique par (person_id, kind, external_id) |
+| `health_links` | person_id, key (clé secrète), last_sync_at, last_month_at/last_history_at (fenêtre du Raccourci v1), history_complete_at (migration 0006 : l'app a envoyé tout l'historique) | Une clé par personne pour `/api/sante/import` |
 | `app_settings` | key, value | Réglages de l'instance : mise en route, cuisine, magasin, nom de la maison |
 
 ## Coûts dérivés (en code, `src/lib/costs/`, sans IA)

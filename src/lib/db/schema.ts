@@ -597,13 +597,18 @@ export const weeklyTargets = sqliteTable(
   (t) => [uniqueIndex("uq_weekly_target").on(t.personId, t.weekStart)]
 );
 
-// Ce qu'envoie Apple Santé (pas, énergie active, séances). Affiché, pas utilisé pour la cible.
+// Ce qu'envoie Apple Santé (pas, énergie, séances, sommeil, cœur, composition…). Affiché, pas utilisé pour la
+// cible. Les pesées vont dans weigh_ins. Totaux du jour : externalId `<kind>:<date>` ; échantillons de l'app :
+// `hk:<uuid>` (src/lib/health/ingest-v2.ts).
+export const HEALTH_KINDS = ["steps", "active_kcal", "workout", "basal_energy", "exercise_min", "walk_run_m", "diet_energy", "diet_protein", "water", "body_fat", "lean_mass", "resting_hr", "hrv_sdnn", "vo2max", "menstrual", "sleep"] as const;
+export type HealthKind = (typeof HEALTH_KINDS)[number];
+
 export const healthSamples = sqliteTable(
   "health_samples",
   {
     id: text("id").primaryKey(),
     personId: text("person_id").notNull().references(() => people.id),
-    kind: text("kind", { enum: ["steps", "active_kcal", "workout"] }).notNull(),
+    kind: text("kind", { enum: HEALTH_KINDS }).notNull(),
     start: text("start").notNull(),
     end: text("end"),
     value: real("value").notNull(),
@@ -675,9 +680,10 @@ export const trainingLive = sqliteTable(
   (t) => [index("idx_training_live_person").on(t.personId, t.updatedAt)]
 );
 
-// ─── 7. Raccourci Apple Santé (migration 0014) ───
-// Une clé par personne : le Raccourci l'envoie (X-Cuisine-Key), l'appli en déduit le profil. Les dates
-// de synchro décident de la fenêtre demandée au téléphone (6 mois la première fois, le mois chaque semaine).
+// ─── 7. Apple Santé (migration 0014, puis 0006_sante_app) ───
+// Une clé par personne : l'app Mijote Santé (ou l'ancien Raccourci) l'envoie (X-Mijote-Key), l'appli en
+// déduit le profil. lastSyncAt : dernier envoi complet. lastMonthAt/lastHistoryAt : fenêtre du Raccourci v1.
+// historyCompleteAt : l'app a envoyé tout l'historique (sinon le GET lui demande `history: "all"`).
 export const healthLinks = sqliteTable("health_links", {
   personId: text("person_id").primaryKey().references(() => people.id),
   key: text("key").notNull().unique(),
@@ -685,9 +691,10 @@ export const healthLinks = sqliteTable("health_links", {
   lastSyncAt: text("last_sync_at"),
   lastMonthAt: text("last_month_at"),
   lastHistoryAt: text("last_history_at"),
+  historyCompleteAt: text("history_complete_at"),
 });
 
-// Réglages saisis dans l'appli (ex. le jeton de service Cloudflare du Raccourci, recopié dans le code d'installation).
+// Réglages saisis dans l'appli (ex. le jeton de service Cloudflare d'Apple Santé, recopié dans le code d'installation).
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

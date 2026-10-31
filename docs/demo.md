@@ -37,7 +37,7 @@ Pas de mise en route. Un bandeau discret en tête de chaque page : « Démo : te
 |---|---|
 | IA (Atelier, import, coach, assistant, ajuster, dessins, programme sur mesure) | Coupée même si `ANTHROPIC_API_KEY` est réglée. L'Atelier, l'import et le coach expliquent ce qu'ils font chez soi ; les autres boutons répondent « Pas d'IA dans la démo ». |
 | Catalogue de produits | Coupé même si `CHRONOCATALOG_URL` est réglée : courses par rayon, sans prix. |
-| Apple Santé | L'écran explique le Raccourci ; `/api/sante/import` répond 404. |
+| Apple Santé | L'écran explique l'app iPhone ; `/api/sante/import` répond 404. |
 | Mot de passe | `MIJOTE_PASSWORD` est ignoré : la démo est faite pour être ouverte. |
 
 Les réglages (foyer, cuisine, magasin) restent modifiables : ils ne valent que pour la base du visiteur.

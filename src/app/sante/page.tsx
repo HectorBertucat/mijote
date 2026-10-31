@@ -9,11 +9,16 @@ import { activePerson } from "@/lib/health/active";
 import { dailyWeights, missingForEstimate, rateOf, trendSeries, weeklyRate, type Confidence } from "@/lib/health/core";
 import { currentMonday, goalSummary, listSessions } from "@/lib/health/objectives";
 import { currentReview, listWaist, listWeighIns, todayParis, toProfile } from "@/lib/health/store";
+import { bodySignals, type Signal } from "@/lib/health/samples";
+import { hm } from "@/lib/health/sleep";
 
 export const dynamic = "force-dynamic";
 
 const kg1 = (v: number) => v.toFixed(1).replace(".", ",");
 const fmtDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+const dec = (v: number, digits: number) => v.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+/** « il y a un mois : 58 », s'il y a de quoi comparer. */
+const monthAgo = (s: Signal, digits = 0, unit = "") => (s.before != null ? `il y a un mois : ${dec(s.before, digits)}${unit && NB + unit}` : `au ${fmtDay(s.at)}`);
 
 const CONFIDENCE: Record<Confidence, { tone: "ok" | "warn" | "idle"; word: string }> = {
   adaptive: { tone: "ok", word: "mesurée" },
@@ -38,6 +43,8 @@ export default async function Sante() {
   const goals = goalSummary(db, person);
   const monday = currentMonday();
   const isMonday = new Date(`${today}T12:00:00Z`).getUTCDay() === 1;
+  const body = bodySignals(db, person.id, today);
+  const lastNight = body.sleep?.nights[body.sleep.nights.length - 1];
 
   const tone = review ? CONFIDENCE[review.confidence] : null;
 
@@ -134,6 +141,36 @@ export default async function Sante() {
           </Section>
         </div>
       </div>
+
+      {/* Ce que l’app Mijote Santé envoie en plus du poids : seulement ce qui est arrivé. */}
+      {(body.sleep || body.restingHr || body.hrv || body.vo2max || body.bodyFat) && (
+        <Section title="Sommeil et forme" id="forme" aside={<span className="label text-ink-2">Apple Santé</span>}>
+          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+            {body.sleep && lastNight && (
+              <KeyFigure
+                size="lg"
+                className="col-span-2"
+                label="Sommeil"
+                value={hm(body.sleep.avgMin)}
+                sub={
+                  <>
+                    par nuit sur {body.sleep.nights.length} {body.sleep.nights.length > 1 ? "nuits" : "nuit"} ; la dernière, {hm(lastNight.asleepMin)}
+                    {lastNight.deepMin != null && lastNight.remMin != null && `, dont ${hm(lastNight.deepMin)} de profond et ${hm(lastNight.remMin)} de paradoxal`}
+                  </>
+                }
+              />
+            )}
+            {body.restingHr && <KeyFigure size="lg" label="FC au repos" value={Math.round(body.restingHr.value)} unit="bpm" sub={`moyenne sur 7 jours ; ${monthAgo(body.restingHr)}`} />}
+            {body.hrv && <KeyFigure size="lg" label="Variabilité cardiaque" value={Math.round(body.hrv.value)} unit="ms" sub={`moyenne sur 7 jours ; ${monthAgo(body.hrv)}`} />}
+            {body.vo2max && <KeyFigure size="lg" label="VO2max" value={dec(body.vo2max.value, 1)} unit="mL/kg/min" sub={monthAgo(body.vo2max, 1)} />}
+            {body.bodyFat && <KeyFigure size="lg" label="Masse grasse" value={dec(body.bodyFat.value, 1)} unit="%" sub={monthAgo(body.bodyFat, 1, "%")} />}
+          </div>
+          <HowCalc title="Comment les lire">
+            <p>Ces chiffres viennent de la montre ou de la balance, par l’app Mijote Santé. Ils ne changent pas la cible : ils aident à comprendre une semaine difficile.</p>
+            <p>Une FC au repos qui monte de quelques battements, ou une variabilité qui baisse, signale souvent la fatigue, un rhume ou un manque de sommeil. Comparer à soi-même, jamais aux autres.</p>
+          </HowCalc>
+        </Section>
+      )}
 
       <ActivityCard sessions={sessions} plan={goals.plan} monday={monday} />
     </div>

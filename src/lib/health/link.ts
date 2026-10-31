@@ -1,7 +1,8 @@
-// Raccourci Apple Santé installé depuis le téléphone : une clé par personne, et la fenêtre de synchro
-// que l'appli demande au Raccourci à chaque envoi (GET /api/sante/import). Première fois : 6 mois
-// d'historique ; ensuite le dernier mois une fois par semaine (rattrape un oubli, une pesée tardive) ;
-// sinon les 7 derniers jours. Tout est dédoublonné à l'arrivée, donc renvoyer ne coûte rien.
+// Apple Santé → Mijote : une clé par personne, que l'app Mijote Santé de l'iPhone envoie à chaque requête
+// (GET/POST /api/sante/import). L'app demande au GET s'il lui faut tout l'historique (`history: "all"`,
+// tant que historyCompleteAt est vide). L'ancien Raccourci (format v1) lit plutôt une fenêtre en jours :
+// 6 mois la première fois, le dernier mois une fois par semaine, sinon 7 jours. Tout est dédoublonné à
+// l'arrivée, donc renvoyer ne coûte rien.
 import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
@@ -50,7 +51,7 @@ export function ensureLink(db: Db, personId: string) {
   return getLink(db, personId)!;
 }
 
-/** Nouvelle clé : l'ancien Raccourci est refusé jusqu'à ce qu'on recolle le code. */
+/** Nouvelle clé : l'app (ou l'ancien Raccourci) est refusée jusqu'à ce qu'on recolle le code. */
 export function rotateLink(db: Db, personId: string) {
   ensureLink(db, personId);
   db.update(healthLinks).set({ key: newKey() }).where(eq(healthLinks.personId, personId)).run();
@@ -68,9 +69,18 @@ export function markSynced(db: Db, personId: string, window: number, now = new D
   db.update(healthLinks).set(afterSync(l, window, now)).where(eq(healthLinks.personId, personId)).run();
 }
 
-/** Remet l'historique à refaire (le prochain envoi reprendra 6 mois). */
+/** Fin d'un envoi de l'app (paquet `last`) ; `complete` : c'était la fin de tout l'historique. */
+export function markSyncedV2(db: Db, personId: string, complete: boolean, now = new Date()) {
+  const at = now.toISOString();
+  db.update(healthLinks)
+    .set(complete ? { lastSyncAt: at, historyCompleteAt: at } : { lastSyncAt: at })
+    .where(eq(healthLinks.personId, personId))
+    .run();
+}
+
+/** « Tout renvoyer » : l'app relira tout l'historique, l'ancien Raccourci 6 mois. */
 export function resetHistory(db: Db, personId: string) {
-  db.update(healthLinks).set({ lastHistoryAt: null }).where(eq(healthLinks.personId, personId)).run();
+  db.update(healthLinks).set({ lastHistoryAt: null, historyCompleteAt: null }).where(eq(healthLinks.personId, personId)).run();
 }
 
 // ---------- Réglages ----------
@@ -95,7 +105,10 @@ export function setSetting(db: Db, key: string, value: string) {
 
 export const CODE_TAG = "mijote-sante";
 
-/** Ce que l'on colle dans le Raccourci (via le presse-papiers) : tout ce qu'il lui faut, pour une personne. */
-export function installCode(o: { url: string; person: string; key: string; clientId: string; clientSecret: string }) {
-  return JSON.stringify({ app: CODE_TAG, person: o.person, url: o.url, key: o.key, id: o.clientId, secret: o.clientSecret });
+/**
+ * Ce que l'app Mijote Santé scanne (QR code) ou colle : tout ce qu'il lui faut, pour une personne. Pas de
+ * prénom : la clé suffit, le GET le renvoie. `id` et `secret` restent vides sans Cloudflare Access.
+ */
+export function installCode(o: { url: string; key: string; clientId: string; clientSecret: string }) {
+  return JSON.stringify({ [CODE_TAG]: 1, url: o.url, id: o.clientId, secret: o.clientSecret, key: o.key });
 }

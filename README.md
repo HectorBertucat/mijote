@@ -79,8 +79,8 @@ Mieux vaut les connaître avant d'installer :
 - **Une table nutritionnelle courte** : 44 aliments courants. Un ingrédient absent n'est pas compté, et la fiche affiche la part couverte.
 - **Six recettes de démonstration, toutes au porc.** C'était la base de mon foyer. L'Atelier en crée d'autres, et le format de fiche est documenté.
 - **Pas un outil médical.** Les cibles et le coach suivent des repères grand public (rythme de perte prudent, protéines, IMC). Ils ne remplacent pas un avis médical.
-- **Apple Santé uniquement**, via un Raccourci iOS. Rien pour Android pour l'instant.
-- **Une web app**, pas une application native. Elle s'installe sur l'écran d'accueil. Garder l'écran allumé pendant la cuisine et installer le Raccourci demandent HTTPS.
+- **Apple Santé uniquement**, via une app iPhone compagnon (format documenté dans docs/sante.md). Rien pour Android pour l'instant.
+- **Une web app**, pas une application native. Elle s'installe sur l'écran d'accueil. Garder l'écran allumé pendant la cuisine et relier l'app Apple Santé demandent HTTPS.
 - **Le sport est du renforcement à la maison** : figures de profil en 2D, 25 exercices dans la bibliothèque, pas de cardio guidé.
 
 ## Documentation

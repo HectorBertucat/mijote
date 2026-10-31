@@ -1,5 +1,6 @@
-// Import Apple Santé : ce qu'envoie le Raccourci iOS chaque matin, ou l'historique lu dans
-// l'export de Santé (le navigateur lit le fichier et envoie les pesées par paquets).
+// Import Apple Santé, format v1 : ce qu'envoyait le Raccourci iOS (gardé pour les Raccourcis déjà
+// installés), et l'historique lu dans l'export de Santé (le navigateur lit le fichier et envoie par
+// paquets). L'app Mijote Santé envoie le format v2 : ./ingest-v2.ts.
 // Tout est dédoublonné (même pesée envoyée deux fois = une ligne) : renvoyer ne coûte rien.
 import { randomUUID } from "crypto";
 import { z } from "zod";
@@ -61,6 +62,34 @@ const FR: Record<string, string> = {
   CoreTraining: "Gainage",
   Elliptical: "Elliptique",
   Rowing: "Rameur",
+  MixedCardio: "Cardio",
+  CrossTraining: "Entraînement croisé",
+  Dance: "Danse",
+  SocialDance: "Danse",
+  Cardio: "Cardio",
+  Barre: "Barre au sol",
+  Boxing: "Boxe",
+  Kickboxing: "Kick-boxing",
+  MartialArts: "Arts martiaux",
+  Climbing: "Escalade",
+  Tennis: "Tennis",
+  TableTennis: "Tennis de table",
+  Badminton: "Badminton",
+  Soccer: "Football",
+  Basketball: "Basket",
+  Golf: "Golf",
+  StairClimbing: "Escaliers",
+  Stairs: "Escaliers",
+  StepTraining: "Step",
+  JumpRope: "Corde à sauter",
+  WaterFitness: "Aquagym",
+  PaddleSports: "Pagaie",
+  SurfingSports: "Surf",
+  DownhillSkiing: "Ski",
+  CrossCountrySkiing: "Ski de fond",
+  Flexibility: "Souplesse",
+  MindAndBody: "Corps et esprit",
+  Cooldown: "Retour au calme",
   Other: "Séance",
 };
 
@@ -71,6 +100,19 @@ export function workoutLabel(type: string, name?: string) {
   if (!VAGUE.test(t)) return t;
   const n = (name ?? "").split(/[\n,]/)[0].trim();
   return n && !VAGUE.test(n) ? n : "Séance";
+}
+
+/**
+ * Nom lisible d'une séance de l'app : `activity` est le HKWorkoutActivityType en snake_case
+ * (`traditional_strength_training`). Connu : en français ; sinon les mots tels quels.
+ */
+export function activityLabel(activity: string) {
+  const words = activity.trim().toLowerCase().split(/[_\s]+/).filter(Boolean);
+  const pascal = words.map((w) => w[0].toUpperCase() + w.slice(1)).join("");
+  if (FR[pascal]) return FR[pascal];
+  if (VAGUE.test(pascal)) return "Séance";
+  const text = words.join(" ");
+  return text[0].toUpperCase() + text.slice(1);
 }
 
 /** Poids en kg ; accepte aussi des livres si l'unité le dit. */
