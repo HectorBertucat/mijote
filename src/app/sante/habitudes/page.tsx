@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui";
+import { HowCalc, KeyFigure, NB, NNB } from "@/components/sante/carnet";
 import { AdviceCard } from "@/components/sante/AdviceCard";
 import { Habits } from "@/components/sante/Habits";
 import { db } from "@/lib/db/client";
@@ -21,46 +21,50 @@ export default async function Habitudes({ searchParams }: { searchParams: Promis
   const habits = listHabits(db, person.id);
 
   return (
-    <div className="grid max-w-2xl gap-5">
-      <div className="grid gap-2">
-        <h2 className="text-[22px] font-extrabold tracking-[-0.02em]">Hors batch · {person.name}</h2>
-        <p className="text-ink-2">
-          Le batch couvre le midi et le soir. Ce que tu prends à côté (shaker, petit-déjeuner, en-cas) se note une fois ici, avec ses jours : il est retiré de ta cible avant de la partager entre les deux repas, et proposé d&apos;office dans le journal du jour.
-        </p>
-      </div>
+    <div className="grid gap-12 lg:grid-cols-12 lg:gap-6">
+      <div className="grid content-start gap-8 lg:col-span-5">
+        <div className="grid gap-4">
+          <h2 className="text-h2">Hors batch{person.id !== active.id && ` · ${person.name}`}</h2>
+          <p className="text-lead text-ink-2">Le batch couvre le midi et le soir. Le shaker, le petit-déjeuner, l’en-cas se notent une fois ici, avec leurs jours.</p>
+          <HowCalc>
+            <p>Ce que tu prends à côté est retiré de ta cible avant de la partager entre les deux repas du batch : ta part de chaque recette en dépend. Il est aussi proposé d’office dans le journal du jour.</p>
+          </HowCalc>
+        </div>
 
-      <AdviceCard advice={adviceFor(db, e)} />
-
-      <Card pad="md" className="grid gap-2">
         {e.outsideSource === "habitudes" && e.outsideByDay ? (
-          <>
-            <p className="text-[15px]">
-              Hors batch, en moyenne : <b className="num">~{fr(e.outside!.kcal)} kcal</b> et <b className="num">{fr(e.outside!.protein)} g</b> de protéines par jour.
-            </p>
-            <ul className="grid grid-cols-7 gap-1 text-center text-[12px]" aria-label="Hors batch jour par jour">
+          <div className="grid gap-6">
+            <div className="grid grid-cols-2 gap-6">
+              <KeyFigure size="lg" label="Par jour, en moyenne" value={`~${fr(e.outside!.kcal)}`} unit="kcal" />
+              <KeyFigure size="lg" label="Protéines" value={fr(e.outside!.protein)} unit="g" />
+            </div>
+            <ol className="grid grid-cols-7 border-t border-line" aria-label="Hors batch jour par jour, en kcal">
               {e.outsideByDay.map((o, i) => (
-                <li key={i} className="grid gap-0.5 rounded-[8px] bg-surface-2 px-1 py-1.5">
-                  <b className="text-ink-2">{WEEKDAYS[i]}</b>
-                  <span className="num">{fr(o.kcal)}</span>
+                <li key={i} className="grid justify-items-center gap-1 border-r border-line py-3 last:border-r-0">
+                  <span className="label text-ink-3">{WEEKDAYS[i]}</span>
+                  <span className="num text-small">{fr(o.kcal)}</span>
                 </li>
               ))}
-            </ul>
-          </>
+            </ol>
+          </div>
         ) : e.outsideSource === "chiffre" ? (
-          <p className="text-[15px]">
-            Hors batch : <b className="num">~{fr(e.outside!.kcal)} kcal</b> et <b className="num">{fr(e.outside!.protein)} g</b> de protéines par jour{e.outside!.kcal === 0 ? " (rien)" : ", un chiffre saisi"}. Une habitude le remplace, jour par jour.
+          <p className="text-body">
+            Hors batch : <b className="num">~{fr(e.outside!.kcal)}{NB}kcal</b> et <b className="num">{fr(e.outside!.protein)}{NB}g</b> de protéines par jour{e.outside!.kcal === 0 ? " (rien)" : ", un chiffre saisi"}. Une habitude le remplace, jour par jour.
           </p>
         ) : (
-          <p className="text-[15px] text-ink-2">Rien de noté : ta part compte un petit-déjeuner moyen (un cinquième de ta journée). Choisis ci-dessous ce qui te ressemble, ou « Rien hors batch ».</p>
+          <p className="text-body text-ink-2">Rien de noté : ta part compte un petit-déjeuner moyen, un cinquième de ta journée. Choisis ce qui te ressemble, ou «{NNB}Rien hors batch{NNB}».</p>
         )}
-      </Card>
 
-      <Habits
-        key={person.id}
-        personId={person.id}
-        name={person.name}
-        habits={habits.map((h) => ({ id: h.id, label: h.label, meal: h.meal, weekdays: h.weekdays, items: h.items, kcal: h.kcal, proteinG: h.proteinG, shared: h.personId == null }))}
-      />
+        <AdviceCard advice={adviceFor(db, e)} />
+      </div>
+
+      <div className="lg:col-span-7 lg:col-start-6 lg:border-l lg:border-line lg:pl-6">
+        <Habits
+          key={person.id}
+          personId={person.id}
+          name={person.name}
+          habits={habits.map((h) => ({ id: h.id, label: h.label, meal: h.meal, weekdays: h.weekdays, items: h.items, kcal: h.kcal, proteinG: h.proteinG, shared: h.personId == null }))}
+        />
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-// Import de l'historique d'Apple Santé : le fichier est lu ici, dans le navigateur (il peut peser des
-// centaines de Mo) ; seules les pesées, les séances et les pas par jour partent vers l'appli, par paquets.
+// Import de l’historique d’Apple Santé : le fichier est lu ici, dans le navigateur (il peut peser des
+// centaines de Mo) ; seules les pesées, les séances et les pas par jour partent vers l’appli, par paquets.
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Progress } from "@/components/ui";
@@ -92,19 +92,19 @@ export function ExportImport({ personId, personName }: { personId: string; perso
         </Button>
       </div>
       {state.phase === "read" && (
-        <div className="grid gap-1.5">
-          <Progress value={state.read} active label="Lecture de l'export" />
-          <span className="num text-[13px] text-ink-2">
+        <div className="grid gap-2">
+          <Progress value={state.read} active label="Lecture de l’export" />
+          <span className="num text-small text-ink-2">
             {found.weights} pesées, {found.workouts} séances trouvées · {Math.round(state.read * 100)} %
           </span>
         </div>
       )}
       {state.phase === "done" && (
-        <p className="text-[14px]">
+        <p className="text-small">
           Pour {personName} : <b>{added.weights}</b> nouvelles pesées sur {found.weights}, <b>{added.workouts}</b> nouvelles séances sur {found.workouts}, et les pas de <b>{found.days}</b> jours. Le reste était déjà là.
         </p>
       )}
-      {state.phase === "error" && <p className="text-[14px] text-ko-ink">{state.message}</p>}
+      {state.phase === "error" && <p className="text-small text-ko-ink">{state.message}</p>}
     </div>
   );
 }

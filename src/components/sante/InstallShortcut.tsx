@@ -1,12 +1,13 @@
 "use client";
 
-// Installer le Raccourci « Santé → cuisine » sur l'iPhone de la personne choisie : copier son code
-// (ou l'envoyer à son téléphone), ajouter le Raccourci, le lancer une fois. Le code contient la clé de
-// la personne et le jeton Cloudflare : il ne sort de l'appli que par le presse-papiers ou le partage.
+// Installer le Raccourci « Santé → cuisine » sur l’iPhone de la personne choisie : copier son code
+// (ou l’envoyer à son téléphone), ajouter le Raccourci, le lancer une fois. Le code contient la clé de
+// la personne et le jeton Cloudflare : il ne sort de l’appli que par le presse-papiers ou le partage.
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, buttonClass, Field, Input } from "@/components/ui";
 import { newHealthKey, redoHistory, saveCloudflareToken } from "@/app/sante/actions";
+import { de } from "./carnet";
 
 export function CopyCode({ code, personName }: { code: string; personName: string }) {
   const [state, setState] = useState<"idle" | "done" | "error">("idle");
@@ -25,7 +26,7 @@ export function CopyCode({ code, personName }: { code: string; personName: strin
     <div className="grid gap-2">
       <div className="flex flex-wrap gap-2">
         <Button icon="copy" variant="primary" state={state === "done" ? "done" : "idle"} doneLabel="Code copié" onClick={copy}>
-          Copier le code de {personName}
+          Copier le code {de(personName)}
         </Button>
         {canShare && (
           <Button icon="link" onClick={() => navigator.share({ title: `Code Santé → cuisine (${personName})`, text: code }).catch(() => {})}>
@@ -33,14 +34,14 @@ export function CopyCode({ code, personName }: { code: string; personName: strin
           </Button>
         )}
       </div>
-      {state === "error" && <p className="text-[13px] text-ko-ink">Copie refusée par le navigateur : appuie longuement sur le code ci-dessous et copie-le.</p>}
+      {state === "error" && <p className="text-small text-ko-ink">Copie refusée par le navigateur : appuie longuement sur le code ci-dessous et copie-le.</p>}
       {state === "error" && <code className="block break-all rounded-[8px] bg-surface-2 p-2 text-[12px]">{code}</code>}
     </div>
   );
 }
 
 export function InstallLink({ href }: { href: string | null }) {
-  if (!href) return <p className="text-[14px] text-ink-2">Le fichier du Raccourci n'est pas encore en ligne : il doit d'abord être signé sur le Mac.</p>;
+  if (!href) return <p className="text-small text-ink-2">Le fichier du Raccourci n’est pas encore en ligne : il doit d’abord être signé sur le Mac.</p>;
   return (
     <a className={buttonClass({ variant: "primary" })} href={href} download="Santé → cuisine.shortcut">
       Ajouter le Raccourci
@@ -55,9 +56,9 @@ export function CloudflareForm({ saved }: { saved: string | null }) {
   const [pending, start] = useTransition();
   if (!open)
     return (
-      <div className="flex flex-wrap items-center gap-2 text-[14px]">
+      <div className="flex flex-wrap items-center gap-2 text-small">
         <span>
-          Jeton enregistré : <code className="rounded-[6px] bg-surface-2 px-1.5 py-0.5 text-[13px]">{saved}</code>
+          Jeton enregistré : <code className="rounded-[6px] bg-surface-2 px-2 py-1 text-small">{saved}</code>
         </span>
         <Button size="sm" variant="quiet" onClick={() => setOpen(true)}>
           Changer
@@ -94,7 +95,7 @@ export function CloudflareForm({ saved }: { saved: string | null }) {
           </Button>
         )}
       </div>
-      {message && <p className={`text-[14px] ${message.ok ? "text-ok-ink" : "text-ko-ink"}`}>{message.text}</p>}
+      {message && <p className={`text-small ${message.ok ? "text-ok-ink" : "text-ko-ink"}`}>{message.text}</p>}
     </form>
   );
 }
@@ -118,7 +119,7 @@ export function LinkTools({ personId }: { personId: string }) {
           Nouvelle clé
         </Button>
       </div>
-      {message && <p className="text-[13px] text-ink-2">{message}</p>}
+      {message && <p className="text-small text-ink-2">{message}</p>}
     </div>
   );
 }

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Profil() {
   const p = await activePerson();
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-18">
     <ProfileForm
       key={p.id}
       personId={p.id}
