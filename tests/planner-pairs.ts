@@ -5,8 +5,13 @@ import { planSession, validatePlan, type SessionMode } from "@/lib/session/plann
 import { load, RES } from "./helpers";
 
 // Toutes les paires de recettes du seed, seul et à deux (audit du 25/10/2026, `pnpm plan:audit`).
+// Pas un fichier *.test.ts : les paires sont réparties entre planner-pairs-1…4.test.ts, que
+// `node --test` lance en parallèle (une paire coûte ~40 ms et leur nombre croît comme n²).
+// Chaque paire est vérifiée par exactement un morceau ; le premier vérifie la couverture.
 const R = fs.readdirSync("src/seed/recipes").filter((f) => f.endsWith(".json")).sort().map(load);
 const pairs = R.flatMap((a, i) => R.slice(i + 1).map((b) => [a, b] as const));
+const key = (a: { slug: string }, b: { slug: string }) => `${a.slug}+${b.slug}`;
+export const PARTS = 4;
 
 // Plafonds : la durée totale mesurée le 25/10/2026, après les essais multiples, le faitout de
 // rechange du colombo, les suites dans le même récipient qui n'attendent plus (un peu plus long
@@ -170,24 +175,72 @@ const CEIL: Record<string, [solo: number, duo: number]> = {
   "poulet-teriyaki-riz+saute-minute-porc-gingembre-miel": [69, 49],
 };
 
-for (const [a, b] of pairs) {
-  test(`paire ${a.slug} + ${b.slug} : plans valides, en parallèle, à deux plus court`, () => {
-    const total: Partial<Record<SessionMode, number>> = {};
-    for (const mode of ["solo", "duo"] as SessionMode[]) {
-      const p = planSession([a, b], RES, { mode });
-      assert.deepEqual(p.errors, [], p.errors.map((e) => e.message).join("\n"));
-      assert.deepEqual(validatePlan(p, RES), []);
-      const alone = [a, b].map((r) => planSession([r], RES, { mode }).totalMin);
-      // Jamais plus long que les deux recettes à la suite, ni nettement plus court que la plus longue
-      // seule (le plan d'une recette seule n'est pas forcément le meilleur possible : 10 % de marge).
-      assert.ok(p.totalMin <= alone[0] + alone[1] + 0.5, `${mode} : ${p.totalMin} > ${alone[0]} + ${alone[1]}`);
-      assert.ok(p.totalMin >= Math.max(...alone) * 0.9, `${mode} : ${p.totalMin} < ${Math.max(...alone)}`);
-      total[mode] = p.totalMin;
-    }
-    assert.ok(total.duo! <= total.solo!, `à deux ${total.duo} > seul ${total.solo}`);
-    const ceil = CEIL[`${a.slug}+${b.slug}`];
-    assert.ok(ceil, `plafond manquant pour ${a.slug}+${b.slug}`);
-    assert.ok(Math.round(total.solo!) <= ceil[0], `seul : ${Math.round(total.solo!)} > ${ceil[0]}`);
-    assert.ok(Math.round(total.duo!) <= ceil[1], `à deux : ${Math.round(total.duo!)} > ${ceil[1]}`);
+/** Le morceau `part` (1 à `parts`) : une paire sur `parts`, dans l'ordre des noms. */
+export function pairsOf<T>(all: readonly T[], part: number, parts: number): T[] {
+  if (!Number.isInteger(parts) || parts < 1 || !Number.isInteger(part) || part < 1 || part > parts) throw new Error(`morceau ${part}/${parts} invalide`);
+  return all.filter((_, k) => k % parts === part - 1);
+}
+
+/** Déclare les tests du morceau `part` sur `PARTS`. */
+export function pairTests(part: number) {
+  const mine = pairsOf(pairs, part, PARTS);
+  // Jamais « 0 paire testée → vert ».
+  test(`paires, morceau ${part}/${PARTS} : au moins une paire`, () => {
+    assert.ok(R.length >= 2, "moins de deux recettes dans src/seed/recipes");
+    assert.ok(mine.length > 0, `aucune paire dans le morceau ${part}/${PARTS}`);
   });
+  if (part === 1) {
+    test("paires : chacune dans un seul morceau, un plafond pour chacune, aucun plafond orphelin", () => {
+      const all = pairs.map(([a, b]) => key(a, b)).sort();
+      const covered = Array.from({ length: PARTS }, (_, k) => pairsOf(pairs, k + 1, PARTS)).flat().map(([a, b]) => key(a, b));
+      assert.deepEqual(covered.sort(), all);
+      assert.deepEqual(Object.keys(CEIL).sort(), all);
+    });
+    test("paires : un fichier par morceau, chacun lance le sien", () => {
+      const files = fs.readdirSync("tests").filter((f) => /^planner-pairs-\d+\.test\.ts$/.test(f)).sort();
+      assert.deepEqual(files, Array.from({ length: PARTS }, (_, k) => `planner-pairs-${k + 1}.test.ts`).sort());
+      for (let k = 1; k <= PARTS; k++) assert.match(fs.readFileSync(`tests/planner-pairs-${k}.test.ts`, "utf8"), new RegExp(`pairTests\\(${k}\\)`));
+    });
+    test("pairsOf : partage exact, morceau invalide refusé", () => {
+      for (let n = 0; n <= 12; n++) {
+        const all = Array.from({ length: n }, (_, k) => k);
+        for (let parts = 1; parts <= 5; parts++) {
+          const got = Array.from({ length: parts }, (_, k) => pairsOf(all, k + 1, parts));
+          assert.deepEqual(got.flat().sort((x, y) => x - y), all);
+          assert.ok(got.every((g) => Math.abs(g.length - n / parts) < 1));
+        }
+      }
+      for (const [part, parts] of [[0, 4], [5, 4], [1, 0], [1.5, 4]]) assert.throws(() => pairsOf([1], part, parts));
+    });
+  }
+
+  // Durée d'une recette seule : calculée une fois par recette et par mode (elle ne dépend que d'elle).
+  const aloneMin = new Map<string, number>();
+  const alone = (r: (typeof R)[number], mode: SessionMode) => {
+    const k = `${r.slug}:${mode}`;
+    if (!aloneMin.has(k)) aloneMin.set(k, planSession([r], RES, { mode }).totalMin);
+    return aloneMin.get(k)!;
+  };
+
+  for (const [a, b] of mine) {
+    test(`paire ${a.slug} + ${b.slug} : plans valides, en parallèle, à deux plus court`, () => {
+      const total: Partial<Record<SessionMode, number>> = {};
+      for (const mode of ["solo", "duo"] as SessionMode[]) {
+        const p = planSession([a, b], RES, { mode });
+        assert.deepEqual(p.errors, [], p.errors.map((e) => e.message).join("\n"));
+        assert.deepEqual(validatePlan(p, RES), []);
+        const one = [alone(a, mode), alone(b, mode)];
+        // Jamais plus long que les deux recettes à la suite, ni nettement plus court que la plus longue
+        // seule (le plan d'une recette seule n'est pas forcément le meilleur possible : 10 % de marge).
+        assert.ok(p.totalMin <= one[0] + one[1] + 0.5, `${mode} : ${p.totalMin} > ${one[0]} + ${one[1]}`);
+        assert.ok(p.totalMin >= Math.max(...one) * 0.9, `${mode} : ${p.totalMin} < ${Math.max(...one)}`);
+        total[mode] = p.totalMin;
+      }
+      assert.ok(total.duo! <= total.solo!, `à deux ${total.duo} > seul ${total.solo}`);
+      const ceil = CEIL[key(a, b)];
+      assert.ok(ceil, `plafond manquant pour ${key(a, b)}`);
+      assert.ok(Math.round(total.solo!) <= ceil[0], `seul : ${Math.round(total.solo!)} > ${ceil[0]}`);
+      assert.ok(Math.round(total.duo!) <= ceil[1], `à deux : ${Math.round(total.duo!)} > ${ceil[1]}`);
+    });
+  }
 }
