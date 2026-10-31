@@ -1,5 +1,6 @@
 // Mot-symbole « mijote » : le « o » est une cocotte (corps cocotte, couvercle tomate) d’où monte un filet de vapeur.
-// Archivo large 125, graisse 800. Sans état ; la vapeur ne bouge qu’au survol du lien parent (classe group).
+// Archivo large 125, graisse 800. Sans état ; la vapeur ne bouge qu’au survol du lien parent (classe group), et monte
+// à l’écran de lancement (classe k-wm-steam, src/components/tour/tour.css).
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
@@ -7,7 +8,7 @@ export function Wordmark({ className = "" }: { className?: string }) {
       <span aria-hidden>mij</span>
       <svg aria-hidden viewBox="0 0 24 24" className="mx-[0.02em] h-[0.9em] w-[0.9em] translate-y-[0.06em] overflow-visible">
         <path
-          className="origin-bottom transition-[opacity,transform] duration-[var(--dur-2)] ease-[var(--ease-out)] group-hover:-translate-y-0.5 group-hover:opacity-100 motion-reduce:transition-none"
+          className="k-wm-steam origin-bottom transition-[opacity,transform] duration-[var(--dur-2)] ease-[var(--ease-out)] group-hover:-translate-y-0.5 group-hover:opacity-100 motion-reduce:transition-none"
           d="M12 1.5c-1.4 1.3 1.4 2.3 0 3.6"
           fill="none"
           stroke="var(--c-ink-3)"
