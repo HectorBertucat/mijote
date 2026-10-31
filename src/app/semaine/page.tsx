@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { buttonClass, ChipLink, Chips, Icon, RecipeTile, StampSemainePrete } from "@/components/ui";
+import { buttonClass, ChipLink, Chips, Icon, StampSemainePrete } from "@/components/ui";
+import { DishBox } from "@/components/ui/dish";
+import { dishRecipes } from "@/components/semaine/dishes";
 import { db } from "@/lib/db/client";
 import { addDays, COOK_DAY, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
 import { clampDays, defaultPeriod, isDay, neighbour, periodDays, periodHeading, periodLabel, weekdayOf } from "@/lib/week/period";
@@ -55,6 +57,12 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   const next = neighbour(plans, w, N, 1);
   const { grid, selected, assignment: a, library, selection, tastes, eaters } = view;
   const bySlug = new Map([...library, ...selected].map((r) => [r.slug, r]));
+  // La boîte de chaque plat, dessinée à partir de ses ingrédients.
+  const boxes = dishRecipes(db, library);
+  const box = (slug: string, size: "sm" | "md", className = "") => {
+    const d = boxes.get(slug);
+    return d ? <DishBox recipe={d} size={size} className={className} /> : null;
+  };
   const rankOf = (id: string) => {
     const i = eaters.findIndex((e) => e.id === id);
     return i < 0 ? eaters.length : i;
@@ -244,7 +252,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                   const frozenN = frozenOf(r.slug);
                   return (
                     <li key={r.slug} className="flex min-w-0 items-center gap-4 border-t border-line py-4">
-                      <RecipeTile color={recipeColor(r.slug)} name={r.name} />
+                      {box(r.slug, "sm")}
                       <div className="min-w-0 flex-1">
                         <Link href={`/recettes/${r.slug}`} className="block font-bold leading-[1.25] text-ink underline-offset-4 hover:underline">
                           {r.name}
@@ -332,9 +340,9 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
               const facts = [`${fmtMin(e.activeMin)}\u00a0actif`, r.tags.includes("one pot") ? "one\u00a0pot" : null, r.freezerOk ? "se\u00a0congèle" : null, r.status === "liked" ? null : "à\u00a0essayer"].filter(Boolean).join(" · ");
               return (
                 <li key={r.slug} className="min-w-0">
-                  <form action={on ? removeAction : addAction}>
+                  <form action={on ? removeAction : addAction} className="h-full">
                     {keep({ slug: r.slug })}
-                    <PickButton on={on} disabled={!on && full} name={r.name} color={recipeColor(r.slug)} facts={facts} label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
+                    <PickButton on={on} disabled={!on && full} name={r.name} visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")} facts={facts} label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
                   </form>
                 </li>
               );
@@ -372,7 +380,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                 return (
                   <li key={rp.slug} className="grid gap-4 border-t border-line py-6 lg:grid-cols-12 lg:items-center lg:gap-6">
                     <div className="flex min-w-0 items-center gap-4 lg:col-span-4">
-                      <RecipeTile color={recipeColor(rp.slug)} name={r.name} />
+                      {box(rp.slug, "sm")}
                       <div className="min-w-0">
                         <b className="block leading-[1.25]">{r.name}</b>
                         <p className="num text-small text-ink-2">

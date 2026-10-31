@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { buttonClass, Icon, Lanes, RecipeTile, Scene } from "@/components/ui";
+import { buttonClass, Icon, Lanes, Scene } from "@/components/ui";
+import { DishBox } from "@/components/ui/dish";
+import { dishRecipes } from "@/components/semaine/dishes";
+import type { ReactNode } from "react";
 import { db } from "@/lib/db/client";
 import { stepFactor, unitsOf } from "@/lib/week/propose";
 import { composerHref, formatSelection, parseSelection, type Selection } from "@/lib/week/selection";
@@ -18,7 +21,6 @@ import { fmtG, fmtMin, plural } from "@/components/semaine/format";
 import { planLanes } from "@/components/composer/planLanes";
 import { listPeople, listRecipesWithSteps } from "@/lib/recipes/queries";
 import { estimateSession, suggestPairings } from "@/lib/session/estimate";
-import { recipeColor } from "@/lib/ui";
 import { createList } from "../courses/actions";
 import { startSession } from "../session/actions";
 import { ModePicker } from "@/components/session/ModePicker";
@@ -50,6 +52,12 @@ export default async function Composer({ searchParams }: { searchParams: Promise
   const est = selected.length ? estimateSession(selected) : null;
   const pairings = suggestPairings(selected, all, 4);
   const bySlug = new Map(all.map((y) => [y.slug, y]));
+  // La boîte de chaque plat, dessinée à partir de ses ingrédients (et de ses étapes).
+  const boxes = dishRecipes(db, all);
+  const box = (slug: string) => {
+    const d = boxes.get(slug);
+    return d ? <DishBox recipe={d} size="sm" /> : null;
+  };
   const tastes = loadTastes(db, weekLibrary(db));
   const names: Record<string, string> = Object.fromEntries(listPeople(db).map((p) => [p.id, p.name]));
 
@@ -84,8 +92,8 @@ export default async function Composer({ searchParams }: { searchParams: Promise
           <h2 id="plats-titre" className="text-h2">
             Les plats
           </h2>
-          <Group title="Aimés" items={liked} picked={picked} toggle={toggle} />
-          <Group title="À essayer" items={toTry} picked={picked} toggle={toggle} />
+          <Group title="Aimés" items={liked} picked={picked} toggle={toggle} box={box} />
+          <Group title="À essayer" items={toTry} picked={picked} toggle={toggle} box={box} />
         </section>
 
         <div className="grid min-w-0 content-start gap-12 lg:col-span-8 lg:gap-18">
@@ -175,7 +183,7 @@ export default async function Composer({ searchParams }: { searchParams: Promise
                     return (
                       <li key={y.slug} className="grid gap-4 border-t border-line py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
                         <div className="flex min-w-0 items-start gap-4">
-                          <RecipeTile color={recipeColor(y.slug)} name={y.name} />
+                          {box(y.slug)}
                           <div className="grid min-w-0 flex-1 gap-2">
                             <Link href={`/recettes/${y.slug}`} className="font-bold leading-[1.25] underline-offset-4 hover:underline">
                               {y.name}
@@ -189,7 +197,7 @@ export default async function Composer({ searchParams }: { searchParams: Promise
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 pl-[60px] sm:pl-0">
+                        <div className="flex items-center gap-4 pl-18 sm:pl-0">
                           <span className="text-small text-ink-2">fiche {y.servingsUnits}&nbsp;u</span>
                           <FactorStepper name={y.name} factor={f} units={unitsOf(y)} dec={dec === f ? null : { href: withFactor(y.slug, dec), to: dec }} inc={inc === f ? null : { href: withFactor(y.slug, inc), to: inc }} />
                           <Link href={toggle(y.slug)} scroll={false} className={buttonClass({ variant: "quiet", iconOnly: true })} aria-label={`Retirer ${y.name}`} title="Retirer">
@@ -229,7 +237,7 @@ export default async function Composer({ searchParams }: { searchParams: Promise
                   const y = bySlug.get(p.slug)!;
                   return (
                     <li key={p.slug} className="flex min-w-0 items-center gap-4 border-t border-line py-4">
-                      <RecipeTile color={recipeColor(p.slug)} name={y.name} />
+                      {box(p.slug)}
                       <div className="grid min-w-0 flex-1 gap-1">
                         <span className="font-bold leading-[1.25]">{y.name}</span>
                         <span className="text-small text-ink-2">
@@ -254,7 +262,7 @@ export default async function Composer({ searchParams }: { searchParams: Promise
 
 type Item = { slug: string; name: string; tags: string[]; kcalUnit: number | null; proteinUnit: number | null };
 
-function Group({ title, items, picked, toggle }: { title: string; items: Item[]; picked: string[]; toggle: (slug: string) => string }) {
+function Group({ title, items, picked, toggle, box }: { title: string; items: Item[]; picked: string[]; toggle: (slug: string) => string; box: (slug: string) => ReactNode }) {
   if (!items.length) return null;
   return (
     <div className="grid gap-3">
@@ -265,7 +273,7 @@ function Group({ title, items, picked, toggle }: { title: string; items: Item[];
           const tags = y.tags.filter((t) => t !== "à relire" && t !== "indisponible").slice(0, 3);
           return (
             <li key={y.slug} className="min-w-0">
-              <PickLink on={on} href={toggle(y.slug)} size="md" name={y.name} color={recipeColor(y.slug)} facts={tags.join(" · ") || "—"} label={on ? `Retirer ${y.name}` : `Choisir ${y.name}`} />
+              <PickLink on={on} href={toggle(y.slug)} size="md" name={y.name} visual={box(y.slug)} facts={tags.join(" · ") || "—"} label={on ? `Retirer ${y.name}` : `Choisir ${y.name}`} />
             </li>
           );
         })}

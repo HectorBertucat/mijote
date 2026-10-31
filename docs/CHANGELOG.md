@@ -1,10 +1,10 @@
 # Journal des changements
 
 ## 2026-10-31 : Semaine et Composer au « Carnet de marché »
-- Semaine : la période en titre démesuré, avec ses flèches et « Changer la période » ; grille 4/8 au bureau, la semaine choisie à gauche (trois chiffres : repas couverts, temps en cuisine, repas au congélo ; tes plats ; avertissements en lignes sobres, seulement s'il y en a) et la bibliothèque à droite, en grandes entrées qui se cochent (la coche suit le geste tout de suite).
+- Semaine : la période en titre démesuré, avec ses flèches et « Changer la période » ; grille 4/8 au bureau, la semaine choisie à gauche (trois chiffres : repas couverts, temps en cuisine, repas au congélo ; tes plats ; avertissements en lignes sobres, seulement s'il y en a) et la bibliothèque à droite, en grandes entrées qui se cochent (la coche suit le geste tout de suite), chaque plat dessiné en boîte sur sa nappe (`DishBox`, ingrédients lus par `src/components/semaine/dishes.ts`).
 - Une barre d'action collante, le seul élément qui flotte : « 2 plats · 24 repas sur 28 » et l'action suivante (proposer la semaine, faire ou refaire la liste, voir la liste, puis « Cuisiner dimanche » quand les courses sont commandées).
 - Absences, menu, quantités, nutrition et paquets entamés repliés sous des filets ; les explications de calcul passent derrière « Comment c'est calculé ». Le menu de la semaine quitte l'ardoise pour des étiquettes d'étiqueteuse sur la couleur du plat (et l'image partagée suit).
-- Composer au même langage : titre en grand, bibliothèque en entrées à cocher, résumé en trois chiffres, avertissements en lignes, « Lancer la session » en bleu cocotte, unités et associations en lignes à filet.
+- Composer au même langage : titre en grand, bibliothèque en entrées à cocher avec leur boîte, résumé en trois chiffres, avertissements en lignes, « Lancer la session » en bleu cocotte, unités et associations en lignes à filet.
 - Pièces de zone : `src/components/semaine/Pick.tsx` (entrée à cocher), `Parts.tsx` (`Figures`, `Notice`, `Fold`, `HowTo`, `Dock`).
 
 ## 2026-10-31 : l'accueil, la semaine en un regard
