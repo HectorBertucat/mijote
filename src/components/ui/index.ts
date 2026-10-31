@@ -23,3 +23,4 @@ export * from "./stamp";
 export * from "./tape";
 export * from "./scenes";
 export * from "./wordmark";
+export * from "./skeleton";

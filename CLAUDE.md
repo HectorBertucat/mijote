@@ -37,6 +37,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Besoin | Fichier |
 |---|---|
 | Accueil (action du moment) | `src/app/page.tsx`, `src/lib/home/` (`next.ts` pur, `store.ts` : `homeView`) |
+| Écran de lancement, visite guidée, premiers pas | `src/components/tour/` (`LaunchSplash.tsx`, `Tour.tsx`), `src/lib/tour/` (`core.ts` pur, `store.ts`), `src/components/accueil/FirstSteps.tsx`, images de démarrage iOS `src/lib/launch.ts` et `src/app/lancement/` |
 | Mise en route, réglages, foyer | `src/app/bienvenue/`, `src/app/reglages/`, `src/lib/household.ts`, `src/lib/settings.ts` |
 | Cuisine → équipement | `src/lib/kitchen/` (`presets.ts` pur, `store.ts`) |
 | Mangeurs et parts | `src/lib/eaters/` (`core.ts` et `habits.ts` purs : part, habitudes hors batch, conseil ; `store.ts` : `loadEaters`, `householdMembers`, `leadOf`, `adviceFor`) |
@@ -51,6 +52,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Santé | `src/lib/health/`, docs/sante.md |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |
 | Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
+| Chargement, transitions de page | `loading.tsx` de chaque rubrique, kit `src/components/ui/skeleton.tsx`, `src/components/PageTransition.tsx`, onglets `src/components/Nav.tsx` |
 | Accès | `src/proxy.ts`, `src/lib/auth.ts` |
 | Schéma | `src/lib/db/schema.ts`, docs/schema.md |
 

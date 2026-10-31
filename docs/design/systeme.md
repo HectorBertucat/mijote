@@ -137,6 +137,8 @@ Une seule : `--sh-float` (`0 1px 0 rgb(21 22 26 / .04), 0 16px 40px -16px rgb(21
 - Entrée des listes au premier affichage : glissement de 8 px et fondu, décalés de 30 ms, huit éléments au plus, jamais rejoué sur une action.
 - Pas d’animation pour un geste fréquent (cocher un article) au-delà du retour d’état, ni pour une action au clavier.
 - `prefers-reduced-motion` : plus de déplacement, seulement des fondus de 120 ms.
+- Changement de page : l’ancienne s’efface (`--dur-1`), la nouvelle arrive en fondu (`--dur-2`) avec 6 px de glissement ; en-tête et barre d’onglets ne bougent pas (`PageTransition`, transitions de vue). Pendant le chargement, un squelette fidèle à la page (`PageSkeleton`), qui pulse lentement et s’efface sous le contenu.
+- Onglets : l’état actif suit le tap, pas l’arrivée de la page ; le trait glisse d’un onglet à l’autre (`--dur-3`).
 
 ### Signatures
 

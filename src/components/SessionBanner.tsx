@@ -30,7 +30,7 @@ export function SessionBanner() {
   // Seule bande d’encre pleine de l’appli : sous l’en-tête sur ordinateur, juste au-dessus de la barre d’onglets
   // sur téléphone (à portée de pouce ; kit.css agrandit alors la marge basse de <main>).
   return (
-    <div data-session-banner className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 sm:static">
+    <div data-session-banner className="vt-session-banner fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 sm:static">
       <Link href={`/session/${active.id}`} className="flex items-center gap-3 bg-inverse py-2 pl-3 pr-3 text-[14px] text-on-inverse active:scale-100 sm:px-[max(1.75rem,calc((100vw-64rem)/2+1.75rem))]">
         <span className="k-live size-2 shrink-0 rounded-full bg-on-inverse" aria-hidden />
         <span className="min-w-0 flex-1 truncate">

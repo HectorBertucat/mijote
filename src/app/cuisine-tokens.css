@@ -299,7 +299,7 @@
 
 @theme {
   /* Polices : charger Archivo (axes wdth 62..125, wght) et Atkinson Hyperlegible Next
-     avec next/font/google, variables --font-title et --font-body. */
+     (fichiers dans src/app/fonts, next/font/local), variables --font-title et --font-body. */
   --font-sans: var(--font-body), "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-title), "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-num: var(--font-title), "Archivo", ui-sans-serif, system-ui, sans-serif;

@@ -225,7 +225,7 @@ export const cookEvents = sqliteTable(
     sessionId: text("session_id").notNull().references(() => cookSessions.id, { onDelete: "cascade" }),
     at: text("at").notNull().default(now),
     kind: text("kind", {
-      enum: ["step_start", "step_done", "bowl_ready", "timer_start", "timer_done", "note"],
+      enum: ["step_start", "step_done", "bowl_ready", "timer_start", "timer_done", "timer_pause", "timer_resume", "note"],
     }).notNull(),
     ref: text("ref"),
     payloadJson: json<unknown>("payload_json"),

@@ -122,6 +122,13 @@ async function main() {
     for (const p of ["/", "/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins", "/kit/boites"])
       await page(p, undefined);
     await page("/recettes", undefined, /Léa/);
+    // Prise en main : les premiers pas sur l’accueil, la visite relançable, les images de démarrage iOS.
+    await page("/", undefined, /Premiers pas/);
+    await page("/?visite=1", undefined);
+    await page("/reglages", undefined, /Revoir la visite/);
+    const launch = await get("/lancement?w=1179&h=2556&theme=sombre");
+    check(launch.status === 200 && launch.headers.get("content-type") === "image/png", "image de démarrage iOS → PNG");
+    check((await get("/lancement?w=4000&h=4000")).status === 404, "image de démarrage d’une taille inconnue → 404");
     await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
     // Fin de session : la marmite pesée part en boîtes, au frigo et au congélo.
     await page("/frigo", undefined, /Le frigo est vide/);

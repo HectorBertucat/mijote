@@ -10,7 +10,6 @@
   --animate-grow-in: grow-in 420ms var(--ease-out);
   --animate-flash: flash 1.4s var(--ease-out);
   --animate-panel-in: panel-in 260ms var(--ease-out);
-  --animate-shimmer: shimmer 1.2s linear infinite;
 }
 @keyframes grow-in {
   0% { opacity: 0; transform: translateX(-8px); max-height: 0; }
@@ -23,10 +22,6 @@
 @keyframes panel-in {
   0% { transform: translateX(24px); opacity: 0; }
   100% { transform: none; opacity: 1; }
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 }
 /* Trait qui barre un ingrédient retiré, tiré de gauche à droite. */
 .strike-out {
@@ -45,7 +40,8 @@ a, button, summary, [role="radio"] {
 .k-btn:active:not(:disabled) { transform: scale(0.98); }
 
 /* Entrée d'une liste au premier affichage : 8 px et fondu, décalés de 30 ms, huit éléments au plus.
-   Usage : <ul className="reveal"> ; jamais rejoué sur une action (pas de clé qui change). */
+   Usage : <ul className="reveal">. Seulement à l'arrivée sur une page : PageTransition pose html[data-settled]
+   peu après, et plus rien ne rejoue (revalidation, ligne ajoutée par une action). transform : pas de saut de mise en page. */
 @keyframes reveal-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .reveal > * { animation: reveal-in var(--dur-3) var(--ease-out) both; }
 .reveal > :nth-child(2) { animation-delay: 30ms; }
@@ -55,20 +51,53 @@ a, button, summary, [role="radio"] {
 .reveal > :nth-child(6) { animation-delay: 150ms; }
 .reveal > :nth-child(7) { animation-delay: 180ms; }
 .reveal > :nth-child(n + 8) { animation-delay: 210ms; }
+html[data-settled] .reveal > * { animation: none; }
 
 /* Filet de section : la v3 délimite par des filets et de l'air, pas par des cartes. */
 .rule-top { border-top: 1px solid var(--c-line); }
 .rule-strong-top { border-top: 1px solid var(--c-line-strong); }
 
+/* Squelette (src/components/ui/skeleton.tsx) : aplat de papier foncé, pulsation lente d'opacité, sans reflet. */
+@keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 .skeleton {
-  background: linear-gradient(90deg, var(--c-line) 25%, var(--c-surface-2) 50%, var(--c-line) 75%);
-  background-size: 200% 100%;
-  animation: var(--animate-shimmer);
-  border-radius: var(--radius-lg);
+  background: var(--c-surface-2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.4s var(--ease-in-out) 300ms infinite alternate both;
 }
+
+/* Changement de page (PageTransition, transitions de vue de React) : l'ancienne page s'efface vite, la nouvelle
+   arrive en fondu avec 6 px de glissement ; le squelette s'efface sous le contenu qui arrive. L'en-tête, la barre
+   d'onglets et le bandeau de session restent en place : ni fondu, ni clignotement. */
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-rise { from { transform: translateY(6px); } }
+::view-transition { pointer-events: none; }
+::view-transition-old(root) { display: none; }
+::view-transition-new(root) { animation: none; }
+::view-transition-old(.page-out) { animation: vt-fade-out var(--dur-1) var(--ease-out) both; }
+::view-transition-new(.page-in) { animation: vt-fade-in var(--dur-2) var(--ease-out) 60ms both, vt-rise var(--dur-3) var(--ease-out) both; }
+::view-transition-old(.skeleton-out) { animation: vt-fade-out var(--dur-2) var(--ease-out) both; }
+::view-transition-group(site-header),
+::view-transition-group(site-tabs),
+::view-transition-group(session-banner) { animation: none; z-index: 10; }
+::view-transition-old(site-header),
+::view-transition-old(site-tabs),
+::view-transition-old(session-banner) { display: none; }
+::view-transition-new(site-header),
+::view-transition-new(site-tabs),
+::view-transition-new(session-banner) { animation: none; }
+.vt-site-header { view-transition-name: site-header; }
+.vt-site-tabs { view-transition-name: site-tabs; }
+.vt-session-banner { view-transition-name: session-banner; }
+
+/* Toucher : pas d'attente du double tap (300 ms) ni de surbrillance bleue d'iOS ; le retour d'état suffit. */
+html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 @media (prefers-reduced-motion: reduce) {
   .k-btn:active { transform: none; }
   .reveal > * { animation-name: fade-in; }
+  .skeleton { animation: none; }
+  ::view-transition-new(.page-in) { animation: vt-fade-in var(--dur-1) var(--ease-out) both; }
+  ::view-transition-group(*) { animation-duration: 0s !important; }
 }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

@@ -7,23 +7,25 @@
 import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
 import { currentPhase, itemStatus, passiveMin, personFocus, personNext, stepTimer, threadOf, type ThreadItem, type TimerState } from "@/lib/session/state";
 import { Icon, Tape } from "@/components/ui";
+import { handoffLine, ofName } from "@/lib/session/people";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import type { Controls } from "./SessionApp";
 import { handoffsFor, timerMinutes } from "./blocks";
 import { prepTitle } from "./Prep";
-import { Bowl, bowlOf, clock, HandoffRow, PersonMono, recipeOf, stepTitle } from "./parts";
+import { Bowl, bowlOf, clock, HandoffRow, PersonMono, recipeOf, usePeople, stepTitle } from "./parts";
 import { COLUMN, MainButton, personOf, RingBar, Ringing, Shell, SimpleHead, Soon, StepNow } from "./Simple";
 
 type Wake = { on: boolean; request: () => Promise<void> };
 
 export function SimpleDuo({ plan, c, person, overlay, dark, wake, detail, onEnd, ringing }: { plan: SessionPlan; c: Controls; person: Person | null; overlay: boolean; dark: boolean; wake: Wake; detail: string; onEnd: () => void; ringing: TimerState[] }) {
+  const n = usePeople();
   if (person) {
     const mine = ringing.filter((t) => personOf(plan, t) !== (person === "A" ? "B" : "A"));
     const thread = threadOf(plan, person);
     const done = thread.filter((it) => itemStatus(c.state, it) === "done").length;
     return (
       <Shell overlay={overlay} dark={dark} tone={mine.length ? "hot" : "paper"} wakeOn={wake.on} onWake={() => void wake.request()} bar={<PersonBar plan={plan} c={c} person={person} ringing={mine} />}>
-        <SimpleHead plan={plan} c={c} stage="cook" wake={wake} detail={detail} overlay={overlay} onEnd={onEnd} tone={mine.length ? "hot" : "paper"} lead={<PersonMono person={person} size={32} />} title={`Fil de ${person} · ${done} sur ${thread.length}`} />
+        <SimpleHead plan={plan} c={c} stage="cook" wake={wake} detail={detail} overlay={overlay} onEnd={onEnd} tone={mine.length ? "hot" : "paper"} lead={<PersonMono person={person} size={32} />} title={`Fil ${ofName(n[person].name)} · ${done} sur ${thread.length}`} />
         {mine.length ? <Ringing plan={plan} c={c} timers={mine} /> : <div className={COLUMN}><PersonNow plan={plan} c={c} person={person} ringing={mine} /></div>}
       </Shell>
     );
@@ -35,10 +37,10 @@ export function SimpleDuo({ plan, c, person, overlay, dark, wake, detail, onEnd,
         {(["A", "B"] as const).map((p) => {
           const mine = ringing.filter((t) => personOf(plan, t) !== (p === "A" ? "B" : "A"));
           return (
-            <section key={p} className={`grid content-start gap-6 md:border-l md:border-line md:pl-6 md:first:border-l-0 md:first:pl-0 ${mine.length ? "rounded-[14px] bg-hot p-4 text-on-hot" : ""}`} aria-label={`Fil de ${p}`}>
+            <section key={p} className={`grid content-start gap-6 md:border-l md:border-line md:pl-6 md:first:border-l-0 md:first:pl-0 ${mine.length ? "rounded-[14px] bg-hot p-4 text-on-hot" : ""}`} aria-label={`Fil ${ofName(n[p].name)}`}>
               <h2 className="flex items-center gap-3 text-h3">
                 <PersonMono person={p} size={32} />
-                Fil de {p}
+                Fil {ofName(n[p].name)}
                 <kbd className="label ml-auto rounded-[4px] border border-line px-2 py-1 font-normal text-ink-2">Touche {p}</kbd>
               </h2>
               <PersonNow plan={plan} c={c} person={p} ringing={mine} />
@@ -56,11 +58,12 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
   const focus = personFocus(plan, c.state, person, c.now);
   const next = personNext(plan, c.state, person, focus);
   const relay = handoffsFor(plan, c, person)[0];
+  const n = usePeople();
   if (!focus)
     return (
       <div className="grid gap-3 border-y border-line py-8">
         <p className="label text-ink-2">Fil terminé</p>
-        <b className="text-h2">{person} a tout fini.</b>
+        <b className="text-h2">{n[person].name} a tout fini.</b>
         <p className="text-[17px] text-ink-2">L’autre termine son fil ; ensuite, on range.</p>
       </div>
     );
@@ -70,7 +73,7 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
       {focus.type === "step" ? <StepNow plan={plan} c={c} step={focus.step} /> : <PrepNow plan={plan} task={focus.task} />}
       {relay && (
         <HandoffRow from={relay.from} at={clock(c.cookingStart + relay.atMin * 60000)}>
-          {relay.text}
+          {handoffLine(relay, n)}
         </HandoffRow>
       )}
       {next && (

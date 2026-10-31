@@ -8,7 +8,8 @@ import { typo } from "@/lib/typo";
 import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
 import type { SessionState, TimerState } from "@/lib/session/state";
-import { stepStatus } from "@/lib/session/state";
+import { originalEnd, stepStatus } from "@/lib/session/state";
+import { LETTERS, type DuoNames } from "@/lib/session/people";
 import { STEP_LABELS } from "@/lib/recipes/format";
 import { BowlBadge, Button, Cue, Icon, Induction, OvenLevel, RecipeTile, Segmented, SpecChip, Timer, Toast, formatClock, type IconName } from "@/components/ui";
 import type { Toast as ToastData } from "./useSession";
@@ -102,12 +103,13 @@ export function Bowl({ bowl, size = "md", ready, className = "" }: { bowl: Pick<
 
 /** Personne d’une session à deux : A en encre pleine, B cerclée (DA `.mono`). */
 export function PersonMono({ person, size = 26, onInk = false }: { person: Person; size?: number; onInk?: boolean }) {
+  const who = usePeople()[person];
   const look = onInk
     ? person === "A" ? "bg-on-inverse text-inverse" : "border-2 border-on-inverse text-on-inverse"
     : person === "A" ? "bg-inverse text-on-inverse" : "border-2 border-ink bg-surface text-ink";
   return (
-    <span className={`inline-grid shrink-0 place-items-center rounded-full font-display font-extrabold leading-none ${look}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.48) }} aria-label={`Personne ${person}`}>
-      {person}
+    <span className={`inline-grid shrink-0 place-items-center rounded-full font-display font-extrabold leading-none ${look}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.48) }} aria-label={who.name === person ? `Personne ${person}` : who.name}>
+      {who.mono}
     </span>
   );
 }
@@ -181,6 +183,9 @@ export type Phase = "prep" | "cooking";
 export const SessionTest = createContext<{ ended: boolean; end: () => void } | null>(null);
 /** La boîte de chaque plat (DishBox, rendue par la page serveur), par slug ; à défaut, BoxGlyph. */
 export const DishArts = createContext<Record<string, ReactNode>>({});
+/** À deux : le prénom et l’initiale de A et de B (membres du foyer), à défaut les lettres. */
+export const People = createContext<DuoNames>(LETTERS);
+export const usePeople = () => useContext(People);
 
 function TestTag({ compact }: { compact: boolean }) {
   const t = useContext(SessionTest);
@@ -393,8 +398,8 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
 
 // ─── Minuteurs ───
 
-/** Minuteurs du kit, à l’heure du serveur (tous les écrans sonnent à la même seconde) : +1 min et arrêter. */
-export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d’origine. */ onReset?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
+/** Minuteurs du kit, à l’heure du serveur (tous les écrans sonnent à la même seconde) : pause, +1 min et arrêter. */
+export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, onPause, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d’origine. */ onReset?: (t: TimerState) => void; /** Pause ou reprise (sur tous les écrans). */ onPause?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
   if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[14px] text-ink-2">Aucun minuteur en cours : « Suivant » les lance.</p> : null;
   return (
     <div className="grid gap-2">
@@ -402,14 +407,16 @@ export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset,
         const left = (t.endsAt - now) / 1000;
         const done = left <= 0;
         const step = plan && t.stepId ? plan.steps.find((s) => s.id === t.stepId) : undefined;
+        const paused = t.pausedAt != null;
         return (
           <Timer
             key={t.id}
             className="animate-pop"
             size={big ? "big" : "md"}
             title={t.label}
-            detail={`${step ? `${shortName(recipeOf(plan!, step.recipeSlug)?.name) || "étape"} · ` : ""}fin ${clock(t.endsAt)}`}
+            detail={`${step ? `${shortName(recipeOf(plan!, step.recipeSlug)?.name) || "étape"} · ` : ""}${paused ? "en pause" : `fin ${clock(t.endsAt)}`}`}
             remaining={left}
+            paused={paused}
             total={Math.max(60, t.minutes * 60)}
             onAdjust={onAdjust ? (d) => onAdjust(t, d) : undefined}
             action={
@@ -419,10 +426,11 @@ export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset,
                 </Button>
               ) : (
                 <span className={`flex shrink-0 gap-1 ${big ? "" : "flex-col"}`}>
+                  {onPause && <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon={paused ? "play" : "pause"} aria-pressed={paused} aria-label={paused ? "Reprendre le minuteur" : "Mettre le minuteur en pause"} onClick={() => onPause(t)} />}
                   <Button size={big ? "md" : "sm"} variant="quiet" onClick={() => onAdd(t, 1)} aria-label="Une minute de plus">
                     +1
                   </Button>
-                  {onReset && Math.abs(t.endsAt - (t.startedAt + t.refMinutes * 60000)) > 2000 && (
+                  {onReset && Math.abs(t.endsAt - originalEnd(t, now)) > 2000 && (
                     <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="refresh" className="hidden lg:inline-flex" aria-label={`Revenir au minuteur d’origine (${t.refMinutes} min)`} title={`Revenir au minuteur d’origine (${t.refMinutes} min)`} onClick={() => onReset(t)} />
                   )}
                   <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="x" aria-label="Arrêter le minuteur" onClick={() => onStop(t)} />
@@ -433,6 +441,16 @@ export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset,
         );
       })}
     </div>
+  );
+}
+
+/** Tout mettre en pause (on doit s’absenter), ou tout reprendre : sur tous les écrans. Rien quand rien ne tourne. */
+export function PauseAll({ timers, now, allPaused, onClick, size = "sm" }: { timers: TimerState[]; now: number; allPaused: boolean; onClick: () => void; size?: "sm" | "md" | "kitchen" }) {
+  if (!timers.some((t) => t.pausedAt != null || t.endsAt > now)) return null;
+  return (
+    <Button size={size} variant="quiet" icon={allPaused ? "play" : "pause"} onClick={onClick} data-action={allPaused ? "tout-reprendre" : "tout-en-pause"}>
+      {allPaused ? "Tout reprendre" : "Tout mettre en pause"}
+    </Button>
   );
 }
 

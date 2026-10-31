@@ -10,6 +10,7 @@ import { normalizeKitchen, type KitchenConfig } from "@/lib/kitchen/presets";
 import { applyKitchen } from "@/lib/kitchen/store";
 import { SETTING, setSetting } from "@/lib/settings";
 import { listPeople } from "@/lib/health/store";
+import { markTourSeen, setFirstStepsHidden } from "@/lib/tour/store";
 
 export type FormState = { ok: boolean; message: string } | null;
 
@@ -89,4 +90,15 @@ export async function finishSetupAction() {
   setSetting(db, SETTING.setupDone, new Date().toISOString());
   refresh();
   redirect(`/sante/demarrer?p=${encodeURIComponent(first.id)}`);
+}
+
+/** Visite guidée finie ou passée : elle ne se propose plus d'elle-même (Réglages › Prise en main la relance). */
+export async function tourSeenAction() {
+  markTourSeen(db);
+}
+
+/** Masquer (ou remettre) la liste « Premiers pas » de l'accueil. */
+export async function firstStepsAction(f: FormData) {
+  setFirstStepsHidden(db, f.get("hidden") === "1");
+  refresh();
 }
