@@ -3,12 +3,13 @@
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { addEvent, getSession } from "@/lib/session/store";
+import { EVENT_KINDS } from "@/lib/session/state";
 
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
   id: z.string().min(8).max(80).optional(),
-  kind: z.enum(["step_start", "step_done", "bowl_ready", "timer_start", "timer_done", "note"]),
+  kind: z.enum(EVENT_KINDS),
   ref: z.string().max(200).nullable().optional(),
   payload: z.record(z.string(), z.unknown()).nullable().optional(),
 });

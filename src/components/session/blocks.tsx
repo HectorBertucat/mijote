@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
 import { handoffLine } from "@/lib/session/people";
-import { batchOf, currentPhase, passiveMin, phaseTimer, stepStatus, stepTimer } from "@/lib/session/state";
+import { batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus, stepTimer } from "@/lib/session/state";
 import { applyScales } from "@/app/session/actions";
 import { Alert, Button, Icon, Induction } from "@/components/ui";
 import type { Controls, DayChoice } from "./SessionApp";
@@ -115,7 +115,8 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
   const { state, now } = c;
   const active = stepStatus(state, step.id) === "active";
   const n = active ? currentPhase(state, step) : null;
-  const t = n != null ? phaseTimer(state, step.id, n) : undefined;
+  const raw = n != null ? phaseTimer(state, step.id, n) : undefined;
+  const t = raw && liveTimer(raw, now);
   const batches = Math.max(0, ...step.phases.map((p) => p.batch ?? 0));
   return (
     <ol className="grid gap-2" aria-label="Sous-étapes">

@@ -68,7 +68,7 @@ test("prep : ce qui va sur le plateau sans bol et les gestes à part", () => {
 });
 
 test("ce qui sonne bientôt : du plus proche au plus lointain, sans l'étape montrée ni ce qui est fini", () => {
-  const t = (id: string, endsAt: number, stepId: string | null = null, doneAt: number | null = null): TimerState => ({ id, label: id, stepId, endsAt, minutes: 5, doneAt, phase: null, startedAt: 0, refMinutes: 5 });
+  const t = (id: string, endsAt: number, stepId: string | null = null, doneAt: number | null = null): TimerState => ({ id, label: id, stepId, endsAt, minutes: 5, doneAt, phase: null, startedAt: 0, refMinutes: 5, pausedAt: null, pausedMs: 0 });
   const list = [t("c", 3000), t("a", 1000, "focus"), t("b", 2000), t("fini", 2500, null, 10), t("passe", 100)];
   assert.deepEqual(soonTimers(list, 500, "focus").map((x) => x.id), ["b", "c"]);
   assert.deepEqual(soonTimers(list, 500).map((x) => x.id), ["a", "b", "c"]);
@@ -114,7 +114,7 @@ test("rendu : chaque étape, à lancer puis à chaque sous-étape, en grand et s
   // Une attente qui sonne : le geste qui suit en titre.
   const st = plan.steps.find((s) => s.phases?.some((p, i) => p.wait && s.phases![i + 1]))!;
   const w = st.phases!.findIndex((p, i) => p.wait && st.phases![i + 1]);
-  const timer: TimerState = { id: "t", label: st.phases![w].text, stepId: st.id, endsAt: 1000, minutes: 5, doneAt: null, phase: w, startedAt: 0, refMinutes: 5 };
+  const timer: TimerState = { id: "t", label: st.phases![w].text, stepId: st.id, endsAt: 1000, minutes: 5, doneAt: null, phase: w, startedAt: 0, refMinutes: 5, pausedAt: null, pausedMs: 0 };
   const ring = renderToStaticMarkup(createElement(Ringing, { plan, c: controls(plan, [], 5000), timers: [timer] }));
   assert.match(ring, /role="alert"/);
   assert.ok(ring.includes(`Fini : `), "fin d'une attente");

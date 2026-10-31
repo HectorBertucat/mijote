@@ -21,7 +21,13 @@ import {
   personNext,
   phaseIds,
   phaseTimer,
+  liveTimer,
+  originalEnd,
+  pausedTimers,
   randomId,
+  runningTimers,
+  storedEnd,
+  timerEnd,
   stepStatus,
   stepTimer,
   type SessionEvent,
@@ -85,7 +91,8 @@ function useControls(p: SessionProps) {
   const cookingStart = mode === "duo" ? (state.cookingStartedAt ?? now) : (state.cookingStartedAt ?? base + plan.prep.minutes * 60000);
   const focus = focusStep(plan, state, now);
   const upcoming = nextTodo(plan, state, focus);
-  const timers = [...state.timers.values()].filter((t) => t.doneAt == null).sort((a, b) => a.endsAt - b.endsAt);
+  // En pause, un minuteur est montré avec la fin qu’il aurait s’il repartait maintenant : son reste ne bouge pas, il ne sonne pas.
+  const timers = [...state.timers.values()].filter((t) => t.doneAt == null).map((t) => liveTimer(t, now)).sort((a, b) => a.endsAt - b.endsAt);
   // Les minuteurs de sous-étape ne sonnent pas en plein écran : la sous-étape suivante démarre (bip, voir plus bas).
   // Sauf la fin d’une attente (le riz a cuit) : on faisait autre chose, ça sonne comme un minuteur d’étape.
   const ringing = timers.filter((t) => t.endsAt <= now && (t.phase == null || isWaitTimer(plan, t)));
@@ -146,7 +153,7 @@ function useControls(p: SessionProps) {
       const n = currentPhase(state, st);
       if (n == null || st.phases![n].wait) continue;
       const t = phaseTimer(state, st.id, n);
-      if (t && t.endsAt <= now) out.push(...phaseDone(st, n));
+      if (t && timerEnd(t, now) <= now) out.push(...phaseDone(st, n));
     }
     if (out.length) send(out);
   }, [plan, state, now, send, phaseDone]);
@@ -208,16 +215,28 @@ function useControls(p: SessionProps) {
     },
     [plan, now, s.events, send, state, phaseDone]
   );
-  /** Régler un minuteur (+1, glisser sur l’ordinateur) : nouvelle fin, lancement et durée d’origine gardés. */
+  /** Régler un minuteur (+1, glisser sur l’ordinateur) : nouvelle fin, lancement et durée d’origine gardés ; en pause, il y reste. */
   const setTimerEnd = useCallback(
-    (t: TimerState, endsAt: number) =>
-      send([{ kind: "timer_start", ref: t.id, payload: { label: t.label, minutes: Math.round(((endsAt - t.startedAt) / 60000) * 100) / 100, stepId: t.stepId, ...(t.phase != null ? { phase: t.phase } : {}), adjust: true, endsAt: new Date(endsAt).toISOString() } }]),
-    [send]
+    (t: TimerState, liveEnd: number) => {
+      const endsAt = storedEnd(t, liveEnd, now);
+      const minutes = Math.round(((endsAt - t.startedAt - t.pausedMs) / 60000) * 100) / 100;
+      send([{ kind: "timer_start", ref: t.id, payload: { label: t.label, minutes, stepId: t.stepId, ...(t.phase != null ? { phase: t.phase } : {}), adjust: true, endsAt: new Date(endsAt).toISOString() } }]);
+    },
+    [now, send]
   );
   const addMinutes = useCallback((t: TimerState, min: number) => setTimerEnd(t, Math.max(now, t.endsAt) + min * 60000), [now, setTimerEnd]);
   const adjustTimer = useCallback((t: TimerState, deltaSec: number) => setTimerEnd(t, Math.max(now + 5000, t.endsAt + deltaSec * 1000)), [now, setTimerEnd]);
   /** ↺ : revenir à la durée d’origine (fin = lancement + durée de départ). */
-  const resetTimer = useCallback((t: TimerState) => setTimerEnd(t, Math.max(now, t.startedAt + t.refMinutes * 60000)), [now, setTimerEnd]);
+  const resetTimer = useCallback((t: TimerState) => setTimerEnd(t, Math.max(now, originalEnd(t, now))), [now, setTimerEnd]);
+  /** Pause et reprise d’un minuteur : la fin prévue est repoussée du temps passé en pause, sur tous les écrans. */
+  const pauseTimer = useCallback((t: TimerState) => send([{ kind: t.pausedAt == null ? "timer_pause" : "timer_resume", ref: t.id }]), [send]);
+  /** Tout mettre en pause (on doit s’absenter), ou tout reprendre. */
+  const pauseAll = useCallback(() => {
+    const running = runningTimers(state, now);
+    if (running.length) send(running.map((t) => ({ kind: "timer_pause" as const, ref: t.id })));
+    else send(pausedTimers(state).map((t) => ({ kind: "timer_resume" as const, ref: t.id })));
+  }, [state, now, send]);
+  const allPaused = runningTimers(state, now).length === 0 && pausedTimers(state).length > 0;
   const toggleStep = useCallback(
     (st: PlanStep) => {
       const status = stepStatus(state, st.id);
@@ -349,7 +368,7 @@ function useControls(p: SessionProps) {
     if (n != null) send(phaseDone(st, n));
   }, [state, send, phaseDone]);
 
-  return { ...s, id: p.id, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer };
+  return { ...s, id: p.id, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer, pauseTimer, pauseAll, allPaused };
 }
 
 export function SessionApp(props: SessionProps) {

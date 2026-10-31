@@ -2,7 +2,8 @@
 // et dans chaque écran : un écran rejoue les événements reçus en SSE, sans recharger.
 import type { Person, PlanStep, PrepTask, SessionPlan } from "./planner";
 
-export type EventKind = "step_start" | "step_done" | "bowl_ready" | "timer_start" | "timer_done" | "note";
+export const EVENT_KINDS = ["step_start", "step_done", "bowl_ready", "timer_start", "timer_done", "timer_pause", "timer_resume", "note"] as const;
+export type EventKind = (typeof EVENT_KINDS)[number];
 
 export interface SessionEvent {
   seq?: number; // rowid côté serveur (absent tant que l'événement n'est pas confirmé)
@@ -17,7 +18,8 @@ export interface TimerState {
   id: string;
   label: string;
   stepId: string | null;
-  endsAt: number; // ms
+  /** Fin prévue (ms). En pause : la fin qu’il aurait eue si on l’avait repris à l’instant de la pause (voir timerEnd). */
+  endsAt: number;
   minutes: number;
   doneAt: number | null;
   /** Minuteur d'une sous-étape (son rang dans step.phases) : il ne sonne pas en plein écran, la suivante démarre. */
@@ -25,6 +27,10 @@ export interface TimerState {
   /** Lancement et durée d'origine (gardés quand on règle le minuteur : « ↺ » y revient). */
   startedAt: number;
   refMinutes: number;
+  /** En pause depuis (ms), sinon null. La reprise repousse la fin du temps passé en pause. */
+  pausedAt: number | null;
+  /** Temps déjà passé en pause (ms), pauses finies : « ↺ » revient à la durée d’origine sans le compter. */
+  pausedMs: number;
 }
 
 export interface SessionState {
@@ -105,7 +111,10 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
         const minutes = Number(e.payload?.minutes ?? Math.round((endsAt - at) / 60000));
         // Un réglage (+1, glisser, ↺) garde le lancement et la durée d'origine ; un nouveau lancement les remplace.
         const keep = e.payload?.adjust === true && prev && prev.doneAt == null;
+        // Réglé pendant une pause, il reste en pause (sa fin est comptée depuis l’instant de la pause).
         s.timers.set(e.ref, {
+          pausedAt: keep ? prev.pausedAt : null,
+          pausedMs: keep ? prev.pausedMs : 0,
           startedAt: keep ? prev.startedAt : at,
           refMinutes: keep ? prev.refMinutes : minutes,
           id: e.ref,
@@ -121,6 +130,22 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
       case "timer_done": {
         const t = e.ref ? s.timers.get(e.ref) : undefined;
         if (t && t.doneAt == null) t.doneAt = at;
+        break;
+      }
+      // Deux écrans peuvent mettre en pause (ou reprendre) ensemble : seul le premier compte.
+      case "timer_pause": {
+        const t = e.ref ? s.timers.get(e.ref) : undefined;
+        if (t && t.doneAt == null && t.pausedAt == null && at < t.endsAt) t.pausedAt = at;
+        break;
+      }
+      case "timer_resume": {
+        const t = e.ref ? s.timers.get(e.ref) : undefined;
+        if (t && t.doneAt == null && t.pausedAt != null) {
+          const pause = Math.max(0, at - t.pausedAt);
+          t.endsAt += pause;
+          t.pausedMs += pause;
+          t.pausedAt = null;
+        }
         break;
       }
       case "note": {
@@ -146,6 +171,27 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
   }
   return s;
 }
+
+// ─── Minuteurs en pause ───
+
+/** Fin du minuteur vue à l’instant `now` : en pause, le temps qui restait à la pause, compté depuis maintenant. */
+export const timerEnd = (t: Pick<TimerState, "endsAt" | "pausedAt">, now: number) => (t.pausedAt != null ? now + Math.max(0, t.endsAt - t.pausedAt) : t.endsAt);
+
+/** Le minuteur tel qu’on l’affiche à `now` : en pause, sa fin glisse avec l’heure (le reste ne bouge pas). */
+export const liveTimer = (t: TimerState, now: number): TimerState => (t.pausedAt != null ? { ...t, endsAt: timerEnd(t, now) } : t);
+
+/** Fin d’origine (« ↺ ») : lancement + durée de départ + pauses, vue à `now`. */
+export const originalEnd = (t: TimerState, now: number) => t.startedAt + t.refMinutes * 60000 + t.pausedMs + (t.pausedAt != null ? Math.max(0, now - t.pausedAt) : 0);
+
+/**
+ * Nouvelle fin à écrire dans l’événement de réglage, pour une fin voulue `liveEnd` (vue à `now`) :
+ * en pause, elle se compte depuis l’instant de la pause, comme `endsAt`.
+ */
+export const storedEnd = (t: Pick<TimerState, "pausedAt">, liveEnd: number, now: number) => (t.pausedAt != null ? liveEnd - now + t.pausedAt : liveEnd);
+
+/** Les minuteurs qui tournent (pas finis, pas en pause) : ceux que « tout mettre en pause » arrête. */
+export const runningTimers = (s: SessionState, now: number) => [...s.timers.values()].filter((t) => t.doneAt == null && t.pausedAt == null && t.endsAt > now);
+export const pausedTimers = (s: SessionState) => [...s.timers.values()].filter((t) => t.doneAt == null && t.pausedAt != null);
 
 export type StepStatus = "todo" | "active" | "done";
 export const stepStatus = (s: SessionState, id: string): StepStatus => (s.done.has(id) ? "done" : s.started.has(id) ? "active" : "todo");
@@ -178,7 +224,7 @@ export function inWait(s: SessionState, step: PlanStep): boolean {
 export function waiting(s: SessionState, step: PlanStep, now: number): boolean {
   if (!inWait(s, step)) return false;
   const t = phaseTimer(s, step.id, currentPhase(s, step)!);
-  return !!t && t.endsAt > now;
+  return !!t && timerEnd(t, now) > now;
 }
 
 /** Le minuteur d'une sous-étape d'attente : quand il finit, il sonne comme celui d'une étape. */
@@ -211,7 +257,7 @@ export const phaseIds = (sessionId: string, stepId: string, n: number) => ({
  */
 export function focusStep(plan: SessionPlan, s: SessionState, now: number): PlanStep | null {
   const active = plan.steps.filter((x) => stepStatus(s, x.id) === "active").sort((a, b) => lastActivity(s, b.id) - lastActivity(s, a.id));
-  const running = (x: PlanStep) => waiting(s, x, now) || [...s.timers.values()].some((t) => t.stepId === x.id && t.phase == null && t.doneAt == null && t.endsAt > now);
+  const running = (x: PlanStep) => waiting(s, x, now) || [...s.timers.values()].some((t) => t.stepId === x.id && t.phase == null && t.doneAt == null && timerEnd(t, now) > now);
   const free = active.find((x) => !running(x));
   if (free) return free;
   // Tout ce qui est lancé attend : la suite du plan, sauf si une attente de sous-étape tient l'écran faute de suite.
@@ -264,7 +310,7 @@ export const itemStatus = (s: SessionState, it: ThreadItem): StepStatus =>
 export function personFocus(plan: SessionPlan, s: SessionState, person: Person, now: number): ThreadItem | null {
   const th = threadOf(plan, person);
   const running = (it: ThreadItem) =>
-    (it.type === "step" && waiting(s, it.step, now)) || [...s.timers.values()].some((t) => t.stepId === it.id && t.phase == null && t.doneAt == null && t.endsAt > now);
+    (it.type === "step" && waiting(s, it.step, now)) || [...s.timers.values()].some((t) => t.stepId === it.id && t.phase == null && t.doneAt == null && timerEnd(t, now) > now);
   const active = th.filter((it) => it.type === "step" && itemStatus(s, it) === "active").sort((a, b) => lastActivity(s, b.id) - lastActivity(s, a.id));
   return active.find((it) => !running(it)) ?? th.find((it) => itemStatus(s, it) === "todo") ?? active[0] ?? null;
 }

@@ -38,6 +38,10 @@ function describeKind(e: SessionEvent, plan: SessionPlan, step: (id: string | nu
       return `Minuteur « ${e.payload?.label ?? ""} » · ${e.payload?.minutes ?? ""} min`;
     case "timer_done":
       return "Minuteur arrêté";
+    case "timer_pause":
+      return "Minuteur en pause";
+    case "timer_resume":
+      return "Minuteur repris";
     case "note":
       if (typeof e.payload?.boxed === "string") {
         const name = plan.recipes.find((r) => r.slug === e.payload!.boxed)?.name ?? "Recette";
@@ -55,6 +59,9 @@ function describeKind(e: SessionEvent, plan: SessionPlan, step: (id: string | nu
 /** Plusieurs actions d'un coup : la personne une seule fois, sans la note de démarrage. */
 function describeMany(evs: SessionEvent[], plan: SessionPlan): string {
   const shown = evs.length > 1 ? evs.filter((e) => !(e.kind === "note" && e.payload?.person)) : evs;
+  // Tout mettre en pause (ou reprendre) : une phrase pour tous les minuteurs.
+  if (shown.length > 1 && shown.every((e) => e.kind === shown[0].kind) && (shown[0].kind === "timer_pause" || shown[0].kind === "timer_resume"))
+    return shown[0].kind === "timer_pause" ? `${shown.length} minuteurs en pause` : `${shown.length} minuteurs repris`;
   const texts = shown.map((e) => describe(e, plan));
   const who = typeof shown[0]?.payload?.person === "string" ? `${shown[0].payload.person} · ` : "";
   if (who && texts.every((t) => t.startsWith(who))) return who + texts.map((t) => t.slice(who.length)).join(" · ");
