@@ -14,13 +14,14 @@ permissions:
 
 jobs:
   typecheck:
-    name: Types
+    name: Types, lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm typecheck
+      - run: pnpm lint
 
   test:
     name: Tests
@@ -52,7 +53,7 @@ jobs:
     timeout-minutes: 2
     steps:
       - run: |
-          echo "Types : ${{ needs.typecheck.result }}, tests : ${{ needs.test.result }}, build et fumée : ${{ needs.build.result }}"
+          echo "Types et lint : ${{ needs.typecheck.result }}, tests : ${{ needs.test.result }}, build et fumée : ${{ needs.build.result }}"
           [ "${{ needs.typecheck.result }}" = success ] && [ "${{ needs.test.result }}" = success ] && [ "${{ needs.build.result }}" = success ]
 
   docker:

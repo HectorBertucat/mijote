@@ -26,7 +26,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Quoi | Commande |
 |---|---|
 | Dev (port 3010) | `pnpm dev` |
-| Types, tests | `pnpm typecheck`, `pnpm test` |
+| Types, lint, tests | `pnpm typecheck`, `pnpm lint` (Oxlint, `.oxlintrc.json`), `pnpm test` |
 | Build | `pnpm build` |
 | Docker | `docker compose up -d --build` |
 | Migration | `pnpm db:generate --name <nom>` |
