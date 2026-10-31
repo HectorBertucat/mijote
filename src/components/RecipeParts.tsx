@@ -1,7 +1,7 @@
 // Morceaux d'une fiche, communs à la fiche, au panneau « Ajuster » et à l'atelier (DA « Plan de travail ») :
 // étape (récipient, foyer, niveau, four, durée, bols, repère sensoriel) et groupe d'ingrédients par bol. Sans état.
-import type { ReactNode } from "react";
-import { BowlBadge, Cue, Icon, Induction, SpecChip, type IconName, type RecipeColor } from "@/components/ui";
+import type { CSSProperties, ReactNode } from "react";
+import { BowlBadge, Cue, Icon, Induction, recipeVar, type IconName, type RecipeColor } from "@/components/ui";
 import { STEP_LABELS, type STEP_KINDS, type StepPhase } from "@/lib/recipes/format";
 import { StepIllu } from "@/components/illus/Illu";
 
@@ -43,7 +43,7 @@ function cueSense(text: string): "ear" | "nose" | "eye" {
 export function StepCue({ text }: { text: string }) {
   const m = text.match(/^(.+?[.!?…])\s+(.+)$/s);
   return (
-    <Cue sense={cueSense(text)} quote={m ? m[1] : text} className="mt-2">
+    <Cue sense={cueSense(text)} quote={m ? m[1] : text} className="mt-3">
       {m ? m[2] : null}
     </Cue>
   );
@@ -73,13 +73,13 @@ export function fmtPhaseMin(m: number) {
 function PhaseList({ phases }: { phases: StepPhase[] }) {
   const batches = Math.max(0, ...phases.map((p) => p.batch ?? 0));
   return (
-    <ol className="mt-2 grid gap-1 border-l-2 border-line pl-3 text-[14px] leading-snug text-ink-2">
+    <ol className="mt-3 grid border-l border-line-strong pl-4 text-small text-ink-2">
       {phases.map((p, k) => (
-        <li key={k} className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-          <span className="num w-[62px] shrink-0 font-bold text-ink">{fmtPhaseMin(p.min)}</span>
-          {p.hobLevel != null && <span className="num shrink-0 text-[12px] font-bold text-faint">niv. {p.hobLevel}</span>}
-          {batches > 1 && p.batch != null && <span className="shrink-0 text-[12px] font-bold text-faint">fournée {p.batch}</span>}
-          {p.wait && <span className="shrink-0 text-[12px] font-bold text-faint">attente</span>}
+        <li key={k} className="flex min-w-0 flex-wrap items-baseline gap-x-3 py-1">
+          <span className="num-tight w-16 shrink-0 text-ink">{fmtPhaseMin(p.min)}</span>
+          {p.hobLevel != null && <span className="label shrink-0 text-faint">niv. {p.hobLevel}</span>}
+          {batches > 1 && p.batch != null && <span className="label shrink-0 text-faint">fournée {p.batch}</span>}
+          {p.wait && <span className="label shrink-0 text-faint">attente</span>}
           <span className={`min-w-0 flex-1 ${p.wait ? "italic" : ""}`}>{p.text}</span>
         </li>
       ))}
@@ -87,39 +87,67 @@ function PhaseList({ phases }: { phases: StepPhase[] }) {
   );
 }
 
-/** Une étape de la fiche : numéro, type, texte, puces de spécification, repère. `fresh` : réécrite par la variante (surlignée). */
+/** Un repère de l'étape (récipient, four, durée) : icône et texte, sans boîte. */
+function Spec({ icon, lead, children }: { icon?: IconName; lead?: ReactNode; children?: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      {icon && <Icon name={icon} size="s" className="text-faint" />}
+      {lead}
+      {children != null && <span>{children}</span>}
+    </span>
+  );
+}
+
+/**
+ * Une étape, comme dans un livre : numéro très grand à la couleur du plat, type en étiquette, consigne, repères
+ * (récipient, feu, four, durée, bols) en une ligne, sous-étapes, repère sensoriel ; le geste dessiné à droite.
+ * `fresh` : réécrite par la variante (surlignée).
+ */
 export function StepItem({ n, step: s, color, fresh = false, badge }: { n: number; step: StepView; color: RecipeColor; fresh?: boolean; badge?: ReactNode }) {
   const specs = s.equipment || s.hobLevel != null || s.ovenTemp != null || s.durationMin != null || (s.bowls?.length ?? 0) > 0;
   return (
-    <li className={`grid grid-cols-[34px_minmax(0,1fr)_auto] gap-3 border-b border-line py-3.5 last:border-b-0 ${fresh ? "-mx-2 animate-flash rounded-[10px] px-2" : ""}`}>
-      <span className="font-display text-[20px] font-extrabold tabular-nums text-faint">{n}</span>
+    <li
+      className={`grid grid-cols-[3rem_minmax(0,1fr)] gap-x-4 border-b border-line py-6 first:pt-0 last:border-b-0 sm:grid-cols-[4.5rem_minmax(0,1fr)_auto] sm:gap-x-6 ${fresh ? "animate-flash" : ""}`}
+      style={{ "--rc": recipeVar(color) } as CSSProperties}
+    >
+      <span aria-hidden className="num-tight text-h1 text-[var(--rc)] sm:text-num-xl">
+        {n}
+      </span>
       <div className="min-w-0">
-        <div className="mb-0.5 flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] text-faint">
-          {STEP_LABELS[s.kind]}
-          {badge}
+        <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <span className="label text-ink-2">
+              <span className="sr-only">Étape {n}, </span>
+              {STEP_LABELS[s.kind]}
+            </span>
+            {badge}
+          </span>
+          <span className="sm:hidden">
+            <StepIllu kind={s.kind} text={s.text} size="m" />
+          </span>
         </div>
-        <p className="text-[16px] leading-[1.45]">{s.text}</p>
+        <p className="text-body">{s.text}</p>
         {specs && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {s.equipment && <SpecChip icon={s.equipment.icon}>{s.equipment.label}</SpecChip>}
-            {s.hobLevel != null && <SpecChip lead={<Induction level={s.hobLevel} />} />}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-small font-semibold text-ink-2">
+            {s.equipment && <Spec icon={s.equipment.icon}>{s.equipment.label}</Spec>}
+            {s.hobLevel != null && <Spec lead={<Induction level={s.hobLevel} />} />}
             {s.ovenTemp != null && (
-              <SpecChip icon="oven">
-                <span className="num font-[750]">{s.ovenTemp} °C</span>
-              </SpecChip>
+              <Spec icon="oven">
+                <span className="num">{s.ovenTemp}{"\u00a0"}°C</span>
+              </Spec>
             )}
-            {s.durationMin != null && <SpecChip icon="clock">{fmtMin(s.durationMin)}</SpecChip>}
-            {(s.bowls ?? []).map((b) => (
-              <SpecChip key={b} lead={<BowlBadge color={color} letter={b} size="xs" />}>
-                bol {b}
-              </SpecChip>
-            ))}
+            {s.durationMin != null && <Spec icon="clock">{fmtMin(s.durationMin)}</Spec>}
+            {(s.bowls?.length ?? 0) > 0 && (
+              <Spec lead={<span className="flex gap-1">{s.bowls!.map((b) => <BowlBadge key={b} color={color} letter={b} size="xs" label={`Bol ${b}`} />)}</span>} />
+            )}
           </div>
         )}
         {s.phases && s.phases.length > 0 && <PhaseList phases={s.phases} />}
         {s.cue && <StepCue text={s.cue} />}
       </div>
-      <StepIllu kind={s.kind} text={s.text} size="l" className="max-sm:size-11" />
+      <span className="max-sm:hidden">
+        <StepIllu kind={s.kind} text={s.text} size="l" />
+      </span>
     </li>
   );
 }

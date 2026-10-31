@@ -57,7 +57,7 @@ export function CommandK({ recipes }: { recipes: SearchRecipe[] }) {
       const item = !byName && n.length >= 2 ? r.items.find((i) => fold(i).includes(n)) : undefined;
       if (byName || item) out.push({ key: `r${r.slug}`, href: `/recettes/${r.slug}`, label: r.name, sub: item ? `avec ${item.split(/[,(]/)[0].trim().toLowerCase()}` : "recette", lead: <RecipeTile color={r.color} name={r.name} size="sm" /> });
     }
-    for (const p of PAGES) if (!n || fold(`${p.label} ${p.words}`).includes(n)) out.push({ key: `p${p.href}`, href: p.href, label: p.label, sub: "page", lead: <span className="grid size-7 place-items-center rounded-[6px] bg-surface-2 text-ink-2"><Icon name={p.icon} size="s" /></span> });
+    for (const p of PAGES) if (!n || fold(`${p.label} ${p.words}`).includes(n)) out.push({ key: `p${p.href}`, href: p.href, label: p.label, sub: "page", lead: <span className="grid size-7 place-items-center rounded-[4px] bg-surface-2 text-ink-2"><Icon name={p.icon} size="s" /></span> });
     return out.slice(0, 12);
   }, [q, recipes]);
 
@@ -69,15 +69,15 @@ export function CommandK({ recipes }: { recipes: SearchRecipe[] }) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="hidden h-9 items-center gap-2 rounded-[9px] border border-line bg-surface px-2.5 text-[13px] font-semibold text-ink-2 hover:text-ink lg:inline-flex" aria-label="Chercher (⌘K)">
+      <button type="button" onClick={() => setOpen(true)} className="hidden h-9 items-center gap-2 rounded-[8px] border border-line px-3 text-small font-semibold text-ink-2 hover:border-line-strong hover:text-ink lg:inline-flex" aria-label="Chercher (⌘K)">
         <Icon name="search" size="s" />
         Chercher
-        <kbd className="rounded-[5px] bg-surface-2 px-1.5 font-sans text-[11px]">⌘K</kbd>
+        <kbd className="label rounded-[4px] bg-surface-2 px-1 py-0.5 text-ink-2">⌘K</kbd>
       </button>
       {open && (
-        <div className="fixed inset-0 z-[60] grid items-start justify-items-center bg-scrim px-4 pt-[12vh]" onClick={() => setOpen(false)}>
-          <div role="dialog" aria-modal aria-label="Recherche rapide" className="grid w-full max-w-[560px] animate-pop overflow-hidden rounded-[16px] border border-line bg-raised shadow-e3" onClick={(e) => e.stopPropagation()}>
-            <label className="flex items-center gap-2.5 border-b border-line px-4">
+        <div className="fixed inset-0 z-[60] grid animate-[fade-in_var(--dur-2)_var(--ease-out)] items-start justify-items-center bg-scrim px-4 pt-[12vh]" onClick={() => setOpen(false)}>
+          <div role="dialog" aria-modal aria-label="Recherche rapide" className="grid w-full max-w-[560px] animate-pop overflow-hidden rounded-[14px] border border-line bg-raised shadow-float" onClick={(e) => e.stopPropagation()}>
+            <label className="flex items-center gap-3 border-b border-line px-4">
               <Icon name="search" className="text-faint" />
               <input
                 ref={input}
@@ -102,18 +102,18 @@ export function CommandK({ recipes }: { recipes: SearchRecipe[] }) {
                 }}
                 placeholder="Une recette, un ingrédient, une page"
                 aria-label="Chercher"
-                className="h-14 min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-faint"
+                className="h-14 min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-faint"
               />
-              <kbd className="rounded-[5px] bg-surface-2 px-1.5 text-[11px] text-ink-2">Échap</kbd>
+              <kbd className="label rounded-[4px] bg-surface-2 px-1 py-0.5 text-ink-2">Échap</kbd>
             </label>
-            <ul className="max-h-[52vh] overflow-y-auto p-1.5" role="listbox" aria-label="Résultats">
-              {hits.length === 0 && <li className="px-3 py-6 text-center text-[14px] text-ink-2">Rien ne correspond à « {q} ».</li>}
+            <ul className="max-h-[52vh] overflow-y-auto p-2" role="listbox" aria-label="Résultats">
+              {hits.length === 0 && <li className="px-3 py-6 text-center text-small text-ink-2">Rien ne correspond à «{"\u00a0"}{q}{"\u00a0"}».</li>}
               {hits.map((h, i) => (
                 <li key={h.key} role="option" aria-selected={i === at}>
-                  <button type="button" onMouseEnter={() => setAt(i)} onClick={() => go(h)} className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left ${i === at ? "bg-accent-soft" : ""}`}>
+                  <button type="button" onMouseEnter={() => setAt(i)} onClick={() => go(h)} className={`flex min-h-tap w-full items-center gap-3 rounded-[8px] px-3 py-2 text-left ${i === at ? "bg-accent-soft text-ink" : ""}`}>
                     {h.lead}
                     <span className="min-w-0 flex-1 truncate font-semibold">{h.label}</span>
-                    {h.sub && <span className="shrink-0 text-[13px] text-ink-2">{h.sub}</span>}
+                    {h.sub && <span className="shrink-0 text-small text-ink-2">{h.sub}</span>}
                   </button>
                 </li>
               ))}
