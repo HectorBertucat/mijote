@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BoxList } from "@/components/boxes/BoxList";
-import { buttonClass, Card, EmptyState } from "@/components/ui";
+import { buttonClass, EmptyState } from "@/components/ui";
+import { DishBox } from "@/components/ui/dish";
+import { listDishRecipes } from "@/lib/recipes/queries";
 import { db } from "@/lib/db/client";
 import { listStock } from "@/lib/boxes/store";
 import { activePerson } from "@/lib/health/active";
@@ -10,45 +12,56 @@ import { recipeColor } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
 
+const n = (k: number, one: string, many = `${one}s`) => `${k} ${k > 1 ? many : one}`;
+const when = (b: { limit: string; freshness: string }, today: string) =>
+  b.freshness === "past" ? "à jeter" : b.limit === today ? "à manger aujourd’hui" : b.freshness === "soon" ? "à manger demain" : `jusqu’au ${new Date(`${b.limit}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}`;
+
 export default async function Frigo() {
   const today = todayParis();
   const boxes = listStock(db, today);
   const eater = (await activePerson())?.name ?? "";
   const colors = Object.fromEntries(boxes.filter((b) => b.slug).map((b) => [b.slug!, recipeColor(b.slug!)]));
+  // La boîte de chaque plat, dessinée ici (le dessin reste côté serveur).
+  const slugs = new Set(boxes.map((b) => b.slug));
+  const arts = Object.fromEntries([...listDishRecipes(db).values()].filter((d) => slugs.has(d.slug)).map((d) => [d.slug, <DishBox key={d.slug} recipe={d} size="sm" />]));
   const places = [
-    { id: "fridge", title: "Frigo", boxes: boxes.filter((b) => b.place === "fridge") },
-    { id: "freezer", title: "Congélo", boxes: boxes.filter((b) => b.place === "freezer") },
+    { id: "fridge", title: "Frigo", empty: "Rien au frigo. Sors une boîte du congélo la veille.", boxes: boxes.filter((b) => b.place === "fridge") },
+    { id: "freezer", title: "Congélo", empty: "Rien au congélo.", boxes: boxes.filter((b) => b.place === "freezer") },
   ];
+  const first = places[0].boxes[0];
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12 md:gap-18">
       <AutoRefresh />
-      <div>
-        <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">Frigo</h1>
-        <p className="mt-1.5 text-ink-2">Les boîtes des sessions de cuisine. Une faim : on pioche ici avant de commander.{eater ? ` « Je la mange » note la boîte au journal de ${eater}.` : ""}</p>
-      </div>
+      <header className="grid gap-4">
+        <h1 className="text-h1">Frigo</h1>
+        {boxes.length > 0 && (
+          <p className="num max-w-[48ch] text-lead text-ink-2">
+            {n(places[0].boxes.length, "boîte")} au frigo, {places[1].boxes.length} au congélo.
+            {first ? ` La plus pressée : ${first.name.split(",")[0]}, ${when(first, today)}.` : ""}
+          </p>
+        )}
+      </header>
       {boxes.length === 0 ? (
-        <Card flat>
-          <EmptyState
-            scene="fridge"
-            title="Aucune boîte"
-            action={
-              <Link href="/semaine" className={buttonClass({ size: "sm" })}>
-                Préparer la semaine
-              </Link>
-            }
-          >
-            Les boîtes arrivent à la fin d&apos;une session de cuisine : on pèse la marmite, l&apos;appli dit combien mettre dans chaque boîte et les range ici.
-          </EmptyState>
-        </Card>
+        <EmptyState
+          scene="fridge"
+          title="Aucune boîte"
+          action={
+            <Link href="/semaine" className={buttonClass({ variant: "primary" })}>
+              Préparer la semaine
+            </Link>
+          }
+        >
+          Les boîtes arrivent à la fin d&apos;une session : on pèse la marmite, l&apos;appli dit combien mettre dans chaque boîte et les range ici.
+        </EmptyState>
       ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-2">
-          {places.map((p) => (
-            <section key={p.id} className="grid gap-2.5" aria-labelledby={`${p.id}-titre`}>
-              <h2 id={`${p.id}-titre`} className="flex items-baseline gap-2 text-[18px] font-bold">
+        <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-6">
+          {places.map((p, i) => (
+            <section key={p.id} className={`grid gap-6 ${i === 0 ? "lg:col-span-7" : "lg:col-span-5"}`} aria-labelledby={`${p.id}-titre`}>
+              <h2 id={`${p.id}-titre`} className="flex items-baseline gap-3 text-h2">
                 {p.title}
-                <span className="num text-[14px] font-semibold text-faint">{p.boxes.length}</span>
+                <span className="num-tight text-[0.8em] text-ink-3">{p.boxes.length}</span>
               </h2>
-              {p.boxes.length ? <BoxList boxes={p.boxes} colors={colors} today={today} eater={eater} /> : <p className="text-[14px] text-ink-2">{p.id === "fridge" ? "Rien au frigo." : "Rien au congélo."}</p>}
+              {p.boxes.length ? <BoxList boxes={p.boxes} colors={colors} arts={arts} today={today} eater={eater} /> : <p className="border-y border-line py-4 text-[17px] text-ink-2">{p.empty}</p>}
             </section>
           ))}
         </div>

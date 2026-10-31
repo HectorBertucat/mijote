@@ -31,13 +31,13 @@ export function SessionBanner() {
   // sur téléphone (à portée de pouce ; kit.css agrandit alors la marge basse de <main>).
   return (
     <div data-session-banner className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 sm:static">
-      <Link href={`/session/${active.id}`} className="flex items-center gap-2.5 bg-inverse py-2 pl-3 pr-2.5 text-[14px] text-on-inverse active:scale-100 sm:px-[max(1.75rem,calc((100vw-64rem)/2+1.75rem))]">
+      <Link href={`/session/${active.id}`} className="flex items-center gap-3 bg-inverse py-2 pl-3 pr-3 text-[14px] text-on-inverse active:scale-100 sm:px-[max(1.75rem,calc((100vw-64rem)/2+1.75rem))]">
         <span className="k-live size-2 shrink-0 rounded-full bg-on-inverse" aria-hidden />
         <span className="min-w-0 flex-1 truncate">
           <b>{active.status === "fridge" ? "Prep faite la veille" : active.test ? "Session test" : "Session en cours"}</b> · {active.title}
           {active.mode === "duo" ? " · à deux" : ""}
         </span>
-        <span className="inline-flex min-h-[30px] shrink-0 items-center rounded-[8px] bg-on-inverse px-2.5 font-display text-[13px] font-[650] text-inverse">
+        <span className="label inline-flex min-h-8 shrink-0 items-center rounded-[8px] bg-on-inverse px-3 text-inverse">
           {active.status === "fridge" ? "Reprendre la session" : active.mode === "duo" ? "À deux" : active.status === "prep" ? "Prep" : "Cuisson"} →
         </span>
       </Link>

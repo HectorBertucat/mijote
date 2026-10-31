@@ -2,15 +2,18 @@
 
 // Fin de session : on pèse chaque marmite, l'appli dit les grammes de chaque boîte et les range
 // au frigo ou au congélo (src/lib/boxes). Les marmites sont lues à l'ouverture de l'écran.
-import { useEffect, useState } from "react";
+// Une section de page (filets, pas de carte) : une marmite après l'autre.
+import { useContext, useEffect, useState } from "react";
+import { DishArts } from "./parts";
 import { PotSplit } from "@/components/boxes/PotSplit";
 import { loadSessionPots } from "@/app/frigo/actions";
 import type { SessionPlan } from "@/lib/session/planner";
 
 type Pots = Awaited<ReturnType<typeof loadSessionPots>>;
 
-export function SessionBoxes({ id, plan }: { id: string; plan: SessionPlan }) {
+export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: SessionPlan; kitchen?: boolean }) {
   const [data, setData] = useState<Pots | undefined>(undefined);
+  const dishes = useContext(DishArts);
   useEffect(() => {
     let live = true;
     loadSessionPots(id).then((d) => live && setData(d));
@@ -18,24 +21,24 @@ export function SessionBoxes({ id, plan }: { id: string; plan: SessionPlan }) {
       live = false;
     };
   }, [id]);
-  if (data === undefined) return <p className="text-[14px] text-ink-2">Je prépare les boîtes…</p>;
+  if (data === undefined) return <p className="text-[17px] text-ink-2">Je prépare les boîtes…</p>;
   if (!data?.pots.length) return null;
   const colorOf = (slug: string) => plan.recipes.find((r) => r.slug === slug)?.color ?? "var(--c-ink-3)";
   return (
-    <section className="grid gap-4 rounded-[18px] border border-line bg-surface p-5 text-left" aria-labelledby="boites-titre">
-      <div>
-        <p id="boites-titre" className="font-display text-[20px] leading-tight font-extrabold">
-          En boîtes
-        </p>
-        <p className="text-ink-2">Une boîte par repas prévu dans la Semaine, le reste en marge au congélo.</p>
+    <section className="grid gap-6 md:grid-cols-12 md:gap-6" aria-labelledby="boites-titre">
+      <div className="grid content-start gap-3 md:col-span-4">
+        <h2 id="boites-titre" className="text-h2">
+          Peser, puis ranger
+        </h2>
+        <p className="text-[17px] text-ink-2">Pèse chaque marmite : l&apos;appli dit combien mettre dans chaque boîte. Une boîte par repas prévu, le reste au congélo.</p>
       </div>
-      <div className="grid divide-y divide-line">
+      <ol className="grid content-start md:col-span-8">
         {data.pots.map((m) => (
-          <div key={m.recipeId} className="py-4 first:pt-0 last:pb-0">
-            <PotSplit model={m} color={colorOf(m.slug)} session={id} stored={data.stored[m.recipeId] ?? null} />
-          </div>
+          <li key={m.recipeId} className="border-t border-line-strong py-6 first:pt-6">
+            <PotSplit model={m} color={colorOf(m.slug)} session={id} stored={data.stored[m.recipeId] ?? null} kitchen={kitchen} art={dishes[m.slug]} />
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

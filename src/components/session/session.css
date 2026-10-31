@@ -1,0 +1,55 @@
+/* Session de cuisine (vue simple) : ce que les utilitaires font mal. Système « Carnet de marché »
+   (docs/design/systeme.md) : couleurs par jetons, mouvement 120–280 ms ease-out, rien au clavier.
+   Lu à un mètre de la plaque : la consigne en Atkinson très grand, les chiffres en Archivo serrée. */
+
+/* La consigne : Atkinson, grasse, la plus grande chose de l'écran après les chiffres. */
+.sx-consigne {
+  font-family: var(--font-sans);
+  font-stretch: 100%;
+  font-weight: 700;
+  font-size: clamp(2rem, 1.25rem + 3.2vw, var(--text-step));
+  line-height: 1.1;
+  letter-spacing: -0.012em;
+  text-wrap: pretty;
+}
+.sx-consigne-sm { font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.25rem); }
+
+/* Les cadrans (minuteur, niveau, four) : Archivo serrée, géante. */
+.sx-giant {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-stretch: 75%;
+  font-weight: 750;
+  font-size: clamp(4rem, 2.2rem + 9vw, var(--text-giant));
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+}
+
+/* Le fond de la coquille (papier, aplat d'encre, aplat tomate) : l'en-tête et la barre le reprennent. */
+[data-simple] { background: var(--shell-bg); }
+
+/* Ligne de liste qu'on touche : le survol creuse, pas d'enfoncement (seuls les boutons s'enfoncent). */
+.sx-row { border-radius: var(--radius-ctl); transition: background-color var(--dur-1) var(--ease-out), opacity var(--dur-2) var(--ease-out); }
+@media (hover: hover) { .sx-row:hover { background: var(--c-surface-2); } }
+/* La ligne « maintenant » : un filet cocotte dans la marge. */
+.sx-now { position: relative; }
+.sx-now::before { content: ""; position: absolute; left: -12px; top: 16px; bottom: 16px; width: 3px; border-radius: 2px; background: var(--c-accent); }
+
+/* Feedback de « Suivant » : la consigne suivante glisse de 8 px. Une attente qui sonne revient au premier plan. */
+@keyframes sx-swap { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+@keyframes sx-rise { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes sx-fade { from { opacity: 0; } to { opacity: 1; } }
+.sx-swap { animation: sx-swap var(--dur-2) var(--ease-out) both; }
+.sx-ring { animation: sx-rise var(--dur-3) var(--ease-out) both; }
+.sx-enter { animation: sx-fade var(--dur-3) var(--ease-out) both; }
+/* La cloche bat tant que ça sonne (le son et la vibration aussi) : la seule boucle de l'écran. */
+@keyframes sx-bell { 0%, 100% { transform: none; } 20% { transform: rotate(-14deg); } 40% { transform: rotate(12deg); } 60% { transform: rotate(-6deg); } }
+.sx-bell { transform-origin: 50% 10%; animation: sx-bell 1.5s var(--ease-out) infinite; }
+
+/* Au clavier (espace, flèche) : pas d'animation, l'écran change tout de suite. */
+[data-input="key"] .sx-swap, [data-input="key"] .sx-enter { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-swap, .sx-ring { animation: sx-fade var(--dur-1) var(--ease-out) both; }
+  .sx-bell { animation: none; }
+}

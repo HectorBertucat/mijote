@@ -44,7 +44,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
           </span>
         }
       />
-      <div className="mx-auto grid max-w-[90rem] gap-5 px-4 py-5 sm:px-5">
+      <div className="mx-auto grid max-w-[90rem] gap-6 px-4 py-6 sm:px-6">
         <Issues plan={plan} sessionId={p.id} />
         {plan.eve && state.status !== "done" && <EveRecap plan={plan} c={c} />}
         {!started && (
@@ -55,13 +55,13 @@ export function DuoView(p: SessionProps & { c: Controls }) {
         {state.status === "done" ? (
           <DoneView plan={plan} c={c} startedAt={p.startedAt} />
         ) : (
-          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_280px]">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_280px]">
             {PEOPLE.map((person) => (
               <PersonColumn key={person} plan={plan} c={c} person={person} />
             ))}
-            <aside className="grid content-start gap-3.5 lg:col-span-2 lg:grid-cols-2 xl:col-span-1 xl:grid-cols-1 xl:sticky xl:top-4 xl:self-start">
+            <aside className="grid content-start gap-4 lg:col-span-2 lg:grid-cols-2 xl:col-span-1 xl:grid-cols-1 xl:sticky xl:top-4 xl:self-start">
               {p.personQrs && (
-                <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-1">
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
                   {p.personQrs.map((q) => (
                     <QrCard key={q.person} svg={q.svg} url={q.url}>
                       <PersonMono person={q.person} size={24} />
@@ -70,13 +70,13 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                   ))}
                 </div>
               )}
-              <div className="grid content-start gap-3.5">
+              <div className="grid content-start gap-4">
                 <Eyebrow>Minuteurs</Eyebrow>
                 <TimerList plan={plan} timers={c.timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} />
                 <Eyebrow className="mt-1">Foyers et four</Eyebrow>
                 <Resources plan={plan} state={state} now={c.now} cookingStart={c.cookingStart} scale={0.7} />
                 <Eyebrow className="mt-1">Bols</Eyebrow>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-3">
                   {plan.bowls.map((b) => (
                     <button key={b.letter} type="button" onClick={() => c.toggleBowl(b.letter)} aria-pressed={state.bowlsReady.has(b.letter)} title={b.items.map((i) => i.item).join(", ")} className="rounded-full active:scale-95">
                       <Bowl bowl={b} size="md" ready={state.bowlsReady.has(b.letter)} />
@@ -84,7 +84,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                   ))}
                 </div>
                 <PlanDetails plan={plan} />
-                <p className="hidden text-[13px] text-ink-2 lg:block">
+                <p className="hidden text-small text-ink-2 lg:block">
                   Clavier : <Kbd>A</Kbd> ou <Kbd>espace</Kbd> = « Fait » de A, <Kbd>B</Kbd> = « Fait » de B.
                 </p>
                 <Button variant="quiet" icon="check" block onClick={() => c.setStatus("done")}>
@@ -99,20 +99,20 @@ export function DuoView(p: SessionProps & { c: Controls }) {
   );
 }
 
-const Kbd = ({ children }: { children: React.ReactNode }) => <kbd className="rounded-[5px] border border-line bg-surface-2 px-1.5 text-[12px]">{children}</kbd>;
+const Kbd = ({ children }: { children: React.ReactNode }) => <kbd className="rounded-[8px] border border-line bg-surface-2 px-2 text-[12px]">{children}</kbd>;
 
 /** Prep la veille reprise à deux : les bols du frigo à sortir, et ce qui a été fait la veille. */
 function EveRecap({ plan, c }: { plan: SessionPlan; c: Controls }) {
   const eve = plan.eve!;
   const bowls = plan.bowls.filter((b) => eve.bowls.includes(b.letter));
   return (
-    <section className="grid gap-2.5 rounded-[14px] border border-line bg-surface px-4 py-3.5">
+    <section className="grid gap-3 rounded-[14px] border border-line bg-surface px-4 py-4">
       <div className="flex flex-wrap items-center gap-3">
         <Icon name="fridge" />
         <b>
           {bowls.length} bol{bowls.length > 1 ? "s" : ""} de la veille au frigo : sors-les.
         </b>
-        <span className="flex flex-wrap gap-2.5">
+        <span className="flex flex-wrap gap-3">
           {bowls.map((b) => (
             <span key={b.letter} title={b.items.map((i) => i.item).join(", ")}>
               <Bowl bowl={b} size="md" ready={c.state.bowlsReady.has(b.letter)} />
@@ -122,7 +122,7 @@ function EveRecap({ plan, c }: { plan: SessionPlan; c: Controls }) {
       </div>
       {eve.tasks.length > 0 && (
         <details className="group text-[14px]">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 text-ink-2 [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-ink-2 [&::-webkit-details-marker]:hidden">
             <Icon name="moonset" size="s" />
             Fait la veille · {eve.tasks.length} geste{eve.tasks.length > 1 ? "s" : ""}, {dur(eve.minutes)}
             <Icon name="chev" size="s" className="transition-transform group-open:rotate-90" />
@@ -173,8 +173,8 @@ function PersonColumn({ plan, c, person }: { plan: SessionPlan; c: Controls; per
     box.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [focus?.id]);
   return (
-    <section ref={box} className="relative grid min-w-0 content-start gap-2.5 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto lg:pr-1" aria-label={`Fil de ${person}`} data-person={person}>
-      <div className="sticky top-0 z-[1] flex items-center gap-2.5 bg-bg pb-1.5">
+    <section ref={box} className="relative grid min-w-0 content-start gap-3 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto lg:pr-1" aria-label={`Fil de ${person}`} data-person={person}>
+      <div className="sticky top-0 z-[1] flex items-center gap-3 bg-bg pb-2">
         <PersonMono person={person} size={36} />
         <b className="font-display text-[20px]">Fil {person}</b>
         <span className="num ml-auto text-[14px] text-ink-2">
@@ -184,7 +184,7 @@ function PersonColumn({ plan, c, person }: { plan: SessionPlan; c: Controls; per
       {focus ? (
         <ItemFocus plan={plan} c={c} item={focus} person={person} />
       ) : (
-        <div className="grid justify-items-center gap-2 rounded-[18px] border-2 border-ink bg-surface p-5 text-center">
+        <div className="grid justify-items-center gap-2 rounded-[14px] border-2 border-ink bg-surface p-6 text-center">
           <Icon name="check" size="l" className="text-accent" />
           <b className="font-display text-[22px]">{person} a tout fini</b>
         </div>
@@ -193,11 +193,11 @@ function PersonColumn({ plan, c, person }: { plan: SessionPlan; c: Controls; per
       {rows.map((r) => (r.kind === "handoff" ? <Handoff key={`h-${r.h.toStepId}-${r.h.fromStepId}`} plan={plan} c={c} h={r.h} /> : <ThreadRow key={r.it.id} plan={plan} c={c} item={r.it} person={person} />))}
       {finished.length > 0 && (
         <details className="group">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 py-1 text-[13px] text-ink-2 [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-2 py-1 text-small text-ink-2 [&::-webkit-details-marker]:hidden">
             <Icon name="chev" size="s" className="transition-transform group-open:rotate-90" />
             {finished.length} fait{finished.length > 1 ? "s" : ""}
           </summary>
-          <div className="mt-1.5 grid gap-2">
+          <div className="mt-2 grid gap-2">
             {finished.map((it) => (
               <ThreadRow key={it.id} plan={plan} c={c} item={it} person={person} />
             ))}
@@ -213,16 +213,16 @@ function ThreadRow({ plan, c, item, person }: { plan: SessionPlan; c: Controls; 
   const toggle = () => (item.type === "prep" ? c.togglePrep(item.task.id, person) : c.toggleStep(item.step));
   const relay = item.type === "step" && item.step.notes.some((n) => n.startsWith("Relais"));
   return (
-    <button type="button" onClick={toggle} className={`grid w-full gap-1 rounded-[12px] border border-line bg-surface px-3.5 py-3 text-left hover:border-line-strong ${st === "done" ? "opacity-55" : ""}`}>
+    <button type="button" onClick={toggle} className={`grid w-full gap-1 rounded-[8px] border border-line bg-surface px-4 py-3 text-left hover:border-line-strong ${st === "done" ? "opacity-55" : ""}`}>
       <span className="flex items-center justify-between gap-2 text-[12px] font-semibold text-ink-2">
         <span className="flex items-center gap-2">
           <RecipeMark plan={plan} slug={itemSlug(plan, item)} />
           {st === "done" ? "fait" : st === "active" ? "en cours" : item.type === "step" ? `étape ${item.step.no} · ${clock(c.cookingStart + item.startMin * 60000)}` : `prep · ${clock(c.cookingStart + item.startMin * 60000)}`}
-          {relay && <span className="rounded-[5px] bg-accent-soft px-1.5 text-accent">relais</span>}
+          {relay && <span className="rounded-[8px] bg-accent-soft px-2 text-accent">relais</span>}
         </span>
         <span className="num">{dur(item.type === "prep" ? item.task.minutes : item.step.durationMin)}</span>
       </span>
-      <b className="text-[15px] leading-snug">{itemTitle(plan, item)}</b>
+      <b className="text-[17px] leading-snug">{itemTitle(plan, item)}</b>
     </button>
   );
 }
@@ -237,8 +237,8 @@ function PrepNow({ plan, c, task, big, actions }: { plan: SessionPlan; c: Contro
   const planned = c.cookingStart + (task.startMin ?? 0) * 60000;
   const slug = task.recipeSlug ?? bowlOf(plan, task.bowls?.[0] ?? "")?.recipeSlug ?? task.items[0]?.recipeSlug ?? null;
   return (
-    <article key={task.id} className={`grid animate-pop gap-3 rounded-[18px] border-2 border-ink bg-surface ${big ? "p-5" : "p-4"}`}>
-      <div className="flex flex-wrap items-center gap-2 text-[13px] font-bold uppercase tracking-[0.1em] text-ink-2">
+    <article key={task.id} className={`grid animate-pop gap-3 rounded-[14px] border-2 border-ink bg-surface ${big ? "p-6" : "p-4"}`}>
+      <div className="flex flex-wrap items-center gap-2 label text-ink-2">
         <RecipeMark plan={plan} slug={slug} />
         Maintenant · prep
         <span className="num ml-auto font-semibold tracking-normal normal-case">
@@ -250,12 +250,12 @@ function PrepNow({ plan, c, task, big, actions }: { plan: SessionPlan; c: Contro
         {task.total && <span className="num text-ink-2"> · {task.total}</span>}
       </h2>
       {task.kind === "cut" ? (
-        <ul className={`grid gap-2 ${big ? "text-[19px]" : "text-[16px]"}`}>
+        <ul className={`grid gap-2 ${big ? "text-[19px]" : "text-[17px]"}`}>
           {task.items.map((i, k) => {
             const b = i.bowl ? bowlOf(plan, i.bowl) : undefined;
             return (
               <li key={k} className="flex items-center gap-3">
-                {b ? <Bowl bowl={b} size={big ? "lg" : "md"} /> : <span className="rounded-full border-2 border-dashed border-line-strong px-2 py-0.5 text-[12px] text-ink-2">plateau</span>}
+                {b ? <Bowl bowl={b} size={big ? "lg" : "md"} /> : <span className="rounded-full border-2 border-dashed border-line-strong px-2 py-1 text-[12px] text-ink-2">plateau</span>}
                 <span className="min-w-0 leading-tight">
                   <b className="num">{i.qty ?? ""}</b> {i.gesture}
                   <span className="block text-[14px] text-ink-2">{recipeOf(plan, i.recipeSlug)?.name}</span>
@@ -270,7 +270,7 @@ function PrepNow({ plan, c, task, big, actions }: { plan: SessionPlan; c: Contro
             const b = bowlOf(plan, l);
             return b ? <Bowl key={l} bowl={b} size={big ? "lg" : "md"} /> : null;
           })}
-          <p className={big ? "text-[19px] leading-snug" : "text-[16px] leading-snug"}>{task.text}</p>
+          <p className={big ? "text-[19px] leading-snug" : "text-[17px] leading-snug"}>{task.text}</p>
         </div>
       )}
       {task.tools?.length ? <p className="text-[14px] text-ink-2">Avec : {task.tools.join(" · ")}</p> : null}
@@ -292,7 +292,7 @@ function PersonActions({ c, item, person, big }: { c: Controls; item: ThreadItem
   const ph = step && st === "active" ? currentPhase(c.state, step) : null;
   const label = item.type === "prep" ? "Fait" : st === "todo" ? "Commencer" : ph != null && ph < step!.phases!.length - 1 ? "Sous-étape suivante" : auto ? `Fait · minuteur ${timerMinutes(step!)} min` : "Fait";
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-3">
       <Button variant={big ? "ink" : "primary"} size="kitchen" icon={st === "todo" && item.type === "step" ? "play" : "check"} onClick={() => c.nextFor(person)} data-action={`fait-${person}`} className={`flex-1 ${big ? "min-h-[88px] text-[22px]" : ""}`}>
         {label}
       </Button>
@@ -307,7 +307,7 @@ export function DuoPick({ telephone = true }: { telephone?: boolean }) {
       <h1 className="text-[28px] font-extrabold">Qui es-tu ?</h1>
       <div className="grid grid-cols-2 gap-3">
         {PEOPLE.map((p) => (
-          <Link key={p} href={`?${telephone ? "vue=telephone&" : ""}personne=${p}`} className="grid min-h-40 justify-items-center content-center gap-3 rounded-[18px] border-2 border-line bg-surface p-5 hover:border-ink">
+          <Link key={p} href={`?${telephone ? "vue=telephone&" : ""}personne=${p}`} className="grid min-h-40 justify-items-center content-center gap-3 rounded-[14px] border-2 border-line bg-surface p-6 hover:border-ink">
             <PersonMono person={p} size={56} />
             <b className="font-display text-[20px]">Fil {p}</b>
           </Link>

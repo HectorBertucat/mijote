@@ -30,7 +30,7 @@ import {
 import { resumeSession } from "@/app/session/actions";
 import { buttonClass, Icon } from "@/components/ui";
 import { useNow, useSession } from "./useSession";
-import { chime, clock, dur, Eyebrow, kindLabel, QrCard, recipeOf, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
+import { chime, clock, DishArts, dur, Eyebrow, kindLabel, QrCard, recipeOf, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
 import { DoneView, Issues, PlanDetails, progressLine, recipesLine, ResumeChoice, sessionTitle } from "./blocks";
 import { PrepBowlRow, PrepPhase, Tomorrow } from "./Prep";
 import { CookPhase } from "./Cook";
@@ -65,6 +65,8 @@ export interface SessionProps {
   test?: boolean;
   /** Le rangement : boîtes et conservation de chaque recette. */
   storage?: RecipeStorage[];
+  /** La boîte de chaque plat (DishBox), rendue côté serveur, par slug. */
+  dishes?: Record<string, React.ReactNode>;
 }
 
 export type Controls = ReturnType<typeof useControls>;
@@ -415,6 +417,7 @@ export function SessionApp(props: SessionProps) {
   const test = useMemo(() => (props.test ? { ended, end: () => setStatus("done") } : null), [props.test, ended, setStatus]);
   return (
     <SessionTest.Provider value={test}>
+      <DishArts.Provider value={props.dishes ?? {}}>
       {props.view !== "full" ? (
         <SimpleView
           id={props.id}
@@ -435,6 +438,7 @@ export function SessionApp(props: SessionProps) {
       {/* Vue simple : ce qui sonne revient au premier plan dans l'écran lui-même. */}
       {props.view === "full" && <TimerAlert plan={plan} ringing={c.ringing} now={c.now} onStop={c.stopTimer} />}
       <ToastView toast={c.toast} onDone={() => c.setToast(null)} raised={props.view !== "full"} />
+      </DishArts.Provider>
     </SessionTest.Provider>
   );
 }
@@ -487,7 +491,7 @@ function FullView(p: SessionProps & { c: Controls }) {
           </span>
         }
       />
-      <div className="mx-auto grid max-w-[90rem] gap-5 px-4 py-5 sm:px-5">
+      <div className="mx-auto grid max-w-[90rem] gap-6 px-4 py-6 sm:px-6">
         <Issues plan={plan} sessionId={p.id} />
         {state.status === "fridge" ? (
           <FridgeView plan={plan} c={c} choice={p.dayChoice ?? null} qr={qr} />
@@ -526,38 +530,38 @@ function FridgeView({ plan, c, choice, qr }: { plan: SessionPlan; c: Controls; c
   const end = [...c.events].reverse().find((e) => e.kind === "note" && e.payload?.status === "fridge");
   const first = plan.steps[0];
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-6">
       <div className="grid gap-1">
         <h1 className="text-[clamp(1.75rem,3vw,2.25rem)] font-extrabold">Reprendre la session</h1>
         <p className="text-ink-2">
           Prep terminée{end ? ` ${parisDay(Date.parse(end.at)) === parisDay(c.now) ? "à" : "hier à"} ${clock(Date.parse(end.at))}` : ""} · {inFridge.length} bol{inFridge.length > 1 ? "s" : ""} au frigo, filmé{inFridge.length > 1 ? "s" : ""}
         </p>
       </div>
-      <div className="grid gap-3.5 md:grid-cols-2">
-        <div className="grid gap-2.5 rounded-[14px] border border-line bg-surface px-5 py-4">
-          <div className="flex items-center gap-2.5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 rounded-[14px] border border-line bg-surface px-6 py-4">
+          <div className="flex items-center gap-3">
             <Icon name="moonset" />
             <b className="font-display text-[18px]">La veille · prep</b>
-            <span className="num ml-auto rounded-full bg-surface-2 px-2 text-[13px] font-semibold text-ink-2">
+            <span className="num ml-auto rounded-full bg-surface-2 px-2 text-small font-semibold text-ink-2">
               {eveTasks.filter((t) => state.prepDone.has(t.id)).length} gestes sur {eveTasks.length}
             </span>
           </div>
           <i className="block h-1.5 rounded-full bg-accent" />
           <p className="num text-ink-2">{real != null ? `Durée réelle ${dur(real)} (prévu ${dur(plan.prep.eveMin ?? 0)}).` : `Prévu ${dur(plan.prep.eveMin ?? 0)}.`}</p>
         </div>
-        <div className="grid gap-2.5 rounded-[14px] border border-line bg-surface px-5 py-4">
-          <div className="flex items-center gap-2.5">
+        <div className="grid gap-3 rounded-[14px] border border-line bg-surface px-6 py-4">
+          <div className="flex items-center gap-3">
             <Icon name="flame" />
             <b className="font-display text-[18px]">Le jour J · prep et cuisson</b>
-            <span className="num ml-auto rounded-full bg-surface-2 px-2 text-[13px] font-semibold text-ink-2">0 sur {plan.steps.length}</span>
+            <span className="num ml-auto rounded-full bg-surface-2 px-2 text-small font-semibold text-ink-2">0 sur {plan.steps.length}</span>
           </div>
           <i className="block h-1.5 rounded-full bg-surface-2" />
           <p className="text-ink-2">{first ? `Première étape : ${kindLabel(first.kind).toLowerCase()} · ${first.equipmentName ?? recipeOf(plan, first.recipeSlug)?.name ?? ""}.` : ""}{left.length ? ` Avant : ${left.length} geste${left.length > 1 ? "s" : ""} du jour même.` : ""}</p>
         </div>
       </div>
       <ResumeChoice plan={plan} c={c} choice={choice} />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <section className="grid content-start gap-2.5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <section className="grid content-start gap-3">
           <h2 className="text-[20px] font-bold">Au frigo</h2>
           <div className="overflow-hidden rounded-[14px] border border-line bg-surface">
             {inFridge.map((b) => (
@@ -565,7 +569,7 @@ function FridgeView({ plan, c, choice, qr }: { plan: SessionPlan; c: Controls; c
             ))}
           </div>
         </section>
-        <section className="grid content-start gap-3.5">
+        <section className="grid content-start gap-4">
           {left.length > 0 && <Tomorrow tasks={left} title="Le jour J, avant la cuisson" />}
           <PlanDetails plan={plan} />
           <div className="hidden max-w-[220px] md:block">{qr}</div>
