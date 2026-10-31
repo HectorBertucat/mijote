@@ -11,7 +11,7 @@ import { Button } from "@/components/ui";
 import { StepIllu } from "@/components/illus/Illu";
 import type { Controls } from "./SessionApp";
 import { AllDone, NowCard, PlanDetails } from "./blocks";
-import { bowlOf, clock, dur, Eyebrow, kindLabel, NextCard, RecipeMark, Resources, stepTitle, TakeBowl, TimerList } from "./parts";
+import { bowlOf, clock, dur, Eyebrow, kindLabel, NextCard, PauseAll, RecipeMark, Resources, stepTitle, TakeBowl, TimerList } from "./parts";
 
 export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; side?: ReactNode }) {
   const { state, focus, upcoming, now, cookingStart } = c;
@@ -35,7 +35,7 @@ export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; s
             {bg.map((s) => {
               // Son minuteur d’attente, ou celui de la sous-étape d’attente en cours (le riz cuit).
               const wait = inWait(state, s) ? s.phases![currentPhase(state, s)!] : null;
-              const t = [...state.timers.values()].find((x) => x.stepId === s.id && x.doneAt == null && (x.phase == null || (wait != null && x.phase === currentPhase(state, s))));
+              const t = c.timers.find((x) => x.stepId === s.id && (x.phase == null || (wait != null && x.phase === currentPhase(state, s))));
               return (
                 <div key={s.id} className="flex animate-pop items-center gap-3 rounded-[8px] border border-line bg-surface px-3 py-2 text-[17px]">
                   <RecipeMark plan={plan} slug={s.recipeSlug} />
@@ -55,8 +55,11 @@ export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; s
       </div>
 
       <aside className="grid min-w-0 content-start gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1 md:sticky md:top-4 md:self-start">
-        <Eyebrow>Minuteurs</Eyebrow>
-        <TimerList plan={plan} timers={c.timers.filter((t) => !(t.phase != null && t.stepId === focus?.id))} now={now} onAdd={c.addMinutes} onStop={c.stopTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} />
+        <div className="flex items-center justify-between gap-2">
+          <Eyebrow>Minuteurs</Eyebrow>
+          <PauseAll timers={c.timers} now={now} allPaused={c.allPaused} onClick={c.pauseAll} />
+        </div>
+        <TimerList plan={plan} timers={c.timers.filter((t) => !(t.phase != null && t.stepId === focus?.id))} now={now} onAdd={c.addMinutes} onStop={c.stopTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} onPause={c.pauseTimer} />
         <Eyebrow className="mt-1">Foyers et four</Eyebrow>
         <Resources plan={plan} state={state} now={now} cookingStart={cookingStart} scale={0.9} />
         {side}

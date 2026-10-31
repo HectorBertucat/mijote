@@ -7,7 +7,8 @@ import { SessionApp } from "@/components/session/SessionApp";
 import { modeOf, type SessionPlan } from "@/lib/session/planner";
 import { mealsOf, type RecipeStorage } from "@/lib/session/flow";
 import { recipes } from "@/lib/db/schema";
-import { householdUnits, loadEaters } from "@/lib/eaters/store";
+import { householdMembers, householdUnits, loadEaters } from "@/lib/eaters/store";
+import { duoNames } from "@/lib/session/people";
 import { inArray } from "drizzle-orm";
 import { DishBox } from "@/components/ui/dish";
 import { listDishRecipes } from "@/lib/recipes/queries";
@@ -36,6 +37,8 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
   const qrSvg = view !== "phone" ? await QRCode.toString(phoneUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) : null;
   // À deux : un QR code par personne, qui ouvre son fil sur son téléphone.
   const duo = modeOf(s.plan) === "duo";
+  // À deux (ou au choix du jour J après la veille) : A et B prennent les prénoms des deux premiers du foyer.
+  const people = duo || modeOf(s.plan) === "veille" ? duoNames(householdMembers(db).map((m) => m.name)) : undefined;
   const personQrs =
     duo && view === "full"
       ? await Promise.all(
@@ -89,6 +92,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
       test={s.test}
       storage={storage}
       dishes={dishes}
+      people={people}
     />
   );
 }

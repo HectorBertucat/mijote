@@ -68,6 +68,7 @@ export function TopNav({ profiles, active, search, home }: { profiles: ProfileOp
                 key={t.href}
                 href={t.href}
                 onClick={pick(t.href)}
+                data-tour={t.href.slice(1)}
                 aria-current={on ? "page" : undefined}
                 className={`relative inline-flex items-center text-[15px] font-bold tracking-[-0.005em] ${on ? "text-ink" : "text-ink-2 hover:text-ink"}`}
               >
@@ -120,7 +121,7 @@ export function TabBar() {
         {TABS.map((t) => {
           const on = current === t.href;
           return (
-            <Link key={t.href} href={t.href} onClick={pick(t.href)} aria-current={on ? "page" : undefined} className={`relative grid justify-items-center gap-1 pb-2 pt-3 ${on ? "text-ink" : "text-ink-3"}`}>
+            <Link key={t.href} href={t.href} onClick={pick(t.href)} data-tour={t.href.slice(1)} aria-current={on ? "page" : undefined} className={`relative grid justify-items-center gap-1 pb-2 pt-3 ${on ? "text-ink" : "text-ink-3"}`}>
               {/* Ouvrir une rubrique d’un tap : son icône fait son geste une fois (panier qui se balance, page qui tourne…). */}
               <span key={on ? "on" : "off"} data-g={t.icon} className={`grid place-items-center ${on && moved ? "k-gesture" : ""}`}>
                 <Icon name={t.icon} />

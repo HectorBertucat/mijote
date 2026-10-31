@@ -24,6 +24,10 @@ export const SETTING = {
   storeLabel: "store.label",
   /** Nom de l'instance (« La cuisine des Martin »), en tête de l'appli. */
   homeName: "home.name",
+  /** Date à laquelle la visite guidée a été finie ou passée : elle ne se propose plus d’elle-même. */
+  tourSeen: "tour.seen",
+  /** Liste « Premiers pas » masquée sur l’accueil (Réglages la remet). */
+  firstStepsHidden: "tour.firststeps.hidden",
 } as const;
 
 export const storeLabel = (db: Db) => getSetting(db, SETTING.storeLabel);

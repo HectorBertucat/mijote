@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Atkinson_Hyperlegible_Next } from "next/font/google";
+import localFont from "next/font/local";
 import { TabBar, TopNav } from "@/components/Nav";
 import { SessionBanner } from "@/components/SessionBanner";
 import { CommandK } from "@/components/CommandK";
@@ -17,10 +17,19 @@ import { listPeople } from "@/lib/health/store";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSetting, isSetupDone, SETTING } from "@/lib/settings";
+import { LaunchSplash } from "@/components/tour/LaunchSplash";
+import { startupImages } from "@/lib/launch";
 import "./globals.css";
 
-const title = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-title", display: "swap" });
-const body = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+// Polices variables servies par l'appli (sous-ensemble latin, licence OFL dans ./fonts) : pas de réseau au build.
+const title = localFont({
+  src: "./fonts/archivo-latin.woff2",
+  weight: "100 900",
+  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
+  variable: "--font-title",
+  display: "swap",
+});
+const body = localFont({ src: "./fonts/atkinson-hyperlegible-next-latin.woff2", weight: "200 800", variable: "--font-body", display: "swap" });
 
 // Thème choisi (clair, sombre) posé avant le premier rendu ; sans choix, on suit le système.
 const THEME_SCRIPT = `try{var t=localStorage.getItem("mijote.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
@@ -36,7 +45,7 @@ const SEASON_ART: Record<Season, { id: FoodArtId; label: string }> = {
 export const metadata: Metadata = {
   title: "Mijote",
   description: "Batch cooking planifié, courses, nutrition juste et sport à la maison, pour tout le foyer",
-  appleWebApp: { capable: true, title: "Mijote", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Mijote", statusBarStyle: "default", startupImage: startupImages() },
 };
 export const viewport: Viewport = {
   width: "device-width",
@@ -69,6 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
+        <LaunchSplash />
         <CustomArtProvider art={loadCustomArt(db)}>
         <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} />} />
         <SessionBanner />
