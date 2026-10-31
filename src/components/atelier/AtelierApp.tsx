@@ -1,17 +1,19 @@
 "use client";
 
-// Atelier de création (DA « Plan de travail ») : une envie → une base proposée par l'IA, puis on garde ou retire
+// Atelier de création (DA v3 « Carnet de marché ») : une envie → une base proposée par l'IA, puis on garde ou retire
 // les aliments sur des tuiles (chacune vérifiée au drive) et on en ajoute depuis le catalogue ; la recette se met
 // à jour sous les yeux. Si un indispensable manque, la recette passe « indisponible » et le dit.
+// Sobre : sections à filets, l'aperçu au langage de la fiche, l'état d'un aliment en forme et en mot.
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { proposeCreationAction, saveCreationAction, searchCatalogAction, type CatalogHit } from "@/app/atelier/actions";
-import { Alert, Button, Card, Chip, Chips, EmptyState, Field, Icon, Input, LoadList, Macro, MacroRow, Pill, RecipeTile, Tag, Textarea, verdictTone, type PillTone } from "@/components/ui";
-import { CardTitle } from "@/components/RecipeParts";
+import { Alert, Button, Chip, Chips, Field, Icon, Input, LoadList, Macro, MacroRow, Tag, Tape, Textarea, recipeVar, verdictTone, type IconName } from "@/components/ui";
 import type { DiffRow, Proposal } from "@/lib/atelier";
 import { verdictFor } from "@/lib/nutrition/compute";
 import { recipeColor } from "@/lib/ui";
 import { Checks, fmtQty, fmtUsd, IngredientsDiff, Leftovers, NutritionCompare, StepsList } from "./RecipeDiff";
+import { CostLine, HowItGoes, Notes, PageHead, SectionHead } from "./parts";
 
 const IDEAS = [
   "Un plat au four avec du poulet, sans brocoli",
@@ -22,6 +24,7 @@ const IDEAS = [
 
 const key = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+const NB = "\u202f";
 type Check = NonNullable<DiffRow["check"]>;
 
 export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEnvie: string; budget: { spentUsd: number; capUsd: number }; count?: number }) {
@@ -91,75 +94,80 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
   const v = h ? verdictFor(leadPart?.ref, h) : null;
   const macros = h && (
     <MacroRow>
-      <Macro value={Math.round(h.kcal)} unit="kcal" tone={v ? verdictTone(v.kcal) : undefined} sub={`part ${leadPart!.name}`} />
+      <Macro value={Math.round(h.kcal)} unit="kcal" tone={v ? verdictTone(v.kcal) : undefined} sub={`part de ${leadPart!.name}`} />
       <Macro value={Math.round(h.protein)} unit="g" tone={v ? verdictTone(v.protein) : undefined} sub="protéines" />
     </MacroRow>
   );
   const unavailable = blocked.length > 0 && (
-    <Alert tone="ko" title="Indisponible pour l'instant">
-      {blocked.join(", ")} : ni produit au drive, ni remplaçant. Retire-le ou ajoute un autre aliment.
-    </Alert>
+    <Notes items={[{ tone: "ko", key: "blocked", text: <><b>Indisponible pour l’instant.</b> {blocked.join(", ")} : ni produit au drive, ni remplaçant. Retire-le ou ajoute un autre aliment.</> }]} />
   );
   const budgetLine = (
-    <p className="text-[12px] text-faint">
-      IA ce mois : {fmtUsd(budget.spentUsd)} sur {fmtUsd(budget.capUsd)} · environ 0,05 à 0,10 $ par proposition
-    </p>
+    <CostLine>
+      IA ce mois : {fmtUsd(budget.spentUsd)} sur {fmtUsd(budget.capUsd)} · environ 0,05 à 0,10{NB}$ par proposition
+    </CostLine>
   );
 
   return (
-    <div className="grid gap-5" ref={top}>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">Atelier</h1>
-          <p className="mt-1.5 text-ink-2">{draft ? `Nouvelle recette · connaît tes ${count ?? "…"} recettes` : `Une envie, une base, puis tu choisis les aliments · connaît tes ${count ?? "…"} recettes`}</p>
-        </div>
-        {proposal && (
-          <Button
-            variant="quiet"
-            icon="x"
-            disabled={pending || saving}
-            onClick={() => {
-              setProposal(null);
-              setAdds([]);
-              setRemoves(new Set());
-              setFirst(true);
-            }}
-          >
-            Abandonner le brouillon
-          </Button>
-        )}
-      </div>
-
-      <div className={`grid items-start gap-5 ${proposal ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""}`}>
-        <div className="grid min-w-0 gap-5">
-          <Card as="section" pad="md" className="grid gap-3">
-            <form
-              className="grid gap-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (envie.trim()) run({ fresh: true });
+    <div className="grid gap-12" ref={top}>
+      <PageHead
+        back={{ href: "/recettes", label: "Recettes" }}
+        title="Atelier"
+        lead={draft ? undefined : `Une envie, une base, puis tu choisis les aliments. L’atelier connaît tes ${count ?? "…"} recettes et évite les doublons.`}
+        aside={
+          proposal ? (
+            <Button
+              variant="quiet"
+              icon="x"
+              disabled={pending || saving}
+              onClick={() => {
+                setProposal(null);
+                setAdds([]);
+                setRemoves(new Set());
+                setFirst(true);
               }}
             >
-              <Field label="Ce que tu veux">
-                {(id) => (
-                  <Textarea
-                    id={id}
-                    value={envie}
-                    onChange={(e) => setEnvie(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        if (envie.trim() && !pending) run({ fresh: true });
-                      }
-                    }}
-                    rows={2}
-                    maxLength={600}
-                    placeholder="Un porc thaï au four, qui se congèle"
-                    className="resize-none"
-                  />
-                )}
-              </Field>
-              {!proposal && (
+              Abandonner le brouillon
+            </Button>
+          ) : (
+            <Link href="/atelier/importer" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] text-body font-bold text-ink-2 hover:text-ink">
+              <Icon name="copy" size="s" />
+              Importer un texte collé
+            </Link>
+          )
+        }
+      />
+
+      <div className="grid gap-12 lg:grid-cols-12 lg:gap-x-6">
+        <div className={`grid min-w-0 content-start gap-12 ${proposal ? "lg:col-span-8" : "lg:col-span-7"}`}>
+          <form
+            className="grid gap-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (envie.trim()) run({ fresh: true });
+            }}
+          >
+            <Field label="Ce que tu veux manger">
+              {(id) => (
+                <Textarea
+                  id={id}
+                  value={envie}
+                  onChange={(e) => setEnvie(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (envie.trim() && !pending) run({ fresh: true });
+                    }
+                  }}
+                  rows={proposal ? 2 : 3}
+                  maxLength={600}
+                  placeholder="Un porc thaï au four, qui se congèle"
+                  className="resize-none text-lead"
+                />
+              )}
+            </Field>
+            {!proposal && (
+              <div className="grid gap-2">
+                <p className="label text-faint">Pour commencer</p>
                 <Chips scroll className="sm:mx-0 sm:flex-wrap sm:px-0">
                   {IDEAS.map((i) => (
                     <Chip key={i} pressed={envie === i} onClick={() => setEnvie(i)}>
@@ -167,20 +175,15 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
                     </Chip>
                   ))}
                 </Chips>
-              )}
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="submit" variant={proposal ? "secondary" : "primary"} icon="sparkdraft" disabled={!envie.trim()} state={pending && running === "fresh" ? "loading" : "idle"} loadingLabel="L'IA compose…">
-                  {proposal ? "Nouvelle proposition" : "Proposer une recette"}
-                </Button>
-                {budgetLine}
               </div>
-            </form>
-            {proposal && (
-              <Alert tone="info" key={proposal.explanation} className="animate-swap-in">
-                {proposal.explanation}
-              </Alert>
             )}
-          </Card>
+            <div className="grid gap-3">
+              <Button type="submit" variant={proposal ? "secondary" : "primary"} icon="sparkdraft" className="justify-self-start" disabled={!envie.trim()} state={pending && running === "fresh" ? "loading" : "idle"} loadingLabel="L’IA compose…">
+                {proposal ? "Nouvelle proposition" : "Proposer une recette"}
+              </Button>
+              {budgetLine}
+            </div>
+          </form>
 
           {error && (
             <Alert tone="ko" role="alert">
@@ -188,36 +191,36 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
             </Alert>
           )}
 
-          {pending && !proposal && (
-            <Card pad="md" className="grid gap-3" aria-live="polite">
-              <LoadList
-                items={[
-                  { label: "L'IA compose une base à partir de ton envie", state: "on" },
-                  { label: "Chaque ingrédient vérifié au catalogue", state: "idle" },
-                  { label: "Doublons cherchés dans ta bibliothèque", state: "idle" },
-                  { label: "Nutrition calculée en code", state: "idle" },
-                ]}
-              />
-              <div className="skeleton h-28" />
-            </Card>
-          )}
-
-          {!proposal && !pending && (
-            <EmptyState icon="sparkdraft" title="La recette apparaîtra ici">
-              Tu choisiras ensuite les aliments sur des tuiles, chacune vérifiée au catalogue du drive. Rien n&apos;est enregistré sans toi.
-            </EmptyState>
-          )}
-
           {proposal && draft && (
             <>
+              <header key={draft.name} className="reveal grid gap-4 border-t border-line-strong pt-6">
+                <Tape tint={recipeVar(color)} seed={draft.name} className="justify-self-start">
+                  Brouillon · à essayer
+                </Tape>
+                <h2 className="text-h1">{draft.name}</h2>
+                <p className="num text-small text-ink-2">
+                  {draft.servingsUnits} unités{draft.fridgeDays != null ? ` · ${draft.fridgeDays}${NB}j au frigo` : ""}
+                  {draft.freezerOk ? " · se congèle" : ""}
+                </p>
+                {draft.description && <p className="max-w-[56ch] text-lead text-ink-2">{draft.description}</p>}
+                {draft.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {draft.tags.map((t) => (
+                      <Tag key={t}>{t}</Tag>
+                    ))}
+                  </div>
+                )}
+                <Notes items={[{ tone: "info", key: proposal.explanation, text: proposal.explanation }]} />
+              </header>
+
               {/* Téléphone : l'essentiel en tête (indisponible, la part). */}
-              <div className="grid gap-3 lg:hidden">
+              <div className="grid gap-4 lg:hidden">
                 {unavailable}
                 {macros}
               </div>
 
-              <section className={`grid gap-3 transition-opacity ${pending ? "opacity-60" : ""}`}>
-                <CardTitle aside={<span className="text-[13px] text-ink-2">vérifiés au catalogue</span>}>Aliments</CardTitle>
+              <section className={`grid gap-6 transition-opacity duration-[var(--dur-2)] ease-[var(--ease-out)] ${pending ? "opacity-60" : ""}`}>
+                <SectionHead aside="vérifiés au catalogue">Aliments</SectionHead>
                 <FoodTiles
                   ingredients={draft.ingredients
                     .filter((i) => !i.pantry)
@@ -235,62 +238,71 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
                   }
                 />
                 <CatalogSearch onAdd={(hit) => setAdds((a) => (a.some((x) => x.id === hit.id) ? a : [...a, hit]))} />
-                <Button variant="primary" icon="refresh" block disabled={!changes} state={pending && running === "update" ? "loading" : "idle"} loadingLabel="Mise à jour de la recette…" onClick={() => run({ fresh: false })}>
+                <Button variant={changes ? "accent" : "secondary"} icon="refresh" block disabled={!changes} state={pending && running === "update" ? "loading" : "idle"} loadingLabel="Mise à jour de la recette…" onClick={() => run({ fresh: false })}>
                   {changes ? `Mettre à jour la recette (${changes} changement${changes > 1 ? "s" : ""})` : "Touche un aliment pour le retirer, ou ajoutes-en un"}
                 </Button>
               </section>
 
-              <div className={`grid gap-5 transition-opacity ${pending ? "opacity-60" : ""}`}>
+              <div className={`grid gap-12 transition-opacity duration-[var(--dur-2)] ease-[var(--ease-out)] ${pending ? "opacity-60" : ""}`}>
                 <Checks v={{ ...proposal.verification, rows, blocked }} duplicate={proposal.duplicate} />
                 <IngredientsDiff rows={rows} color={color} />
-                <Card as="section" pad="md">
-                  <CardTitle>Étapes</CardTitle>
+                <section className="grid gap-2">
+                  <SectionHead>Étapes</SectionHead>
                   <StepsList steps={draft.steps} before={null} color={color} />
-                </Card>
+                </section>
                 {draft.tips && (
-                  <Alert tone="info" title="Conseils">
-                    {draft.tips}
-                  </Alert>
+                  <section className="grid gap-4">
+                    <SectionHead as="h3">Conseils</SectionHead>
+                    <p className="max-w-[60ch] text-body text-ink-2">{draft.tips}</p>
+                  </section>
                 )}
               </div>
             </>
           )}
         </div>
 
-        {proposal && draft && (
-          <aside className={`grid min-w-0 gap-4 transition-opacity lg:sticky lg:top-[72px] ${pending ? "opacity-60" : ""}`}>
-            <Card pad="md" className="grid gap-3">
-              <div className="flex items-center gap-3">
-                <RecipeTile color={color} name={draft.name} />
-                <div className="min-w-0">
-                  <b key={draft.name} className="block animate-pop font-display text-[17px] leading-tight">
-                    {draft.name}
-                  </b>
-                  <div className="text-[13px] text-ink-2">
-                    brouillon · {draft.servingsUnits} unités{draft.fridgeDays != null ? ` · frigo ${draft.fridgeDays} j` : ""}
-                    {draft.freezerOk ? " · congèle" : ""}
-                  </div>
-                </div>
+        {!proposal && (
+          <aside className="min-w-0 lg:col-span-4 lg:col-start-9" aria-live="polite">
+            {pending ? (
+              <div className="grid gap-4 border-t border-line-strong pt-4">
+                <p className="label text-faint">En cours</p>
+                <LoadList
+                  className="!text-body"
+                  items={[
+                    { label: "L’IA compose une base à partir de ton envie", state: "on" },
+                    { label: "Chaque ingrédient cherché au catalogue", state: "idle" },
+                    { label: "Les doublons cherchés dans ta bibliothèque", state: "idle" },
+                    { label: "La nutrition calculée en code", state: "idle" },
+                  ]}
+                />
               </div>
-              {draft.description && <p className="text-[14px] text-ink-2">{draft.description}</p>}
-              {draft.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {draft.tags.map((t) => (
-                    <Tag key={t}>{t}</Tag>
-                  ))}
-                </div>
-              )}
-              <div className="hidden gap-3 lg:grid">
+            ) : (
+              <HowItGoes
+                title="Ce qui se passe"
+                steps={[
+                  "L’IA propose une base : des aliments, des quantités, des étapes à ton matériel.",
+                  "Tu gardes ou retires chaque aliment ; chacun est cherché au catalogue du drive.",
+                  "Rien n’est enregistré sans toi. La recette arrive « à essayer ».",
+                ]}
+              />
+            )}
+          </aside>
+        )}
+
+        {proposal && draft && (
+          <aside className={`grid min-w-0 content-start gap-8 transition-opacity duration-[var(--dur-2)] ease-[var(--ease-out)] lg:sticky lg:top-24 lg:col-span-4 ${pending ? "opacity-60" : ""}`}>
+            <div className="grid gap-4 border-t border-line-strong pt-4">
+              <div className="hidden gap-4 lg:grid">
                 {unavailable}
                 {macros}
               </div>
               <Button variant="primary" icon="check" block onClick={save} disabled={pending || Boolean(proposal.duplicate)} state={saving ? "loading" : "idle"} loadingLabel="Enregistrement…">
-                Enregistrer · à essayer
+                Ajouter à mes recettes
               </Button>
-              <p className="text-[12px] text-faint">
-                Nouvelle recette au statut « à essayer »{blocked.length ? ", marquée « indisponible » tant qu'un indispensable n'a pas de produit" : ""} : la bibliothèque ne change pas autrement.
+              <p className="text-small text-faint">
+                Elle arrive «{NB}à essayer{NB}»{blocked.length ? `, marquée «${NB}indisponible${NB}» tant qu’un indispensable n’a pas de produit` : ""} ; rien d’autre ne change dans la bibliothèque.
               </p>
-            </Card>
+            </div>
             <NutritionCompare before={first ? null : proposal.verification.before} after={proposal.verification.after} coverage={proposal.verification.after.coverage} />
             <Leftovers items={proposal.verification.leftovers} />
           </aside>
@@ -300,10 +312,23 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
   );
 }
 
-const TONE: Record<Check["state"], PillTone> = { ok: "ok", warn: "warn", replace: "ko" };
-const WORD: Record<Check["state"], string> = { ok: "Au drive", warn: "À vérifier", replace: "À remplacer" };
+const STATE: Record<Check["state"], { icon: IconName; cls: string; word: string }> = {
+  ok: { icon: "check", cls: "text-ok-ink", word: "au drive" },
+  warn: { icon: "clock", cls: "text-warn-ink", word: "à vérifier" },
+  replace: { icon: "x", cls: "text-ko-ink", word: "à remplacer" },
+};
 
-/** Tuiles d'aliments : gardé (bord d'accent + coche), retiré (pointillés, barré), ajouté depuis le catalogue. */
+/** État d'un aliment : la forme et le mot, en couleur de verdict (jamais la couleur seule). */
+function StateWord({ icon, cls, children }: { icon: IconName; cls: string; children: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 text-small font-bold ${cls}`}>
+      <Icon name={icon} size={14} strokeWidth={2.4} />
+      {children}
+    </span>
+  );
+}
+
+/** Tuiles d'aliments : gardé (case d'encre cochée), retiré (pointillés, barré), ajouté depuis le catalogue. */
 function FoodTiles({
   ingredients,
   adds,
@@ -318,10 +343,11 @@ function FoodTiles({
   onToggleRemove: (item: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {ingredients.map((i) => {
         const off = removes.has(i.item);
         const p = i.check?.product;
+        const st = i.check ? STATE[i.check.state] : null;
         return (
           <button
             key={i.item}
@@ -329,38 +355,32 @@ function FoodTiles({
             onClick={() => onToggleRemove(i.item)}
             aria-pressed={!off}
             title={off ? "Remettre" : "Retirer de la recette"}
-            className={`relative grid min-w-0 content-start gap-1.5 rounded-[14px] bg-surface p-3 text-left active:scale-[0.97] ${off ? "border border-dashed border-line-strong opacity-70" : "border-2 border-accent"}`}
+            className={`k-btn relative grid min-w-0 content-start gap-2 rounded-[8px] border p-3 text-left ${off ? "border-dashed border-line-strong bg-transparent" : "border-line-strong bg-surface hover:border-ink"}`}
           >
-            <span className="flex items-start justify-between gap-1.5">
-              <b className={`min-w-0 text-[14px] leading-tight ${off ? "strike-out text-faint" : ""}`}>{i.item.split(",")[0]}</b>
-              {off ? (
-                <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-surface-2 text-ink-2">
-                  <Icon name="refresh" size={13} />
-                </span>
-              ) : (
-                <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-accent text-on-accent">
-                  <Icon name="check" size="s" strokeWidth={2.6} />
-                </span>
-              )}
+            <span className="flex items-start justify-between gap-2">
+              <b className={`min-w-0 text-body leading-tight ${off ? "strike-out text-faint" : ""}`}>{i.item.split(",")[0]}</b>
+              <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-[4px] border-2 ${off ? "border-line-strong text-faint" : "border-ink bg-ink text-bg"}`}>
+                <Icon name={off ? "refresh" : "check"} size={14} strokeWidth={2.6} />
+              </span>
             </span>
-            <span className="num truncate text-[13px] text-ink-2">
+            <span className="num truncate text-small text-ink-2">
               {i.qty}
               {p && (p.quantityLabel || p.price != null) ? ` · ${[p.quantityLabel, p.price != null ? eur(p.price) : null].filter(Boolean).join(" · ")}` : ""}
             </span>
             {off ? (
-              <Pill tone="idle" icon="minus" className="justify-self-start">
+              <StateWord icon="minus" cls="text-faint">
                 retiré
-              </Pill>
-            ) : i.check ? (
-              <Pill tone={TONE[i.check.state]} className="justify-self-start">
-                {WORD[i.check.state]}
-              </Pill>
+              </StateWord>
+            ) : st ? (
+              <StateWord icon={st.icon} cls={st.cls}>
+                {st.word}
+              </StateWord>
             ) : (
-              <Pill tone="idle" className="justify-self-start">
+              <StateWord icon="dash" cls="text-faint">
                 pas vérifié
-              </Pill>
+              </StateWord>
             )}
-            {i.optional && <span className="font-display text-[10px] font-bold uppercase tracking-[0.12em] text-faint">facultatif</span>}
+            {i.optional && <span className="label text-faint">facultatif</span>}
           </button>
         );
       })}
@@ -370,16 +390,16 @@ function FoodTiles({
           type="button"
           onClick={() => onUnadd(a.id)}
           title="Ne pas ajouter"
-          className="grid min-w-0 animate-pop content-start gap-1.5 rounded-[14px] border-2 border-dashed border-ok bg-ok-soft p-3 text-left text-ok-ink active:scale-[0.97]"
+          className="k-btn grid min-w-0 animate-pop content-start gap-2 rounded-[8px] border-2 border-dashed border-ink bg-surface p-3 text-left"
         >
-          <span className="flex items-start justify-between gap-1.5">
-            <b className="min-w-0 text-[14px] leading-tight">+ {a.name}</b>
-            <Icon name="x" size="s" />
+          <span className="flex items-start justify-between gap-2">
+            <b className="min-w-0 text-body leading-tight">+ {a.name}</b>
+            <Icon name="x" size="s" className="text-faint" />
           </span>
-          <span className="num truncate text-[13px]">{[a.quantityLabel, a.price != null ? eur(a.price) : null].filter(Boolean).join(" · ") || "catalogue"}</span>
-          <Pill tone="ok" icon="plus" className="justify-self-start">
+          <span className="num truncate text-small text-ink-2">{[a.quantityLabel, a.price != null ? eur(a.price) : null].filter(Boolean).join(" · ") || "catalogue"}</span>
+          <StateWord icon="plus" cls="text-ink">
             à ajouter
-          </Pill>
+          </StateWord>
         </button>
       ))}
     </div>
@@ -412,13 +432,13 @@ function CatalogSearch({ onAdd }: { onAdd: (h: CatalogHit) => void }) {
   }, [q]);
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-3">
       <div className="relative">
         <Input icon="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ajouter un aliment : champignons, lardons…" aria-label="Chercher un aliment dans le catalogue" />
-        {searching && <span className="k-spin absolute right-3.5 top-1/2 -mt-2 text-accent" aria-hidden />}
+        {searching && <span className="k-spin absolute right-4 top-1/2 -mt-2 text-faint" aria-hidden />}
       </div>
       {hits.length > 0 && (
-        <div className="grid max-h-72 overflow-y-auto rounded-[14px] border border-line bg-surface">
+        <div className="grid max-h-72 overflow-y-auto rounded-[8px] border border-line-strong bg-surface">
           {hits.map((h) => (
             <button
               key={h.id}
@@ -428,21 +448,23 @@ function CatalogSearch({ onAdd }: { onAdd: (h: CatalogHit) => void }) {
                 onAdd(h);
                 setQ("");
               }}
-              className="flex w-full min-w-0 items-center gap-3 border-b border-line px-3 py-2 text-left text-[14px] last:border-b-0 hover:bg-surface-2 active:scale-100 disabled:opacity-45"
+              className="flex w-full min-w-0 items-center gap-3 border-b border-line px-3 py-2 text-left text-body last:border-b-0 hover:bg-surface-2 disabled:opacity-40"
             >
               {h.imageUrl ? <img src={h.imageUrl} alt="" className="size-9 shrink-0 rounded-[8px] bg-surface object-contain" /> : <span className="size-9 shrink-0 rounded-[8px] bg-surface-2" />}
               <span className="min-w-0 flex-1 truncate font-medium">{h.name}</span>
               {h.available ? (
-                <span className="num shrink-0 text-[13px] text-ink-2">{[h.quantityLabel, h.price != null ? eur(h.price) : null].filter(Boolean).join(" · ")}</span>
+                <span className="num shrink-0 text-small text-ink-2">{[h.quantityLabel, h.price != null ? eur(h.price) : null].filter(Boolean).join(" · ")}</span>
               ) : (
-                <Pill tone="ko">rupture</Pill>
+                <StateWord icon="x" cls="text-ko-ink">
+                  rupture
+                </StateWord>
               )}
-              {h.available && <Icon name="plus" size="s" className="text-accent" />}
+              {h.available && <Icon name="plus" size="s" className="text-ink-2" />}
             </button>
           ))}
         </div>
       )}
-      <p className="text-[12px] text-faint">Touche une tuile pour retirer l&apos;aliment. Les ajouts viennent du catalogue du drive (sans recherche en direct).</p>
+      <p className="text-small text-faint">Touche une tuile pour retirer l’aliment. Les ajouts viennent du catalogue du drive, sans recherche en direct.</p>
     </div>
   );
 }
