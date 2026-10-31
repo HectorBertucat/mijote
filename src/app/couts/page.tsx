@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { CostTable } from "@/components/cart/CostTable";
-import { buttonClass, Card, EmptyState, Icon, Macro, MacroRow } from "@/components/ui";
+import { buttonClass, EmptyState, Icon } from "@/components/ui";
+import { BackLink, Figure, Figures, PageHead, SectionHead } from "@/components/cart/Carnet";
 import { db } from "@/lib/db/client";
+import { DishBox } from "@/components/ui/dish";
+import { listDishRecipes } from "@/lib/recipes/queries";
 import { allRecipeCosts, pantryTotals, spendingTotals } from "@/lib/costs";
 
 export const dynamic = "force-dynamic";
@@ -15,49 +18,47 @@ export default function Couts() {
   const known = costs.filter((c) => c.kind !== "none");
   const unknown = costs.filter((c) => c.kind === "none");
   const waste = known.reduce((s, c) => s + (c.waste ?? 0), 0);
+  const slugs = new Set(known.map((c) => c.slug));
+  const dishes = Object.fromEntries([...listDishRecipes(db).values()].filter((d) => slugs.has(d.slug)).map((d) => [d.slug, <DishBox key={d.slug} recipe={d} size="sm" />]));
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-      <div>
-        <Link href="/courses" className="inline-flex min-h-tap items-center gap-1 text-[14px] font-semibold text-ink-2 hover:text-ink">
-          <Icon name="chev" size="s" className="rotate-180" />
-          Courses
-        </Link>
-        <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">Coûts</h1>
-        <p className="mt-1.5 max-w-[70ch] text-ink-2">
-          Par part de base de chaque personne du foyer. Consommé : ce qui est réellement mangé. Payé : les paquets entiers, moins les restes qui servent ailleurs.
-        </p>
-      </div>
-
-      <MacroRow>
-        <Macro value={num(spent.spent)} unit="€" sub={`dépensé · ${spent.purchases} achats`} />
-        <Macro value={num(pantry.okValue)} unit="€" sub="au placard" />
-        <Macro value={num(pantry.lostValue)} unit="€" sub="perdu au placard" tone={pantry.lostValue > 0 ? "ko" : undefined} icon={null} />
-        {known.length > 0 && <Macro value={num(waste)} unit="€" sub="gaspillé par fournée, en tout" tone={waste > 0.005 ? "warn" : "ok"} icon={null} />}
-      </MacroRow>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
+      <PageHead back={<BackLink href="/courses">Courses</BackLink>} title="Coûts" lead="Ce que coûte une part de chaque plat, et ce qui part à la poubelle.">
+        <Figures className="mt-6">
+          <Figure value={num(spent.spent)} unit="€" label={`dépensés, ${spent.purchases} achats`} />
+          <Figure href="/placard" value={num(pantry.okValue)} unit="€" label="au placard" />
+          <Figure value={num(pantry.lostValue)} unit="€" label="perdus au placard" />
+          {known.length > 0 && <Figure value={num(waste)} unit="€" label="gaspillés, toutes fournées" />}
+        </Figures>
+      </PageHead>
 
       {known.length === 0 ? (
-        <Card flat>
-          <EmptyState
-            icon="basket"
-            title="Pas encore de coût"
-            action={
-              <Link href="/composer" className={buttonClass({ size: "sm" })}>
-                Ouvrir le Composer
-              </Link>
-            }
-          >
-            Fais une liste de courses depuis le Composer, valide-la, puis « J&apos;ai cuisiné » sur la fiche.
-          </EmptyState>
-        </Card>
+        <EmptyState
+          icon="basket"
+          title="Pas encore de coût"
+          action={
+            <Link href="/composer" className={buttonClass({ size: "sm" })}>
+              Ouvrir le Composer
+            </Link>
+          }
+        >
+          Fais une liste de courses depuis le Composer, valide-la, puis « J’ai cuisiné » sur la fiche.
+        </EmptyState>
       ) : (
-        <section className="grid gap-2.5" aria-labelledby="part-titre">
-          <h2 id="part-titre" className="text-[18px] font-bold">
-            Coût par part
-          </h2>
-          <CostTable costs={known} />
+        <section className="grid gap-6" aria-labelledby="part-titre">
+          <SectionHead id="part-titre" title="Coût par part" count={known.length} />
+          <CostTable costs={known} dishes={dishes} />
+          <details className="group max-w-[70ch]">
+            <summary className="label flex min-h-tap cursor-pointer list-none items-center gap-2 text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+              <Icon name="chev" size="s" className="transition-transform duration-[var(--dur-1)] ease-[var(--ease-out)] group-open:rotate-90" />
+              Comment c’est calculé
+            </summary>
+            <p className="mt-2 text-small text-ink-2">
+              Par part de base de chaque personne du foyer. Consommé : ce qui est réellement mangé. Payé : les paquets entiers, moins les restes qui servent ailleurs. Jeté : payé moins consommé, sur toute la fournée.
+            </p>
+          </details>
         </section>
       )}
-      {unknown.length > 0 && <p className="text-[13px] text-ink-2">Sans liste de courses, donc sans coût : {unknown.map((c) => c.name).join(", ")}.</p>}
+      {unknown.length > 0 && <p className="text-small text-ink-2">Sans liste de courses, donc sans coût : {unknown.map((c) => c.name).join(", ")}.</p>}
     </div>
   );
 }

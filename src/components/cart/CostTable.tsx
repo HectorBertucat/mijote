@@ -1,59 +1,61 @@
-// Coût par part et par recette (DA « Plan de travail », tableau du placard et des coûts) : part de base,
-// ce qui est réellement consommé, en paquets entiers, et ce qui est jeté. Une ligne = un lien vers la fiche.
+// Coût par part et par recette (placard et coûts) : un tableau à filets, chiffres tabulaires alignés à droite.
+// Part de base, ce qui est réellement consommé, en paquets entiers, et ce qui est jeté. Une ligne = un lien vers
+// la fiche ; la boîte du plat (DishBox) à gauche, ou à défaut sa couleur en filet (son identité, pas un état).
 import Link from "next/link";
-import { Pill, RecipeTile } from "@/components/ui";
+import type { ReactNode } from "react";
+import { Icon } from "@/components/ui";
 import type { RecipeCost } from "@/lib/costs";
 import { recipeColor } from "@/lib/ui";
 import { eur } from "./format";
 
-export function CostTable({ costs }: { costs: RecipeCost[] }) {
+/** `compact` : la recette et ce que coûte la part payée, seulement (colonne étroite du placard). */
+export function CostTable({ costs, compact = false, dishes = {} }: { costs: RecipeCost[]; compact?: boolean; /** Boîte de chaque plat, par slug. */ dishes?: Record<string, ReactNode> }) {
   return (
-    <div className="k-noscroll overflow-x-auto rounded-[14px] border border-line bg-surface">
-      <table className="w-full min-w-[480px] border-collapse text-[14px] tabular-nums">
+    <div className="k-noscroll overflow-x-auto">
+      <table className={`w-full border-collapse ${compact ? "" : "min-w-[480px]"}`}>
         <thead>
-          <tr className="border-b border-line text-left text-[12px] font-bold uppercase tracking-[0.08em] text-faint">
-            <th className="px-3.5 py-2.5 font-bold">Recette · par part</th>
-            <th className="px-2 py-2.5 text-right font-bold">Consommé</th>
-            <th className="px-2 py-2.5 text-right font-bold">Payé</th>
-            <th className="px-3.5 py-2.5 text-right font-bold">Jeté</th>
+          <tr className="border-b border-line text-left">
+            <th className="label pb-3 font-[650] text-ink-2">Recette, par part</th>
+            {!compact && <th className="label pb-3 pl-4 text-right font-[650] text-ink-2">Consommé</th>}
+            <th className="label pb-3 pl-4 text-right font-[650] text-ink-2">Payé</th>
+            {!compact && <th className="label pb-3 pl-4 text-right font-[650] text-ink-2">Jeté</th>}
           </tr>
         </thead>
         <tbody>
           {costs.map((c) => {
             const wastePct = c.batch && c.batch.practical > 0 ? Math.round(((c.waste ?? 0) / c.batch.practical) * 100) : 0;
             return (
-              <tr key={c.recipeId} className="border-b border-line last:border-b-0 hover:bg-surface-2">
-                <td className="px-3.5 py-2.5">
-                  <Link href={`/recettes/${c.slug}#cout`} className="flex min-w-0 items-center gap-2.5 font-semibold">
-                    <RecipeTile color={recipeColor(c.slug)} name={c.name} size="sm" />
-                    <span className="grid min-w-0">
-                      <span className="leading-tight">{c.name}</span>
-                      <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 whitespace-nowrap text-[12px] font-normal text-ink-2">
-                        {c.kind === "real" ? (
-                          <Pill tone="ok" className="!h-5 !text-[12px]">
-                            réel · {c.cooks}
-                          </Pill>
-                        ) : (
-                          <Pill tone="idle" icon="clock" className="!h-5 !text-[12px]">
-                            estimé
-                          </Pill>
-                        )}
-                        {c.parts.slice(1).map((p) => (
-                          <span key={p.personId}>
-                            {p.name} {eur(p.cost.practical)}
-                          </span>
-                        ))}
-                        {c.coverage < 1 && <span className="text-warn-ink">{Math.round(c.coverage * 100)} % des prix connus</span>}
-                      </span>
+              <tr key={c.recipeId} className="group border-b border-line align-top">
+                <td className={`py-4 ${dishes[c.slug] ? "" : "pl-4"}`} style={dishes[c.slug] ? undefined : { boxShadow: `inset 3px 0 0 ${recipeColor(c.slug)}` }}>
+                  <Link href={`/recettes/${c.slug}#cout`} className="flex min-w-0 items-start gap-4">
+                    {dishes[c.slug]}
+                    <span className="grid min-w-0 gap-1">
+                    <span className="font-semibold leading-snug underline decoration-transparent underline-offset-4 group-hover:decoration-line-strong">{c.name}</span>
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-2">
+                      <span className="text-ink-3">{c.kind === "real" ? `réel, cuisiné ${c.cooks === 1 ? "1 fois" : `${c.cooks} fois`}` : "estimé"}</span>
+                      {c.parts.slice(1).map((p) => (
+                        <span key={p.personId}>
+                          {p.name} <span className="num">{eur(p.cost.practical)}</span>
+                        </span>
+                      ))}
+                      {c.coverage < 1 && (
+                        <span className="inline-flex items-center gap-1 font-semibold text-warn-ink">
+                          <Icon name="alert" size="s" strokeWidth={2.4} />
+                          <span className="num">{Math.round(c.coverage * 100)}&nbsp;%</span> des prix connus
+                        </span>
+                      )}
+                    </span>
                     </span>
                   </Link>
                 </td>
-                <td className="num whitespace-nowrap px-2 py-2.5 text-right font-display">{eur(c.partLead?.theoretical)}</td>
-                <td className="num whitespace-nowrap px-2 py-2.5 text-right font-display text-[16px] font-bold">{eur(c.partLead?.practical)}</td>
-                <td className={`num whitespace-nowrap px-3.5 py-2.5 text-right font-display ${wastePct > 0 ? "text-ko" : "text-faint"}`}>
-                  {eur(c.waste)}
-                  {wastePct > 0 && <span className="block text-[12px] font-normal">{wastePct} %</span>}
-                </td>
+                {!compact && <td className="num whitespace-nowrap py-4 pl-4 text-right text-ink-2">{eur(c.partLead?.theoretical)}</td>}
+                <td className="num whitespace-nowrap py-4 pl-4 text-right text-body font-semibold">{eur(c.partLead?.practical)}</td>
+                {!compact && (
+                  <td className={`num whitespace-nowrap py-4 pl-4 text-right ${wastePct > 0 ? "" : "text-ink-3"}`}>
+                    {eur(c.waste)}
+                    {wastePct > 0 && <span className="block text-small text-ink-3">{wastePct}&nbsp;% de la fournée</span>}
+                  </td>
+                )}
               </tr>
             );
           })}

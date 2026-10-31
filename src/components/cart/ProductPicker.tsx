@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { pickProduct, searchProducts } from "@/app/courses/actions";
 import type { CatalogChoice } from "@/lib/shopping/cart";
-import { Button, Input, Pill } from "@/components/ui";
+import { Button, Input } from "@/components/ui";
 import { eur } from "./format";
 
 export function ProductPicker({ itemId, initial, onDone, onClose }: { itemId: string; initial: string; onDone: (msg: string, ok: boolean) => void; onClose?: () => void }) {
@@ -34,7 +34,7 @@ export function ProductPicker({ itemId, initial, onDone, onClose }: { itemId: st
   }, [q]);
 
   return (
-    <div className="grid gap-2.5">
+    <div className="grid gap-3">
       <div className="flex gap-2">
         <div className="min-w-0 flex-1">
           <Input icon="search" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher dans le catalogue…" aria-label="Chercher dans le catalogue" />
@@ -47,14 +47,14 @@ export function ProductPicker({ itemId, initial, onDone, onClose }: { itemId: st
       </div>
       {searching && !results && (
         <div className="grid gap-2">
-          <div className="skeleton h-14 rounded-[12px]" />
-          <div className="skeleton h-14 rounded-[12px] opacity-70" />
+          <div className="skeleton h-12 !rounded-[8px]" />
+          <div className="skeleton h-12 !rounded-[8px] opacity-70" />
         </div>
       )}
-      {error && <p className="text-[14px] text-ko-ink">{error}</p>}
-      {results && results.length === 0 && <p className="px-1 text-[14px] text-ink-2">Rien de disponible sous ce nom. Essaie un mot plus court.</p>}
+      {error && <p className="text-small text-ko-ink">{error}</p>}
+      {results && results.length === 0 && <p className="text-small text-ink-2">Rien de disponible sous ce nom. Essaie un mot plus court.</p>}
       {results && results.length > 0 && (
-        <ul className={`grid overflow-hidden rounded-[14px] border border-line bg-surface transition-opacity [&>li:last-child>button]:border-b-0 ${searching ? "opacity-60" : ""}`}>
+        <ul className={`grid border-t border-line transition-opacity duration-[var(--dur-1)] ${searching ? "opacity-60" : ""}`}>
           {results.map((c) => (
             <li key={c.id}>
               <button
@@ -68,7 +68,7 @@ export function ProductPicker({ itemId, initial, onDone, onClose }: { itemId: st
                     onDone(r.ok ? (r.message ?? "Produit changé.") : r.message, r.ok);
                   });
                 }}
-                className="flex w-full min-w-0 items-center gap-3 border-b border-line px-3 py-2.5 text-left transition-colors hover:bg-surface-2 active:scale-100 disabled:opacity-60"
+                className="-mx-3 flex w-[calc(100%+24px)] min-w-0 items-center gap-3 rounded-[8px] border-b border-line px-3 py-3 text-left hover:bg-surface-2 disabled:opacity-60"
               >
                 {c.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -77,12 +77,12 @@ export function ProductPicker({ itemId, initial, onDone, onClose }: { itemId: st
                   <span className="size-11 shrink-0 rounded-[8px] bg-surface-2" />
                 )}
                 <span className="grid min-w-0 flex-1">
-                  <span className="truncate text-[15px] font-semibold">{c.name}</span>
-                  <span className="num truncate text-[13px] text-ink-2">{[c.quantityLabel, c.brandName, c.pricePerKg != null ? `${eur(c.pricePerKg)}/kg` : null].filter(Boolean).join(" · ")}</span>
+                  <span className="truncate font-semibold">{c.name}</span>
+                  <span className="num truncate text-small text-ink-2">{[c.quantityLabel, c.brandName, c.pricePerKg != null ? `${eur(c.pricePerKg)}/kg` : null].filter(Boolean).join(" · ")}</span>
                 </span>
                 <span className="grid shrink-0 justify-items-end gap-1 text-right">
-                  {choosing === c.id ? <span className="k-spin text-accent" aria-label="Choix en cours" /> : <b className="num font-display text-[15px]">{eur(c.price)}</b>}
-                  {c.promo ? <Pill tone="ok" icon="check">promo</Pill> : <Pill tone="ok">en stock</Pill>}
+                  {choosing === c.id ? <span className="k-spin text-accent" aria-label="Choix en cours" /> : <b className="num font-semibold">{eur(c.price)}</b>}
+                  {c.promo && <span className="label text-ink-2">promo</span>}
                 </span>
               </button>
             </li>

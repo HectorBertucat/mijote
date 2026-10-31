@@ -1,12 +1,15 @@
 "use client";
 
-// La liste de courses interactive (DA « Plan de travail », .aisle/.cline) : rayons, lignes avec case animée
-// « dans le panier » (compteur), +/− paquets (Stepper), pastille d'état, « Changer » le produit (recherche dans
-// une feuille), valider la commande. Chaque tap répond tout de suite (état optimiste), puis la page se recharge.
+// La liste de courses interactive (système « Carnet de marché ») : une vraie liste qu'on coche en magasin ou qu'on
+// envoie au drive. Par rayon (étiquette et compteur), une ligne = case généreuse, dessin de l'aliment, quantité en
+// chiffres serrés, nom, prix aligné à droite ; un seul signal, et seulement s'il demande d'agir (rupture, à vérifier,
+// introuvable). Le reste (marque, besoin, paquets, autre produit) est dans le détail de la ligne (feuille).
+// Chaque tap répond tout de suite (état optimiste, sans animation), puis la page se recharge.
 import Link from "next/link";
 import { useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 import { cancelOrder, cartAll, changePacks, chooseAcceptedProduct, chooseAlternative, refuseItemProductAction, setLinePriceAction, toggleCart, validateList } from "@/app/courses/actions";
-import { Button, buttonClass, Check, Icon, Input, Macro, Pill, Progress, Sheet, Stepper, type PillTone } from "@/components/ui";
+import { Button, buttonClass, Icon, Sheet, Stepper } from "@/components/ui";
+import { FoodIllu } from "@/components/illus/Illu";
 import { ProductPicker } from "./ProductPicker";
 import { Ticket } from "./Ticket";
 import { useToast } from "./Toast";
@@ -31,29 +34,32 @@ export interface RowData {
   accepted: { id: string; label: string; price: number | null; preferred: boolean; current: boolean }[];
   /** « Ne correspond pas » possible : le produit de la ligne et la clé de l'ingrédient sont connus. */
   canRefuse: boolean;
-  /** Ce que le vrai panier Chronodrive a dit de la ligne (added, already, partial, unavailable, failed, skipped). */
+  /** Ce que le vrai panier du drive a dit de la ligne (added, already, partial, unavailable, failed, skipped). */
   drive?: { outcome: string; qty: number | null } | null;
 }
 
-const DRIVE: Record<string, { tone: PillTone; text: (q: number | null) => string }> = {
-  added: { tone: "ok", text: (q) => `au panier${q ? ` · ${q}` : ""}` },
-  already: { tone: "ok", text: (q) => `déjà au panier${q ? ` · ${q}` : ""}` },
-  partial: { tone: "warn", text: (q) => `panier : ${q ?? 0} seulement` },
-  unavailable: { tone: "ko", text: () => "pas ajouté (stock)" },
-  failed: { tone: "ko", text: () => "refusé par le panier" },
-  skipped: { tone: "warn", text: () => "hors drive" },
-};
-
 type Opt = { kind: "cart"; id: string; on: boolean } | { kind: "all"; on: boolean } | { kind: "packs"; id: string; packs: number } | { kind: "price"; id: string; price: number | null };
 
-/** Mot de la pastille : le premier avertissement s'il y en a un, sinon l'état. */
-function stateWord(r: RowData, catalog: boolean): { tone: PillTone; text: string } {
-  if (!r.product) return catalog ? { tone: "ko", text: "introuvable" } : { tone: "idle", text: r.totalPrice != null ? "prix saisi" : "à prendre" };
-  const w = r.warnings.find((x) => x !== "facultatif");
-  if (r.liveStatus === "done" || r.liveStatus === "fresh") return { tone: r.state === "ko" ? "ko" : "ok", text: r.state === "ko" ? (w ?? "rupture") : "vérifié en direct" };
-  if (r.state === "ok") return { tone: "ok", text: w ?? "en stock" };
-  if (r.state === "ko") return { tone: "ko", text: w ?? "rupture" };
-  return { tone: "warn", text: w ?? "à vérifier" };
+/** Un vrai doute, pas l'âge d'une vérification ni « facultatif ». */
+const realDoubt = (w: string) => !w.startsWith("vérifié il y a") && w !== "facultatif";
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+type Signal = { tone: "ko" | "warn" | "wait"; text: string; act: boolean };
+
+/** Le seul signal d'une ligne, par ordre d'urgence ; rien quand tout va bien (en stock, au panier, vérifié). */
+export function signalOf(r: RowData, catalog: boolean, ordered: boolean): Signal | null {
+  if (ordered || r.pantry) return null;
+  if (catalog && !r.product) return { tone: "ko", text: "Introuvable", act: true };
+  const d = r.drive?.outcome;
+  if (d === "unavailable") return { tone: "ko", text: "Pas ajouté au panier : rupture", act: true };
+  if (d === "failed") return { tone: "ko", text: "Refusé par le panier", act: true };
+  if (d === "partial") return { tone: "warn", text: `Seulement ${r.drive?.qty ?? 0} au panier`, act: true };
+  if (d === "skipped") return { tone: "warn", text: "Hors drive", act: false };
+  const doubt = r.warnings.find(realDoubt);
+  if (r.state === "ko") return { tone: "ko", text: cap(doubt ?? "rupture"), act: true };
+  if (r.liveStatus === "pending") return { tone: "wait", text: "Vérification en cours", act: false };
+  if (r.state === "warn" && doubt) return { tone: "warn", text: `À vérifier : ${doubt}`, act: true };
+  return null;
 }
 
 export function CartList({ listId, title = "Courses", ordered, orderedAt, groups, copy, catalog = true }: { listId: string; title?: string; ordered: boolean; orderedAt: string | null; groups: { aisle: string; rows: RowData[] }[]; copy?: ReactNode; /** Catalogue relié : sinon les lignes n'ont pas de produit, et se cochent et se paient à la main. */ catalog?: boolean }) {
@@ -69,9 +75,10 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
   );
   const [pending, start] = useTransition();
   const [validating, setValidating] = useState(false);
-  const [picking, setPicking] = useState<RowData | null>(null);
+  const [pickId, setPickId] = useState<string | null>(null);
   const { show, node } = useToast();
   const byId = new Map(rows.map((r) => [r.id, r]));
+  const picking = pickId ? (byId.get(pickId) ?? null) : null;
 
   const buyable = rows.filter((r) => !r.pantry && (catalog ? r.product && r.packs > 0 : true));
   const inCart = buyable.filter((r) => r.inCart);
@@ -87,81 +94,95 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
     });
 
   return (
-    <div className="grid gap-1">
+    <div className="grid gap-8">
       {!ordered ? (
-        <div className="sticky top-[57px] z-10 -mx-4 mb-1 border-b border-line bg-[color-mix(in_srgb,var(--c-bg)_92%,transparent)] px-4 py-2 backdrop-blur-md sm:top-[59px]">
-          <div className="flex items-center gap-3">
-            <div className="grid min-w-0 flex-1 gap-1.5">
-              <div className="flex items-baseline justify-between gap-2 text-[14px]">
-                <span>
-                  <b key={inCart.length} className={`inline-block animate-pop font-display text-[20px] tabular-nums ${all100 ? "text-ok" : "text-accent"}`}>
-                    {inCart.length}
-                  </b>
-                  <span className="text-ink-2">/{buyable.length} dans le panier</span>
-                </span>
-                <span className="num text-ink-2">{eur(inCart.reduce((s, r) => s + (r.totalPrice ?? 0), 0))}</span>
-              </div>
-              <Progress value={buyable.length ? inCart.length / buyable.length : 0} label="Dans le panier" />
-            </div>
-            <Button size="sm" onClick={() => run({ kind: "all", on: !all100 }, () => cartAll(listId, !all100))}>
-              {all100 ? "Tout décocher" : "Tout cocher"}
-            </Button>
+        <div className="grid gap-3">
+          <div className="flex items-end justify-between gap-4">
+            <p className="flex items-baseline gap-2" aria-live="polite">
+              <span className={`num-tight text-h1 ${all100 ? "text-accent" : ""}`}>{inCart.length}</span>
+              <span className="text-lead text-ink-2">sur {buyable.length} au panier</span>
+            </p>
+            {buyable.length > 0 && (
+              <Button variant="quiet" size="sm" icon={all100 ? "x" : "check"} onClick={() => run({ kind: "all", on: !all100 }, () => cartAll(listId, !all100))}>
+                {all100 ? "Tout décocher" : "Tout cocher"}
+              </Button>
+            )}
           </div>
+          <Bar value={buyable.length ? inCart.length / buyable.length : 0} />
         </div>
       ) : (
         <OrderedBanner listId={listId} title={title} orderedAt={orderedAt} lines={inCart.map((r) => ({ packs: r.packs, name: r.product?.name ?? r.item, price: r.totalPrice }))} total={inCart.reduce((s, r) => s + (r.totalPrice ?? 0), 0)} onMsg={show} />
       )}
 
       {groups.map(({ aisle, rows: gr }) => {
-        const n = gr.filter((g) => !byId.get(g.id)!.pantry).length;
+        const head = `rayon-${aisle.toLowerCase().replace(/[^a-zà-ÿ]+/g, "-")}`;
+        if (aisle === "Placard")
+          return (
+            <details key={aisle} className="group min-w-0">
+              <summary className="flex min-h-tap cursor-pointer list-none items-end justify-between gap-4 border-b border-line-strong pb-3 hover:text-ink [&::-webkit-details-marker]:hidden">
+                <span className="label text-ink">Placard · à vérifier chez toi</span>
+                <span className="num-tight inline-flex items-center gap-1 text-small text-ink-2">
+                  {gr.length}
+                  <Icon name="chev" size="s" className="transition-transform duration-[var(--dur-1)] ease-[var(--ease-out)] group-open:rotate-90" />
+                </span>
+              </summary>
+              <ul>
+                {gr.map((g) => (
+                  <li key={g.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line py-3">
+                    <FoodIllu item={g.item} size="s" />
+                    <span className="min-w-0">
+                      <span className="block truncate">{g.item}</span>
+                      {g.forRecipes && <span className="block truncate text-small text-ink-3">{g.forRecipes}</span>}
+                    </span>
+                    <span className="num text-small text-ink-2">{grams(g.needG)}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          );
+        const n = gr.length;
         const got = gr.filter((g) => byId.get(g.id)!.inCart).length;
-        const head = (
-          <>
-            <span>{aisle === "Placard" ? "Placard · à vérifier chez toi" : aisle}</span>
-            <span className="num inline-flex items-center gap-1">
-              {aisle === "Placard" ? gr.length : `${got ? `${got}/` : ""}${n}`}
-              {aisle === "Placard" && <Icon name="chev" size="s" className="transition-transform group-open:rotate-90" />}
-            </span>
-          </>
-        );
-        const H = "flex justify-between px-0.5 pb-1.5 pt-3.5 font-display text-[12px] font-bold uppercase tracking-[0.1em] text-faint [font-stretch:100%]";
-        const Wrap = aisle === "Placard" ? "details" : "section";
         return (
-          <Wrap key={aisle} aria-label={aisle} className="group min-w-0">
-            {aisle === "Placard" ? <summary className={`${H} min-h-tap cursor-pointer list-none items-center`}>{head}</summary> : <h2 className={H}>{head}</h2>}
-            <ul className="overflow-hidden rounded-[14px] border border-line bg-surface [&>li:last-child]:border-b-0">
+          <section key={aisle} aria-labelledby={head} className="min-w-0">
+            <div className="flex items-end justify-between gap-4 border-b border-line-strong pb-3">
+              <h2 id={head} className="label text-ink">
+                {aisle}
+              </h2>
+              <span className={`num-tight inline-flex items-center gap-1 text-small ${got === n && !ordered ? "text-accent" : "text-ink-2"}`}>
+                {got === n && !ordered && <Icon name="check" size="s" strokeWidth={2.4} />}
+                {got ? `${got} sur ${n}` : n}
+              </span>
+            </div>
+            <ul>
               {gr.map((g) => {
                 const r = byId.get(g.id)!;
-                return r.pantry ? (
-                  <li key={r.id} className="flex items-center gap-3 border-b border-line px-3.5 py-2.5 text-[14px]">
-                    <Icon name="home" size="s" className="shrink-0 text-faint" />
-                    <span className="min-w-0 flex-1">
-                      <span className="font-semibold">{r.item}</span>
-                      <span className="text-ink-2">{[grams(r.needG), r.forRecipes].filter(Boolean).map((x) => ` · ${x}`).join("")}</span>
-                    </span>
-                  </li>
-                ) : (
+                return (
                   <Row
                     key={r.id}
                     r={r}
                     catalog={catalog}
                     ordered={ordered}
-                    onPrice={(eur) => run({ kind: "price", id: r.id, price: eur }, () => setLinePriceAction(r.id, eur))}
+                    onPrice={(v) => run({ kind: "price", id: r.id, price: v }, () => setLinePriceAction(r.id, v))}
                     onCart={(on) => run({ kind: "cart", id: r.id, on }, () => toggleCart(r.id, on))}
-                    onPacks={(n) => run({ kind: "packs", id: r.id, packs: n }, () => changePacks(r.id, n))}
-                    onPick={() => setPicking(r)}
+                    onPick={() => setPickId(r.id)}
                   />
                 );
               })}
             </ul>
-          </Wrap>
+          </section>
         );
       })}
 
       {!ordered && buyable.length > 0 && (
-        <div className="sticky bottom-[calc(4.9rem+env(safe-area-inset-bottom))] z-20 mt-3 sm:bottom-4">
-          <div className="flex items-center justify-between gap-3 rounded-[14px] border border-line bg-raised px-4 py-3 shadow-e2">
-            <Macro className="min-w-0" value={total.toFixed(2).replace(".", ",")} unit="€" sub={`${toValidate.length} produit${toValidate.length > 1 ? "s" : ""}${inCart.length ? ` · ${inCart.length} dans le panier` : " · rien de coché"}`} />
+        <div className="sticky bottom-[calc(4.9rem+env(safe-area-inset-bottom))] z-20 sm:bottom-4">
+          <div className="flex items-center justify-between gap-4 rounded-[14px] border border-line bg-raised px-4 py-3 shadow-float">
+            <div className="grid min-w-0">
+              <span className="num-tight text-h2">
+                {total.toFixed(2).replace(".", ",")}
+                <span className="ml-1 text-small font-semibold">€</span>
+              </span>
+              <span className="truncate text-small text-ink-2">{inCart.length ? `${inCart.length} sur ${buyable.length} au panier` : `${buyable.length} article${buyable.length > 1 ? "s" : ""}, rien de coché`}</span>
+            </div>
             <div className="flex shrink-0 gap-2">
               {copy && <span className="max-sm:hidden">{copy}</span>}
               <Button
@@ -184,93 +205,10 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
           </div>
         </div>
       )}
-      {copy && !ordered && <div className="mt-2 sm:hidden">{copy}</div>}
+      {copy && !ordered && <div className="sm:hidden">{copy}</div>}
 
-      <Sheet open={picking != null} onClose={() => setPicking(null)} title={picking ? `${picking.product ? "Changer" : "Chercher"} · ${picking.product ? `${picking.product.name}${picking.product.quantityLabel ? ` ${picking.product.quantityLabel}` : ""}` : picking.item}` : ""}>
-        {picking && (
-          <>
-            <p className="text-[14px] text-ink-2">
-              Pour {picking.item}
-              {picking.needG != null && ` · besoin ${grams(picking.needG)}`}
-              {picking.forRecipes && ` · ${picking.forRecipes}`}. Les paquets se recalculent.
-            </p>
-            {picking.accepted.filter((a) => !a.current).length > 0 && (
-              <div className="grid gap-1.5">
-                <span className="font-display text-[12px] font-bold uppercase tracking-[0.12em] text-faint">Produits acceptés</span>
-                <div className="flex flex-wrap gap-2">
-                  {picking.accepted
-                    .filter((a) => !a.current)
-                    .map((a) => (
-                      <Button
-                        key={a.id}
-                        size="sm"
-                        icon={a.preferred ? "star" : "swap"}
-                        className="!h-auto !whitespace-normal py-1.5 text-left"
-                        disabled={pending}
-                        onClick={() =>
-                          start(async () => {
-                            const r = await chooseAcceptedProduct(picking.id, a.id);
-                            show(r.message ?? "Produit changé.", r.ok);
-                            if (r.ok) setPicking(null);
-                          })
-                        }
-                      >
-                        {a.label}
-                        {a.price != null && ` · ${eur(a.price)}`}
-                        {a.preferred && " · préféré"}
-                      </Button>
-                    ))}
-                </div>
-              </div>
-            )}
-            {picking.canRefuse && picking.product && (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] bg-surface-2 px-3 py-2 text-[14px] text-ink-2">
-                <span className="min-w-0">
-                  Ce produit ({[picking.product.brandName, picking.product.quantityLabel].filter(Boolean).join(", ") || picking.product.name}) ne convient pas ? Il sera exclu de toutes les recettes.
-                </span>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  icon="x"
-                  disabled={pending}
-                  onClick={() =>
-                    start(async () => {
-                      const r = await refuseItemProductAction(picking.id);
-                      show(r.message ?? "Refusé.", r.ok);
-                      if (r.ok) setPicking(null);
-                    })
-                  }
-                >
-                  Ne correspond pas
-                </Button>
-              </div>
-            )}
-            {picking.alts.filter((a) => !picking.accepted.some((x) => x.id === a.id)).length > 0 && picking.state !== "ok" && (
-              <div className="grid gap-1.5">
-                <span className="font-display text-[12px] font-bold uppercase tracking-[0.12em] text-faint">Proposés par le catalogue</span>
-                <div className="flex flex-wrap gap-2">
-                  {picking.alts.filter((a) => !picking.accepted.some((x) => x.id === a.id)).map((a) => (
-                    <form key={a.id} action={chooseAlternative.bind(null, picking.id, a.id)} onSubmit={() => setTimeout(() => setPicking(null), 0)}>
-                      <Button type="submit" size="sm" icon="swap" className="!h-auto !whitespace-normal py-1.5 text-left">
-                        {a.label}
-                        {a.price != null && ` · ${eur(a.price)}`}
-                      </Button>
-                    </form>
-                  ))}
-                </div>
-              </div>
-            )}
-            <ProductPicker
-              key={picking.id}
-              itemId={picking.id}
-              initial={picking.item}
-              onDone={(m, ok) => {
-                show(m, ok);
-                if (ok) setPicking(null);
-              }}
-            />
-          </>
-        )}
+      <Sheet open={picking != null} onClose={() => setPickId(null)} title={picking ? (picking.product?.name ?? picking.item) : ""}>
+        {picking && <Detail r={picking} catalog={catalog} ordered={ordered} pending={pending} start={start} show={show} onPacks={(n) => run({ kind: "packs", id: picking.id, packs: n }, () => changePacks(picking.id, n))} close={() => setPickId(null)} />}
       </Sheet>
       {pending && <span className="sr-only">Enregistrement…</span>}
       {node}
@@ -278,86 +216,236 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
   );
 }
 
-function Row({ r, catalog, ordered, onCart, onPacks, onPick, onPrice }: { r: RowData; catalog: boolean; ordered: boolean; onCart: (on: boolean) => void; onPacks: (n: number) => void; onPick: () => void; onPrice: (eur: number | null) => void }) {
-  const p = r.product;
-  const st = stateWord(r, catalog);
-  const live = !ordered ? liveWord(r.liveStatus) : null;
-  const unit = p && r.unitPrice != null ? `${eur(r.unitPrice)} le paquet` : null;
-  const swipe = useSwipe(!ordered && (!!p || !catalog), (dir) => onCart(dir === "right"));
+/** Avancement : un filet de 2 px, cocotte sur ce qui est fait. */
+function Bar({ value }: { value: number }) {
+  const v = Math.max(0, Math.min(1, value));
   return (
-    <li className="relative overflow-hidden border-b border-line">
+    <div role="progressbar" aria-label="Au panier" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)} className="h-0.5 bg-line">
+      <i className="block h-full bg-accent transition-[width] duration-[var(--dur-3)] ease-[var(--ease-out)]" style={{ width: `${v * 100}%` }} />
+    </div>
+  );
+}
+
+/** Case de la liste : 28 px dans une cible de 48, remplie tout de suite (pas de coche qui se trace). */
+function Tick({ checked, onChange, label }: { checked: boolean; onChange?: (on: boolean) => void; label: string }) {
+  const box = `grid size-7 place-items-center rounded-[4px] border-2 transition-[background-color,border-color] duration-[var(--dur-1)] ease-[var(--ease-out)] ${checked ? "border-accent bg-accent text-on-accent" : "border-line-strong bg-surface"}`;
+  const mark = <Icon name="check" size={18} strokeWidth={3} className={checked ? "" : "invisible"} />;
+  if (!onChange)
+    return (
+      <span className="grid size-12 shrink-0 place-items-center" role="img" aria-label={label}>
+        <span className={box}>{mark}</span>
+      </span>
+    );
+  return (
+    <label className="group/tick relative -my-1 grid size-12 shrink-0 cursor-pointer place-items-center">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} className="peer absolute inset-0 cursor-pointer opacity-0" />
+      <span className={`${box} group-hover/tick:border-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus ${checked ? "group-hover/tick:border-accent-hover group-hover/tick:bg-accent-hover" : ""}`}>{mark}</span>
+    </label>
+  );
+}
+
+function SignalLine({ s, action }: { s: Signal; action?: ReactNode }) {
+  const look = s.tone === "ko" ? "text-ko-ink" : s.tone === "warn" ? "text-warn-ink" : "text-ink-3";
+  return (
+    <span className={`mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-small font-semibold ${look}`}>
+      <span className="inline-flex items-center gap-1">
+        {s.tone === "wait" ? <span className="k-spin !size-3" aria-hidden /> : <Icon name={s.tone === "ko" ? "x" : "alert"} size="s" strokeWidth={2.4} />}
+        {s.text}
+      </span>
+      {action}
+    </span>
+  );
+}
+
+function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; catalog: boolean; ordered: boolean; onCart: (on: boolean) => void; onPick: () => void; onPrice: (eur: number | null) => void }) {
+  const p = r.product;
+  const sig = signalOf(r, catalog, ordered);
+  const done = r.inCart && !ordered;
+  const name = p?.name ?? r.item;
+  const qty = p ? `${r.packs} ×` : grams(r.needG);
+  const meta = [p?.quantityLabel, r.forRecipes, r.warnings.includes("facultatif") ? "facultatif" : null].filter(Boolean).join(" · ");
+  const canTick = !ordered && (!!p || !catalog);
+  const swipe = useSwipe(canTick, (dir) => onCart(dir === "right"));
+  return (
+    <li id={`ligne-${r.id}`} className="relative scroll-mt-28 overflow-hidden border-b border-line">
       {swipe.dx !== 0 && (
-        <span aria-hidden className={`absolute inset-0 flex items-center px-5 text-[14px] font-bold ${swipe.dx > 0 ? "justify-start bg-accent-soft text-accent" : "justify-end bg-surface-2 text-ink-2"}`}>
-          <span className="inline-flex items-center gap-1.5">
-            <Icon name={swipe.dx > 0 ? "basket" : "x"} size="s" />
-            {swipe.dx > 0 ? "dans le panier" : "retirer"}
+        <span aria-hidden className={`absolute inset-0 flex items-center px-4 text-small font-bold ${swipe.dx > 0 ? "justify-start bg-accent-soft text-accent" : "justify-end bg-surface-2 text-ink-2"}`}>
+          <span className="inline-flex items-center gap-1">
+            <Icon name={swipe.dx > 0 ? "check" : "x"} size="s" />
+            {swipe.dx > 0 ? "Au panier" : "Retirer"}
           </span>
         </span>
       )}
-    <div
-      {...swipe.handlers}
-      style={swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined}
-      className={`relative grid touch-pan-y grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 bg-surface px-3.5 py-2.5 transition-[background-color,opacity,transform] duration-[var(--dur-base)] ${swipe.dragging ? "!transition-none" : ""} ${(r.inCart && !ordered) || (ordered && !r.inCart) ? "opacity-70" : ""} ${r.liveStatus === "pending" ? "!bg-accent-soft" : ""}`}
-    >
-      <span className="pt-0.5">
-        {(p || !r.pantry) && !ordered ? (
-          <Check checked={r.inCart} onChange={(e) => onCart(e.target.checked)} aria-label={r.inCart ? `Retirer ${p?.name ?? r.item} du panier` : `${p?.name ?? r.item} dans le panier`} className="!min-h-0" />
-        ) : (
-          <span className={`grid size-[26px] place-items-center rounded-[7px] ${r.inCart ? "bg-accent text-on-accent" : "border-2 border-line-strong"}`} aria-label={r.inCart ? "commandé" : "pas commandé"} role="img">
-            {r.inCart && <Icon name="check" size={16} strokeWidth={3} />}
-          </span>
-        )}
-      </span>
-      <div className="min-w-0">
-        <div className={`text-[15px] font-semibold leading-[1.25] transition-colors ${r.inCart && !ordered ? "text-faint line-through" : ""}`}>
-          {p ? (
-            <>
-              <span className="num mr-1 font-display font-extrabold">{r.packs} ×</span>
-              {p.url ? (
-                <a href={p.url} target="_blank" rel="noreferrer" className="hover:underline">
-                  {p.name}
-                </a>
-              ) : (
-                p.name
-              )}
-            </>
+      <div
+        {...swipe.handlers}
+        style={swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined}
+        className={`relative grid touch-pan-y grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-x-3 bg-bg py-3 ${swipe.dragging ? "" : "transition-transform duration-[var(--dur-2)] ease-[var(--ease-out)]"} ${ordered && !r.inCart ? "opacity-50" : ""}`}
+      >
+        <span className="-ml-3">
+          {canTick ? <Tick checked={r.inCart} onChange={onCart} label={r.inCart ? `Retirer ${name} du panier` : `${name} : au panier`} /> : <Tick checked={r.inCart} label={r.inCart ? "commandé" : "pas commandé"} />}
+        </span>
+        <FoodIllu item={r.item} size="s" className={`mt-2 transition-opacity duration-[var(--dur-1)] ${done ? "opacity-40" : ""}`} />
+        <div className="min-w-0 pt-2">
+          {ordered ? (
+            <RowName qty={qty} name={name} done={false} />
           ) : (
-            r.item
+            <button type="button" onClick={onPick} className="group/name block max-w-full rounded-[4px] text-left" aria-label={`${name} : détail${p ? ", paquets, autre produit" : ""}`}>
+              <RowName qty={qty} name={name} done={done} hover />
+            </button>
+          )}
+          {meta && <span className={`mt-1 block truncate text-small ${done ? "text-ink-3" : "text-ink-2"}`}>{meta}</span>}
+          {sig && !done && (
+            <SignalLine
+              s={sig}
+              action={
+                sig.act && catalog ? (
+                  <button type="button" onClick={onPick} className="inline-flex min-h-tap items-center gap-1 text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
+                    {p ? "Changer de produit" : "Chercher"}
+                  </button>
+                ) : null
+              }
+            />
           )}
         </div>
-        <div className="mt-[3px] flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-2">
-          {p?.quantityLabel && <span className="num">{p.quantityLabel}</span>}
-          <Pill tone={st.tone}>{st.text}</Pill>
-          {live && <Pill tone={live.tone} icon={live.icon}>{live.text}</Pill>}
-          {r.drive && DRIVE[r.drive.outcome] && (
-            <Pill tone={DRIVE[r.drive.outcome].tone} icon="basket">
-              {DRIVE[r.drive.outcome].text(r.drive.qty)}
-            </Pill>
+        <div className="grid justify-items-end pt-2 text-right">
+          {!p && !catalog && !ordered ? (
+            <PriceInput value={r.totalPrice} label={r.item} onSave={onPrice} />
+          ) : (
+            <>
+              <span className={`num text-body font-semibold ${done ? "text-ink-3" : ""}`}>{eur(r.totalPrice)}</span>
+              {p && r.unitPrice != null && r.packs > 1 && <span className="num text-small text-ink-3 max-sm:hidden">{eur(r.unitPrice)} le paquet</span>}
+            </>
           )}
-          <span className="min-w-0">
-            {[r.forRecipes, r.needG != null ? `besoin ${grams(r.needG)}` : null, p?.brandName].filter(Boolean).join(" · ")}
-          </span>
         </div>
-        {r.warnings.length > 1 && <div className={`mt-1 text-[13px] ${r.state === "ko" ? "text-ko-ink" : "text-warn-ink"}`}>{r.warnings.filter((w) => w !== st.text).join(" · ")}</div>}
-        {!ordered && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {p && <Stepper size="sm" value={r.packs} min={0} onChange={onPacks} decLabel={`Un paquet de moins de ${p.name}`} incLabel={`Un paquet de plus de ${p.name}`} />}
-            {catalog ? (
-              <Button size="sm" variant={!p || r.state === "ko" ? "primary" : r.state === "warn" ? "secondary" : "quiet"} icon={p ? "swap" : "search"} onClick={onPick}>
-                {p ? "Changer" : "Chercher"}
-              </Button>
-            ) : (
-              !p && <PriceInput value={r.totalPrice} label={r.item} onSave={onPrice} />
-            )}
-          </div>
-        )}
       </div>
-      <div className="grid justify-items-end gap-0.5 text-right">
-        <b className="num font-display text-[16px]">{eur(r.totalPrice)}</b>
-        {unit && r.packs > 1 && <span className="num text-[12px] text-faint">{unit}</span>}
-      </div>
-    </div>
     </li>
+  );
+}
+
+function RowName({ qty, name, done, hover = false }: { qty: string | null; name: string; done: boolean; hover?: boolean }) {
+  return (
+    <span className={`block text-body leading-snug transition-colors duration-[var(--dur-1)] ${done ? "text-ink-3 line-through decoration-ink-3" : ""}`}>
+      {qty && <span className="num-tight mr-2 text-ink">{qty}</span>}
+      <span className={`font-semibold ${hover ? "underline decoration-transparent underline-offset-4 group-hover/name:decoration-line-strong" : ""}`}>{name}</span>
+    </span>
+  );
+}
+
+/** Détail d'une ligne (feuille) : le produit, pour quoi, combien, puis changer de produit. */
+function Detail({ r, catalog, ordered, pending, start, show, onPacks, close }: { r: RowData; catalog: boolean; ordered: boolean; pending: boolean; start: (fn: () => Promise<void>) => void; show: (m: string, ok: boolean) => void; onPacks: (n: number) => void; close: () => void }) {
+  const p = r.product;
+  const sig = signalOf(r, catalog, ordered);
+  const accepted = r.accepted.filter((a) => !a.current);
+  const alts = r.state !== "ok" ? r.alts.filter((a) => !r.accepted.some((x) => x.id === a.id)) : [];
+  const facts: [string, ReactNode][] = [
+    ["Pour", r.item],
+    ...(r.forRecipes ? ([["Recettes", r.forRecipes]] as [string, ReactNode][]) : []),
+    ...(r.needG != null ? ([["Besoin", <span key="b" className="num">{grams(r.needG)}</span>]] as [string, ReactNode][]) : []),
+    ...(p ? ([["Produit", [p.brandName, p.quantityLabel].filter(Boolean).join(", ") || p.name]] as [string, ReactNode][]) : []),
+    ...(p && r.unitPrice != null ? ([["Prix", <span key="p" className="num">{eur(r.unitPrice)} le paquet</span>]] as [string, ReactNode][]) : []),
+  ];
+  return (
+    <>
+      {sig && <SignalLine s={sig} />}
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] border-t border-line">
+        {facts.map(([k, v]) => (
+          <div key={k} className="col-span-2 grid grid-cols-subgrid border-b border-line py-3">
+            <dt className="label pt-1 pr-4 text-ink-3">{k}</dt>
+            <dd className="min-w-0">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {p?.url && (
+        <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center gap-1 justify-self-start text-small font-semibold text-accent underline-offset-4 hover:underline">
+          <Icon name="link" size="s" />
+          Voir le produit sur le drive
+        </a>
+      )}
+      {p && !ordered && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="label text-ink-2">Paquets</span>
+          <Stepper size="sm" value={r.packs} min={0} onChange={onPacks} decLabel={`Un paquet de moins de ${p.name}`} incLabel={`Un paquet de plus de ${p.name}`} />
+        </div>
+      )}
+      {catalog && !ordered && (accepted.length > 0 || alts.length > 0) && (
+        <div className="grid gap-2">
+          <span className="label text-ink-2">{accepted.length ? "Produits acceptés" : "Proposés par le catalogue"}</span>
+          <ul className="border-t border-line">
+            {accepted.map((a) => (
+              <li key={a.id}>
+                <Choice
+                  label={a.label}
+                  price={a.price}
+                  note={a.preferred ? "préféré" : null}
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      const res = await chooseAcceptedProduct(r.id, a.id);
+                      show(res.message ?? "Produit changé.", res.ok);
+                      if (res.ok) close();
+                    })
+                  }
+                />
+              </li>
+            ))}
+            {alts.map((a) => (
+              <li key={a.id}>
+                <form action={chooseAlternative.bind(null, r.id, a.id)} onSubmit={() => setTimeout(close, 0)}>
+                  <Choice label={a.label} price={a.price} submit />
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {catalog && !ordered && (
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Chercher un autre produit</span>
+          <ProductPicker
+            key={r.id}
+            itemId={r.id}
+            initial={r.item}
+            onDone={(m, ok) => {
+              show(m, ok);
+              if (ok) close();
+            }}
+          />
+        </div>
+      )}
+      {catalog && !ordered && r.canRefuse && p && (
+        <div className="grid gap-2 border-t border-line pt-4">
+          <p className="text-small text-ink-2">Ce produit ne convient pas ? Il sera exclu de toutes les recettes.</p>
+          <Button
+            size="sm"
+            variant="danger"
+            icon="x"
+            className="justify-self-start"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const res = await refuseItemProductAction(r.id);
+                show(res.message ?? "Refusé.", res.ok);
+                if (res.ok) close();
+              })
+            }
+          >
+            Ne correspond pas
+          </Button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Choice({ label, price, note, disabled, onClick, submit = false }: { label: string; price: number | null; note?: string | null; disabled?: boolean; onClick?: () => void; submit?: boolean }) {
+  return (
+    <button type={submit ? "submit" : "button"} disabled={disabled} onClick={onClick} className="-mx-3 flex w-[calc(100%+24px)] items-center justify-between gap-4 rounded-[8px] border-b border-line px-3 py-3 text-left hover:bg-surface-2 disabled:opacity-40">
+      <span className="min-w-0">
+        {label}
+        {note && <span className="ml-2 text-small text-ink-3">{note}</span>}
+      </span>
+      <span className="num shrink-0 font-semibold">{eur(price)}</span>
+    </button>
   );
 }
 
@@ -371,8 +459,17 @@ function PriceInput({ value, label, onSave }: { value: number | null; label: str
     if (v !== value) onSave(v);
   };
   return (
-    <label className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
-      <Input num inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} placeholder="prix" aria-label={`Prix payé : ${label}`} className="!h-9 !min-h-0 !w-20 !px-2 text-right" />
+    <label className="-mt-2 inline-flex items-center gap-1 text-ink-2">
+      <input
+        inputMode="decimal"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+        placeholder="prix"
+        aria-label={`Prix payé : ${label}`}
+        className="num h-10 w-18 rounded-[8px] border border-transparent bg-transparent px-2 text-right text-body font-semibold text-ink outline-none transition-colors duration-[var(--dur-1)] placeholder:font-normal placeholder:text-ink-3 hover:border-line-strong focus:border-ink focus:bg-surface"
+      />
       €
     </label>
   );
@@ -416,22 +513,19 @@ function useSwipe(enabled: boolean, onSwipe: (dir: "left" | "right") => void) {
   };
 }
 
-function liveWord(status: string | null): { tone: PillTone; text: string; icon?: "refresh" | "check" | "x" | "dash" } | null {
-  if (!status) return null;
-  if (status === "pending") return { tone: "idle", text: "en file chez le worker", icon: "refresh" };
-  if (status === "done" || status === "fresh") return null; // déjà dit par la pastille d'état
-  if (status === "failed") return { tone: "ko", text: "vérification échouée" };
-  return { tone: "idle", text: "pas vérifiable en direct", icon: "dash" };
-}
-
 function OrderedBanner({ listId, title, orderedAt, lines, total, onMsg }: { listId: string; title: string; orderedAt: string | null; lines: { packs: number; name: string; price: number | null }[]; total: number; onMsg: (m: string, ok: boolean) => void }) {
   const [pending, start] = useTransition();
   return (
-    <div className="mb-2 grid animate-pop gap-3 sm:grid-cols-[minmax(0,340px)_minmax(0,1fr)] sm:items-start sm:gap-5">
-      <Ticket seed={listId} title={title} lines={lines} total={total} orderedAt={orderedAt} />
-      <div className="grid gap-2.5 text-[15px]">
+    <section aria-labelledby="commande-titre" className="grid gap-6 sm:grid-cols-12 sm:items-start sm:gap-x-6">
+      <div className="sm:col-span-5">
+        <Ticket seed={listId} title={title} lines={lines} total={total} orderedAt={orderedAt} />
+      </div>
+      <div className="grid gap-4 sm:col-span-7">
+        <h2 id="commande-titre" className="text-h2">
+          Commande validée
+        </h2>
         <p className="text-ink-2">
-          Prix figés {orderedAt ? `le ${new Date(orderedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}` : ""}. Les restes sont au placard.
+          Prix figés{orderedAt ? ` le ${new Date(orderedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}` : ""}. Ce qui reste des paquets est au placard.
         </p>
         <span className="flex flex-wrap gap-2">
           <Link href="/placard" className={buttonClass({ variant: "primary", size: "sm" })}>
@@ -456,6 +550,6 @@ function OrderedBanner({ listId, title, orderedAt, lines, total, onMsg }: { list
           </Button>
         </span>
       </div>
-    </div>
+    </section>
   );
 }

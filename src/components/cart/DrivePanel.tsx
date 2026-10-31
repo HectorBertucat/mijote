@@ -1,12 +1,14 @@
 "use client";
 
-// Le vrai panier Chronodrive (compte drive, facultatif) : envoyer la liste au panier, suivre le worker, voir ce
-// qui est vraiment dedans ; puis, une fois la commande payée sur chronodrive.com, la relire pour
+// Le vrai panier du drive (compte drive, facultatif) : envoyer la liste au panier, suivre le worker, voir ce
+// qui est vraiment dedans ; puis, une fois la commande payée sur le site du drive, la relire pour
 // prendre les prix payés. Le worker de chronocatalog fait ~1 requête toutes les 2,5 s : on suit.
+// Section sobre : étiquette, une phrase, un bouton, des chiffres ; la couleur seulement pour ce qui manque.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { askOrder, followDrive, followOrder, sendDrive } from "@/app/courses/actions";
-import { Button, Pill } from "@/components/ui";
+import { Button, Icon } from "@/components/ui";
+import { SectionHead } from "./Carnet";
 import { eur } from "./format";
 
 const STEP_S = 2.5;
@@ -22,7 +24,7 @@ export interface DrivePanelProps {
 
 const ago = (iso: string) => {
   const m = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
-  return m < 1 ? "à l'instant" : m < 60 ? `il y a ${m} min` : `il y a ${Math.round(m / 60)} h`;
+  return m < 1 ? "à l’instant" : m < 60 ? `il y a ${m} min` : `il y a ${Math.round(m / 60)} h`;
 };
 
 export function DrivePanel({ listId, enabled, ordered, products, drive, order }: DrivePanelProps) {
@@ -63,44 +65,41 @@ export function DrivePanel({ listId, enabled, ordered, products, drive, order }:
 
   if (!enabled)
     return (
-      <section className="rounded-[14px] border border-line bg-surface px-3.5 py-3 text-[14px] text-ink-2" aria-label="Panier Chronodrive">
-        <b className="text-ink">Panier Chronodrive</b> · compte non relié (jeton <code>CHRONOCATALOG_ACCOUNT_TOKEN</code> absent).
-      </section>
+      <p className="text-small text-ink-3">
+        Panier drive : compte non relié (<code className="text-[0.9em]">CHRONOCATALOG_ACCOUNT_TOKEN</code> sur le serveur).
+      </p>
     );
 
   const s = drive.summary;
-  const pills = s
+  const counts = s
     ? ([
-        ["added", "ajouté", "ok"],
-        ["already", "déjà là", "ok"],
+        ["added", "ajouté", null],
+        ["already", "déjà là", null],
+        ["completed", "remplacé par un autre produit", null],
         ["partial", "partiel", "warn"],
+        ["skipped", "hors drive", "warn"],
         ["unavailable", "indisponible", "ko"],
         ["failed", "refusé", "ko"],
-        ["skipped", "hors drive", "warn"],
-        ["completed", "complété par un autre produit", "ok"],
         ["short", "manque au panier", "ko"],
       ] as const).filter(([k]) => (s[k] ?? 0) > 0)
     : [];
 
   return (
-    <section className="grid gap-2.5 rounded-[14px] border border-line bg-surface px-3.5 py-3" aria-label="Panier Chronodrive">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 text-[14px]">
-        <b>Panier Chronodrive</b>
-        {drive.at && drive.status === "done" && <span className="text-ink-2">envoyé {ago(drive.at)}</span>}
-      </div>
+    <section className="grid gap-4" aria-labelledby="drive-titre">
+      <SectionHead as="label" id="drive-titre" title="Panier drive" count={drive.at && drive.status === "done" ? `envoyé ${ago(drive.at)}` : undefined} />
 
       {!ordered && (
         <>
-          <p className="text-[14px] text-ink-2">
+          <p className="text-small text-ink-2">
             {drive.status === "done"
               ? (s?.short ?? 0) > 0
-                ? "Il manque encore des produits au panier (rupture, et pas de remplaçant en stock) : vois les lignes en rouge, change le produit puis renvoie."
+                ? "Il manque des produits au panier, sans remplaçant en stock. Change-les dans la liste, puis renvoie."
                 : (s?.completed ?? 0) > 0
-                  ? "Panier complet : ce qui était en rupture a été remplacé par un autre produit du même type (lignes « complément »)."
-                  : "Panier complet, relu ligne par ligne. Renvoyer ne double rien : seul ce qui manque est ajouté."
-              : `Les ${products} produits partent dans ton vrai panier, au nombre de paquets de la liste. Compte ~${Math.max(1, Math.round(((products + 5) * STEP_S) / 60))} min : le worker va doucement.`}
+                  ? "Panier complet : les ruptures ont été remplacées par un produit du même type."
+                  : "Panier complet, relu ligne par ligne. Renvoyer ne double rien : seul ce qui manque part."
+              : `${products} produits partent dans ton vrai panier, au nombre de paquets de la liste. Compte ${Math.max(1, Math.round(((products + 5) * STEP_S) / 60))}\u00a0min.`}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-4">
             <Button
               variant={drive.status === "done" ? "secondary" : "primary"}
               size="sm"
@@ -118,31 +117,39 @@ export function DrivePanel({ listId, enabled, ordered, products, drive, order }:
               {drive.status === "done" ? "Renvoyer au panier" : "Envoyer au panier"}
             </Button>
             {drive.status === "done" && (
-              <a href="https://www.chronodrive.com" target="_blank" rel="noreferrer" className="text-[14px] font-semibold text-accent hover:underline">
-                Payer sur chronodrive.com
+              <a href="https://www.chronodrive.com" target="_blank" rel="noreferrer" className="inline-flex min-h-tap items-center text-small font-semibold text-accent underline-offset-4 hover:underline">
+                Payer sur le drive
               </a>
             )}
           </div>
         </>
       )}
 
-      {pills.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {pills.map(([k, label, tone]) => (
-            <Pill key={k} tone={tone}>
-              <span className="num">{s![k]}</span> {label}
-              {s![k] > 1 && !label.includes(" ") ? "s" : ""}
-            </Pill>
+      {counts.length > 0 && (
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] border-t border-line">
+          {counts.map(([k, label, tone]) => (
+            <div key={k} className={`col-span-2 grid grid-cols-subgrid items-baseline border-b border-line py-2 ${tone === "ko" ? "text-ko-ink" : tone === "warn" ? "text-warn-ink" : ""}`}>
+              <dt className="num-tight pr-4 text-right text-h3">{s![k]}</dt>
+              <dd className="flex items-center gap-1 text-small">
+                {tone && <Icon name={tone === "ko" ? "x" : "alert"} size="s" strokeWidth={2.4} />}
+                {label}
+              </dd>
+            </div>
           ))}
-          {s!.total > 0 && <span className="num text-[13px] text-ink-2">panier : {eur(s!.total)}</span>}
-        </div>
+          {s!.total > 0 && (
+            <div className="col-span-2 grid grid-cols-subgrid items-baseline py-2">
+              <dt className="num pr-4 text-right font-semibold">{eur(s!.total)}</dt>
+              <dd className="text-small text-ink-2">dans le panier</dd>
+            </div>
+          )}
+        </dl>
       )}
-      {drive.status === "failed" && drive.error && <p className="text-[14px] text-ko">Envoi impossible : {drive.error}</p>}
+      {drive.status === "failed" && drive.error && <p className="text-small text-ko-ink">Envoi impossible : {drive.error}</p>}
 
       {(drive.status === "done" || ordered) && (
-        <div className="grid gap-2 border-t border-dashed border-line pt-2.5">
+        <div className="grid gap-3 border-t border-line pt-4">
           {order.status === "done" && order.paid != null ? (
-            <p className="text-[14px]">
+            <p className="text-small">
               Commande relue : <b className="num">{eur(order.paid)}</b> payés
               {order.estimated != null && Math.abs(order.paid - order.estimated) >= 0.01 && (
                 <span className="text-ink-2">
@@ -159,7 +166,7 @@ export function DrivePanel({ listId, enabled, ordered, products, drive, order }:
               .
             </p>
           ) : (
-            <p className="text-[14px] text-ink-2">Une fois la commande payée sur chronodrive.com, relis-la : la liste est validée, et chaque achat prend le prix réellement payé (coût réel par recette).</p>
+            <p className="text-small text-ink-2">Commande payée sur le drive ? Relis-la : la liste est validée et chaque achat prend le prix payé.</p>
           )}
           <div>
             <Button
@@ -179,12 +186,12 @@ export function DrivePanel({ listId, enabled, ordered, products, drive, order }:
               {order.status === "done" ? "Relire à nouveau" : "Relire ma commande"}
             </Button>
           </div>
-          {order.status === "failed" && order.error && !msg && <p className="text-[14px] text-warn">{order.error}</p>}
+          {order.status === "failed" && order.error && !msg && <p className="text-small text-warn-ink">{order.error}</p>}
         </div>
       )}
 
       {msg && (
-        <p role="status" className={`text-[14px] ${msg.ok ? "text-ok" : "text-ko"}`}>
+        <p role="status" className={`text-small ${msg.ok ? "text-ink-2" : "text-ko-ink"}`}>
           {msg.text}
         </p>
       )}
