@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { TabBar, TopNav } from "@/components/Nav";
 import { SessionBanner } from "@/components/SessionBanner";
 import { CommandK } from "@/components/CommandK";
+import { PageTransition } from "@/components/PageTransition";
 import { listRecipes } from "@/lib/recipes/queries";
 import { recipeIngredients } from "@/lib/db/schema";
 import { recipeColor } from "@/lib/ui";
@@ -61,6 +62,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const path = (await headers()).get("x-mijote-path") ?? "/";
   const open = /^\/(bienvenue|reglages|connexion|kit)(\/|$)/.test(path);
   if (!open && !isSetupDone(db)) redirect("/bienvenue");
+  // Et l’inverse ici aussi, avant que la page commence à arriver (loading.tsx) : une vraie redirection 307.
+  if (/^\/bienvenue(\/|$)/.test(path) && isSetupDone(db)) redirect("/");
   const home = getSetting(db, SETTING.homeName);
   const profiles = listPeople(db).map((p) => ({ id: p.id, name: p.name }));
   const active = await activeProfileId();
@@ -79,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <CustomArtProvider art={loadCustomArt(db)}>
         <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} />} />
         <SessionBanner />
-        <main className="mx-auto max-w-[1240px] px-5 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-10 sm:pt-12 sm:pb-28">{children}</main>
+        <main className="mx-auto max-w-[1240px] px-5 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-10 sm:pt-12 sm:pb-28"><PageTransition>{children}</PageTransition></main>
         <TabBar />
         </CustomArtProvider>
       </body>

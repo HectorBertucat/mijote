@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTransition } from "@/components/PageTransition";
 import { SanteNav } from "@/components/sante/SanteNav";
 import { Note } from "@/components/sante/carnet";
 import { buttonClass } from "@/components/ui";
@@ -29,7 +30,9 @@ export default async function SanteLayout({ children }: { children: React.ReactN
           Quelques chiffres, ton objectif et ce que tu manges hors batch : ta part de chaque recette suivra ta cible.
         </Note>
       )}
-      <div className="pt-4">{children}</div>
+      <div className="pt-4">
+        <PageTransition nested>{children}</PageTransition>
+      </div>
     </div>
   );
 }
