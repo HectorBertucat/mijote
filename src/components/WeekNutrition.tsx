@@ -1,8 +1,9 @@
-// Apports moyens de la semaine par personne (src/lib/week/nutrition.ts), DA « Plan de travail » :
-// gros chiffres par jour colorés selon le repère, barres jour par jour (DayBars), jauges (Gauge),
+// Apports moyens de la semaine par personne (src/lib/week/nutrition.ts), « Carnet de marché » : une colonne par
+// personne sous un filet, gros chiffres par jour colorés selon le repère, barres jour par jour (DayBars), jauges (Gauge),
 // répartition protéines / glucides / lipides et le repas moyen. Repère = cible du jour de Santé
 // (dayRef) ; sans cible (profil incomplet), moyennes seules.
-import { Card, DayBars, Gauge, Macro, MacroRow, verdictTone, verdictWord, type DayBar, type Tone } from "@/components/ui";
+import { DayBars, Gauge, Macro, MacroRow, verdictTone, verdictWord, type DayBar, type Tone } from "@/components/ui";
+import { HowTo } from "@/components/semaine/Parts";
 import type { Macros } from "@/lib/nutrition/compute";
 import { REF_KCAL, type DayRef, type PersonWeek } from "@/lib/week/nutrition";
 
@@ -12,54 +13,49 @@ const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const LETTER = ["L", "M", "M", "J", "V", "S", "D"];
 const tone = (v: number, min: number, max: number): Tone => verdictTone(verdict(v, min, max));
 
-/** `letters` : initiale de chaque jour de la période (lundi → dimanche par défaut). */
-export function WeekNutrition({ people, stack = false, letters = LETTER }: { people: { id: string; name: string; week: PersonWeek; ref: DayRef | null }[]; stack?: boolean; letters?: string[] }) {
+/** `letters` : initiale de chaque jour de la période (lundi → dimanche par défaut). Le titre vient de la section qui l'accueille. */
+export function WeekNutrition({ people, letters = LETTER }: { people: { id: string; name: string; week: PersonWeek; ref: DayRef | null }[]; letters?: string[] }) {
   return (
-    <section className="grid gap-2.5" aria-labelledby="nutri-titre">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <h2 id="nutri-titre" className="text-[18px] font-bold">
-          Bilan nutrition
-        </h2>
-        <p className="text-[13px] text-ink-2">moyenne par jour, sur les repas du batch</p>
-      </div>
-      <div className={`grid gap-3 sm:grid-cols-2 ${stack ? "lg:grid-cols-1" : ""}`}>
+    <div className="grid gap-6">
+      <div className="grid gap-12 md:grid-cols-2 md:gap-6">
         {people.map((p) => (
           <PersonCard key={p.id} name={p.name} w={p.week} T={p.ref} letters={letters} />
         ))}
       </div>
-      <p className="text-[13px] leading-snug text-ink-2">
-        Les repas pris ailleurs ne sont pas comptés.{" "}
-        {people
-          .filter((p) => p.week.outsideDays > 0)
-          .map((p) => (
-            <span key={p.id}>{p.name} : son hors batch (petit-déjeuner, en-cas) est ajouté chaque jour. </span>
-          ))}
-        {people.some((p) => p.ref?.source === "sante" || p.ref?.source === "estimation") ? (
-          <>Repère par jour = la cible de la semaine calculée dans Santé (±{REF_KCAL} kcal ; « estimation » tant que la dépense n&apos;est pas mesurée), comparée aux 2 repas du batch et au hors batch. </>
-        ) : null}
+      <HowTo>
+        <p>
+          Moyenne par jour sur les repas du batch&nbsp;; les repas pris ailleurs ne sont pas comptés.{" "}
+          {people
+            .filter((p) => p.week.outsideDays > 0)
+            .map((p) => `${p.name} : son hors batch (petit-déjeuner, en-cas) est ajouté chaque jour.`)
+            .join(" ")}
+        </p>
+        {people.some((p) => p.ref?.source === "sante" || p.ref?.source === "estimation") && (
+          <p>Repère par jour = la cible de la semaine calculée dans Santé (±{REF_KCAL}&nbsp;kcal&nbsp;; «&#8239;estimation&#8239;» tant que la dépense n’est pas mesurée), comparée aux deux repas du batch et au hors batch.</p>
+        )}
         {people
           .filter((p) => p.ref)
           .map((p) => (
-            <span key={p.id}>
-              {p.name} :{" "}
+            <p key={p.id}>
+              {p.name}&nbsp;:{" "}
               <span className="num">
-                {fr(p.ref!.kcalMin)}-{fr(p.ref!.kcalMax)}
-              </span>{" "}
-              kcal,{" "}
+                {fr(p.ref!.kcalMin)}–{fr(p.ref!.kcalMax)}
+              </span>
+              &nbsp;kcal,{" "}
               <span className="num">
-                {p.ref!.proteinMin}-{p.ref!.proteinMax}
-              </span>{" "}
-              g de protéines{p.ref!.source === "fixe" ? " (repère fixe du profil, remplacé par la cible de Santé quand la dépense sera mesurée)" : p.ref!.source === "estimation" ? " (estimation par formule)" : ""}.{" "}
-            </span>
+                {p.ref!.proteinMin}–{p.ref!.proteinMax}
+              </span>
+              &nbsp;g de protéines{p.ref!.source === "fixe" ? " (repère fixe du profil, remplacé par la cible de Santé quand la dépense sera mesurée)" : p.ref!.source === "estimation" ? " (estimation par formule)" : ""}.
+            </p>
           ))}
-        Barres : énergie jour par jour ; colorées seulement les jours à 2 repas du batch.
-      </p>
-    </section>
+        <p>Barres&nbsp;: l’énergie jour par jour, colorées seulement les jours à deux repas du batch.</p>
+      </HowTo>
+    </div>
   );
 }
 
 function PersonCard({ name, w, T, letters }: { name: string; w: PersonWeek; T: DayRef | null; letters: string[] }) {
-  const counts = [`${w.meals} repas`, `${w.days} jour${w.days > 1 ? "s" : ""}`].filter(Boolean).join(" · ");
+  const counts = [`${w.meals} repas`, `${w.days} jour${w.days > 1 ? "s" : ""}`].filter(Boolean).join(" · ");
   const maxDay = Math.max((T?.kcalMax ?? 2000) * 1.15, ...w.byDay.map((d) => d?.macros.kcal ?? 0));
   const bars: DayBar[] = w.byDay.map((d, i) => ({
     label: letters[i] ?? "",
@@ -68,13 +64,13 @@ function PersonCard({ name, w, T, letters }: { name: string; w: PersonWeek; T: D
     title: d ? `${fr(d.macros.kcal)} kcal · ${fr(d.macros.protein)} g de protéines · ${d.meals} repas` : "aucun repas du batch",
   }));
   return (
-    <Card pad="md" className="grid content-start gap-3.5">
+    <article className="grid content-start gap-4 border-t border-line-strong pt-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-        <b className="font-display text-[17px]">{name}</b>
-        <span className="text-[13px] tabular-nums text-ink-2">{counts}</span>
+        <h3>{name}</h3>
+        <span className="text-small tabular-nums text-ink-2">{counts}</span>
       </div>
       {!w.perDay || !w.perMeal ? (
-        <p className="text-[15px] text-ink-2">Aucun repas du batch cette semaine.</p>
+        <p className="text-body text-ink-2">Aucun repas du batch cette semaine.</p>
       ) : (
         <>
           <MacroRow>
@@ -101,8 +97,8 @@ function PersonCard({ name, w, T, letters }: { name: string; w: PersonWeek; T: D
           <PerMeal m={w.perMeal} t={T?.meal ?? null} />
         </>
       )}
-      {w.unknownMeals > 0 && <p className="text-[13px] text-warn-ink">{w.unknownMeals} repas sans valeurs nutritionnelles, non comptés.</p>}
-    </Card>
+      {w.unknownMeals > 0 && <p className="text-small text-warn-ink">{w.unknownMeals} repas sans valeurs nutritionnelles, non comptés.</p>}
+    </article>
   );
 }
 
@@ -115,21 +111,21 @@ function Split({ m }: { m: Macros }) {
   ];
   const sum = parts.reduce((t, p) => t + p.kcal, 0) || 1;
   return (
-    <div className="grid gap-1.5">
-      <div className="flex h-2 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={parts.map((p) => `${p.label} ${Math.round((p.kcal / sum) * 100)} %`).join(", ")}>
+    <div className="grid gap-2">
+      <div className="flex h-2 overflow-hidden rounded-[4px] bg-surface-2" role="img" aria-label={parts.map((p) => `${p.label} ${Math.round((p.kcal / sum) * 100)} %`).join(", ")}>
         {parts.map((p) => (
           <div key={p.key} className={p.cls} style={{ width: `${(p.kcal / sum) * 100}%` }} />
         ))}
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] tabular-nums text-ink-2">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-small tabular-nums text-ink-2">
         {parts.map((p) => (
           <span key={p.key} className="inline-flex items-center gap-1">
-            <span className={`size-2 rounded-full ${p.cls}`} aria-hidden />
-            <b className="font-semibold text-ink">{fr(p.g)} g</b> {p.label} <span className="text-faint">{Math.round((p.kcal / sum) * 100)} %</span>
+            <span className={`size-2 rounded-[2px] ${p.cls}`} aria-hidden />
+            <b className="font-semibold text-ink">{fr(p.g)}&nbsp;g</b> {p.label} <span className="text-faint">{Math.round((p.kcal / sum) * 100)}&nbsp;%</span>
           </span>
         ))}
         <span>
-          <b className="font-semibold text-ink">{fr(m.fiber)} g</b> fibres
+          <b className="font-semibold text-ink">{fr(m.fiber)}&nbsp;g</b> fibres
         </span>
       </div>
     </div>
@@ -140,14 +136,14 @@ function PerMeal({ m, t }: { m: Macros; t: DayRef["meal"] | null }) {
   const kc = t ? { ok: "text-ok", low: "text-warn", high: "text-ko" }[verdict(m.kcal, t.kcalMin, t.kcalMax)] : "";
   const pc = t ? { ok: "text-ok", low: "text-warn", high: "text-ko" }[verdict(m.protein, t.proteinMin, t.proteinMax)] : "";
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-t border-line pt-2.5 text-[14px] tabular-nums">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-t border-line pt-3 text-small tabular-nums">
       <span>
         <span className="text-ink-2">Repas moyen : </span>
-        <b className={kc}>{fr(m.kcal)} kcal</b> · <b className={pc}>{fr(m.protein)} g</b>
+        <b className={kc}>{fr(m.kcal)}&nbsp;kcal</b> · <b className={pc}>{fr(m.protein)}&nbsp;g</b>
       </span>
       {t && (
-        <span className="text-[12px] text-faint">
-          repère {t.kcalMin}-{t.kcalMax} kcal · {t.proteinMin}-{t.proteinMax} g
+        <span className="text-small text-ink-3">
+          repère {t.kcalMin}–{t.kcalMax}&nbsp;kcal · {t.proteinMin}–{t.proteinMax}&nbsp;g
         </span>
       )}
     </div>

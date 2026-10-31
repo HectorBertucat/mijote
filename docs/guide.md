@@ -49,7 +49,7 @@ Ajouter ses propres recettes en fichier : voir [recettes.md](recettes.md).
 
 ## 4. Semaine
 
-On choisit seulement ses recettes (1 à 4, avec des filtres : one pot, rapide, four, congèle, aimées, à essayer). Mijote calcule les quantités à cuire (jusqu'au double de la fiche) et répartit les repas de chacun : durée au frigo respectée, le reste au congélateur si la recette le supporte, goûts de chacun. « Compléter pour moi » ajoute ce qui manque sans toucher aux recettes choisies. Le résumé dit les repas couverts et le temps en cuisine, et n'avertit que si besoin (repas non couverts, part mal calée, récipient partagé). Puis **faire la liste de courses**.
+On coche seulement ses plats (1 à 4, avec des filtres : one pot, rapide, four, se congèle, aimés, à essayer). Mijote calcule les quantités à cuire (jusqu'au double de la fiche) et répartit les repas de chacun : durée au frigo respectée, le reste au congélateur si la recette le supporte, goûts de chacun. « Compléter pour moi » ajoute ce qui manque sans toucher aux recettes choisies. Le résumé dit les repas couverts et le temps en cuisine, et n'avertit que si besoin (repas non couverts, part mal calée, récipient partagé). La barre en bas de l'écran dit où on en est (« 2 plats · 24 repas sur 28 ») et porte l'action suivante : **faire la liste de courses**, puis la voir, puis cuisiner une fois les courses commandées.
 
 Par défaut, tout le monde mange à tous les repas ; les absences et le détail (menu, unités, nutrition) sont repliés en bas de la page.
 
