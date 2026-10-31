@@ -26,10 +26,10 @@ export function RhythmGuide({ motion, t, end = null, active, className = "" }: {
   const ahead = pts.filter((p) => p.x >= 0);
   const marks = marksBetween(motion, t - PAST, t + AHEAD, end);
   const y = yOf(heightAt(motion, t, end));
-  // Bip : la bille grossit pendant le premier dixième de seconde d'une phase.
+  // Bip : la bille grossit pendant le premier dixième de seconde d’une phase.
   const justStarted = active && marks.some((m) => t - m.at >= 0 && t - m.at < 0.12);
   const next = marks.find((m) => m.at > t);
-  // Un mot par début de phase à venir, seulement s'il a la place (sinon les mots se chevauchent).
+  // Un mot par début de phase à venir, seulement s’il a la place (sinon les mots se chevauchent).
   const labelled = new Set<number>();
   let free = BALL_X + 24;
   for (const m of marks) {

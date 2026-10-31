@@ -1,5 +1,5 @@
 // Section « Produits du drive » d'une fiche (serveur) : les /resolve des ingrédients (en cache 15 min) tournent
-// pendant que le reste de la fiche s'affiche (Suspense), puis le tableau client prend le relais.
+// pendant que le reste de la fiche s’affiche (Suspense), puis le tableau client prend le relais.
 import { Suspense } from "react";
 import { BlockTitle } from "@/components/fiche/Block";
 import { ProductsBoard } from "@/components/ProductsBoard";

@@ -55,7 +55,7 @@ export function DayBars({ days, max, target, height = 76, className = "" }: { da
   );
 }
 
-/** Gros chiffre condensé (kcal, g, €) avec son unité et une légende ; `tone` colore le chiffre et ajoute l'icône du verdict devant la légende (`icon={null}` pour l'enlever). */
+/** Gros chiffre condensé (kcal, g, €) avec son unité et une légende ; `tone` colore le chiffre et ajoute l’icône du verdict devant la légende (`icon={null}` pour l’enlever). */
 export function Macro({ value, unit, sub, tone, icon, size = "md", className = "" }: { value: ReactNode; unit?: string; sub?: ReactNode; tone?: Tone; icon?: IconName | null; size?: "md" | "lg"; className?: string }) {
   const ic = icon === null ? null : (icon ?? (tone ? TONE_ICON[tone] : undefined));
   return (

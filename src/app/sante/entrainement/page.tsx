@@ -17,17 +17,17 @@ const VIEWS: View[] = ["seance", "exercices", "carnet", "programme"];
 export default async function Entrainement({ searchParams }: { searchParams: Promise<{ vue?: string; seance?: string }> }) {
   const person = await activePerson();
   const { vue, seance } = await searchParams;
-  // Séance en cours : celle du lien (QR d'un autre écran), sinon celle de la personne active.
+  // Séance en cours : celle du lien (QR d’un autre écran), sinon celle de la personne active.
   const linked = seance ? getLive(db, seance) : null;
   const live = linked && !linked.ended ? linked : activeLive(db, person.id);
-  // Séance à deux : sur l'écran (pas la télécommande), la séance de l'autre s'affiche à côté.
+  // Séance à deux : sur l’écran (pas la télécommande), la séance de l’autre s’affiche à côté.
   const pair = live?.live.pair && vue !== "telecommande" ? getLive(db, live.live.pair) : null;
-  // L'autre personne qui suit un programme : pour lancer une séance à deux.
+  // L’autre personne qui suit un programme : pour lancer une séance à deux.
   const mine = programFor(db, person.id);
   const others = listPeople(db).filter((x) => x.id !== person.id).map((x) => ({ x, p: programFor(db, x.id) }));
   const other = others.find((o) => o.p);
   const partner = other ? { id: other.x.id, name: other.x.name, programId: other.p!.id, workouts: listWorkouts(db, other.x.id) } : null;
-  // Les programmes dont l'écran peut avoir besoin : le mien, celui de l'autre, ceux des séances ouvertes.
+  // Les programmes dont l’écran peut avoir besoin : le mien, celui de l’autre, ceux des séances ouvertes.
   const programs: Record<string, Program> = {};
   for (const p of [mine, other?.p, live ? programById(db, live.live.program) : null, pair ? programById(db, pair.live.program) : null]) if (p) programs[p.id] = p;
   const builder = {

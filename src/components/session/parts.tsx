@@ -1,9 +1,10 @@
 "use client";
 
 // Morceaux partagés des vues de session, selon la DA « Plan de travail » (docs/design/plan-de-travail.html,
-// section Session) et avec le kit : en-tête d'encre (.s-head), étape en cours (.now), étape suivante
+// section Session) et avec le kit : en-tête d’encre (.s-head), étape en cours (.now), étape suivante
 // (.nextstep), bol à prendre, puces de l'étape, schéma des foyers et du four (.hob/.burner/.ovenbox),
 // minuteurs, alarme plein écran, relais (.handoff), QR, toasts, Wake Lock.
+import { typo } from "@/lib/typo";
 import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
 import type { SessionState, TimerState } from "@/lib/session/state";
@@ -25,13 +26,13 @@ export const dur = (min: number) => {
 
 export const kindLabel = (k: PlanStep["kind"]) => (k === "preheat" ? "Four" : STEP_LABELS[k]);
 export const recipeOf = (plan: SessionPlan, slug: string | null | undefined) => plan.recipes.find((r) => r.slug === slug);
-/** Couleur d'une étape : celle de sa recette (var(--c-recipe-N)), encre douce pour une action commune. */
+/** Couleur d’une étape : celle de sa recette (var(--c-recipe-N)), encre douce pour une action commune. */
 export const stepColor = (plan: SessionPlan, s: PlanStep) => recipeOf(plan, s.recipeSlug)?.color ?? "var(--c-ink-3)";
 export const shortName = (name: string | undefined) => (name ?? "").split(/\s+/)[0] ?? "";
 const rc = (color: string) => ({ "--rc": color }) as CSSProperties;
 
 /**
- * Les fiches ont des étapes longues (jusqu'à 370 signes) : la première phrase se lit en très
+ * Les fiches ont des étapes longues (jusqu’à 370 signes) : la première phrase se lit en très
  * grand, le reste en dessous. Une première phrase trop longue se coupe aux deux-points.
  */
 export function splitStep(text: string): { head: string; rest: string } {
@@ -46,10 +47,11 @@ export function splitStep(text: string): { head: string; rest: string } {
       head = head.slice(0, c);
     }
   }
-  return { head: head.replace(/\.$/, ""), rest };
+  // Affichage : micro-typographie (apostrophe courbe, espaces insécables) appliquée après le découpage.
+  return { head: typo(head.replace(/\.$/, "")), rest: typo(rest) };
 }
 
-/** Titre court d'une étape pour le fil (« Cocotte · Chasseur » ou la première phrase raccourcie). */
+/** Titre court d’une étape pour le fil (« Cocotte · Chasseur » ou la première phrase raccourcie). */
 export function stepTitle(plan: SessionPlan, s: PlanStep): string {
   const h = splitStep(s.text).head;
   if (h.length <= 64) return h;
@@ -57,7 +59,7 @@ export function stepTitle(plan: SessionPlan, s: PlanStep): string {
   return `${cut.slice(0, cut.lastIndexOf(" ") > 30 ? cut.lastIndexOf(" ") : 60)}…`;
 }
 
-/** Repère d'une étape : la première phrase en citation, le reste en explication, et le sens qui le perçoit. */
+/** Repère d’une étape : la première phrase en citation, le reste en explication, et le sens qui le perçoit. */
 export function cueParts(cue: string): { sense: "ear" | "eye" | "nose"; quote: string; rest: string } {
   const sense = /chant|glouglou|crépit|grésill|siffl|bruit|entend/i.test(cue) ? "ear" : /odeur|sent |sent$|parfum|arôme/i.test(cue) ? "nose" : "eye";
   const m = cue.match(/^(.+?[.!?;])\s+(.+)$/u);
@@ -70,7 +72,7 @@ export const bowlQty = (b: PlanBowl) => b.items.map((i) => i.qty).filter(Boolean
 export const bowlOrdered = (b: PlanBowl) => [...new Set(b.items.map((i) => i.ordered).filter(Boolean))].join(" · ");
 export const bowlOf = (plan: SessionPlan, letter: string) => plan.bowls.find((b) => b.letter === letter);
 
-/** Les aliments d'un bol en dessins (animés quand `live`). */
+/** Les aliments d’un bol en dessins (animés quand `live`). */
 export function BowlFoods({ bowl, size = "m", live = false, max = 5, className = "" }: { bowl: Pick<PlanBowl, "items">; size?: IlluSize; live?: boolean; max?: number; className?: string }) {
   return (
     <span className={`inline-flex flex-wrap items-center gap-1 ${className}`}>
@@ -83,7 +85,7 @@ export function BowlFoods({ bowl, size = "m", live = false, max = 5, className =
 
 // ─── Petites pièces ───
 
-/** Bol lettré aux couleurs de la recette ; prêt = petite coche d'accent. */
+/** Bol lettré aux couleurs de la recette ; prêt = petite coche d’accent. */
 export function Bowl({ bowl, size = "md", ready, className = "" }: { bowl: Pick<PlanBowl, "letter" | "color">; size?: "xs" | "sm" | "md" | "lg" | "xl"; ready?: boolean; className?: string }) {
   const mark = { xs: "size-3.5", sm: "size-4", md: "size-5", lg: "size-6", xl: "size-8" }[size];
   return (
@@ -98,7 +100,7 @@ export function Bowl({ bowl, size = "md", ready, className = "" }: { bowl: Pick<
   );
 }
 
-/** Personne d'une session à deux : A en encre pleine, B cerclée (DA `.mono`). */
+/** Personne d’une session à deux : A en encre pleine, B cerclée (DA `.mono`). */
 export function PersonMono({ person, size = 26, onInk = false }: { person: Person; size?: number; onInk?: boolean }) {
   const look = onInk
     ? person === "A" ? "bg-on-inverse text-inverse" : "border-2 border-on-inverse text-on-inverse"
@@ -154,14 +156,14 @@ export function useWakeLock(auto = true) {
   return { on, request };
 }
 
-/** « écran allumé » (verrou d'écran pris) ou « garder allumé » à toucher. */
+/** « écran allumé » (verrou d’écran pris) ou « garder allumé » à toucher. */
 export function WakePill({ wake, onInk = true }: { wake: { on: boolean; request: () => Promise<void> }; onInk?: boolean }) {
   return (
     <button
       type="button"
       onClick={() => void wake.request()}
       className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-small font-semibold ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
-      title={wake.on ? "L'écran reste allumé pendant la session" : "Toucher pour garder l'écran allumé"}
+      title={wake.on ? "L’écran reste allumé pendant la session" : "Toucher pour garder l’écran allumé"}
     >
       <Icon name={wake.on ? "lock" : "sun"} size="s" />
       {wake.on ? "écran allumé" : "garder allumé"}
@@ -173,9 +175,9 @@ export function WakePill({ wake, onInk = true }: { wake: { on: boolean; request:
 
 export type Phase = "prep" | "cooking";
 
-/** Bande d'encre de la session : point en direct, titre, avancement, phase Prep / Cuisson, écran allumé. */
-/** `plain` : sur la surface sombre du téléphone en cuisson, la bande reste sombre (pas d'inversion claire). */
-/** Session test (pour montrer l'appli) : une étiquette discrète dans chaque en-tête, et « Finir le test » sur grand écran. */
+/** Bande d’encre de la session : point en direct, titre, avancement, phase Prep / Cuisson, écran allumé. */
+/** `plain` : sur la surface sombre du téléphone en cuisson, la bande reste sombre (pas d’inversion claire). */
+/** Session test (pour montrer l’appli) : une étiquette discrète dans chaque en-tête, et « Finir le test » sur grand écran. */
 export const SessionTest = createContext<{ ended: boolean; end: () => void } | null>(null);
 /** La boîte de chaque plat (DishBox, rendue par la page serveur), par slug ; à défaut, BoxGlyph. */
 export const DishArts = createContext<Record<string, ReactNode>>({});
@@ -185,7 +187,7 @@ function TestTag({ compact }: { compact: boolean }) {
   if (!t) return null;
   return (
     <span className="flex shrink-0 items-center gap-2">
-      <span className={`rounded-full border border-current font-semibold uppercase tracking-[0.08em] opacity-70 ${compact ? "px-2 text-[10px] leading-[14px]" : "px-2 py-px text-[12px]"}`} title="Session test : rien n'est compté">
+      <span className={`rounded-full border border-current font-semibold uppercase tracking-[0.08em] opacity-70 ${compact ? "px-2 text-[10px] leading-[14px]" : "px-2 py-px text-[12px]"}`} title="Session test : rien n’est compté">
         test
       </span>
       {!compact && !t.ended && (
@@ -230,7 +232,7 @@ export function SessionHead({ title, sub, online, phase, onPhase, right, lead, c
   );
 }
 
-// ─── Puces d'une étape ───
+// ─── Puces d’une étape ───
 
 const HOB_NAMES = ["grand foyer", "foyer moyen", "petit foyer"];
 export const hobName = (plan: SessionPlan, id: string) => {
@@ -262,7 +264,7 @@ export function StepSpecs({ plan, step, timeLabel }: { plan: SessionPlan; step: 
 }
 
 export function StepCue({ cue, className = "" }: { cue: string; className?: string }) {
-  const c = cueParts(cue);
+  const c = cueParts(typo(cue));
   return (
     <Cue sense={c.sense} quote={c.quote} className={className}>
       {c.rest}
@@ -391,8 +393,8 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
 
 // ─── Minuteurs ───
 
-/** Minuteurs du kit, à l'heure du serveur (tous les écrans sonnent à la même seconde) : +1 min et arrêter. */
-export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d'origine. */ onReset?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
+/** Minuteurs du kit, à l’heure du serveur (tous les écrans sonnent à la même seconde) : +1 min et arrêter. */
+export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d’origine. */ onReset?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
   if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[14px] text-ink-2">Aucun minuteur en cours : « Suivant » les lance.</p> : null;
   return (
     <div className="grid gap-2">
@@ -421,7 +423,7 @@ export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset,
                     +1
                   </Button>
                   {onReset && Math.abs(t.endsAt - (t.startedAt + t.refMinutes * 60000)) > 2000 && (
-                    <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="refresh" className="hidden lg:inline-flex" aria-label={`Revenir au minuteur d'origine (${t.refMinutes} min)`} title={`Revenir au minuteur d'origine (${t.refMinutes} min)`} onClick={() => onReset(t)} />
+                    <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="refresh" className="hidden lg:inline-flex" aria-label={`Revenir au minuteur d’origine (${t.refMinutes} min)`} title={`Revenir au minuteur d’origine (${t.refMinutes} min)`} onClick={() => onReset(t)} />
                   )}
                   <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="x" aria-label="Arrêter le minuteur" onClick={() => onStop(t)} />
                 </span>
@@ -465,7 +467,7 @@ function beep() {
   }
 }
 
-/** Sonne et vibre toutes les 1,5 s tant qu'un minuteur fini n'est pas arrêté. */
+/** Sonne et vibre toutes les 1,5 s tant qu’un minuteur fini n’est pas arrêté. */
 export function useRingAlarm(on: boolean) {
   useEffect(() => {
     if (!on) return;
@@ -480,9 +482,9 @@ export function useRingAlarm(on: boolean) {
 }
 
 /**
- * Minuteur fini, plein écran (DA « Minuteur fini ») : l'inverse de l'écran autour (clair sur le
- * téléphone sombre, encre sur l'ordinateur), sonne et vibre tant qu'il n'est pas arrêté ;
- * l'arrêter l'arrête sur tous les écrans. Seul propriétaire du son (le Timer du kit reste muet).
+ * Minuteur fini, plein écran (DA « Minuteur fini ») : l’inverse de l’écran autour (clair sur le
+ * téléphone sombre, encre sur l’ordinateur), sonne et vibre tant qu’il n’est pas arrêté ;
+ * l’arrêter l’arrête sur tous les écrans. Seul propriétaire du son (le Timer du kit reste muet).
  */
 export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { plan: SessionPlan; ringing: TimerState[]; now: number; onStop: (t: TimerState) => void; kitchen?: boolean }) {
   const any = ringing.length > 0;
@@ -491,7 +493,7 @@ export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { pl
   const [t, ...others] = ringing;
   const step = t.stepId ? plan.steps.find((s) => s.id === t.stepId) : undefined;
   const recipe = step ? recipeOf(plan, step.recipeSlug) : undefined;
-  // Fin d'une attente : le titre est le geste qui suit (« Hors du feu, repos 5 min »).
+  // Fin d’une attente : le titre est le geste qui suit (« Hors du feu, repos 5 min »).
   const after = t.phase != null && step?.phases?.[t.phase]?.wait ? step.phases[t.phase + 1] : undefined;
   return (
     <div className={`fixed inset-0 z-50 ${kitchen ? "kitchen-dark" : ""}`} role="alertdialog" aria-modal="true" aria-label="Minuteur terminé">
@@ -520,7 +522,7 @@ export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { pl
             </button>
           ))}
           <Button variant="ink" size="kitchen" block icon="check" onClick={() => onStop(t)} className="!min-h-24 text-[24px]">
-            {after ? "C'est parti, sur tous les écrans" : "Arrêter, sur tous les écrans"}
+            {after ? "C’est parti, sur tous les écrans" : "Arrêter, sur tous les écrans"}
           </Button>
         </div>
       </div>

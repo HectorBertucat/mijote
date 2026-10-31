@@ -1,7 +1,7 @@
 "use client";
 
 // Mise en route, une question par écran : qui mange (le foyer), la cuisine (sept questions et un résumé), où se font
-// les courses. Les réponses s'enregistrent au fil de l'eau (mêmes actions que Réglages) ; le dernier écran ouvre l'appli.
+// les courses. Les réponses s’enregistrent au fil de l’eau (mêmes actions que Réglages) ; le dernier écran ouvre l’appli.
 import { useState } from "react";
 import { Button } from "@/components/ui";
 import { HomeForm } from "@/components/reglages/HomeForm";

@@ -1,11 +1,11 @@
 "use client";
 
-// Progression d'un long travail dont on connaît la durée habituelle (appel IA) : `calibrated` donne la part
+// Progression d’un long travail dont on connaît la durée habituelle (appel IA) : `calibrated` donne la part
 // attendue (monte vite, ralentit, ≈ 78 % à la durée attendue, jamais 100 % avant la fin réelle) et
-// `useElapsed` fait tourner l'horloge. À poser dans StepProgress. Composant client.
+// `useElapsed` fait tourner l’horloge. À poser dans StepProgress. Composant client.
 import { useEffect, useState } from "react";
 
-/** Part attendue (0 à `cap`) après `elapsedMs` d'un travail qui prend d'habitude `expectedMs`. */
+/** Part attendue (0 à `cap`) après `elapsedMs` d’un travail qui prend d’habitude `expectedMs`. */
 export function calibrated(elapsedMs: number, expectedMs: number, cap = 0.95): number {
   const t = Math.max(0, elapsedMs) / Math.max(1, expectedMs);
   return cap * (1 - Math.exp(-1.7 * t));

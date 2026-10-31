@@ -1,6 +1,6 @@
-// Choix du mode au lancement d'une session : seul, à deux, prep la veille. Des boutons
+// Choix du mode au lancement d’une session : seul, à deux, prep la veille. Des boutons
 // radio dans le formulaire « Lancer la session » (rien côté client), avec la durée que
-// le planificateur prévoit pour chaque mode (DA : cartes du kit, l'option choisie en accent).
+// le planificateur prévoit pour chaque mode (DA : cartes du kit, l’option choisie en accent).
 import type { SessionMode, SessionPlan } from "@/lib/session/planner";
 import { MODE_LABELS } from "@/lib/session/planner";
 import { Icon, type IconName } from "@/components/ui";
@@ -46,7 +46,7 @@ export function ModePicker({ plans, defaultMode = "solo" }: { plans?: Partial<Re
           );
         })}
       </div>
-      {/* D'où viennent ces durées : la référence, ou les dernières sessions terminées. */}
+      {/* D’où viennent ces durées : la référence, ou les dernières sessions terminées. */}
       {any && <DurationOrigin plan={any} className="pt-1" />}
     </fieldset>
   );

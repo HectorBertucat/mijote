@@ -1,6 +1,6 @@
-// Fiche : la famille d'une recette (recipes.parent_id). Sur une originale, ses variantes avec leurs écarts calculés
-// en code (kcal et protéines d'une part, coût de la part si on a un prix) ; sur une variante, le lien vers
-// l'originale (VariantOf, en tête de fiche), l'écart de cette version, et ses sœurs. Composants serveur.
+// Fiche : la famille d’une recette (recipes.parent_id). Sur une originale, ses variantes avec leurs écarts calculés
+// en code (kcal et protéines d’une part, coût de la part si on a un prix) ; sur une variante, le lien vers
+// l’originale (VariantOf, en tête de fiche), l’écart de cette version, et ses sœurs. Composants serveur.
 import Link from "next/link";
 import { Icon, RecipeTile } from "@/components/ui";
 import type { Family, FamilyMember } from "@/lib/recipes/variants";
@@ -11,7 +11,7 @@ const NB = " ";
 const sign = (n: number) => (n > 0 ? "+" : n < 0 ? "−" : "±");
 const eur = (n: number) => Math.abs(n).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Écarts avec l'originale : moins de kcal et plus de protéines en vert, l'inverse en orange ; le coût reste neutre. */
+/** Écarts avec l’originale : moins de kcal et plus de protéines en vert, l’inverse en orange ; le coût reste neutre. */
 export function DeltaLine({ d, className = "" }: { d: FamilyMember["delta"]; className?: string }) {
   const parts = [
     d.kcal != null && (
@@ -65,7 +65,7 @@ function VariantRow({ m }: { m: FamilyMember }) {
   );
 }
 
-/** En tête d'une variante : la recette d'origine, et l'écart de cette version sur une part. */
+/** En tête d’une variante : la recette d’origine, et l’écart de cette version sur une part. */
 export function VariantOf({ family, currentId }: { family: Family | null; currentId: string }) {
   if (!family || family.isRoot) return null;
   const me = family.variants.find((m) => m.id === currentId);

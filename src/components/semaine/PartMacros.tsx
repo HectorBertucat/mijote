@@ -1,4 +1,4 @@
-// La part de chacun d'une recette, en gros chiffres colorés selon son repère : cartes de la
+// La part de chacun d’une recette, en gros chiffres colorés selon son repère : cartes de la
 // Semaine et du Composer. Avec les mangeurs (src/lib/eaters), la part suit la cible de chacun
 // (unités au demi près) ; sans, une part de base, sans repère.
 import { Macro, MacroRow } from "@/components/ui";

@@ -1,6 +1,6 @@
 "use client";
 
-// Santé > Aujourd'hui : ce que la personne a mangé, en un tap pour le prévu.
+// Santé > Aujourd’hui : ce que la personne a mangé, en un tap pour le prévu.
 // Haut : jauges kcal et protéines contre la cible de la semaine. Puis « À cocher » (repas de la
 // Semaine, habitudes du jour), le journal par repas, « Ajouter » (recette, hors appli avec
 // estimation IA, récents), et « Journée complète » qui fait compter la journée pour la cible.
@@ -29,7 +29,7 @@ export interface TodayProps {
   totals: { kcal: number; proteinG: number };
   planned: Planned[];
   habits: Habit[];
-  /** La personne a au moins une habitude (cochée ou non aujourd'hui). */
+  /** La personne a au moins une habitude (cochée ou non aujourd’hui). */
   hasHabits: boolean;
   entries: Entry[];
   recents: Recent[];
@@ -346,7 +346,7 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
   );
 }
 
-/** Ce qui est mangé contre la cible : le chiffre en grand, un trait d'encre qui avance, le verdict en mot. */
+/** Ce qui est mangé contre la cible : le chiffre en grand, un trait d’encre qui avance, le verdict en mot. */
 function Eaten({ label, value, unit, target, tone, word, sub, className = "" }: { label: string; value: number; unit: string; target: number | null; tone?: "ok" | "ko"; word: string | null; sub?: string; className?: string }) {
   const pct = target ? Math.min(100, (value / (target * 1.15)) * 100) : 0;
   const mark = target ? (1 / 1.15) * 100 : null;

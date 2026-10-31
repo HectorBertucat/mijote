@@ -1,7 +1,7 @@
 "use client";
 
-// Santé > Entraînement : lancer la séance du jour (A/B alternées), la bibliothèque d'exercices animés,
-// le carnet (où j'en suis, « prêt à monter ») et le programme. Les séances d'Apple Santé (natation…)
+// Santé > Entraînement : lancer la séance du jour (A/B alternées), la bibliothèque d’exercices animés,
+// le carnet (où j’en suis, « prêt à monter ») et le programme. Les séances d’Apple Santé (natation…)
 // apparaissent dans le carnet et dans « Cette semaine ».
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -18,9 +18,9 @@ import type { LiveRowClient } from "./useLiveSync";
 
 export type View = "seance" | "exercices" | "carnet" | "programme";
 type AppleWorkout = { start: string; type: string; minutes: number; distanceM: number | null };
-/** L'autre personne qui suit un programme (séance à deux). */
+/** L’autre personne qui suit un programme (séance à deux). */
 export type Partner = { id: string; name: string; programId: string; workouts: Workout[] };
-/** Ce qu'il faut pour créer un programme (modèles, IA disponible). */
+/** Ce qu’il faut pour créer un programme (modèles, IA disponible). */
 export type BuilderInfo = { templates: TemplateInfo[]; aiReady: boolean };
 
 const VIEWS: { value: View; label: string }[] = [
@@ -35,7 +35,7 @@ const sportName = (t: string) => SPORT[t.toLowerCase().replace(/^hkworkoutactivi
 
 export function Training({ personId, personName, programId, programs, builder, workouts, apple, weekStart, view: view0, live: live0, liveView, pairLive, partner }: { personId: string; personName: string; programId: string | null; programs: Record<string, Program>; builder: BuilderInfo; workouts: Workout[]; apple: AppleWorkout[]; weekStart: string; view: View; live: LiveRowClient | null; liveView: LiveView; pairLive: LiveRowClient | null; partner: Partner | null }) {
   const programById = (id: string): Program | null => programs[id] ?? null;
-  // La séance en cours (lue sur le serveur, partagée entre les écrans) ; ouverte depuis le QR d'un autre écran, elle peut être celle d'un autre profil.
+  // La séance en cours (lue sur le serveur, partagée entre les écrans) ; ouverte depuis le QR d’un autre écran, elle peut être celle d’un autre profil.
   const [live, setLive] = useState<LiveRowClient | null>(live0);
   const [pair, setPair] = useState<LiveRowClient | null>(pairLive);
   const workoutsOf = (pid: string) => (pid === personId ? workouts : pid === partner?.id ? partner.workouts : []);
@@ -43,7 +43,7 @@ export function Training({ personId, personName, programId, programs, builder, w
   const program = live ? programById(live.live.program) : programId ? programById(programId) : null;
   const [view, setView] = useState<View>(view0);
   const [starting, setStarting] = useState(false);
-  // La séance dépend de l'heure (chronos, rythme) : rendue seulement dans le navigateur.
+  // La séance dépend de l’heure (chronos, rythme) : rendue seulement dans le navigateur.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const router = useRouter();
@@ -90,7 +90,7 @@ export function Training({ personId, personName, programId, programs, builder, w
     return (
       <div className="grid gap-12">
         <EmptyState icon="kb" title={`Pas encore de programme pour ${personName}`}>
-          Choisis un modèle ou crée un programme sur mesure : chaque exercice a sa figure animée, au bon tempo. Les séances notées dans Apple Santé (marche, vélo…) s'affichent aussi ici.
+          Choisis un modèle ou crée un programme sur mesure : chaque exercice a sa figure animée, au bon tempo. Les séances notées dans Apple Santé (marche, vélo…) s’affichent aussi ici.
         </EmptyState>
         <ProgramBuilder personId={personId} personName={personName} templates={builder.templates} aiReady={builder.aiReady} />
         <AppleList apple={apple} />
@@ -136,7 +136,7 @@ export function Training({ personId, personName, programId, programs, builder, w
   );
 }
 
-/** Changer de programme : le carnet reste, l'ancien programme est archivé. */
+/** Changer de programme : le carnet reste, l’ancien programme est archivé. */
 function ChangeProgram({ personId, personName, builder }: { personId: string; personName: string; builder: BuilderInfo }) {
   const [open, setOpen] = useState(false);
   if (!open)
@@ -338,7 +338,7 @@ function Guide({ g }: { g: NonNullable<Exercise["guide"]> }) {
     ["Le mouvement", g.movement],
     ["Où tu dois le sentir", g.feel],
     ["Respiration", g.breathing],
-    ["Si c'est trop dur ou que ça gêne", g.easier],
+    ["Si c’est trop dur ou que ça gêne", g.easier],
   ];
   return (
     <div className="grid gap-3">
@@ -378,7 +378,7 @@ function Carnet({ p, workouts, apple }: { p: Program; workouts: Workout[]; apple
   if (!workouts.length && !apple.length)
     return (
       <EmptyState icon="book" title="Ton carnet est vide">
-        Chaque séance terminée s'enregistre ici, avec tes répétitions et ta variante.
+        Chaque séance terminée s’enregistre ici, avec tes répétitions et ta variante.
       </EmptyState>
     );
   return (

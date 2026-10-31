@@ -2,7 +2,7 @@
 
 // Illustrations animées de la banque (src/lib/illus/) : un geste de cuisine ou un aliment.
 // Utilisables partout. `live` anime le dessin (étape en cours, bol à prendre) ; sinon il bouge
-// seulement au survol. Un aliment sans dessin propre prend celui que l'IA a dessiné pour cette
+// seulement au survol. Un aliment sans dessin propre prend celui que l’IA a dessiné pour cette
 // instance (table food_art, filtré par sanitizeIllu), posé par le layout dans CustomArtContext.
 import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import { artKey } from "@/lib/illus/sanitize";
@@ -31,19 +31,19 @@ function Svg({ svg, label, size = "m", live = false, className = "", style }: Co
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      // Dessins de src/lib/illus/art.ts, ou dessins de l'IA passés par la liste blanche de sanitizeIllu.
+      // Dessins de src/lib/illus/art.ts, ou dessins de l’IA passés par la liste blanche de sanitizeIllu.
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
 }
 
-/** Dessins d'aliments de l'IA (clé artKey → fragment SVG filtré). */
+/** Dessins d’aliments de l’IA (clé artKey → fragment SVG filtré). */
 const CustomArtContext = createContext<Record<string, string>>({});
 export function CustomArtProvider({ art, children }: { art: Record<string, string>; children: ReactNode }) {
   return <CustomArtContext value={art}>{children}</CustomArtContext>;
 }
 
-/** Un aliment : `food` (id de la table nutritionnelle) et/ou `item` (le nom de l'ingrédient). */
+/** Un aliment : `food` (id de la table nutritionnelle) et/ou `item` (le nom de l’ingrédient). */
 export function FoodIllu({ food, item = "", id, ...rest }: Common & { food?: string | null; item?: string; id?: FoodArtId }) {
   const custom = useContext(CustomArtContext);
   if (id) return <Svg svg={FOODS[id].svg} {...rest} />;
@@ -52,7 +52,7 @@ export function FoodIllu({ food, item = "", id, ...rest }: Common & { food?: str
   return <Svg svg={own ?? FOODS[r.id].svg} {...rest} />;
 }
 
-/** Le geste d'une étape ou d'une sous-étape, deviné à son texte (sinon à son type). */
+/** Le geste d’une étape ou d’une sous-étape, deviné à son texte (sinon à son type). */
 export function StepIllu({ kind = "", text = "", id, label, ...rest }: Common & { kind?: string; text?: string; id?: ActionId }) {
   const art = ACTIONS[id ?? actionArt(kind, text).id];
   return <Svg svg={art.svg} label={label ?? art.label} {...rest} />;

@@ -1,6 +1,6 @@
 "use client";
 
-// Fiche recette : les aliments qui n'ont qu'un dessin générique, et le bouton pour que l'IA les dessine
+// Fiche recette : les aliments qui n’ont qu’un dessin générique, et le bouton pour que l’IA les dessine
 // (dessins filtrés par le code avant d'être gardés : src/lib/illus/sanitize.ts).
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -24,7 +24,7 @@ export function DrawMissing({ slug, items, aiReady }: { slug: string; items: str
             icon="sparkdraft"
             disabled={!aiReady || pending}
             state={pending ? "loading" : "idle"}
-            loadingLabel="L'IA dessine…"
+            loadingLabel="L’IA dessine…"
             onClick={() =>
               start(async () => {
                 const r = await drawMissingAction(slug);
@@ -33,7 +33,7 @@ export function DrawMissing({ slug, items, aiReady }: { slug: string; items: str
               })
             }
           >
-            Dessiner avec l&apos;IA
+            Dessiner avec l’IA
           </Button>
         </div>
       )}

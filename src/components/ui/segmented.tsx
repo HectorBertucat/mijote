@@ -6,7 +6,7 @@ import { Icon, type IconName } from "./icon";
 
 export type SegOption<T extends string> = { value: T; label?: ReactNode; icon?: IconName; ariaLabel?: string; disabled?: boolean };
 
-/** Segments exclusifs. Contrôlé (`value` + `onChange`) ou libre (`defaultValue`). `tone="inverse"` sur fond d'encre ; `size="icon"` pour des segments à icône seule (thème). */
+/** Segments exclusifs. Contrôlé (`value` + `onChange`) ou libre (`defaultValue`). `tone="inverse"` sur fond d’encre ; `size="icon"` pour des segments à icône seule (thème). */
 export function Segmented<T extends string>({ options, value, defaultValue, onChange, label, tone = "default", size = "md", className = "" }: { options: SegOption<T>[]; value?: T; defaultValue?: T; onChange?: (v: T) => void; label: string; tone?: "default" | "inverse"; size?: "md" | "icon"; className?: string }) {
   const [inner, setInner] = useState<T | undefined>(defaultValue ?? options[0]?.value);
   const cur = value ?? inner;
@@ -45,7 +45,7 @@ export function Segmented<T extends string>({ options, value, defaultValue, onCh
 
 export type TabItem<T extends string> = { value: T; label: ReactNode; count?: number };
 
-/** Onglets soulignés d'accent. Contrôlé (`value` + `onChange`) ou libre (`defaultValue`). Le contenu est à la charge de l'appelant (`aria-controls` via `idPrefix`). */
+/** Onglets soulignés d’accent. Contrôlé (`value` + `onChange`) ou libre (`defaultValue`). Le contenu est à la charge de l’appelant (`aria-controls` via `idPrefix`). */
 export function Tabs<T extends string>({ items, value, defaultValue, onChange, label, idPrefix, className = "" }: { items: TabItem<T>[]; value?: T; defaultValue?: T; onChange?: (v: T) => void; label: string; idPrefix?: string; className?: string }) {
   const [inner, setInner] = useState<T | undefined>(defaultValue ?? items[0]?.value);
   const cur = value ?? inner;

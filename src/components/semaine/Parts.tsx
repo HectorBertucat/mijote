@@ -1,5 +1,5 @@
 // Pièces de mise en page des écrans Semaine et Composer, au système « Carnet de marché » : chiffres du résumé,
-// avertissement en ligne sobre, section repliée sous un filet, barre d'action collante. Sans état.
+// avertissement en ligne sobre, section repliée sous un filet, barre d’action collante. Sans état.
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui";
 
@@ -29,7 +29,7 @@ export function Notice({ icon = "alert", tone = "warn", children, action }: { ic
   );
 }
 
-/** Section repliée : titre, ce qu'elle contient en quelques mots, chevron ; le contenu glisse de 8 px en s'ouvrant. */
+/** Section repliée : titre, ce qu’elle contient en quelques mots, chevron ; le contenu glisse de 8 px en s’ouvrant. */
 export function Fold({ id, title, aside, children, open = false }: { id: string; title: string; aside?: ReactNode; children: ReactNode; open?: boolean }) {
   return (
     <details id={id} className="group scroll-mt-24 border-t border-line" open={open}>
@@ -43,7 +43,7 @@ export function Fold({ id, title, aside, children, open = false }: { id: string;
   );
 }
 
-/** « Comment c'est calculé » : l'explication quitte l'écran, repliée sous un lien discret. */
+/** « Comment c’est calculé » : l’explication quitte l’écran, repliée sous un lien discret. */
 export function HowTo({ children, label = "Comment c’est calculé" }: { children: ReactNode; label?: string }) {
   return (
     <details className="group/how">
@@ -57,8 +57,8 @@ export function HowTo({ children, label = "Comment c’est calculé" }: { childr
 }
 
 /**
- * Barre d'action collante : le seul élément qui flotte (--sh-float). Elle dit où on en est (`title`, `sub`)
- * et porte l'action suivante. Au téléphone, au-dessus de la barre d'onglets ; au bureau, alignée sur la colonne
+ * Barre d’action collante : le seul élément qui flotte (--sh-float). Elle dit où on en est (`title`, `sub`)
+ * et porte l’action suivante. Au téléphone, au-dessus de la barre d’onglets ; au bureau, alignée sur la colonne
  * large de la grille 4/8 (`wide`).
  */
 export function Dock({ title, sub, children, wide = true }: { title: ReactNode; sub?: ReactNode; children: ReactNode; wide?: boolean }) {

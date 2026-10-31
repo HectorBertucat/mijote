@@ -60,7 +60,7 @@ import {
 } from "@/components/ui";
 import { Systeme } from "./Systeme";
 
-/** Un composant : filet, nom, ce qu'on importe, puis la démonstration vivante. Pas de carte : des filets et de l'air. */
+/** Un composant : filet, nom, ce qu’on importe, puis la démonstration vivante. Pas de carte : des filets et de l’air. */
 function Panel({ title, use, children, wide }: { title: string; use: string; children: ReactNode; wide?: boolean }) {
   return (
     <section className={`grid min-w-0 content-start gap-6 border-t border-line-strong pt-4 ${wide ? "lg:col-span-2" : ""}`}>
@@ -240,7 +240,7 @@ export function KitDemo() {
           <div className="rounded-[8px] bg-inverse p-3">
             <Segmented label="Vue" tone="inverse" options={[{ value: "a", label: "Maintenant" }, { value: "b", label: "Plan" }]} />
           </div>
-          <Help>Contrôlés (value + onChange) ou libres (defaultValue). tone=&quot;inverse&quot; sur fond d&apos;encre, size=&quot;icon&quot; pour le thème.</Help>
+          <Help>Contrôlés (value + onChange) ou libres (defaultValue). tone=&quot;inverse&quot; sur fond d’encre, size=&quot;icon&quot; pour le thème.</Help>
         </Panel>
 
         <Panel title="Champs, cases, compteurs" use="Field, Input, Textarea, Check, Stepper">
@@ -266,7 +266,7 @@ export function KitDemo() {
             <Stepper size="sm" defaultValue={2} min={0} decLabel="Un paquet de moins" incLabel="Un paquet de plus" />
             <Stepper value={Math.round(36 * [0.5, 0.75, 1, 1.25, 1.5, 2, 3][factor])} unit="u" onStep={(d) => setFactor((f) => Math.max(0, Math.min(6, f + d)))} canDec={factor > 0} canInc={factor < 6} />
           </div>
-          <Help>Stepper sm (paquets d&apos;une ligne de courses) ; avec onStep, le pas est celui de l&apos;appelant (unités d&apos;une recette ×0,5 → ×3).</Help>
+          <Help>Stepper sm (paquets d’une ligne de courses) ; avec onStep, le pas est celui de l’appelant (unités d’une recette ×0,5 → ×3).</Help>
         </Panel>
 
         <Panel title="Présence à un repas" use="Presence, PresenceDots">
@@ -331,7 +331,7 @@ export function KitDemo() {
             La viande se décolle seule après 3 min : là seulement, retourne.
           </Cue>
           <Cue sense="eye" quote="Une goutte glisse comme du mercure.">
-            La poêle est prête. Baisse à 6, puis un filet d&apos;huile.
+            La poêle est prête. Baisse à 6, puis un filet d’huile.
           </Cue>
           <Cue sense="nose" quote="Ça sent le vin réduit.">
             Le porc doit se couper à la cuillère.
@@ -360,7 +360,7 @@ export function KitDemo() {
             </Button>
           </div>
           <Timer size="big" title="Four · pasta al forno" detail="160 °C · gradin 3" remaining={1445} total={2400} paused onToggle={() => {}} />
-          <Help>Fini (remaining ≤ 0) : s&apos;inverse et pulse, sound bipe toutes les 4 s après un premier toucher. Jamais de couleur d&apos;état.</Help>
+          <Help>Fini (remaining ≤ 0) : s’inverse et pulse, sound bipe toutes les 4 s après un premier toucher. Jamais de couleur d’état.</Help>
         </Panel>
 
         <Panel title="Bandeaux et toasts" use="Alert, Toast, ToastZone">
@@ -373,7 +373,7 @@ export function KitDemo() {
           <Alert tone="info">Le panier est copié avec les 14 liens du drive.</Alert>
           <Alert tone="ok" title="Commande validée">14 produits, 62,40 €.</Alert>
           <Alert tone="leaf" title="Il restera 250 g de jambonneau" action={<Button size="sm">Une recette pour le reste</Button>}>
-            Le paquet fait 600 g et la recette n&apos;en prend plus que 350 g.
+            Le paquet fait 600 g et la recette n’en prend plus que 350 g.
           </Alert>
           <div>
             <Button size="sm" onClick={() => setToast(true)}>
@@ -394,7 +394,7 @@ export function KitDemo() {
 
         <Panel title="Long chargement par étapes" use="StepProgress, calibrated, useElapsed">
           {(() => {
-            // Démo : un appel de 8 s d'habitude ; la vérification (3 produits) suit, une seconde chacun.
+            // Démo : un appel de 8 s d’habitude ; la vérification (3 produits) suit, une seconde chacun.
             const EXP = 8000;
             const t = aiStart == null ? 0 : aiElapsed;
             const ai = t < EXP * 1.1;
@@ -421,7 +421,7 @@ export function KitDemo() {
               Lancer
             </Button>
           </div>
-          <Help>Barre calée sur la durée habituelle de l&apos;appel (médiane de ai_calls.duration_ms) : ≈ 78 % à la durée attendue, jamais pleine avant la fin réelle ; la vérification avance produit par produit. Un reflet glisse tant que ça travaille ; la carte retravaillée prend la classe k-scan (balayage doux). Mouvement réduit : ni reflet, ni balayage, ni rotation.</Help>
+          <Help>Barre calée sur la durée habituelle de l’appel (médiane de ai_calls.duration_ms) : ≈ 78 % à la durée attendue, jamais pleine avant la fin réelle ; la vérification avance produit par produit. Un reflet glisse tant que ça travaille ; la carte retravaillée prend la classe k-scan (balayage doux). Mouvement réduit : ni reflet, ni balayage, ni rotation.</Help>
         </Panel>
 
         <Panel title="État vide" use="EmptyState · scene">
@@ -457,7 +457,7 @@ export function KitDemo() {
               Sans voile (modal=false)
             </Button>
           </div>
-          <Help>À droite sur ordinateur (420 px), feuille du bas avec poignée sur téléphone. Échap ou le voile ferment. `modal={"{false}"}` : pas de voile ni de page bloquée, la fiche reste lisible et défilable à côté ; `headerAction` ajoute un bouton dans l&apos;en-tête.</Help>
+          <Help>À droite sur ordinateur (420 px), feuille du bas avec poignée sur téléphone. Échap ou le voile ferment. `modal={"{false}"}` : pas de voile ni de page bloquée, la fiche reste lisible et défilable à côté ; `headerAction` ajoute un bouton dans l’en-tête.</Help>
         </Panel>
 
         <Panel title="Navigation" use="TopNav, TabBar, SessionBanner (src/components/)" wide>
@@ -470,7 +470,7 @@ export function KitDemo() {
               <span className="inline-flex min-h-[30px] items-center rounded-[8px] bg-on-inverse px-2.5 font-display text-small font-[650] text-inverse">Cuisson →</span>
             </div>
           </Card>
-          <Help>Le bandeau de session est la seule bande d&apos;encre pleine de l&apos;appli. Santé reste grisé « bientôt » tant que le module n&apos;existe pas.</Help>
+          <Help>Le bandeau de session est la seule bande d’encre pleine de l’appli. Santé reste grisé « bientôt » tant que le module n’existe pas.</Help>
         </Panel>
 
         <Panel title="Icônes" use={'<Icon name="…" size="s|m|l" />'} wide>
@@ -504,7 +504,7 @@ export function KitDemo() {
           <Chip>Prise de masse</Chip>
           <Chip>Plus équilibré</Chip>
         </Chips>
-        <div className="max-w-[88%] rounded-[14px] rounded-bl-[4px] bg-surface-2 px-3 py-3 text-small">Que veux-tu changer ? La part d&apos;Alex est à 760 kcal, 40 au-dessus de sa cible.</div>
+        <div className="max-w-[88%] rounded-[14px] rounded-bl-[4px] bg-surface-2 px-3 py-3 text-small">Que veux-tu changer ? La part d’Alex est à 760 kcal, 40 au-dessus de sa cible.</div>
         <Input placeholder="Ex. garde le goût fumé" aria-label="Message" value={msg} onChange={(e) => setMsg(e.target.value)} />
       </Sheet>
 

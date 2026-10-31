@@ -1,10 +1,10 @@
 "use client";
 
-// Panneau « Ajuster » d'une fiche (DA « Plan de travail ») : options calculées en code (puces), champ libre,
+// Panneau « Ajuster » d’une fiche (DA « Plan de travail ») : options calculées en code (puces), champ libre,
 // appel IA en flux (étapes réelles, progression calée sur la durée habituelle), puis la fiche se remodèle sur place.
 // La proposition est gardée en base, une par recette : on la retrouve en revenant, avec ses échanges ; « Effacer »
 // ou « Garder cette version » la vident. Ordinateur : panneau à droite sans voile, la fiche se décale. Téléphone et
-// iPad : feuille du bas, réduite à une barre (écart, Effacer, Garder) pendant qu'on regarde la fiche remodelée.
+// iPad : feuille du bas, réduite à une barre (écart, Effacer, Garder) pendant qu’on regarde la fiche remodelée.
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { clearProposalAction, keepVariantAction } from "@/app/recettes/[slug]/adjust-actions";
@@ -27,7 +27,7 @@ type Kept = Stored<AdjustProposal>;
 interface Pending {
   label: string;
   optionId?: string;
-  /** Affine la proposition gardée (sinon le fil recommence depuis la fiche d'origine). */
+  /** Affine la proposition gardée (sinon le fil recommence depuis la fiche d’origine). */
   refine: boolean;
   startedAt: number;
   phase: AdjustPhase;
@@ -80,12 +80,12 @@ export function AdjustProvider({
   color: string;
   original: RecipeInput;
   options: AdjustOption[];
-  /** Part de base de la personne de référence (profil actif), pour la phrase d'accueil du panneau. */
+  /** Part de base de la personne de référence (profil actif), pour la phrase d’accueil du panneau. */
   lead?: Macros | null;
   leadName?: string | null;
   leadRef?: MealRef | null;
   budget: Budget;
-  /** Durée habituelle d'un appel « ajuster » (médiane des derniers, ai_calls.duration_ms). */
+  /** Durée habituelle d’un appel « ajuster » (médiane des derniers, ai_calls.duration_ms). */
   expectedMs: number;
   /** Proposition gardée en base pour cette recette. */
   initial: Kept | null;
@@ -105,7 +105,7 @@ export function AdjustProvider({
   );
 }
 
-/** Bouton d'ouverture, dans l'en-tête de la fiche. Un point d'accent signale une proposition gardée. */
+/** Bouton d’ouverture, dans l’en-tête de la fiche. Un point d’accent signale une proposition gardée. */
 export function AdjustButton({ block = false }: { block?: boolean }) {
   const c = useAdjust();
   if (!c) return null;
@@ -146,10 +146,10 @@ function Deltas({ p, small = false }: { p: AdjustProposal; small?: boolean }) {
 function when(iso: string) {
   const d = new Date(iso);
   const hm = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  return new Date().toDateString() === d.toDateString() ? `aujourd'hui à ${hm}` : `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${hm}`;
+  return new Date().toDateString() === d.toDateString() ? `aujourd’hui à ${hm}` : `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${hm}`;
 }
 
-/** Sous l'en-tête de la fiche, panneau fermé : la proposition gardée, à reprendre ou à effacer. */
+/** Sous l’en-tête de la fiche, panneau fermé : la proposition gardée, à reprendre ou à effacer. */
 export function AdjustNotice() {
   const c = useAdjust();
   const [clearing, startClear] = useTransition();
@@ -159,7 +159,7 @@ export function AdjustNotice() {
     <Card flat className="flex animate-swap-in flex-wrap items-center gap-x-3 gap-y-2 border-dashed border-line-strong bg-surface-2 px-3.5 py-2.5">
       <Icon name="sparkdraft" className="text-accent" />
       <div className="grid min-w-0 flex-1">
-        <span className="text-[14px] font-semibold">{c.pending ? `L'IA prépare une variante · ${c.pending.label}` : `Proposition en cours${last ? ` · ${last.ask}` : ""}`}</span>
+        <span className="text-[14px] font-semibold">{c.pending ? `L’IA prépare une variante · ${c.pending.label}` : `Proposition en cours${last ? ` · ${last.ask}` : ""}`}</span>
         {c.kept && !c.pending && (
           <span className="flex flex-wrap items-baseline gap-x-2 text-[13px] text-ink-2">
             <Deltas p={c.kept.proposal} small />
@@ -192,7 +192,7 @@ export function AdjustNotice() {
   );
 }
 
-/** Zone de la fiche remplacée par la variante quand le panneau la montre ; balayée doucement pendant le travail de l'IA. */
+/** Zone de la fiche remplacée par la variante quand le panneau la montre ; balayée doucement pendant le travail de l’IA. */
 export function AdjustSlot({ part, children }: { part: "nutrition" | "ingredients" | "steps"; children: React.ReactNode }) {
   const c = useAdjust();
   if (!c) return <>{children}</>;
@@ -233,9 +233,9 @@ function intro(h: Macros | null, name: string | null, t: MealRef | null) {
   return `Que veux-tu changer ? ${who} est à ${k} kcal${gap}, et ${Math.round(h.protein)} g de protéines (${verdictWord(v.protein)}).`;
 }
 
-// Étapes du chargement : la lecture et la vérification au drive sont des signaux réels du serveur ; pendant l'appel IA
+// Étapes du chargement : la lecture et la vérification au drive sont des signaux réels du serveur ; pendant l’appel IA
 // (une seule requête), « recherche des leviers » puis « proposition » se relaient au tiers de la durée habituelle.
-const AI_SHARE = 0.86; // part de la barre consacrée à l'IA (le reste : la vérification)
+const AI_SHARE = 0.86; // part de la barre consacrée à l’IA (le reste : la vérification)
 const LEVERS_UNTIL = 0.33;
 
 function useLoad(pending: Pending | null, expectedMs: number) {
@@ -295,7 +295,7 @@ function Panel({ options, intro, budget, onBudget, desk, expectedMs }: { options
   const openRef = useRef(c.open); // la réponse peut arriver panneau fermé : ne pas faire sauter la fiche
   openRef.current = c.open;
   const load = useLoad(c.pending, expectedMs);
-  // Ref stable : la feuille ne défile qu'une fois, à l'apparition du chargement.
+  // Ref stable : la feuille ne défile qu’une fois, à l’apparition du chargement.
   const scrollIn = useCallback((el: HTMLDivElement | null) => el?.scrollIntoView({ block: "nearest", behavior: "smooth" }), []);
   if (load) lastValue.current = load.value;
 
@@ -321,7 +321,7 @@ function Panel({ options, intro, budget, onBudget, desk, expectedMs }: { options
         if (input.text) setText("");
         if (openRef.current && !window.matchMedia(DESK).matches) {
           setMini(true);
-          // La fiche passe sur l'onglet des bols, où se voit la variante.
+          // La fiche passe sur l’onglet des bols, où se voit la variante.
           history.replaceState(null, "", "#ingredients");
           window.dispatchEvent(new HashChangeEvent("hashchange"));
           document.getElementById("ingredients")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -330,7 +330,7 @@ function Panel({ options, intro, budget, onBudget, desk, expectedMs }: { options
     })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => {
-        if (!finished) setError((m) => m ?? "La connexion a été coupée. Si l'IA a fini, la proposition t'attend en rouvrant la fiche.");
+        if (!finished) setError((m) => m ?? "La connexion a été coupée. Si l’IA a fini, la proposition t’attend en rouvrant la fiche.");
         c.setPending(null);
       });
   };
@@ -343,7 +343,7 @@ function Panel({ options, intro, budget, onBudget, desk, expectedMs }: { options
       setMini(false);
     });
   };
-  // Fermer garde la proposition ; un appel en cours continue côté serveur et s'enregistre.
+  // Fermer garde la proposition ; un appel en cours continue côté serveur et s’enregistre.
   const close = () => {
     setMini(false);
     c.setOpen(false);
@@ -444,7 +444,7 @@ function Panel({ options, intro, budget, onBudget, desk, expectedMs }: { options
         <p className="-mt-1 min-h-[2.6em] text-[13px] leading-snug text-ink-2">
           {hint ??
             (proposal
-              ? "Une option repart de la fiche d'origine ; tes mots, en bas, affinent cette proposition."
+              ? "Une option repart de la fiche d’origine ; tes mots, en bas, affinent cette proposition."
               : recommended
                 ? `Conseillé : ${recommended.label.toLowerCase()} — ${recommended.hint}`
                 : "Touche une option, ou écris ta demande.")}
@@ -464,9 +464,9 @@ function Panel({ options, intro, budget, onBudget, desk, expectedMs }: { options
         ))}
         {pending && <Bubble me>{pending.label}</Bubble>}
         {pending && load && (
-          // Téléphone : la feuille défile jusqu'au chargement, sous la demande qui vient d'être faite.
+          // Téléphone : la feuille défile jusqu’au chargement, sous la demande qui vient d’être faite.
           <div ref={scrollIn}>
-            <StepProgress title="L'IA prépare une variante" value={load.value} items={load.items} aside={load.aside} className="animate-swap-in" />
+            <StepProgress title="L’IA prépare une variante" value={load.value} items={load.items} aside={load.aside} className="animate-swap-in" />
           </div>
         )}
       </div>

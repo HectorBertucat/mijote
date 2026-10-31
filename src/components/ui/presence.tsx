@@ -1,5 +1,5 @@
 // Presence (pastille de présence d'une personne à un repas : initiale + maison / bureau / absent) et PresenceDots
-// (deux points compacts, grille de la semaine sur téléphone). Sans hook : le tap est à la charge de l'appelant.
+// (deux points compacts, grille de la semaine sur téléphone). Sans hook : le tap est à la charge de l’appelant.
 import type { ButtonHTMLAttributes } from "react";
 import { Icon, type IconName } from "./icon";
 
@@ -7,8 +7,8 @@ export type Place = "home" | "office" | "away";
 export const PLACE_WORD: Record<Place, string> = { home: "maison", office: "bureau", away: "absent" };
 const PLACE_ICON: Record<Place, IconName> = { home: "home", office: "brief", away: "dash" };
 
-/** Pastille : rond d'encre avec l'initiale, puis l'icône du lieu ; absent = pointillés, gris. `size="lg"` (feuille du téléphone) = 40 px de haut, avec le mot.
- * Rendu en <button> : passer `onClick`, et `pending` pour le point qui pulse tant que le serveur n'a pas répondu. */
+/** Pastille : rond d’encre avec l’initiale, puis l’icône du lieu ; absent = pointillés, gris. `size="lg"` (feuille du téléphone) = 40 px de haut, avec le mot.
+ * Rendu en <button> : passer `onClick`, et `pending` pour le point qui pulse tant que le serveur n’a pas répondu. */
 export function Presence({ initial, name, place, size = "md", pending = false, className = "", ...rest }: { initial: string; name: string; place: Place; size?: "md" | "lg"; pending?: boolean } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
   const away = place === "away";
   const lg = size === "lg";

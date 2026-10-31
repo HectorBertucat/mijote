@@ -13,7 +13,7 @@ const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const LETTER = ["L", "M", "M", "J", "V", "S", "D"];
 const tone = (v: number, min: number, max: number): Tone => verdictTone(verdict(v, min, max));
 
-/** `letters` : initiale de chaque jour de la période (lundi → dimanche par défaut). Le titre vient de la section qui l'accueille. */
+/** `letters` : initiale de chaque jour de la période (lundi → dimanche par défaut). Le titre vient de la section qui l’accueille. */
 export function WeekNutrition({ people, letters = LETTER }: { people: { id: string; name: string; week: PersonWeek; ref: DayRef | null }[]; letters?: string[] }) {
   return (
     <div className="grid gap-6">
@@ -102,7 +102,7 @@ function PersonCard({ name, w, T, letters }: { name: string; w: PersonWeek; T: D
   );
 }
 
-/** Répartition de l'énergie entre protéines, glucides et lipides, et les grammes. */
+/** Répartition de l’énergie entre protéines, glucides et lipides, et les grammes. */
 function Split({ m }: { m: Macros }) {
   const parts = [
     { key: "P", label: "protéines", g: m.protein, kcal: m.protein * 4, cls: "bg-accent" },

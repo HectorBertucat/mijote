@@ -1,9 +1,9 @@
 "use client";
 
-// Onglet « Produits du drive » d'une fiche : pour chaque ingrédient, les produits Chronodrive acceptés
+// Onglet « Produits du drive » d’une fiche : pour chaque ingrédient, les produits Chronodrive acceptés
 // (préféré ★, prix, format, pastille de dispo), la proposition automatique classée pour le besoin,
 // « Ajouter un produit » (recherche), « Ne correspond pas » (refus commun), et un réglage propre au plat.
-// Une association vaut pour toutes les recettes qui contiennent l'ingrédient (type chronocatalog).
+// Une association vaut pour toutes les recettes qui contiennent l’ingrédient (type chronocatalog).
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Alert, Button, buttonClass, Chip, Chips, Icon, Input, Pill, Tag } from "@/components/ui";
 import { useSectionCount } from "@/components/FicheSections";

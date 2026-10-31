@@ -1,7 +1,7 @@
 "use client";
 
-// Recharge les données serveur quand l'onglet redevient visible, et toutes les 30 s :
-// une note ajoutée sur le téléphone apparaît sur l'ordinateur sans recharger la page.
+// Recharge les données serveur quand l’onglet redevient visible, et toutes les 30 s :
+// une note ajoutée sur le téléphone apparaît sur l’ordinateur sans recharger la page.
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

@@ -1,8 +1,8 @@
 "use client";
 
 // Fin de session, un des trois moments de fête (docs/design/systeme.md, « Le cachet ») : un frigo dessiné
-// s'ouvre, une boîte par plat tombe sur une étagère, puis le cachet « Fait maison » se pose ; à côté, le
-// titre en très grand, la durée et l'étiquette de chaque plat. L'animation ne joue que juste après
+// s’ouvre, une boîte par plat tombe sur une étagère, puis le cachet « Fait maison » se pose ; à côté, le
+// titre en très grand, la durée et l’étiquette de chaque plat. L’animation ne joue que juste après
 // « Session terminée » (moins de 2 min) ; en revenant plus tard, le frigo est simplement plein.
 import { useEffect, useState, type CSSProperties } from "react";
 import { StampFaitMaison, Tape } from "@/components/ui";
@@ -53,7 +53,7 @@ export function FridgeDone({ plan, events, test = false }: { plan: SessionPlan; 
               </g>
             );
           })}
-          {/* Porte : s'ouvre au début (vue de face : elle se replie vers la charnière gauche). */}
+          {/* Porte : s’ouvre au début (vue de face : elle se replie vers la charnière gauche). */}
           <g className="k-fridge-door">
             <rect x="8" y="6" width="174" height="228" rx="14" fill="var(--c-surface)" stroke="var(--c-ink)" strokeWidth="3" />
             <rect x="160" y="70" width="8" height="60" rx="4" fill="var(--c-ink-3)" />

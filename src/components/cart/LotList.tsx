@@ -1,7 +1,7 @@
 "use client";
 
 // Lots du placard : une ligne à filet par reste (dessin, nom, ce qui reste en chiffres alignés, filet de jauge),
-// « Utilisé » ou « Perdu » d'un tap (avec annulation).
+// « Utilisé » ou « Perdu » d’un tap (avec annulation).
 import { useOptimistic, useTransition } from "react";
 import { Button, Icon } from "@/components/ui";
 import { FoodIllu } from "@/components/illus/Illu";

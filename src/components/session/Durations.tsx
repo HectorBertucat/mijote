@@ -1,4 +1,4 @@
-// Durées réelles à l'écran : l'origine des durées d'un plan (écran de lancement, en-tête
+// Durées réelles à l’écran : l’origine des durées d’un plan (écran de lancement, en-tête
 // de session) et le bilan prévu / réel de fin de session, par geste et par étape. Sans
 // hook : utilisable dans une page serveur (ModePicker) comme dans les vues de session.
 import type { SessionPlan } from "@/lib/session/planner";
@@ -14,7 +14,7 @@ const fmt = (m: number) => {
   return `${String(x).replace(".", ",")} min`;
 };
 
-/** « Durées corrigées d'après tes 2 dernières sessions », avec le détail dépliable. */
+/** « Durées corrigées d’après tes 2 dernières sessions », avec le détail dépliable. */
 export function DurationOrigin({ plan, className = "" }: { plan: Pick<SessionPlan, "durations">; className?: string }) {
   if (!plan.durations) return null; // plan d'avant le 20/10 : rien à dire
   const o = durationsOrigin(plan);
@@ -89,7 +89,7 @@ export function DurationReport({ plan, events, startedAt }: { plan: SessionPlan;
     <div className="space-y-4">
       <p className="text-[17px] text-ink-2">
         Mesuré : {measured(gestures)} geste{measured(gestures) > 1 ? "s" : ""} de prep sur {gestures.length}, {stepRows.length} étape{stepRows.length > 1 ? "s" : ""} sur {steps.length}. Un geste dure
-        du « fait » d&apos;avant au sien ; un bol coché sans ses gestes se partage entre eux au prorata.
+        du « fait » d’avant au sien ; un bol coché sans ses gestes se partage entre eux au prorata.
       </p>
       {gestures.length > 0 && (
         <section className="space-y-2">

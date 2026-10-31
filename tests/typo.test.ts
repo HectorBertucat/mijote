@@ -1,0 +1,14 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { typo } from "@/lib/typo";
+
+test("micro-typographie : apostrophe courbe, ponctuation haute, guillemets, unités", () => {
+  assert.equal(typo("Faitout d'eau salée, jusqu'à ébullition"), "Faitout d’eau salée, jusqu’à ébullition");
+  assert.equal(typo("Repère : bien doré ; c'est prêt ?"), "Repère : bien doré ; c’est prêt ?");
+  assert.equal(typo('Le "test de la goutte"'), "Le « test de la goutte »");
+  assert.equal(typo("« Sauce épaisse »"), "« Sauce épaisse »");
+  assert.equal(typo("Cuire 8 min à 200 °C, 1,5 kg de poulet, 4,01 €"), "Cuire 8 min à 200 °C, 1,5 kg de poulet, 4,01 €");
+  assert.equal(typo("3 grandes cuillères"), "3 grandes cuillères", "un mot qui commence comme une unité ne bouge pas");
+  assert.equal(typo("https://exemple.fr"), "https://exemple.fr");
+  assert.equal(typo(null), null);
+});

@@ -1,7 +1,7 @@
 "use client";
 
-// Petit message au-dessus de la barre d'onglets : le retour visible de chaque action (Toast du kit, bulle d'encre).
-// Même API qu'avant ({ show, node }) ; un échec porte l'icône d'alerte.
+// Petit message au-dessus de la barre d’onglets : le retour visible de chaque action (Toast du kit, bulle d’encre).
+// Même API qu’avant ({ show, node }) ; un échec porte l’icône d’alerte.
 import { useCallback, useEffect, useState } from "react";
 import { Icon, Toast } from "@/components/ui";
 

@@ -154,7 +154,7 @@ export default async function Composer({ searchParams }: { searchParams: Promise
                     <PendingButton variant="accent" size="md" loadingLabel="Je planifie la session…">
                       Lancer la session
                     </PendingButton>
-                    {/* Pour montrer l'appli : même session (téléphone, à deux…), rien n'est compté. */}
+                    {/* Pour montrer l’appli : même session (téléphone, à deux…), rien n’est compté. */}
                     <button type="submit" name="test" value="1" className="min-h-tap text-small text-ink-2 underline-offset-4 hover:text-ink hover:underline">
                       ou une session test, rien n’est compté
                     </button>

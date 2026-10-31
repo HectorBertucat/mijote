@@ -1,7 +1,7 @@
 "use client";
 
-// Présence d'une personne à un repas : un tap passe de maison à bureau, puis absent.
-// Affichage immédiat (optimiste), petit point qui pulse tant que le serveur n'a pas répondu.
+// Présence d’une personne à un repas : un tap passe de maison à bureau, puis absent.
+// Affichage immédiat (optimiste), petit point qui pulse tant que le serveur n’a pas répondu.
 import { useOptimistic, useTransition } from "react";
 import { Presence, type Place } from "@/components/ui";
 import { togglePlace } from "./actions";

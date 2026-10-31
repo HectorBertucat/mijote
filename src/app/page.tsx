@@ -1,4 +1,4 @@
-// Accueil : la semaine en un regard (plats, repas couverts, jour et temps de session), l'action du
+// Accueil : la semaine en un regard (plats, repas couverts, jour et temps de session), l’action du
 // moment (une seule, en cocotte), le frigo, les courses et les repas du jour du profil actif.
 // Mise en page 7/5 au bureau, une colonne au téléphone (docs/design/systeme.md).
 import Link from "next/link";
@@ -47,7 +47,7 @@ function sentence(h: HomeView): string {
   }
 }
 
-/** L'action du moment : un seul bouton cocotte. */
+/** L’action du moment : un seul bouton cocotte. */
 function StepAction({ step, h }: { step: HomeStep; h: HomeView }) {
   const label = stepLabel(step, h.cookDay, h.today);
   const cls = buttonClass({ variant: "accent", size: "kitchen" });
@@ -88,7 +88,7 @@ export default async function Accueil() {
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-y-12 lg:grid-cols-12 lg:gap-x-6 lg:gap-y-18">
-      {/* La semaine : le titre en chiffres, l'action du moment, les plats. */}
+      {/* La semaine : le titre en chiffres, l’action du moment, les plats. */}
       <section aria-labelledby="semaine-titre" className="relative min-w-0 lg:col-span-7">
         <p className="label text-ink-2">
           <Link href={`/semaine?w=${h.start}`} className="rounded-[4px] hover:text-ink">
@@ -148,7 +148,7 @@ export default async function Accueil() {
         )}
       </section>
 
-      {/* Le reste du foyer : aujourd'hui, le frigo, les courses. */}
+      {/* Le reste du foyer : aujourd’hui, le frigo, les courses. */}
       <div className="grid min-w-0 content-start gap-12 lg:col-span-5 lg:border-l lg:border-line lg:pl-8">
         {h.todayMeals.length > 0 && h.lead && <Today h={h} />}
         <Fridge h={h} />
@@ -199,7 +199,7 @@ function Today({ h }: { h: HomeView }) {
   );
 }
 
-/** Une boîte : jusqu'à quand, en un mot. */
+/** Une boîte : jusqu’à quand, en un mot. */
 function limitWord(g: HomeBoxGroup, today: string) {
   if (g.freshness === "past") return "à jeter";
   if (g.limit === today) return "aujourd’hui";
@@ -208,7 +208,7 @@ function limitWord(g: HomeBoxGroup, today: string) {
   return /\d/.test(w) ? `jusqu’au ${w.replace(/^\p{L}+ /u, "")}` : `jusqu’à ${w}`;
 }
 
-/** Le frigo : combien de boîtes, celles à manger en premier ; le congélo complète s'il reste de la place. */
+/** Le frigo : combien de boîtes, celles à manger en premier ; le congélo complète s’il reste de la place. */
 function Fridge({ h }: { h: HomeView }) {
   const shown = h.fridge.slice(0, 4);
   const frozen = h.freezer.slice(0, 4 - shown.length);
@@ -283,7 +283,7 @@ function BoxRow({ g, h, trail, hot = false }: { g: HomeBoxGroup; h: HomeView; tr
   );
 }
 
-/** Les courses de la période : l'état en un mot, puis le détail. */
+/** Les courses de la période : l’état en un mot, puis le détail. */
 function Shopping({ h }: { h: HomeView }) {
   const l = h.list;
   const state = !l ? "Pas encore de liste" : l.building ? "En préparation" : l.ordered ? "Commandées" : "À faire";

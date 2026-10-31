@@ -1,7 +1,7 @@
 "use client";
 
 // Vue simple à deux : chacun son fil (gestes de prep et étapes mêlés, comme le planificateur les a
-// répartis), une consigne à la fois. Téléphone d'une personne (?personne=A ou B) : son fil seul, son
+// répartis), une consigne à la fois. Téléphone d’une personne (?personne=A ou B) : son fil seul, son
 // « Suivant » en bas. Grand écran sans personne : les deux fils côte à côte, touches A et B.
 // Les relais (qui libère quoi) et ce qui sonne bientôt restent ; le reste est dans la vue détaillée.
 import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
@@ -61,7 +61,7 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
       <div className="grid gap-3 border-y border-line py-8">
         <p className="label text-ink-2">Fil terminé</p>
         <b className="text-h2">{person} a tout fini.</b>
-        <p className="text-[17px] text-ink-2">L&apos;autre termine son fil ; ensuite, on range.</p>
+        <p className="text-[17px] text-ink-2">L’autre termine son fil ; ensuite, on range.</p>
       </div>
     );
   return (
@@ -88,7 +88,7 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
   );
 }
 
-/** Un geste de prep à faire maintenant : ce qu'on coupe, combien, et dans quel bol. */
+/** Un geste de prep à faire maintenant : ce qu’on coupe, combien, et dans quel bol. */
 function PrepNow({ plan, task }: { plan: SessionPlan; task: PrepTask }) {
   const slug = task.recipeSlug ?? bowlOf(plan, task.bowls?.[0] ?? "")?.recipeSlug ?? task.items[0]?.recipeSlug ?? null;
   const recipe = recipeOf(plan, slug);

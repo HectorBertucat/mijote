@@ -2,8 +2,8 @@
 
 // La cuisine du foyer, pas à pas : plaque, foyers, four, poêles, casseroles, cocotte et plats, appareils.
 // Une question par écran, un choix par défaut déjà pris, « Je ne sais pas » toujours possible (la valeur
-// par défaut sert et la question est notée « à vérifier »). Le planificateur n'utilise que ce qui est décrit.
-// DA v3 : la question en grand, les choix en lignes à filets, l'aide concrète en marge, la progression en traits.
+// par défaut sert et la question est notée « à vérifier »). Le planificateur n’utilise que ce qui est décrit.
+// DA v3 : la question en grand, les choix en lignes à filets, l’aide concrète en marge, la progression en traits.
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Alert, Button, Check, Segmented, Stepper, Tag } from "@/components/ui";
 import { saveKitchenAction, type FormState } from "@/app/reglages/actions";
@@ -47,7 +47,7 @@ const HOB_HINT: Record<HobType, string> = {
   electrique: "Des plaques rondes en fonte, grises.",
 };
 
-/** Une plaque vue de haut : chaque foyer à l'échelle de son diamètre. */
+/** Une plaque vue de haut : chaque foyer à l’échelle de son diamètre. */
 export function HobLayout({ sizes, size = 72 }: { sizes: number[]; size?: number }) {
   const cols = sizes.length <= 2 ? sizes.length : sizes.length === 4 ? 2 : 3;
   const rows = Math.ceil(sizes.length / cols);
@@ -80,7 +80,7 @@ function Boxes({ title, children }: { title: string; children: ReactNode }) {
 
 /**
  * `guided` : parcours de la mise en route (la question est le titre de la page, `onExit` au retour de la
- * première question, `onSaved` après l'enregistrement). Sinon : le résumé d'abord, une ligne → sa question.
+ * première question, `onSaved` après l’enregistrement). Sinon : le résumé d’abord, une ligne → sa question.
  */
 export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker = "La cuisine" }: { initial: KitchenConfig; guided?: boolean; onSaved?: () => void; onExit?: () => void; kicker?: string }) {
   const [c, setC] = useState(initial);
@@ -91,7 +91,7 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
   const top = useRef<HTMLDivElement>(null);
   const moved = useRef(false);
 
-  // Nouvelle question : on la remet en haut de l'écran si elle en est sortie (téléphone), sans animation.
+  // Nouvelle question : on la remet en haut de l’écran si elle en est sortie (téléphone), sans animation.
   useEffect(() => {
     if (!moved.current) {
       moved.current = true;
@@ -106,7 +106,7 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
     setC((cur) => ({ ...cur, ...patch, unsure: cur.unsure.filter((q) => !answered.includes(q)) }));
   };
   const go = (n: number) => setStep(Math.max(0, Math.min(RECAP, n)));
-  // « Je ne sais pas » : les valeurs par défaut de l'étape, la question notée, et on avance.
+  // « Je ne sais pas » : les valeurs par défaut de l’étape, la question notée, et on avance.
   const dunno = () => {
     const qs = STEPS[step].questions;
     const d = DEFAULT_KITCHEN;
@@ -517,7 +517,7 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
       <div className={`grid min-w-0 content-start gap-8 ${s.help ? "lg:col-span-7" : guided ? "lg:col-span-8" : "lg:col-span-12"}`}>
         <div className="grid gap-4">
           {!guided && step < RECAP && <Ticks total={RECAP + 1} at={step} label="Avancement de la description de la cuisine" />}
-          {/* La clé rejoue l'arrivée de la question à chaque écran (pas à chaque geste). */}
+          {/* La clé rejoue l’arrivée de la question à chaque écran (pas à chaque geste). */}
           <div key={step} className="reveal">
             <QuestionHead as={guided ? "h1" : "h3"} size={guided ? "page" : "section"} kicker={kick} title={ask.ask} hint={ask.hint} />
           </div>

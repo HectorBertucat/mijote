@@ -3,7 +3,7 @@
 // Affichage du bloc nutrition (DA « Plan de travail ») : un segment par mangeur (sa part en unités, tirée
 // de sa cible : src/lib/eaters), jauges énergie et protéines avec la zone de son repère,
 // glucides-lipides-fibres, ce qui pèse le plus, ce qui ne se mange pas.
-// Avec `before`, c'est la vue « avant → après » d'une variante : chiffres qui glissent, repère de l'ancienne valeur.
+// Avec `before`, c’est la vue « avant → après » d’une variante : chiffres qui glissent, repère de l’ancienne valeur.
 import { useEffect, useRef, useState } from "react";
 import { Card, Gauge, Icon, Segmented, verdictTone, verdictWord } from "@/components/ui";
 import { proteinShare, type Macros } from "@/lib/nutrition/compute";
@@ -13,7 +13,7 @@ import { HowCalculated } from "./fiche/Block";
 import { deName } from "./fiche/words";
 import type { NutritionData } from "./Nutrition";
 
-/** Un mangeur affiché : sa part (unités) et son repère d'un repas (null = sans repère). */
+/** Un mangeur affiché : sa part (unités) et son repère d’un repas (null = sans repère). */
 export type NutritionPerson = { id: string; name: string; units: number; ref: MealRef | null };
 type Portions = Record<string, Macros>;
 
@@ -38,7 +38,7 @@ export function AnimatedNumber({ value, from, decimals = 0 }: { value: number; f
   return <>{shown.toLocaleString("fr-FR", { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}</>;
 }
 
-/** Jauge dont la valeur glisse depuis `before` (la barre part de l'ancienne largeur). */
+/** Jauge dont la valeur glisse depuis `before` (la barre part de l’ancienne largeur). */
 function MovingGauge({ before, value, ...rest }: Omit<React.ComponentProps<typeof Gauge>, "display"> & { before?: number | null }) {
   const [w, setW] = useState(before ?? value);
   useEffect(() => {

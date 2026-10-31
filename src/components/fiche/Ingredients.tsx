@@ -1,6 +1,7 @@
-// Colonne d'ingrédients d'une fiche, comme dans un livre de cuisine : regroupés par bol (lettre en étiquette à la
-// couleur du plat), quantité alignée à droite en chiffres serrés, dessin de l'aliment, nom, filet fin. Le placard
+// Colonne d’ingrédients d’une fiche, comme dans un livre de cuisine : regroupés par bol (lettre en étiquette à la
+// couleur du plat), quantité alignée à droite en chiffres serrés, dessin de l’aliment, nom, filet fin. Le placard
 // est replié en bas. Sans état.
+import { typo } from "@/lib/typo";
 import { FoodIllu } from "@/components/illus/Illu";
 import { Icon, Tape } from "@/components/ui";
 import type { RecipeInput } from "@/lib/recipes/format";
@@ -23,7 +24,7 @@ function splitName(item: string): [string, string | null] {
 
 function Row({ ing }: { ing: Ing }) {
   const q = qtyParts(ing.grams, ing.units);
-  const [name, rest] = splitName(ing.item);
+  const [name, rest] = splitName(typo(ing.item));
   return (
     <li className="grid grid-cols-[4.5rem_28px_minmax(0,1fr)] items-center gap-x-3 border-b border-line py-3">
       <span className="num-tight text-right text-body leading-tight">{q.main || "—"}</span>

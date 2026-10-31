@@ -1,7 +1,7 @@
 "use client";
 
-// Un plat à choisir (Semaine, Composer) : grande entrée qui se coche, l'étiquette du plat, son nom, deux ou trois faits.
-// La coche suit tout de suite le geste (optimiste) pendant que le serveur recalcule ; le retour d'état est la seule
+// Un plat à choisir (Semaine, Composer) : grande entrée qui se coche, l’étiquette du plat, son nom, deux ou trois faits.
+// La coche suit tout de suite le geste (optimiste) pendant que le serveur recalcule ; le retour d’état est la seule
 // animation (pas de rebond : on coche souvent). Visuel du plat : la boîte dessinée (DishBox), rendue côté serveur
 // et passée en `visual`.
 import Link, { useLinkStatus } from "next/link";
@@ -47,7 +47,7 @@ function Tick({ on, busy, className = "" }: { on: boolean; busy: boolean; classN
   );
 }
 
-/** Dans un <form> d'action serveur (Semaine) : le bouton d'envoi est toute l'entrée. */
+/** Dans un <form> d’action serveur (Semaine) : le bouton d’envoi est toute l’entrée. */
 export function PickButton({ on, disabled = false, label, ...look }: Look & { on: boolean; disabled?: boolean; label: string }) {
   const { pending } = useFormStatus();
   const shown = pending ? !on : on;
@@ -58,7 +58,7 @@ export function PickButton({ on, disabled = false, label, ...look }: Look & { on
   );
 }
 
-/** En lien (Composer : la sélection vit dans l'adresse). */
+/** En lien (Composer : la sélection vit dans l’adresse). */
 export function PickLink({ on, href, label, ...look }: Look & { on: boolean; href: string; label: string }) {
   return (
     <Link href={href} scroll={false} aria-label={label} className={`${BOX} ${PAD[look.size ?? "lg"]} ${on ? ON : OFF}`}>

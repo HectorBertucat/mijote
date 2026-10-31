@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BoxList } from "@/components/boxes/BoxList";
-import { buttonClass, EmptyState } from "@/components/ui";
+import { buttonClass } from "@/components/ui";
 import { DishBox } from "@/components/ui/dish";
 import { listDishRecipes } from "@/lib/recipes/queries";
 import { db } from "@/lib/db/client";
@@ -42,17 +42,13 @@ export default async function Frigo() {
         )}
       </header>
       {boxes.length === 0 ? (
-        <EmptyState
-          scene="fridge"
-          title="Aucune boîte"
-          action={
-            <Link href="/semaine" className={buttonClass({ variant: "primary" })}>
-              Préparer la semaine
-            </Link>
-          }
-        >
-          Les boîtes arrivent à la fin d&apos;une session : on pèse la marmite, l&apos;appli dit combien mettre dans chaque boîte et les range ici.
-        </EmptyState>
+        <section className="grid max-w-[60ch] justify-items-start gap-6 border-t border-line pt-8">
+          <h2 className="text-h2">Le frigo est vide.</h2>
+          <p className="text-lead text-ink-2">Les boîtes arrivent à la fin d’une session : tu pèses la marmite, je dis combien mettre dans chaque boîte et je les range ici, frigo ou congélo.</p>
+          <Link href="/semaine" className={buttonClass({ variant: "primary" })}>
+            Choisir les plats de la semaine
+          </Link>
+        </section>
       ) : (
         <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-6">
           {places.map((p, i) => (

@@ -14,7 +14,7 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
   );
 }
 
-/** En-tête de page : retour, surtitre, titre (un seul h1), une phrase, et à droite l'action ou les chiffres. */
+/** En-tête de page : retour, surtitre, titre (un seul h1), une phrase, et à droite l’action ou les chiffres. */
 export function PageHead({ back, kicker, title, size = "display", lead, aside, children }: { back?: ReactNode; kicker?: ReactNode; title: ReactNode; size?: "display" | "h1"; lead?: ReactNode; aside?: ReactNode; children?: ReactNode }) {
   return (
     <header className="grid gap-6 lg:grid-cols-12 lg:items-end lg:gap-x-6">

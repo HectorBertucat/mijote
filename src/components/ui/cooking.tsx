@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./icon";
 
-/** Niveau d'induction : 9 segments croissants, le chiffre et « /9 ». `size="big"` pour la session (lu à 1 m, sans « /9 »). */
+/** Niveau d’induction : 9 segments croissants, le chiffre et « /9 ». `size="big"` pour la session (lu à 1 m, sans « /9 »). */
 export function Induction({ level, size = "md", className = "" }: { level: number; size?: "md" | "big"; className?: string }) {
   const big = size === "big";
   const lv = Math.max(0, Math.min(9, Math.round(level)));
@@ -36,7 +36,7 @@ export function OvenLevel({ level, rails = 5, className = "" }: { level: number;
   );
 }
 
-/** Puce de spécification d'une étape : icône (pan, pot, hob, oven, clock, fridge…) ou un élément en tête (`lead`, p. ex. <Induction/>), puis le texte. */
+/** Puce de spécification d’une étape : icône (pan, pot, hob, oven, clock, fridge…) ou un élément en tête (`lead`, p. ex. <Induction/>), puis le texte. */
 export function SpecChip({ icon, lead, children, className = "" }: { icon?: IconName; lead?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <span className={`inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-[8px] bg-surface-2 px-2.5 text-[14px] font-semibold ${className}`}>
@@ -49,7 +49,7 @@ export function SpecChip({ icon, lead, children, className = "" }: { icon?: Icon
 
 const SENSE: Record<"ear" | "eye" | "nose" | "bell" | "clock" | "scale", IconName> = { ear: "ear", eye: "eye", nose: "nose", bell: "bell", clock: "clock", scale: "scale" };
 
-/** Repère sensoriel ou sonore : `sense` (ear = ça chante, eye = ça se voit, nose = ça sent, bell = minuteur), `quote` en gras entre guillemets, puis l'explication. */
+/** Repère sensoriel ou sonore : `sense` (ear = ça chante, eye = ça se voit, nose = ça sent, bell = minuteur), `quote` en gras entre guillemets, puis l’explication. */
 export function Cue({ sense = "eye", quote, children, className = "" }: { sense?: keyof typeof SENSE; quote?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <div className={`flex items-start gap-2.5 rounded-[10px] bg-surface-2 px-3 py-2.5 text-[15px] ${className}`}>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { typo } from "@/lib/typo";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { CookAction } from "@/components/cart/CookedButton";
@@ -52,7 +53,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
 
   const activeMin = steps.reduce((s, x) => s + (x.step.activeMin ?? 0), 0);
   const perUnit = r.kcalUnit != null ? { kcal: r.kcalUnit, protein: r.proteinUnit ?? 0, carbs: r.carbsUnit ?? 0, fat: r.fatUnit ?? 0, fiber: r.fiberUnit ?? 0 } : null;
-  // Le profil actif en tête : l'en-tête montre sa part du jour, l'atelier parle de sa part de base.
+  // Le profil actif en tête : l’en-tête montre sa part du jour, l’atelier parle de sa part de base.
   const active = await activeProfileId();
   const eaters = loadEaters(db).sort((a, b) => Number(b.id === active) - Number(a.id === active));
   const household = householdMembers(db, active);
@@ -88,12 +89,11 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
       : { key: "kcal", value: "—", label: "Nutrition à compléter" },
     myCost
       ? { key: "prix", value: myCost.cost.practical.toFixed(2).replace(".", ","), unit: "€", label: "Prix de la part", sub: costSource(cost!) }
-      : { key: "repas", value: meals > 0 ? meals : r.servingsUnits, unit: meals > 0 ? "repas" : "unités", label: eaters.length > 1 ? `Pour ${eaters.length} personnes` : "Une fournée" },
+      : { key: "repas", value: meals > 0 ? meals : "—", unit: meals > 0 ? "repas" : undefined, label: eaters.length > 1 ? `Pour ${eaters.length} personnes` : "Une fournée" },
   ];
   const facts = [
-    `Fournée de ${r.servingsUnits}\u00a0unités`,
+    // Le mot « unité » reste en coulisse (calcul des parts) : on parle en repas.
     myCost ? mealsWord : null,
-    parts.length > 1 ? parts.map((x) => `${x.e.name} ${x.p.units.toLocaleString("fr-FR")}`).join(", ") + " par repas" : null,
     r.fridgeDays != null ? `${r.fridgeDays}\u00a0jour${r.fridgeDays > 1 ? "s" : ""} au frigo` : null,
     r.freezerOk ? "se congèle" : null,
     season.length ? `de saison\u00a0: ${season.join(", ")}` : null,
@@ -140,8 +140,8 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
           <DishBox recipe={dish} color={color} size="hero" className="max-sm:hidden" />
           <div className="grid gap-4">
             <VariantOf family={family} currentId={r.id} />
-            <h1 className="max-w-[20ch] text-h1">{r.name}</h1>
-            {r.description && <p className="max-w-[60ch] text-lead text-ink-2">{r.description}</p>}
+            <h1 className="max-w-[20ch] text-h1">{typo(r.name)}</h1>
+            {r.description && <p className="max-w-[60ch] text-lead text-ink-2">{typo(r.description)}</p>}
           </div>
           <div className="grid gap-4">
             <Figures items={figures} />
@@ -175,7 +175,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
             <div className="grid items-start gap-x-6 gap-y-12 max-lg:pt-6 lg:grid-cols-12">
               <FicheSection id="ingredients" className="lg:col-span-5">
                 <AdjustSlot part="ingredients">
-                  <BlockTitle aside={`pour ${r.servingsUnits}\u00a0unités`}>Ingrédients</BlockTitle>
+                  <BlockTitle aside={meals > 0 ? `${meals}\u00a0repas${eaters.length > 1 ? ` à\u00a0${eaters.length}` : ""}` : "une fournée"}>Ingrédients</BlockTitle>
                   <IngredientTable ingredients={input.ingredients} color={color} />
                 </AdjustSlot>
                 <DrawMissing slug={r.slug} items={missingArt(db, ingredients.map((i) => ({ item: i.item, food: i.foodId })))} aiReady={Boolean(process.env.ANTHROPIC_API_KEY) || aiMockEnabled()} />

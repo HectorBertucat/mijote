@@ -21,7 +21,7 @@ export function Textarea({ invalid = false, className = "", ...rest }: { invalid
   return <textarea aria-invalid={invalid || undefined} className={`${INPUT} py-3 leading-normal ${invalid ? "border-ko" : "border-line-strong"} ${className}`} {...rest} />;
 }
 
-/** Libellé, champ, puis aide (gris) ou erreur (rouge foncé, remplace l'aide). `children` reçoit l'id à poser sur le champ. */
+/** Libellé, champ, puis aide (gris) ou erreur (rouge foncé, remplace l’aide). `children` reçoit l’id à poser sur le champ. */
 export function Field({ label, help, error, children, className = "" }: { label: ReactNode; help?: ReactNode; error?: ReactNode; children: (id: string, describedBy?: string) => ReactNode; className?: string }) {
   const id = useId();
   const hid = help || error ? `${id}-help` : undefined;

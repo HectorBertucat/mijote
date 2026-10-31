@@ -24,7 +24,7 @@ const body = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--font-
 // Thème choisi (clair, sombre) posé avant le premier rendu ; sans choix, on suit le système.
 const THEME_SCRIPT = `try{var t=localStorage.getItem("mijote.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
-// Motif de saison à côté du logo : champignon en automne, agrume en hiver, herbes au printemps, tomate l'été.
+// Motif de saison à côté du logo : champignon en automne, agrume en hiver, herbes au printemps, tomate l’été.
 const SEASON_ART: Record<Season, { id: FoodArtId; label: string }> = {
   automne: { id: "champignon", label: "automne" },
   hiver: { id: "citron_vert", label: "hiver" },
@@ -48,7 +48,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Instance neuve : la mise en route d'abord (le foyer, la cuisine, les courses).
+  // Instance neuve : la mise en route d’abord (le foyer, la cuisine, les courses).
   const path = (await headers()).get("x-mijote-path") ?? "/";
   const open = /^\/(bienvenue|reglages|connexion|kit)(\/|$)/.test(path);
   if (!open && !isSetupDone(db)) redirect("/bienvenue");

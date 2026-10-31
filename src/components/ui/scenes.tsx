@@ -1,12 +1,12 @@
 // Petites scènes dessinées pour les états vides et les chargements (même trait que la banque de dessins :
-// couleurs --i-* de illus.css et tokens). Elles bougent une fois, puis se taisent ; Simmer mijote tant qu'il est là.
+// couleurs --i-* de illus.css et tokens). Elles bougent une fois, puis se taisent ; Simmer mijote tant qu’il est là.
 // Sans état.
 
 export type SceneName = "fridge" | "basket" | "pot";
 
 const STROKE = { stroke: "var(--i-line)", strokeWidth: 2.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
-/** Frigo vide, porte ouverte, un citron vert seul qui roule sur l'étagère. */
+/** Frigo vide, porte ouverte, un citron vert seul qui roule sur l’étagère. */
 function Fridge() {
   return (
     <svg viewBox="0 0 120 96" width="120" height="96" aria-hidden className="k-scene" fill="none">

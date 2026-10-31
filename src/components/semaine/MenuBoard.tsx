@@ -1,9 +1,9 @@
 "use client";
 
 // Le menu de la semaine, comme une feuille de marché : un jour par ligne sous un filet, midi et soir en colonnes,
-// chaque plat en étiquette d'étiqueteuse (Tape) sur sa couleur. « Partager » dessine la même feuille dans une image
+// chaque plat en étiquette d’étiqueteuse (Tape) sur sa couleur. « Partager » dessine la même feuille dans une image
 // (canvas, couleurs et polices lues sur la page) et ouvre la feuille de partage du téléphone ; sans partage de
-// fichiers (ordinateur), l'image se télécharge.
+// fichiers (ordinateur), l’image se télécharge.
 import { useRef, useState } from "react";
 import { Button, Tape } from "@/components/ui";
 
@@ -166,7 +166,7 @@ async function drawBoard(el: HTMLElement, title: string, days: BoardDay[], ready
   return await new Promise<Blob>((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
 }
 
-/** Coupe un texte avec « … » pour qu'il tienne dans `max` px. */
+/** Coupe un texte avec « … » pour qu’il tienne dans `max` px. */
 function fit(g: CanvasRenderingContext2D, text: string, max: number): string {
   if (g.measureText(text).width <= max) return text;
   let t = text;

@@ -1,14 +1,14 @@
 "use client";
 
-// Vue simple d'une session, téléphone d'abord (la vue par défaut ; ?vue=detail pour la vue détaillée).
+// Vue simple d’une session, téléphone d’abord (la vue par défaut ; ?vue=detail pour la vue détaillée).
 // Trois temps : Prépare (tout sur le plan de travail, par bols), Cuisine (une consigne à la fois, lue à
 // un mètre : la consigne en Atkinson très grand, minuteur et niveau en chiffres géants) et Range (boîtes
-// et frigo). Entre deux temps, un aplat d'encre plein écran ; ce qui sonne revient au premier plan sur un
+// et frigo). Entre deux temps, un aplat d’encre plein écran ; ce qui sonne revient au premier plan sur un
 // aplat tomate (la seule urgence) ; la fin pose le cachet. Le planificateur ne change pas : parallélisme,
-// minuteurs, sous-étapes et mode à deux sont là, mais l'écran ne montre que ce qu'il faut faire
+// minuteurs, sous-étapes et mode à deux sont là, mais l’écran ne montre que ce qu’il faut faire
 // maintenant et ce qui sonne bientôt ; le reste est replié ou dans la vue détaillée.
 // Sur téléphone (ou ?vue=telephone), la vue couvre la navigation ; sombre pendant la cuisson.
-// Barre espace : le bouton principal de l'écran ([data-main]) ; flèche gauche : retour.
+// Barre espace : le bouton principal de l’écran ([data-main]) ; flèche gauche : retour.
 import Link from "next/link";
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
@@ -39,7 +39,7 @@ export interface SimpleProps {
   startedAt: string | null;
 }
 
-/** Fond de l'écran : papier, aplat d'encre (transitions, confirmation), aplat tomate (ça sonne). */
+/** Fond de l’écran : papier, aplat d’encre (transitions, confirmation), aplat tomate (ça sonne). */
 export type Tone = "paper" | "ink" | "hot";
 
 export function SimpleView(p: SimpleProps) {
@@ -83,7 +83,7 @@ export function SimpleView(p: SimpleProps) {
     if (fresh && !seen.has("duo")) {
       tone = "ink";
       body = <Interlude n={null} title="À deux" lines={[`${plan.recipes.map((r) => r.name).join(", ")}.`, `Chacun son fil, une consigne à la fois. Environ ${dur(plan.totalMin)} en tout.`]} art={<DuoArt />} qr={p.person ? null : p.qr} />;
-      bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("duo")}>C&apos;est parti</MainButton>;
+      bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("duo")}>C’est parti</MainButton>;
     } else return <SimpleDuo plan={plan} c={c} person={p.person} overlay={p.overlay} dark={dark} wake={wake} detail={detail} onEnd={() => setConfirming(true)} ringing={ringing} />;
   } else if (stage === "prep") {
     const fresh = prepBowls(plan, c.state).every((b) => !c.state.bowlsReady.has(b.letter)) && c.state.prepDone.size === 0;
@@ -100,7 +100,7 @@ export function SimpleView(p: SimpleProps) {
           qr={p.qr}
         />
       );
-      bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("prep")}>C&apos;est parti</MainButton>;
+      bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("prep")}>C’est parti</MainButton>;
     } else {
       body = <PrepScreen id={p.id} plan={plan} c={c} />;
       bar = <PrepBar plan={plan} c={c} />;
@@ -112,7 +112,7 @@ export function SimpleView(p: SimpleProps) {
   } else if (stage === "cook") {
     if (plan.steps.every((s) => stepStatus(c.state, s.id) === "todo") && !seen.has("cook")) {
       tone = "ink";
-      body = <Interlude n={2} title="Cuisine" lines={[`${plan.steps.length} étapes, une à la fois. L'écran dit quoi faire et sonne quand c'est prêt.`, progressLine(plan, c)]} art={<StepIllu kind="sear" text="Poêle" size={120} live />} />;
+      body = <Interlude n={2} title="Cuisine" lines={[`${plan.steps.length} étapes, une à la fois. L’écran dit quoi faire et sonne quand c’est prêt.`, progressLine(plan, c)]} art={<StepIllu kind="sear" text="Poêle" size={120} live />} />;
       bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("cook")}>Première étape</MainButton>;
     } else {
       body = <CookScreen plan={plan} c={c} />;
@@ -154,7 +154,7 @@ function useSmall() {
   return small;
 }
 
-/** Clavier ou doigt : au clavier, l'écran change sans animation (session.css, [data-input="key"]). */
+/** Clavier ou doigt : au clavier, l’écran change sans animation (session.css, [data-input="key"]). */
 function useInputKind() {
   useEffect(() => {
     const root = document.documentElement;
@@ -224,7 +224,7 @@ export function Shell({ overlay, dark, tone = "paper", wakeOn, onWake, bar, chil
   );
 }
 
-/** Le bouton principal de l'écran (barre espace). `who` : à deux, le bouton de A ou de B (touches A et B). */
+/** Le bouton principal de l’écran (barre espace). `who` : à deux, le bouton de A ou de B (touches A et B). */
 export function MainButton({ children, icon, onClick, who, variant = "ink", className = "" }: { children: ReactNode; icon?: IconName; onClick: () => void; who?: Person; variant?: ButtonVariant; className?: string }) {
   return (
     <Button variant={variant} size="kitchen" block icon={icon} onClick={onClick} data-main={who ?? "1"} className={`min-h-[72px] text-[21px] ${className}`}>
@@ -295,7 +295,7 @@ function headSub(plan: SessionPlan, c: Controls, stage: Stage): string {
   return plan.recipes.map((r) => shortName(r.name)).join(" + ");
 }
 
-/** Le menu : vue détaillée, écran allumé, passer à la cuisine, terminer. Un <details> : clavier et lecteur d'écran sans script. */
+/** Le menu : vue détaillée, écran allumé, passer à la cuisine, terminer. Un <details> : clavier et lecteur d’écran sans script. */
 function Menu({ wake, detail, onEnd, toCook, evening }: { wake: Wake; detail: string; onEnd?: () => void; toCook?: () => void; evening: boolean }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const close = () => ref.current?.removeAttribute("open");
@@ -323,7 +323,7 @@ function Menu({ wake, detail, onEnd, toCook, evening }: { wake: Wake; detail: st
         {toCook && (
           <button type="button" className={item} onClick={() => (close(), toCook())}>
             <Icon name={evening ? "fridge" : "flame"} size="s" />
-            {evening ? "C'est au frigo, à demain" : "Passer à la cuisine"}
+            {evening ? "C’est au frigo, à demain" : "Passer à la cuisine"}
           </button>
         )}
         <div className="px-2 py-1">
@@ -340,7 +340,7 @@ function Menu({ wake, detail, onEnd, toCook, evening }: { wake: Wake; detail: st
   );
 }
 
-// ─── Écrans de transition : un aplat d'encre, de la typographie ───
+// ─── Écrans de transition : un aplat d’encre, de la typographie ───
 
 function Interlude({ n, title, lines, art, qr }: { n: 1 | 2 | 3 | null; title: string; lines: string[]; art: ReactNode; qr?: { svg: string; url: string } | null }) {
   return (
@@ -490,7 +490,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
         )}
         {during.length > 0 && (
           <p className="text-[17px] text-ink-2">
-            Plus tard, pendant la cuisson : {during.map((b) => `bol ${b.letter} (${bowlName(b)})`).join(", ")}. L&apos;écran le dira.
+            Plus tard, pendant la cuisson : {during.map((b) => `bol ${b.letter} (${bowlName(b)})`).join(", ")}. L’écran le dira.
           </p>
         )}
         {evening && plan.bowls.some((b) => !b.fridge) && <p className="text-[17px] text-ink-2">Demain : {plan.bowls.filter((b) => !b.fridge).map((b) => `bol ${b.letter}`).join(", ")}.</p>}
@@ -525,7 +525,7 @@ function PrepBar({ plan, c }: { plan: SessionPlan; c: Controls }) {
     );
   return (
     <MainButton icon={evening ? "fridge" : "flame"} onClick={() => c.setStatus(evening ? "fridge" : "cooking")}>
-      {evening ? "C'est au frigo, à demain" : "Passer à la cuisine"}
+      {evening ? "C’est au frigo, à demain" : "Passer à la cuisine"}
     </MainButton>
   );
 }
@@ -550,7 +550,7 @@ function CookScreen({ plan, c }: { plan: SessionPlan; c: Controls }) {
   );
 }
 
-/** L'étape à faire maintenant : la sous-étape en cours en très grand (sinon la première phrase), ses cadrans (minuteur, feu, four), ses bols. */
+/** L’étape à faire maintenant : la sous-étape en cours en très grand (sinon la première phrase), ses cadrans (minuteur, feu, four), ses bols. */
 export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; step: PlanStep }) {
   const { state, now, cookingStart } = c;
   const st = stepStatus(state, step.id);
@@ -579,7 +579,7 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
         <h1 className="sx-consigne">{consigne}</h1>
         {phase?.wait && <p className="text-lead text-ink-2">Attente : fais autre chose, ça sonnera.</p>}
         {!phase && rest && !step.phases?.length && <p className="text-lead">{rest}</p>}
-        {step.phases && step.phases.length > 1 && st === "todo" && <p className="text-lead text-ink-2">{step.phases.length} sous-étapes, l&apos;écran les enchaîne.</p>}
+        {step.phases && step.phases.length > 1 && st === "todo" && <p className="text-lead text-ink-2">{step.phases.length} sous-étapes, l’écran les enchaîne.</p>}
       </div>
       {step.phases && step.phases.length > 1 && st === "active" && <PhaseTrack step={step} n={n} c={c} />}
       <Dials plan={plan} c={c} step={step} level={phase?.hobLevel ?? null} />
@@ -653,7 +653,7 @@ function Dial({ label, children, foot }: { label: ReactNode; children: ReactNode
   );
 }
 
-/** Les cadrans de l'étape, lus à un mètre : minuteur (ou durée), feu et niveau, four. */
+/** Les cadrans de l’étape, lus à un mètre : minuteur (ou durée), feu et niveau, four. */
 function Dials({ plan, c, step, level }: { plan: SessionPlan; c: Controls; step: PlanStep; level: number | null }) {
   const { state, now } = c;
   const st = stepStatus(state, step.id);
@@ -714,7 +714,7 @@ function Dials({ plan, c, step, level }: { plan: SessionPlan; c: Controls; step:
 
 const phase = (step: PlanStep, n: number | null) => (n != null ? step.phases?.[n] : undefined);
 
-/** Les 9 crans de l'induction, ceux du niveau en encre. */
+/** Les 9 crans de l’induction, ceux du niveau en encre. */
 function LevelBars({ level }: { level: number }) {
   const lv = Math.max(0, Math.min(9, Math.round(level)));
   return (
@@ -728,7 +728,7 @@ function LevelBars({ level }: { level: number }) {
 
 const fmtMin = (m: number) => (m < 1 ? `${Math.round(m * 60)} s` : `${Number.isInteger(m) ? m : m.toFixed(1).replace(".", ",")} min`);
 
-/** Ce qui sonne bientôt (minuteurs hors de l'étape montrée) et ce qui tourne en fond sans minuteur. */
+/** Ce qui sonne bientôt (minuteurs hors de l’étape montrée) et ce qui tourne en fond sans minuteur. */
 export function Soon({ plan, c, exclude, person }: { plan: SessionPlan; c: Controls; exclude: string | null; person?: Person }) {
   const mine = (stepId: string | null) => !person || (plan.steps.find((s) => s.id === stepId)?.person ?? "A") === person;
   const timers = soonTimers(c.timers, c.now, exclude).filter((t) => mine(t.stepId));
@@ -825,17 +825,17 @@ function CookBar({ plan, c }: { plan: SessionPlan; c: Controls }) {
   const last = !c.upcoming && !more && plan.steps.every((s) => s.id === focus.id || stepStatus(state, s.id) === "done");
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-      <Button size="kitchen" variant="secondary" onClick={c.back} aria-label="Retour à la consigne d'avant (flèche gauche)" title="Retour (flèche gauche)" className="min-h-[72px] w-[72px] !px-0">
+      <Button size="kitchen" variant="secondary" onClick={c.back} aria-label="Retour à la consigne d’avant (flèche gauche)" title="Retour (flèche gauche)" className="min-h-[72px] w-[72px] !px-0">
         <Icon name="chev" size="l" className="rotate-180" />
       </Button>
       <MainButton icon={st === "todo" ? "play" : "check"} onClick={c.next}>
-        {st === "todo" ? "Commencer" : more ? "Suivant" : auto ? `Suivant · minuteur ${timerMinutes(focus)} min` : last ? "C'est cuit" : "Suivant"}
+        {st === "todo" ? "Commencer" : more ? "Suivant" : auto ? `Suivant · minuteur ${timerMinutes(focus)} min` : last ? "C’est cuit" : "Suivant"}
       </MainButton>
     </div>
   );
 }
 
-// ─── Ça sonne : l'étape revient au premier plan, sur un aplat tomate ───
+// ─── Ça sonne : l’étape revient au premier plan, sur un aplat tomate ───
 
 export const personOf = (plan: SessionPlan, t: TimerState): Person | null => {
   const s = t.stepId ? plan.steps.find((x) => x.id === t.stepId) : undefined;
@@ -890,7 +890,7 @@ export function RingBar({ plan, c, t, who }: { plan: SessionPlan; c: Controls; t
   const after = t.phase != null && step?.phases?.[t.phase]?.wait;
   return (
     <MainButton icon="check" who={who} onClick={() => c.stopTimer(t)}>
-      {after ? "C'est parti" : "Arrêter, sur tous les écrans"}
+      {after ? "C’est parti" : "Arrêter, sur tous les écrans"}
     </MainButton>
   );
 }
@@ -985,7 +985,7 @@ function Fridge({ plan, c, choice }: { plan: SessionPlan; c: Controls; choice: D
       <div className="grid content-start gap-4 md:col-span-5">
         <p className="label text-ink-2">
           <Icon name="moonset" size="s" className="mr-2 inline align-[-3px]" />
-          Prep d&apos;hier terminée
+          Prep d’hier terminée
         </p>
         <h1 className="text-h1">
           {inFridge.length} bol{inFridge.length > 1 ? "s" : ""} au frigo

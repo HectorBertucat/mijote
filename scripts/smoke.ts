@@ -124,7 +124,7 @@ async function main() {
     await page("/recettes", undefined, /Léa/);
     await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
     // Fin de session : la marmite pesée part en boîtes, au frigo et au congélo.
-    await page("/frigo", undefined, /Aucune boîte/);
+    await page("/frigo", undefined, /Le frigo est vide/);
     await page("/recettes/butter-chicken-express", undefined, /En boîtes/);
     const done = createSession(db, { slugs: ["butter-chicken-express"], mode: "solo" });
     addEvent(db, done, { kind: "note", payload: { status: "done" } });

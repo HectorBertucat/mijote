@@ -1,9 +1,9 @@
 "use client";
 
 // Session à deux (DA « Session à deux ») : un fil par personne, A et B, en deux colonnes qui
-// défilent chacune de leur côté, avec l'élément en cours en grand et son « Fait », les relais
+// défilent chacune de leur côté, avec l’élément en cours en grand et son « Fait », les relais
 // (qui libère quoi), puis ce qui vient. À droite : un QR par personne, les minuteurs, les foyers
-// et le four, les bols. Sur le téléphone, la vue simple (SimpleDuo.tsx) montre le fil d'une personne.
+// et le four, les bols. Sur le téléphone, la vue simple (SimpleDuo.tsx) montre le fil d’une personne.
 // Tout passe par le même journal et la même synchro SSE que la vue seule.
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -232,7 +232,7 @@ function ItemFocus({ plan, c, item, person, big }: { plan: SessionPlan; c: Contr
   return item.type === "step" ? <NowCard plan={plan} c={c} step={item.step} size={big ? "lg" : "md"} actions={actions ?? <></>} /> : <PrepNow plan={plan} c={c} task={item.task} big={big} actions={actions} />;
 }
 
-/** Un geste de prep en cours, au format de l'étape en cours (.now). */
+/** Un geste de prep en cours, au format de l’étape en cours (.now). */
 function PrepNow({ plan, c, task, big, actions }: { plan: SessionPlan; c: Controls; task: PrepTask; big?: boolean; actions?: React.ReactNode }) {
   const planned = c.cookingStart + (task.startMin ?? 0) * 60000;
   const slug = task.recipeSlug ?? bowlOf(plan, task.bowls?.[0] ?? "")?.recipeSlug ?? task.items[0]?.recipeSlug ?? null;

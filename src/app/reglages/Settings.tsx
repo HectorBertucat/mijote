@@ -1,4 +1,4 @@
-// Réglages de l'instance : un document à sections séparées par des filets (le foyer, la cuisine, les courses).
+// Réglages de l’instance : un document à sections séparées par des filets (le foyer, la cuisine, les courses).
 // La mise en route (/bienvenue) pose les mêmes questions une par une (src/app/bienvenue/Onboarding.tsx).
 import { HomeForm } from "@/components/reglages/HomeForm";
 import { Household } from "@/components/reglages/Household";

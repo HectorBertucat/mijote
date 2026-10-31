@@ -1,7 +1,7 @@
 "use client";
 
 // Phase 1, la prep (DA « Session · prep ») : gestes regroupés à cocher (Check kitchen), bols
-// lettrés aux couleurs de la recette avec l'étape qu'ils servent et le produit commandé,
+// lettrés aux couleurs de la recette avec l’étape qu’ils servent et le produit commandé,
 // progression. Prep la veille : ce qui se fait ce soir, ce qui attend demain ; « au frigo ».
 import type { PlanBowl, PrepTask, SessionPlan } from "@/lib/session/planner";
 import { Alert, Button, Check, Icon, Progress } from "@/components/ui";
@@ -20,7 +20,7 @@ export function prepScope(plan: SessionPlan, c: Controls) {
   const tasks = evening ? plan.prep.tasks.filter((t) => t.eve) : resumed ? plan.prep.tasks.filter((t) => !t.eve) : plan.prep.tasks;
   const later = evening ? plan.prep.tasks.filter((t) => !t.eve) : [];
   const doneEve = resumed ? plan.prep.tasks.filter((t) => t.eve) : [];
-  // Seul : un bol qu'un geste finit pendant la cuisson n'est pas attendu avant (il se coche dans le fil).
+  // Seul : un bol qu’un geste finit pendant la cuisson n’est pas attendu avant (il se coche dans le fil).
   const bowls = evening ? plan.bowls.filter((b) => b.fridge) : plan.bowls.filter((b) => !b.during?.length);
   const laterBowls = evening ? plan.bowls.filter((b) => !b.fridge) : [];
   const duringBowls = evening ? [] : plan.bowls.filter((b) => b.during?.length);
@@ -97,7 +97,7 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
       <details className="group rounded-[14px] border border-line bg-surface px-4 py-3 text-[14px]">
         <summary className="flex cursor-pointer list-none items-center gap-2 font-bold [&::-webkit-details-marker]:hidden">
           <Icon name="book" size="s" />
-          Prep des fiches d&apos;origine
+          Prep des fiches d’origine
           <Icon name="chev" size="s" className="ml-auto transition-transform group-open:rotate-90" />
         </summary>
         <div className="mt-3 grid gap-3">
@@ -117,7 +117,7 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
       <div className="flex flex-wrap items-center gap-3">
         {p.evening ? (
           <Button variant="primary" size="kitchen" icon="fridge" onClick={() => c.setStatus("fridge")}>
-            C&apos;est au frigo · on reprend demain
+            C’est au frigo · on reprend demain
           </Button>
         ) : (
           <Button variant="primary" size="kitchen" icon="flame" onClick={() => c.setStatus("cooking")}>
@@ -132,7 +132,7 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
   );
 }
 
-/** Seul : les bols qu'un geste finit pendant la cuisson, quand on attend (étape du fil). */
+/** Seul : les bols qu’un geste finit pendant la cuisson, quand on attend (étape du fil). */
 export function DuringBowls({ plan }: { plan: SessionPlan }) {
   const list = plan.bowls.filter((b) => b.during?.length);
   return (
@@ -227,7 +227,7 @@ export function PrepGesture({ plan, c, t, big }: { plan: SessionPlan; c: Control
   );
 }
 
-/** Un bol (DA `.prepbowl`) : lettre en grand, contenu, l'étape qu'il sert, le produit commandé, prêt / à faire. */
+/** Un bol (DA `.prepbowl`) : lettre en grand, contenu, l’étape qu’il sert, le produit commandé, prêt / à faire. */
 export function PrepBowlRow({ plan, c, b, fridge }: { plan: SessionPlan; c: Controls; b: PlanBowl; fridge?: boolean }) {
   const r = c.state.bowlsReady.has(b.letter);
   const used = b.usedBy ? plan.steps.find((s) => s.id === b.usedBy!.stepId) : null;

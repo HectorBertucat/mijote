@@ -1,8 +1,8 @@
 "use client";
 
-// « J'ai cuisiné » : décompte les grammes de la fiche dans le placard (les lots les plus anciens d'abord).
+// « J’ai cuisiné » : décompte les grammes de la fiche dans le placard (les lots les plus anciens d’abord).
 // CookedButton : le bouton de confirmation (chargement puis fait, message en toast).
-// CookAction : le bouton de l'en-tête de la fiche, qui ouvre une feuille avec ce qui sera décompté.
+// CookAction : le bouton de l’en-tête de la fiche, qui ouvre une feuille avec ce qui sera décompté.
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { cooked } from "@/app/recettes/[slug]/cook-actions";
@@ -30,7 +30,7 @@ export function CookedButton({ recipeId, slug, block = false, onDone }: { recipe
         icon="check"
         block={block}
         state={pending ? "loading" : msg?.ok ? "done" : "idle"}
-        loadingLabel="J'enregistre…"
+        loadingLabel="J’enregistre…"
         doneLabel="Noté"
         onClick={() =>
           start(async () => {
@@ -40,7 +40,7 @@ export function CookedButton({ recipeId, slug, block = false, onDone }: { recipe
           })
         }
       >
-        J&apos;ai cuisiné
+        J’ai cuisiné
       </Button>
       {msg && !msg.ok && (
         <Alert tone="ko" role="alert" className="col-span-full">
@@ -52,7 +52,7 @@ export function CookedButton({ recipeId, slug, block = false, onDone }: { recipe
   );
 }
 
-/** Bouton « J'ai cuisiné » de l'en-tête : ouvre la feuille qui montre ce qui sera décompté, puis confirme. */
+/** Bouton « J’ai cuisiné » de l’en-tête : ouvre la feuille qui montre ce qui sera décompté, puis confirme. */
 export function CookAction({ recipeId, slug, plan, block = false }: { recipeId: string; slug: string; plan: PlannedUsage[]; block?: boolean }) {
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; n: number } | null>(null);
@@ -61,12 +61,12 @@ export function CookAction({ recipeId, slug, plan, block = false }: { recipeId: 
   return (
     <>
       <Button variant="primary" icon="check" block={block} onClick={() => setOpen(true)} aria-haspopup="dialog">
-        J&apos;ai cuisiné
+        J’ai cuisiné
       </Button>
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title="J'ai cuisiné cette recette"
+        title="J’ai cuisiné cette recette"
         footer={
           plan.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
@@ -92,7 +92,7 @@ export function CookAction({ recipeId, slug, plan, block = false }: { recipeId: 
         {plan.length > 0 ? (
           <>
             <p className="text-[15px] text-ink-2">
-              Décompte les grammes de la fiche dans le placard ({fromLots.length} lot{fromLots.length > 1 ? "s" : ""}), les plus anciens d&apos;abord. Le reste est compté au prix du catalogue.
+              Décompte les grammes de la fiche dans le placard ({fromLots.length} lot{fromLots.length > 1 ? "s" : ""}), les plus anciens d’abord. Le reste est compté au prix du catalogue.
             </p>
             <List>
               {plan.map((p, k) => (
@@ -111,7 +111,7 @@ export function CookAction({ recipeId, slug, plan, block = false }: { recipeId: 
             </List>
           </>
         ) : (
-          <Alert tone="info" title="Rien à décompter pour l'instant">
+          <Alert tone="info" title="Rien à décompter pour l’instant">
             Fais une liste de courses avec cette recette : le placard saura ce qui a été acheté pour elle.
           </Alert>
         )}

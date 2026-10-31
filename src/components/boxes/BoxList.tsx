@@ -1,9 +1,9 @@
 "use client";
 
-// Les boîtes d'un lieu (frigo ou congélo), la plus pressée d'abord : une ligne par boîte (les boîtes
+// Les boîtes d’un lieu (frigo ou congélo), la plus pressée d’abord : une ligne par boîte (les boîtes
 // pareilles, même plat, même mangeur, même date, sont regroupées « ×3 »), la date limite en grand à
-// droite, « Je la mange » d'un geste (au journal de Santé du profil de l'appareil) ; passer au congélo
-// ou en sortir, jetée (deux gestes) en retrait. Le bouton plein d'encre : la plus pressée du frigo seulement. Pas de pastilles : la date et un mot disent l'urgence.
+// droite, « Je la mange » d’un geste (au journal de Santé du profil de l’appareil) ; passer au congélo
+// ou en sortir, jetée (deux gestes) en retrait. Le bouton plein d’encre : la plus pressée du frigo seulement. Pas de pastilles : la date et un mot disent l’urgence.
 import { useOptimistic, useState, useTransition, type ReactNode } from "react";
 import { Button } from "@/components/ui";
 import { eatBoxAction, moveBoxAction, throwBoxAction } from "@/app/frigo/actions";
@@ -16,7 +16,7 @@ const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:0
 const day = (d: string) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
 const MEAL = { lunch: "midi", dinner: "soir" } as const;
 
-/** La date limite : un mot d'étiquette et une date en grand. Proche : le jour de la semaine ; loin : le jour et le mois. */
+/** La date limite : un mot d’étiquette et une date en grand. Proche : le jour de la semaine ; loin : le jour et le mois. */
 function limitOf(b: StockBox, today: string): { label: string; big: string; tone: string } {
   if (b.freshness === "past") return { label: "À jeter depuis", big: fmt(b.limit, { day: "numeric", month: "short" }), tone: "text-ko-ink" };
   if (b.limit === today) return { label: "À manger", big: "aujourd’hui", tone: "text-warn-ink" };

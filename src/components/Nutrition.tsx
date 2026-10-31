@@ -1,4 +1,4 @@
-// Bloc nutrition d'une fiche : la part de chacun (unités tirées de sa cible), comparée à son repère,
+// Bloc nutrition d’une fiche : la part de chacun (unités tirées de sa cible), comparée à son repère,
 // ce qui ne se mange pas (paquet entamé, parure, gras de la poêle), et ce qui pèse le
 // plus dans la part (pour savoir quoi ajuster). Calcul ici (serveur), affichage dans NutritionView.
 import { DEFAULT_PORTION_UNITS, eatenOf, hasYield, round, scale, type Eaten, type IngredientYield, type Macros } from "@/lib/nutrition/compute";
@@ -21,7 +21,7 @@ const approx = (x: number) => (x < 10 ? `~${Math.round(x)} g` : `~${Math.round(x
 function yieldText(item: string, e: Eaten, isOil: boolean): string {
   const parts: string[] = [];
   if (e.usedG < e.inG - 0.5) parts.push(`${g(e.usedG)} utilisés sur ${g(e.inG)}`);
-  if (e.trimG >= 0.5) parts.push(`${parts.length ? "" : `${g(e.usedG)} dont `}${approx(e.trimG)} d'os, de peau ou de gras retirés`);
+  if (e.trimG >= 0.5) parts.push(`${parts.length ? "" : `${g(e.usedG)} dont `}${approx(e.trimG)} d’os, de peau ou de gras retirés`);
   if (e.panFatG >= 0.5) {
     const what = isOil ? `restent dans la poêle` : `de gras restent dans la poêle ou sont jetés`;
     parts.push(`${parts.length ? "" : `${g(e.usedG)} dont `}${approx(e.panFatG)} ${what}`);
@@ -34,12 +34,12 @@ export type NutritionData = {
   portions: Record<string, Macros>;
   /** Contribution de chaque ingrédient à une unité (kcal, protéines) : × unités de la part affichée. */
   contrib: { item: string; kcal: number; protein: number }[];
-  /** Ce qui est mis dans la recette mais pas mangé, et les kcal retirées d'une unité. */
+  /** Ce qui est mis dans la recette mais pas mangé, et les kcal retirées d’une unité. */
   notEaten: { key: string; text: string; note?: string | null; kcalUnit: number }[];
   coverage: number | null;
 };
 
-/** Les mangeurs d'une fiche et leur part de cette recette. */
+/** Les mangeurs d’une fiche et leur part de cette recette. */
 export function nutritionPeople(eaters: Eater[], perUnit: Macros): NutritionPerson[] {
   return eaters.map((e) => ({ id: e.id, name: e.name, units: portionUnits(e, { kcalUnit: perUnit.kcal, proteinUnit: perUnit.protein }), ref: e.ref }));
 }

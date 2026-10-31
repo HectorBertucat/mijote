@@ -1,4 +1,4 @@
-// Les trois gros chiffres de la bande de tête d'une fiche : temps actif, kcal de la part du profil, prix de la
+// Les trois gros chiffres de la bande de tête d’une fiche : temps actif, kcal de la part du profil, prix de la
 // part. Chiffres Archivo serrés, filets verticaux entre eux, le repère en étiquette dessous. Sans état.
 import type { ReactNode } from "react";
 

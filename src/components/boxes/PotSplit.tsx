@@ -2,7 +2,7 @@
 
 // La marmite pesée → les grammes par boîte de chacun (src/lib/boxes/core.ts, calcul pur partagé avec
 // le serveur). En fin de session, un bouton range les boîtes au frigo et au congélo ; sur la fiche,
-// c'est seulement une calculette.
+// c’est seulement une calculette.
 import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { Alert, Button, Field, Input } from "@/components/ui";
@@ -86,7 +86,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
         ))}
       </ul>
       {!weighed && <p className="text-small text-ink-2">Pèse {model.side ? `le plat et le ${sideName}` : "la marmite"} pour avoir les grammes de chaque boîte.</p>}
-      {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids du {sideName}, il se partage à l&apos;œil, dans la même proportion.</p>}
+      {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids du {sideName}, il se partage à l’œil, dans la même proportion.</p>}
       {split.fill < 0.97 && (
         <Alert tone="warn" title="Moins que prévu">
           La marmite ne couvre pas les {planned} repas prévus : chaque boîte est plus petite que la part visée.

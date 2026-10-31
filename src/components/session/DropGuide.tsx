@@ -1,6 +1,6 @@
-// Repère visuel pour saisir à la poêle (inox) : la poêle est prête quand quelques gouttes d'eau perlent et
-// glissent en dansant (effet Leidenfrost, vers 190-200 °C), pas quand elles grésillent et s'évaporent.
-// S'affiche au début d'une saisie à la poêle inox (avant la première sous-étape finie). Pas un défi : un repère.
+// Repère visuel pour saisir à la poêle (inox) : la poêle est prête quand quelques gouttes d’eau perlent et
+// glissent en dansant (effet Leidenfrost, vers 190-200 °C), pas quand elles grésillent et s’évaporent.
+// S’affiche au début d’une saisie à la poêle inox (avant la première sous-étape finie). Pas un défi : un repère.
 import type { PlanStep } from "@/lib/session/planner";
 
 /** Saisie à la poêle inox, au tout début (sans sous-étape, ou la première encore en cours). */
@@ -41,11 +41,11 @@ export function DropGuide({ onInk = false }: { onInk?: boolean }) {
           </svg>
           <figcaption className="text-small leading-tight text-ink-2">
             <b className="block text-ink">Elles perlent et dansent</b>
-            c&apos;est prêt : baisse d&apos;un cran
+            c’est prêt : baisse d’un cran
           </figcaption>
         </figure>
       </div>
-      <p className="text-small text-ink-2">Poêle à sec, niveau 6 à 7, 2 à 3 min. Quand elles dansent : un cran de moins, l&apos;huile, et la viande dès que l&apos;huile ondule. Ensuite n&apos;y touche plus : elle se décolle seule quand la croûte est faite.</p>
+      <p className="text-small text-ink-2">Poêle à sec, niveau 6 à 7, 2 à 3 min. Quand elles dansent : un cran de moins, l’huile, et la viande dès que l’huile ondule. Ensuite n’y touche plus : elle se décolle seule quand la croûte est faite.</p>
     </div>
   );
 }
