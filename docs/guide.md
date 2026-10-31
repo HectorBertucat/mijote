@@ -2,6 +2,10 @@
 
 Mijote suit une semaine de batch cooking : on choisit, on achète, on cuisine en une session, on mange juste toute la semaine.
 
+## L'accueil
+
+Le mot-symbole mène à l'accueil : la semaine en chiffres (plats, repas, temps de session et son jour), et le bouton bleu de ce qu'il y a à faire maintenant (choisir les plats, faire la liste, faire les courses, cuisiner, reprendre une session). À côté : tes repas du jour, les boîtes du frigo à manger en premier, l'état des courses ; en bas, la période jour par jour.
+
 ## 1. Mise en route (une fois)
 
 À la première ouverture, `/bienvenue` demande :
