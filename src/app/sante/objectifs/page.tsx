@@ -1,5 +1,7 @@
 import { Section } from "@/components/sante/carnet";
 import { Coach, type CoachView } from "@/components/sante/Coach";
+import { demoEnabled } from "@/lib/demo/core";
+import { DemoNotice } from "@/components/demo/DemoNotice";
 import { ActivityCard, GoalCard } from "@/components/sante/Objectives";
 import { db } from "@/lib/db/client";
 import { activePerson } from "@/lib/health/active";
@@ -42,7 +44,13 @@ export default async function Objectifs() {
         className="lg:col-span-7 lg:pr-6"
         aside={<span className="label text-ink-2">Chaque proposition est vérifiée</span>}
       >
-        <Coach personId={person.id} personName={person.name} messages={messages} starters={STARTERS} />
+        {demoEnabled() ? (
+          <DemoNotice title="Le coach a besoin de l’IA">
+            Chez toi, il propose des objectifs à partir de ta tendance et de tes contraintes ; le code vérifie le rythme, les protéines et la cible. Pas d’IA dans la démo.
+          </DemoNotice>
+        ) : (
+          <Coach personId={person.id} personName={person.name} messages={messages} starters={STARTERS} />
+        )}
       </Section>
       <div className="grid gap-12 lg:col-span-5">
         <GoalCard g={g} sessions={sessions} monday={currentMonday()} today={todayParis()} coachLink={false} />

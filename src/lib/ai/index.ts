@@ -10,6 +10,10 @@ import { aiCalls } from "@/lib/db/schema";
 import { assertUnderCap } from "./budget";
 import { MOCK_NOTE } from "./durations";
 import { costUsd, MODELS, type ModelId, type Usage } from "./pricing";
+import { demoEnabled } from "@/lib/demo/core";
+
+/** En démo, aucun appel à l'IA, même avec une clé : le message montré à qui essaie. */
+export const DEMO_NO_AI = "Pas d'IA dans la démo : installe Mijote avec ta clé pour l'essayer.";
 
 export { AiCapReachedError, assertUnderCap, spentThisMonth, monthlyCapUsd } from "./budget";
 export { expectedDurationMs } from "./durations";
@@ -54,11 +58,12 @@ export function setAiClient(c: AiClient | null) {
 
 /** Faux client de dev (MIJOTE_AI_MOCK=1), jamais en production. */
 export function aiMockEnabled() {
-  return process.env.MIJOTE_AI_MOCK === "1" && process.env.NODE_ENV !== "production";
+  return process.env.MIJOTE_AI_MOCK === "1" && process.env.NODE_ENV !== "production" && !demoEnabled();
 }
 
 function getClient(): AiClient {
   if (override) return override;
+  if (demoEnabled()) throw new Error(DEMO_NO_AI);
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY manquante : la mettre dans .env.local (dev) ou dans le fichier .env de Docker.");
   }
@@ -254,4 +259,4 @@ export async function chat(call: ChatCall): Promise<ChatResult> {
 }
 
 /** L'assistant n'existe que si l'IA est configurée (clé, ou faux client de dev). */
-export const aiEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY) || aiMockEnabled();
+export const aiEnabled = () => !demoEnabled() && (Boolean(process.env.ANTHROPIC_API_KEY) || aiMockEnabled());
