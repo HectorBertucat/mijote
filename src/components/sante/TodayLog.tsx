@@ -7,7 +7,8 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, Card, Check, Field, Gauge, Icon, Input, Pill, RecipeTile, Segmented, Sheet, Stepper, Tabs, Textarea } from "@/components/ui";
+import { Button, buttonClass, Check, Field, Input, RecipeTile, Segmented, Sheet, Stepper, Tabs, Textarea } from "@/components/ui";
+import { HowCalc, NB, Note, qty, Section, Verdict } from "./carnet";
 import { useToast } from "@/components/cart/Toast";
 import { changeUnits, eatFree, eatRecipe, eatTemplate, estimateFree, markComplete, removeEntry } from "@/app/sante/actions";
 import type { MealEstimate } from "@/lib/health/estimate";
@@ -68,50 +69,54 @@ export function TodayLog(p: TodayProps) {
   const todo = p.planned.length + p.habits.filter((h) => h.suggested).length;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-      <Card pad="md" className="grid gap-4 sm:grid-cols-2">
-        <Gauge
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
+      <section aria-label="Mangé aujourd’hui" className="grid grid-cols-2 gap-6 lg:grid-cols-12">
+        <Eaten
+          className="lg:col-span-5"
           label="Calories"
           value={p.totals.kcal}
           unit="kcal"
-          max={Math.max((t?.kcal ?? 2500) * 1.3, p.totals.kcal)}
-          target={t ? [t.kcal - 150, t.kcal + 150] : undefined}
+          target={t?.kcal ?? null}
           tone={kcalTone}
-          left={left == null ? "pas de cible" : left >= 0 ? `reste ${Math.round(left)} kcal` : `${Math.round(-left)} kcal au-dessus`}
-          right={t ? `cible ${t.kcal}` : undefined}
+          word={kcalTone === "ok" ? "dans la cible" : kcalTone === "ko" ? "au-dessus" : null}
+          sub={left == null ? "pas encore de cible" : left >= 0 ? `reste ${qty(Math.round(left), "kcal")}` : `${qty(Math.round(-left), "kcal")} au-dessus`}
         />
-        <Gauge
+        <Eaten
+          className="border-l border-line pl-6 lg:col-span-5 lg:col-start-7"
           label="Protéines"
-          value={p.totals.proteinG}
+          value={Math.round(p.totals.proteinG)}
           unit="g"
-          max={Math.max((t?.proteinG ?? 120) * 1.3, p.totals.proteinG)}
-          target={t ? [t.proteinG * 0.9] : undefined}
+          target={t?.proteinG ?? null}
           tone={protTone}
-          left={t ? (p.totals.proteinG >= t.proteinG ? "cible atteinte" : `reste ${Math.round(t.proteinG - p.totals.proteinG)} g`) : undefined}
-          right={t ? `cible ${t.proteinG} g` : undefined}
+          word={protTone === "ok" ? "atteint" : null}
+          sub={t ? (p.totals.proteinG >= t.proteinG ? "cible atteinte" : `reste ${qty(Math.round(t.proteinG - p.totals.proteinG), "g")}`) : undefined}
         />
-      </Card>
+      </section>
 
       {(p.planned.length > 0 || p.habits.length > 0) && (
-        <section className="grid gap-2.5" aria-labelledby="acocher">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 id="acocher" className="text-[18px] font-bold">
-              À cocher {todo > 0 && <span className="num text-faint">{todo}</span>}
-            </h2>
-            {p.hasHabits && (
-              <Link href="/sante/habitudes" className="text-[14px] font-semibold text-accent hover:underline">
+        <Section
+          title={
+            <>
+              À cocher {todo > 0 && <span className="num-tight text-ink-3">{todo}</span>}
+            </>
+          }
+          id="acocher"
+          aside={
+            p.hasHabits && (
+              <Link href="/sante/habitudes" className="text-small font-bold text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
                 Mes habitudes
               </Link>
-            )}
-          </div>
-          <Card className="divide-y divide-line">
+            )
+          }
+        >
+          <ul className="reveal grid border-t border-line">
             {p.planned.map((m) => (
-              <div key={`${m.meal}-${m.recipeId}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <li key={`${m.meal}-${m.recipeId}`} className="flex flex-wrap items-center gap-4 border-b border-line py-4">
                 <RecipeTile color={m.color} name={m.name} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold">{m.name}</div>
-                  <div className="text-[13px] tabular-nums text-ink-2">
-                    {MEAL_LABEL[m.meal]} · {m.place === "office" ? "au bureau" : "maison"} · {fr(m.units)} unités{m.kcal != null && ` · ${Math.round(m.kcal)} kcal · ${Math.round(m.proteinG ?? 0)} g`}
+                  <div className="font-bold">{m.name}</div>
+                  <div className="text-small tabular-nums text-ink-2">
+                    {MEAL_LABEL[m.meal]} · {m.place === "office" ? "au bureau" : "maison"} · {fr(m.units)}{NB}unités{m.kcal != null && ` · ${qty(Math.round(m.kcal), "kcal")} · ${qty(Math.round(m.proteinG ?? 0), "g")}`}
                   </div>
                 </div>
                 <div className="flex basis-full justify-end gap-2 sm:basis-auto">
@@ -122,91 +127,90 @@ export function TodayLog(p: TodayProps) {
                     Mangé
                   </Button>
                 </div>
-              </div>
+              </li>
             ))}
             {p.habits.map((h) => (
-              <div key={h.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                <span className="grid size-9 place-items-center rounded-[10px] bg-surface-2 text-ink-2">
-                  <Icon name="star" size="s" />
-                </span>
+              <li key={h.id} className="flex flex-wrap items-center gap-4 border-b border-line py-4">
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold">{h.label}</div>
-                  <div className="text-[13px] tabular-nums text-ink-2">
-                    {MEAL_LABEL[h.meal]} · {h.kcal} kcal · {fr(h.proteinG)} g{!h.suggested && " · pas prévu aujourd'hui"}
+                  <div className="font-bold">{h.label}</div>
+                  <div className="text-small tabular-nums text-ink-2">
+                    {MEAL_LABEL[h.meal]} · {qty(h.kcal, "kcal")} · {fr(h.proteinG)}{NB}g{!h.suggested && " · pas prévu aujourd’hui"}
                   </div>
                 </div>
                 <Button variant={h.suggested ? "primary" : "secondary"} icon="check" state={busy === h.id ? "loading" : "idle"} disabled={pending} onClick={() => run(h.id, () => eatTemplate(p.personId, p.date, h.id))}>
                   Pris
                 </Button>
-              </div>
+              </li>
             ))}
-          </Card>
-        </section>
+          </ul>
+        </Section>
       )}
 
       {!p.hasHabits && (
-        <Card flat pad="md" className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[14px] text-ink-2">Un shaker ou un petit-déjeuner chaque matin ? Note-le une fois en habitude : il sera proposé ici d&apos;office, et ta part en tiendra compte.</p>
-          <Link href="/sante/habitudes" className="text-[14px] font-semibold text-accent hover:underline">
-            Noter mes habitudes
-          </Link>
-        </Card>
+        <Note
+          title="Un shaker ou un petit-déjeuner chaque matin ?"
+          action={
+            <Link href="/sante/habitudes" className={buttonClass({ size: "sm" })}>
+              Noter mes habitudes
+            </Link>
+          }
+        >
+          Note-le une fois en habitude : il sera proposé ici d’office, et ta part en tiendra compte.
+        </Note>
       )}
 
-      <section className="grid gap-2.5" aria-labelledby="journal">
-        <div className="flex items-center justify-between gap-2">
-          <h2 id="journal" className="text-[18px] font-bold">
-            Journal
-          </h2>
+      <Section
+        title="Journal"
+        id="journal"
+        aside={
           <Button icon="plus" onClick={() => setAdding(mealNow())}>
             Ajouter
           </Button>
-        </div>
+        }
+      >
         {p.entries.length === 0 ? (
-          <Card flat pad="md">
-            <p className="text-ink-2">Rien de noté pour l'instant. Coche les repas prévus ci-dessus, ou ajoute ce que tu as mangé ailleurs.</p>
-          </Card>
+          <p className="max-w-[52ch] text-body text-ink-2">Rien de noté pour l’instant. Coche les repas prévus, ou ajoute ce que tu as mangé ailleurs.</p>
         ) : (
-          <Card className="divide-y divide-line">
+          <div className="grid gap-8">
             {MEALS.filter((m) => p.entries.some((e) => e.meal === m)).map((m) => (
-              <div key={m} className="grid gap-1 px-4 py-3">
-                <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-faint">{MEAL_LABEL[m]}</div>
-                {p.entries
-                  .filter((e) => e.meal === m)
-                  .map((e) => (
-                    <div key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1">
-                      {e.slug ? <RecipeTile color={p.colors[e.slug] ?? 1} name={e.label} size="sm" /> : null}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold">{e.label}</div>
-                        <div className="flex flex-wrap items-center gap-x-2 text-[13px] tabular-nums text-ink-2">
-                          {e.kcal} kcal · {fr(e.proteinG)} g de protéines
-                          {e.source === "ai" && (
-                            <Pill tone="idle" icon="sparkdraft">
-                              estimation
-                            </Pill>
-                          )}
+              <div key={m} className="grid gap-2">
+                <div className="label text-ink-2">{MEAL_LABEL[m]}</div>
+                <ul className="grid border-t border-line">
+                  {p.entries
+                    .filter((e) => e.meal === m)
+                    .map((e) => (
+                      <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line py-3">
+                        {e.slug ? <RecipeTile color={p.colors[e.slug] ?? 1} name={e.label} size="sm" /> : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold">{e.label}</div>
+                          <div className="flex flex-wrap items-center gap-x-3 text-small tabular-nums text-ink-2">
+                            {qty(e.kcal, "kcal")} · {fr(e.proteinG)}{NB}g de protéines
+                            {e.source === "ai" && <span className="label text-ink-3">estimation</span>}
+                          </div>
                         </div>
-                      </div>
-                      <div className={`flex items-center justify-end gap-1 ${e.units != null ? "basis-full sm:basis-auto" : ""}`}>
-                        {e.units != null && (
-                          <Stepper size="sm" value={e.units} min={0.5} max={20} step={0.5} unit="u." busy={busy === e.id} onChange={(u) => run(e.id, () => changeUnits(e.id, u))} decLabel="Une demi-unité de moins" incLabel="Une demi-unité de plus" />
-                        )}
-                        <Button variant="quiet" size="sm" iconOnly icon="trash" aria-label={`Retirer ${e.label}`} onClick={() => run(e.id + "x", () => removeEntry(e.id))} />
-                      </div>
-                    </div>
-                  ))}
+                        <div className={`flex items-center justify-end gap-1 ${e.units != null ? "basis-full sm:basis-auto" : ""}`}>
+                          {e.units != null && (
+                            <Stepper size="sm" value={e.units} min={0.5} max={20} step={0.5} unit="u." busy={busy === e.id} onChange={(u) => run(e.id, () => changeUnits(e.id, u))} decLabel="Une demi-unité de moins" incLabel="Une demi-unité de plus" />
+                          )}
+                          <Button variant="quiet" size="sm" iconOnly icon="trash" aria-label={`Retirer ${e.label}`} onClick={() => run(e.id + "x", () => removeEntry(e.id))} />
+                        </div>
+                      </li>
+                    ))}
+                </ul>
               </div>
             ))}
-          </Card>
+          </div>
         )}
-      </section>
+      </Section>
 
-      <Card pad="md" className="grid gap-1.5">
+      <div className="grid gap-2 border-t border-line-strong pt-4">
         <Check checked={p.complete} strike={false} disabled={pending} onChange={(e) => run("complete", () => markComplete(p.personId, p.date, e.currentTarget.checked))}>
-          <span className="font-semibold">Journée complète</span>
+          <span className="text-h3">Journée complète</span>
         </Check>
-        <p className="text-[13px] text-ink-2">Coche-la quand tout ce que tu as mangé est noté. Seules les journées complètes servent à mesurer ta dépense ; une journée oubliée ne compte pas comme zéro, elle est ignorée.</p>
-      </Card>
+        <HowCalc title="Pourquoi la cocher">
+          <p>Coche-la quand tout ce que tu as mangé est noté. Seules les journées complètes servent à mesurer ta dépense ; une journée oubliée ne compte pas comme zéro, elle est ignorée.</p>
+        </HowCalc>
+      </div>
 
       <AddSheet key={adding ?? "closed"} open={adding != null} onClose={() => setAdding(null)} initialMeal={adding ?? "lunch"} {...p} onRun={run} pending={pending} />
       {node}
@@ -261,10 +265,10 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
                 type="button"
                 disabled={pending}
                 onClick={() => onRun("recent" + x.label, () => eatFree(personId, date, meal, { ...x }), onClose)}
-                className="flex min-h-tap items-center justify-between gap-3 rounded-[12px] border border-line bg-surface px-3.5 py-2.5 text-left hover:border-line-strong"
+                className="flex min-h-tap items-center justify-between gap-3 rounded-[8px] border border-line bg-surface px-4 py-3 text-left hover:border-line-strong"
               >
                 <span className="font-semibold">{x.label}</span>
-                <span className="num whitespace-nowrap text-[13px] text-ink-2">
+                <span className="num whitespace-nowrap text-small text-ink-2">
                   {x.kcal} kcal · {fr(x.proteinG)} g
                 </span>
               </button>
@@ -278,10 +282,10 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
               {(id, d) => <Textarea id={id} aria-describedby={d} rows={2} value={text} onChange={(e) => setText(e.target.value)} />}
             </Field>
             <Button icon="sparkdraft" state={estimating ? "loading" : "idle"} loadingLabel="Estimation…" disabled={text.trim().length < 3} onClick={estimate}>
-              Estimer avec l'IA
+              Estimer avec l’IA
             </Button>
-            {err && <p className="text-[13px] text-ko-ink">{err}</p>}
-            {est && <p className="text-[13px] text-ink-2">{est.note}</p>}
+            {err && <p className="text-small text-ko-ink">{err}</p>}
+            {est && <p className="text-small text-ink-2">{est.note}</p>}
             <div className="grid grid-cols-[minmax(0,1fr)_88px_76px] items-end gap-2">
               <Field label="Nom">{(id) => <Input id={id} value={manual.label} onChange={(e) => setManual({ ...manual, label: e.target.value })} placeholder="Resto" />}</Field>
               <Field label="kcal">{(id) => <Input id={id} num inputMode="numeric" value={manual.kcal} onChange={(e) => setManual({ ...manual, kcal: e.target.value })} />}</Field>
@@ -315,7 +319,7 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
           <div className="grid gap-3">
             <Field label="Recette">
               {(id) => (
-                <select id={id} value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className="min-h-12 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[16px] text-ink">
+                <select id={id} value={recipeId} onChange={(e) => setRecipeId(e.target.value)} className="min-h-12 w-full rounded-[8px] border border-line-strong bg-surface px-4 text-[17px] text-ink">
                   {library.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.name}
@@ -327,7 +331,7 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
             <div className="flex items-center justify-between gap-3">
               <Stepper value={units} min={0.5} max={20} step={0.5} unit="unités" onChange={setUnits} />
               {r?.kcalUnit != null && (
-                <span className="num text-[14px] text-ink-2">
+                <span className="num text-small text-ink-2">
                   {Math.round(r.kcalUnit * units)} kcal · {Math.round((r.proteinUnit ?? 0) * units)} g
                 </span>
               )}
@@ -339,5 +343,30 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
         )}
       </div>
     </Sheet>
+  );
+}
+
+/** Ce qui est mangé contre la cible : le chiffre en grand, un trait d'encre qui avance, le verdict en mot. */
+function Eaten({ label, value, unit, target, tone, word, sub, className = "" }: { label: string; value: number; unit: string; target: number | null; tone?: "ok" | "ko"; word: string | null; sub?: string; className?: string }) {
+  const pct = target ? Math.min(100, (value / (target * 1.15)) * 100) : 0;
+  const mark = target ? (1 / 1.15) * 100 : null;
+  return (
+    <div className={`grid min-w-0 content-start gap-3 ${className}`}>
+      <span className="label text-ink-2">{label}</span>
+      <b className="num-tight text-num-xl whitespace-nowrap">
+        {Math.round(value).toLocaleString("fr-FR")}
+        <span className="ml-2 text-[0.3em] font-[650] text-ink-2 [font-stretch:100%]">{target ? `/ ${target.toLocaleString("fr-FR")}${NB}${unit}` : unit}</span>
+      </b>
+      {target != null && (
+        <span className="relative block h-1 bg-surface-2" aria-hidden>
+          <span className={`block h-full transition-[width] duration-[var(--dur-3)] ease-[var(--ease-out)] ${tone === "ko" ? "bg-ko" : "bg-ink"}`} style={{ width: `${pct}%` }} />
+          {mark != null && <span className="absolute -top-1 h-3 w-px bg-ink-2" style={{ left: `${mark}%` }} />}
+        </span>
+      )}
+      <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small text-ink-2">
+        {sub}
+        {word && tone && <Verdict tone={tone}>{word}</Verdict>}
+      </span>
+    </div>
   );
 }

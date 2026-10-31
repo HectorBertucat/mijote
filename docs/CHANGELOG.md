@@ -1,5 +1,13 @@
 # Journal des changements
 
+## 2026-10-31 : Santé en carnet
+- Santé passe au système « Carnet de marché » : plus de cartes blanches en grille, des sections à filet (`Section`), de l’air et des mises en page asymétriques (5/7, 8/4, 7/5). Petits composants de zone dans `src/components/sante/carnet.tsx` : chiffre clé (`KeyFigure`), verdict en mot (`Verdict`), note à filet (`Note`), ligne de définition (`Row`), explication repliée (`HowCalc`), élision (`de`).
+- Vue d’ensemble : la tendance du poids, la cible du jour et les protéines en très grand (Archivo serrée) ; courbe du poids en un trait d’encre, pesées en points discrets, sans aplat, dessinée à la largeur réelle (axes lisibles sur téléphone), un repère par mois ; barres d’activité d’encre. Les explications de calcul passent derrière « Comment c’est calculé ».
+- Onglets de Santé soulignés d’encre comme les Tabs du kit ; en-tête « Santé · objectif » et le prénom en `h1`.
+- Coach : fil sobre (« Toi », « Coach »), proposition sous un filet d’encre avec « avant → après », corrections de l’appli sur filet `warn` avec leur mot, réponses rapides en lignes.
+- Aujourd’hui, Hors batch, Mise en route, Profil, Apple Santé, Entraînement : listes à filets, chiffres clés, étapes numérotées en grand, verdicts en mots plutôt qu’en pastilles.
+- Séance guidée : chiffre héros plus grand, phase en titre large, barres d’avancement plates, « Ensuite » sans panneau ; le chrono de repos tient dans sa colonne ; les mots du guide de rythme ne se chevauchent plus. Figures, bips et horloges inchangés.
+
 ## 2026-10-31 : Semaine et Composer au « Carnet de marché »
 - Semaine : la période en titre démesuré, avec ses flèches et « Changer la période » ; grille 4/8 au bureau, la semaine choisie à gauche (trois chiffres : repas couverts, temps en cuisine, repas au congélo ; tes plats ; avertissements en lignes sobres, seulement s'il y en a) et la bibliothèque à droite, en grandes entrées qui se cochent (la coche suit le geste tout de suite), chaque plat dessiné en boîte sur sa nappe (`DishBox`, ingrédients lus par `src/components/semaine/dishes.ts`).
 - Une barre d'action collante, le seul élément qui flotte : « 2 plats · 24 repas sur 28 » et l'action suivante (proposer la semaine, faire ou refaire la liste, voir la liste, puis « Cuisiner dimanche » quand les courses sont commandées).

@@ -1,16 +1,20 @@
 "use client";
 
-// Courbe du poids : pesées du jour en points pâles, tendance (moyenne exponentielle) en trait d'accent.
-// Période au choix ; survol ou tap = lecture du jour (pesée et tendance).
-import { useMemo, useState } from "react";
-import { Segmented } from "@/components/ui";
+// Courbe du poids : pesées du jour en points pâles, tendance (moyenne exponentielle) en un trait d'encre,
+// sans aplat. Période au choix ; survol ou tap = lecture du jour (pesée et tendance).
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export type ChartPoint = { date: string; kg: number | null; trend: number };
 type Period = "28" | "91" | "365" | "all";
 
-const W = 640;
-const H = 220;
-const PAD = { l: 38, r: 12, t: 12, b: 26 };
+const H = 240;
+const PAD = { l: 28, r: 8, t: 12, b: 28 };
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "28", label: "4 sem." },
+  { value: "91", label: "3 mois" },
+  { value: "365", label: "1 an" },
+  { value: "all", label: "Tout" },
+];
 const fmtKg = (v: number) => v.toFixed(1).replace(".", ",");
 const fmtDay = (d: string, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", opts);
 
@@ -18,8 +22,18 @@ export function WeightChart({ series }: { series: ChartPoint[] }) {
   const [period, setPeriod] = useState<Period>(series.length > 120 ? "91" : "all");
   const [hover, setHover] = useState<number | null>(null);
   const pts = useMemo(() => (period === "all" ? series : series.slice(-Number(period))), [series, period]);
+  // Le dessin prend la largeur réelle : les chiffres des axes gardent leur taille sur téléphone.
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(640);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(280, Math.round(e.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  if (pts.length < 2) return <p className="text-[14px] text-ink-2">La courbe apparaît dès la deuxième pesée.</p>;
+  if (pts.length < 2) return <p className="text-small text-ink-2">La courbe apparaît dès la deuxième pesée.</p>;
 
   const vals = pts.flatMap((p) => (p.kg != null ? [p.kg, p.trend] : [p.trend]));
   const lo = Math.floor(Math.min(...vals) * 2) / 2 - 0.5;
@@ -30,9 +44,12 @@ export function WeightChart({ series }: { series: ChartPoint[] }) {
   const ticks: number[] = [];
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
   const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p.trend).toFixed(1)}`).join(" ");
-  const area = `${line} L${x(pts.length - 1).toFixed(1)} ${H - PAD.b} L${x(0).toFixed(1)} ${H - PAD.b} Z`;
   const months = pts.length > 60;
-  const labelEvery = Math.max(1, Math.ceil(pts.length / 6));
+  const labelEvery = Math.max(1, Math.ceil(pts.length / Math.max(3, Math.floor(W / 110))));
+  // Repères de l'axe : le premier jour de chaque mois sur une longue période, sinon un jour sur `labelEvery`.
+  const xLabels = months
+    ? pts.flatMap((p, i) => (i === 0 || p.date.slice(5, 7) !== pts[i - 1].date.slice(5, 7) ? [{ i, text: fmtDay(p.date, { month: "short" }) }] : [])).filter((l, k, all) => k === 0 || x(l.i) - x(all[k - 1].i) > 48)
+    : pts.flatMap((p, i) => (i % labelEvery === 0 ? [{ i, text: fmtDay(p.date) }] : []));
   const h = hover != null ? pts[hover] : pts[pts.length - 1];
   const hi_ = hover ?? pts.length - 1;
 
@@ -42,67 +59,73 @@ export function WeightChart({ series }: { series: ChartPoint[] }) {
   };
 
   return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13px] tabular-nums text-ink-2" aria-live="polite">
+    <figure className="grid gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+        <p className="text-small tabular-nums text-ink-2" aria-live="polite">
           <b className="text-ink">{fmtDay(h.date, { weekday: "short", day: "numeric", month: "short" })}</b>
           {" · "}
-          {h.kg != null ? <>pesée {fmtKg(h.kg)} kg · </> : "pas de pesée · "}
-          tendance <b className="text-accent">{fmtKg(h.trend)} kg</b>
+          {h.kg != null ? <>pesée {fmtKg(h.kg)}{"\u00a0"}kg · </> : "pas de pesée · "}
+          tendance <b className="text-ink">{fmtKg(h.trend)}{"\u00a0"}kg</b>
         </p>
-        <Segmented<Period>
-          label="Période"
-          value={period}
-          onChange={(p) => {
-            setPeriod(p);
-            setHover(null);
-          }}
-          options={[
-            { value: "28", label: "4 sem." },
-            { value: "91", label: "3 mois" },
-            { value: "365", label: "1 an", disabled: series.length < 92 },
-            { value: "all", label: "Tout" },
-          ]}
-        />
+        <div role="group" aria-label="Période" className="flex gap-4">
+          {PERIODS.map((o) => {
+            const on = o.value === period;
+            const off = o.value === "365" && series.length < 92;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={on}
+                disabled={off}
+                onClick={() => {
+                  setPeriod(o.value);
+                  setHover(null);
+                }}
+                className={`label -mb-px min-h-9 border-b-2 transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] disabled:cursor-not-allowed disabled:opacity-40 ${on ? "border-ink text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
+      <div ref={box} className="min-w-0">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full touch-pan-y select-none"
+        className="block h-auto w-full touch-pan-y select-none overflow-visible"
         role="img"
         aria-label={`Poids du ${fmtDay(pts[0].date)} au ${fmtDay(pts[pts.length - 1].date)} : tendance de ${fmtKg(pts[0].trend)} à ${fmtKg(pts[pts.length - 1].trend)} kg`}
         onPointerMove={(e) => pick(e.clientX, e.currentTarget.getBoundingClientRect())}
         onPointerDown={(e) => pick(e.clientX, e.currentTarget.getBoundingClientRect())}
         onPointerLeave={(e) => e.pointerType === "mouse" && setHover(null)}
       >
-        {ticks.map((v) => (
+        {ticks.filter((v) => Number.isInteger(v)).map((v) => (
           <g key={v}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} stroke="var(--c-line)" strokeDasharray={Number.isInteger(v) ? undefined : "2 4"} />
-            <text x={PAD.l - 6} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--c-ink-3)" className="tabular-nums">
-              {Number.isInteger(v) ? v : ""}
+            <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} stroke="var(--c-line)" strokeWidth="1" />
+            <text x={0} y={y(v) + 4} fontSize="12" fill="var(--c-ink-3)" className="num">
+              {v}
             </text>
           </g>
         ))}
-        {pts.map((p, i) =>
-          i % labelEvery === 0 ? (
-            <text key={p.date} x={x(i)} y={H - 8} textAnchor={i === 0 ? "start" : "middle"} fontSize="11" fill="var(--c-ink-3)">
-              {months ? fmtDay(p.date, { month: "short", year: "2-digit" }) : fmtDay(p.date)}
-            </text>
-          ) : null
-        )}
-        <path d={area} fill="var(--c-accent-soft)" opacity="0.6" />
-        {pts.map((p, i) => (p.kg != null ? <circle key={p.date} cx={x(i)} cy={y(p.kg)} r={pts.length > 120 ? 1.6 : 2.6} fill="var(--c-ink-3)" opacity="0.45" /> : null))}
-        <path d={line} fill="none" stroke="var(--c-accent)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
-        <line x1={x(hi_)} x2={x(hi_)} y1={PAD.t} y2={H - PAD.b} stroke="var(--c-ink-3)" strokeWidth="1" opacity={hover != null ? 0.5 : 0} />
-        <circle cx={x(hi_)} cy={y(h.trend)} r="4.5" fill="var(--c-accent)" stroke="var(--c-surface)" strokeWidth="2" />
+        {xLabels.map((l) => (
+          <text key={l.i} x={x(l.i)} y={H - 4} textAnchor="start" fontSize="12" fill="var(--c-ink-3)">
+            {l.text}
+          </text>
+        ))}
+        {pts.map((p, i) => (p.kg != null ? <circle key={p.date} cx={x(i)} cy={y(p.kg)} r={pts.length > 120 ? 1.5 : 2.2} fill="var(--c-ink-3)" opacity="0.55" /> : null))}
+        <path d={line} fill="none" stroke="var(--c-ink)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <line x1={x(hi_)} x2={x(hi_)} y1={PAD.t} y2={H - PAD.b} stroke="var(--c-line-strong)" strokeWidth="1" opacity={hover != null ? 1 : 0} />
+        <circle cx={x(hi_)} cy={y(h.trend)} r="4.5" fill="var(--c-ink)" stroke="var(--c-bg)" strokeWidth="2.5" />
       </svg>
-      <p className="flex flex-wrap gap-x-4 text-[12px] text-ink-2">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-faint opacity-60" /> pesée du jour (eau, sel, transit : ±1 kg)
+      </div>
+      <figcaption className="flex flex-wrap gap-x-6 gap-y-1 text-small text-ink-2">
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden className="inline-block size-1.5 rounded-full bg-faint" /> pesée du jour
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded-full bg-accent" /> tendance, ce qui compte
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden className="inline-block h-0.5 w-4 bg-ink" /> tendance, ce qui compte
         </span>
-      </p>
-    </div>
+      </figcaption>
+    </figure>
   );
 }

@@ -6,7 +6,8 @@
 // du jour, et donc la part de chaque recette, en découle.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Chip, Chips, Field, Input, Segmented, Sheet } from "@/components/ui";
+import { Button, Chip, Chips, Field, Input, Segmented, Sheet } from "@/components/ui";
+import { NB } from "./carnet";
 import { FoodIllu } from "@/components/illus/Illu";
 import { useToast } from "@/components/cart/Toast";
 import { dropHabit, nothingOutside, saveHabitAction } from "@/app/sante/actions";
@@ -30,7 +31,7 @@ type Draft = { id: string | null; label: string; meal: HabitMeal; weekdays: numb
 const MEAL: Record<HabitMeal, string> = { breakfast: "Le matin", snack: "En-cas" };
 const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const num = (s: string) => Number(s.replace(",", ".").trim());
-const SELECT = "min-h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-surface px-3 text-[16px] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
+const SELECT = "min-h-12 w-full min-w-0 rounded-[8px] border border-line-strong bg-surface px-4 text-[17px] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
 
 // Les aliments de l'éditeur : ceux du matin d'abord, puis le reste de la table.
 const OTHER_FOODS = (Object.keys(FOODS) as FoodId[]).filter((id) => id !== "zero" && !HABIT_FOODS.includes(id)).sort((a, b) => FOODS[a].name.localeCompare(FOODS[b].name, "fr"));
@@ -60,21 +61,21 @@ export function Habits({ personId, name, habits }: { personId: string; name: str
   const mine = habits.filter((h) => !h.shared);
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-12">
       {habits.length > 0 && (
-        <ul className="grid gap-2.5">
+        <ul className="reveal grid border-t border-line">
           {habits.map((h) => (
-            <Card as="li" key={h.id} pad="md" className="grid gap-2.5">
+            <li key={h.id} className="grid gap-3 border-b border-line py-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <b className="block text-[16px]">{h.label}</b>
-                  <span className="text-[13px] tabular-nums text-ink-2">
-                    {h.meal === "snack" ? "En-cas" : "Le matin"} · {daysLabel(h.weekdays)} · <span className="num">{fr(h.kcal)} kcal</span> · <span className="num">{fr(h.proteinG)} g</span> de protéines
+                  <b className="block text-h3">{h.label}</b>
+                  <span className="text-small tabular-nums text-ink-2">
+                    {h.meal === "snack" ? "En-cas" : "Le matin"} · {daysLabel(h.weekdays)} · <span className="num">{fr(h.kcal)}{NB}kcal</span> · <span className="num">{fr(h.proteinG)}{NB}g</span> de protéines
                     {h.shared && " · pour tout le foyer"}
                   </span>
                 </div>
                 {!h.shared && (
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-2">
                     <Button
                       size="sm"
                       onClick={() =>
@@ -94,27 +95,27 @@ export function Habits({ personId, name, habits }: { personId: string; name: str
                 )}
               </div>
               {h.items.length > 0 ? (
-                <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+                <ul className="flex flex-wrap gap-x-6 gap-y-2">
                   {h.items.map((i, n) => (
-                    <li key={n} className="flex items-center gap-1.5 text-[14px]">
+                    <li key={n} className="flex items-center gap-2 text-small">
                       <FoodIllu food={i.food} size="s" />
                       <span>{isFoodId(i.food) ? FOODS[i.food].name : i.food}</span>
-                      <span className="num text-ink-2">{fr(i.grams)} g</span>
+                      <span className="num text-ink-2">{fr(i.grams)}{NB}g</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-[13px] text-ink-2">Chiffres saisis à la main. Modifie-la pour la composer d&apos;aliments : ses macros seront calculées.</p>
+                <p className="text-small text-ink-2">Chiffres saisis à la main. Modifie-la pour la composer d’aliments : ses macros seront calculées.</p>
               )}
-            </Card>
+            </li>
           ))}
         </ul>
       )}
 
-      <section className="grid gap-2" aria-labelledby="hab-new">
-        <h3 id="hab-new" className="text-[16px] font-bold">
-          {mine.length ? "Ajouter une habitude" : `${name}, que manges-tu hors batch ?`}
-        </h3>
+      <section className="grid gap-6 border-t border-line-strong pt-4" aria-labelledby="hab-new">
+        <h2 id="hab-new" className="text-h2">
+          {mine.length ? "Ajouter une habitude" : `${name}, que manges-tu hors batch\u00a0?`}
+        </h2>
         <div className="grid gap-2 sm:grid-cols-3">
           {HABIT_PRESETS.map((p) => {
             const m = habitMacros(p.items);
@@ -124,18 +125,18 @@ export function Habits({ personId, name, habits }: { personId: string; name: str
                 type="button"
                 disabled={pending}
                 onClick={() => (p.id === "rien" ? run("rien", () => nothingOutside(personId)) : setDraft(fromPreset(p)))}
-                className="grid min-h-tap gap-1 rounded-[12px] border border-line bg-surface px-3 py-2.5 text-left transition-colors duration-[var(--dur-quick)] hover:border-line-strong"
+                className="grid min-h-tap content-start gap-1 rounded-[8px] border border-line px-4 py-3 text-left transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] hover:border-ink hover:bg-surface disabled:opacity-40"
               >
                 <span className="flex items-center gap-2">
                   {p.items[0] ? <FoodIllu food={p.items[0].food} size="s" /> : null}
-                  <b className="text-[15px]">{p.label}</b>
+                  <b>{p.label}</b>
                 </span>
-                <span className="text-[13px] text-ink-2">
+                <span className="text-small text-ink-2">
                   {p.hint}
                   {p.items.length > 0 && (
                     <>
                       {" "}
-                      · <span className="num">~{fr(m.kcal)} kcal, {fr(m.proteinG)} g</span>
+                      · <span className="num">~{fr(m.kcal)}{NB}kcal, {fr(m.proteinG)}{NB}g</span>
                     </>
                   )}
                 </span>
@@ -180,14 +181,14 @@ function Editor({ draft, busy, onClose, onSave }: { draft: Draft; busy: boolean;
     <Sheet
       open
       onClose={onClose}
-      title={d.id ? "Modifier l'habitude" : "Nouvelle habitude"}
+      title={d.id ? "Modifier l’habitude" : "Nouvelle habitude"}
       width={520}
       footer={
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="num text-[14px] text-ink-2">
-            {fr(m.kcal)} kcal · {fr(m.proteinG)} g de protéines
+          <span className="num text-small text-ink-2">
+            {fr(m.kcal)}{NB}kcal · {fr(m.proteinG)}{NB}g de protéines
           </span>
-          <Button variant="primary" state={busy ? "loading" : "idle"} loadingLabel="J'enregistre…" disabled={!valid} onClick={() => onSave(d)}>
+          <Button variant="primary" state={busy ? "loading" : "idle"} loadingLabel="J’enregistre…" disabled={!valid} onClick={() => onSave(d)}>
             Enregistrer
           </Button>
         </div>
@@ -195,12 +196,12 @@ function Editor({ draft, busy, onClose, onSave }: { draft: Draft; busy: boolean;
     >
       <div className="grid gap-4">
         <Field label="Nom">{(id) => <Input id={id} value={d.label} onChange={(e) => setD({ ...d, label: e.target.value })} placeholder="Shaker du matin" maxLength={120} />}</Field>
-        <div className="grid gap-1.5">
-          <span className="text-[14px] font-semibold">Quand</span>
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Quand</span>
           <Segmented<HabitMeal> label="Quand" value={d.meal} onChange={(meal) => setD({ ...d, meal })} options={(Object.keys(MEAL) as HabitMeal[]).map((v) => ({ value: v, label: MEAL[v] }))} />
         </div>
-        <div className="grid gap-1.5">
-          <span className="text-[14px] font-semibold">Les jours où tu la prends</span>
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Les jours où tu la prends</span>
           <Chips>
             {WEEKDAYS.map((w, i) => (
               <Chip
@@ -213,10 +214,10 @@ function Editor({ draft, busy, onClose, onSave }: { draft: Draft; busy: boolean;
               </Chip>
             ))}
           </Chips>
-          <span className="text-[13px] text-ink-2">Proposée d&apos;office ces jours-là dans le journal, et comptée dans ton hors batch ces jours-là seulement.</span>
+          <span className="text-small text-ink-2">Proposée d’office ces jours-là dans le journal, et comptée dans ton hors batch ces jours-là seulement.</span>
         </div>
         <div className="grid gap-2">
-          <span className="text-[14px] font-semibold">Ce qu&apos;il y a dedans</span>
+          <span className="label text-ink-2">Ce qu’il y a dedans</span>
           {d.items.map((i, n) => (
             <div key={n} className="grid grid-cols-[28px_minmax(0,1fr)_84px_auto] items-center gap-2">
               <FoodIllu food={i.food} size="s" />
@@ -236,8 +237,8 @@ function Editor({ draft, busy, onClose, onSave }: { draft: Draft; busy: boolean;
                   ))}
                 </optgroup>
               </select>
-              <Input aria-label={`Grammes de l'aliment ${n + 1}`} num inputMode="decimal" value={i.grams} onChange={(e) => setItem(n, { grams: e.target.value })} invalid={!(num(i.grams) > 0 && num(i.grams) <= 1000)} />
-              <Button variant="quiet" size="sm" iconOnly icon="x" aria-label={`Retirer l'aliment ${n + 1}`} onClick={() => setD({ ...d, items: d.items.filter((_, k) => k !== n) })} />
+              <Input aria-label={`Grammes de l’aliment ${n + 1}`} num inputMode="decimal" value={i.grams} onChange={(e) => setItem(n, { grams: e.target.value })} invalid={!(num(i.grams) > 0 && num(i.grams) <= 1000)} />
+              <Button variant="quiet" size="sm" iconOnly icon="x" aria-label={`Retirer l’aliment ${n + 1}`} onClick={() => setD({ ...d, items: d.items.filter((_, k) => k !== n) })} />
             </div>
           ))}
           <div>
@@ -245,7 +246,7 @@ function Editor({ draft, busy, onClose, onSave }: { draft: Draft; busy: boolean;
               Un aliment
             </Button>
           </div>
-          <span className="text-[13px] text-ink-2">En grammes (1 ml de lait = 1 g). Une banane pèse ~120 g sans la peau, une dose de protéine ~30 g.</span>
+          <span className="text-small text-ink-2">En grammes (1 ml de lait = 1 g). Une banane pèse ~120 g sans la peau, une dose de protéine ~30 g.</span>
         </div>
       </div>
     </Sheet>

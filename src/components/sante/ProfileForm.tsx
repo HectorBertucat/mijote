@@ -1,6 +1,6 @@
 "use client";
 
-// Profil santé d'une personne : de quoi estimer la dépense de départ et fixer les cibles.
+// Profil santé d’une personne : de quoi estimer la dépense de départ et fixer les cibles.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Field, Input, Segmented, Textarea } from "@/components/ui";
@@ -24,7 +24,7 @@ export type ProfileValues = {
   constraints: string | null;
 };
 
-const SELECT = "min-h-12 w-full rounded-[10px] border border-line-strong bg-surface px-3 text-[16px] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
+const SELECT = "min-h-12 w-full rounded-[8px] border border-line-strong bg-surface px-4 text-body text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
 const str = (v: number | null) => (v == null ? "" : String(v).replace(".", ","));
 
 export function ProfileForm({ personId, name, values, needsWeight }: { personId: string; name: string; values: ProfileValues; needsWeight: boolean }) {
@@ -40,7 +40,7 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
 
   return (
     <form
-      className="grid max-w-xl gap-5"
+      className="grid max-w-2xl gap-12"
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
@@ -56,10 +56,10 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
         });
       }}
     >
-      <fieldset className="grid gap-4">
-        <legend className="mb-2 text-[18px] font-bold">{name}</legend>
-        <div className="grid gap-1.5">
-          <span className="text-[14px] font-semibold">Sexe</span>
+      <fieldset className="grid gap-6">
+        <legend className="mb-6 w-full border-t border-line-strong pt-4 text-h2 font-display">Mesures</legend>
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Sexe</span>
           <Segmented<"m" | "f" | "">
             label="Sexe"
             value={sex}
@@ -75,7 +75,7 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
           <Field label="Taille (cm)">{(id) => <Input id={id} name="heightCm" inputMode="decimal" num defaultValue={str(values.heightCm)} placeholder="168" />}</Field>
         </div>
         {needsWeight && <Field label="Poids actuel (kg)" help="Ensuite, une pesée par jour (ou par semaine) suffit.">{(id) => <Input id={id} name="kg" inputMode="decimal" num placeholder="60,5" />}</Field>}
-        <Field label="Activité" help="Sert seulement à l'estimation des premières semaines : ensuite, la balance mesure ta vraie dépense.">
+        <Field label="Activité" help="Sert seulement à l’estimation des premières semaines : ensuite, la balance mesure ta vraie dépense.">
           {(id, d) => (
             <select id={id} aria-describedby={d} name="activity" defaultValue={values.activity ?? ""} className={SELECT}>
               <option value="">À choisir</option>
@@ -89,8 +89,8 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
         </Field>
       </fieldset>
 
-      <fieldset className="grid gap-4">
-        <legend className="mb-2 text-[18px] font-bold">Objectif</legend>
+      <fieldset className="grid gap-6">
+        <legend className="mb-6 w-full border-t border-line-strong pt-4 text-h2 font-display">Objectif</legend>
         <Segmented<Goal | "">
           label="Objectif"
           value={goal}
@@ -104,8 +104,8 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
         <Field label="Rythme (% du poids par semaine)" help="Négatif pour perdre. Repères : −0,5 % pour perdre, −0,4 % en recomposition, +0,25 % pour prendre du muscle sans trop de gras.">
           {(id, d) => <Input id={id} aria-describedby={d} name="ratePct" inputMode="decimal" num value={rate} onChange={(e) => setRate(e.target.value)} placeholder="−0,4" />}
         </Field>
-        <div className="grid gap-1.5">
-          <span className="text-[14px] font-semibold">Protéines</span>
+        <div className="grid gap-2">
+          <span className="label text-ink-2">Protéines</span>
           <Segmented<"perkg" | "fixed">
             label="Protéines"
             value={proteinMode}
@@ -120,14 +120,14 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
           ) : (
             <Input aria-label="Protéines en grammes par jour" name="proteinG" inputMode="decimal" num defaultValue={str(values.proteinG)} placeholder="160" />
           )}
-          <span className="text-[13px] text-ink-2">1,6 g/kg suffit pour la plupart ; jusqu'à 2,2 g/kg en déficit avec de la musculation.</span>
+          <span className="text-small text-ink-2">1,6 g/kg suffit pour la plupart ; jusqu’à 2,2 g/kg en déficit avec de la musculation.</span>
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4">
-        <legend className="mb-2 text-[18px] font-bold">Cap et sport</legend>
+      <fieldset className="grid gap-6">
+        <legend className="mb-6 w-full border-t border-line-strong pt-4 text-h2 font-display">Cap et sport</legend>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Poids visé (kg)" help="Facultatif. L'appli calcule quand tu y arrives au rythme choisi.">
+          <Field label="Poids visé (kg)" help="Facultatif. L’appli calcule quand tu y arrives au rythme choisi.">
             {(id, d) => <Input id={id} aria-describedby={d} name="targetWeightKg" inputMode="decimal" num defaultValue={str(values.targetWeightKg)} placeholder="72" />}
           </Field>
           <Field label="Échéance souhaitée" help="Facultatif.">
@@ -138,7 +138,7 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
           {(id, d) => <Textarea id={id} aria-describedby={d} name="constraints" rows={2} defaultValue={values.constraints ?? ""} placeholder="Kettlebell 12 kg à la maison, piscine 3 fois par semaine, 30 min max en semaine" />}
         </Field>
         <div className="grid gap-2">
-          <span className="text-[14px] font-semibold">Séances visées par semaine</span>
+          <span className="label text-ink-2">Séances visées par semaine</span>
           {plan.map((r, i) => (
             <div key={i} className="grid grid-cols-[minmax(0,1fr)_4.5rem_5rem_auto] items-center gap-2">
               <select aria-label="Sport" value={r.kind} onChange={(e) => setRow(i, { kind: e.target.value as Sport })} className={SELECT}>
@@ -153,7 +153,7 @@ export function ProfileForm({ personId, name, values, needsWeight }: { personId:
               <Button size="sm" variant="quiet" icon="x" iconOnly aria-label="Retirer ce sport" onClick={() => setPlan((p) => p.filter((_, k) => k !== i))} />
             </div>
           ))}
-          {plan.length > 0 && <span className="text-[13px] text-ink-2">Sport, séances par semaine, minutes par séance. L'activité du profil suit ce plan.</span>}
+          {plan.length > 0 && <span className="text-small text-ink-2">Sport, séances par semaine, minutes par séance. L’activité du profil suit ce plan.</span>}
           <div>
             <Button size="sm" variant="secondary" icon="plus" onClick={() => setPlan((p) => [...p, { kind: "kettlebell", perWeek: 2, minutes: 30 }])}>
               Ajouter un sport
