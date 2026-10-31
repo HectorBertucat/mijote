@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { buttonClass, EmptyState, Icon, Input, RecipeTile, TONE_TEXT, verdictTone, verdictWord } from "@/components/ui";
+import { buttonClass, EmptyState, Icon, Input, TONE_TEXT, verdictTone, verdictWord } from "@/components/ui";
+import { DishBox } from "@/components/ui/dish";
 import { db } from "@/lib/db/client";
 import { DEFAULT_PORTION_UNITS } from "@/lib/nutrition/compute";
-import { cookedCounts, listKeyIngredients, listRecipesWithSteps, seasonalByRecipe } from "@/lib/recipes/queries";
+import { cookedCounts, listDishRecipes, listKeyIngredients, listRecipesWithSteps, seasonalByRecipe } from "@/lib/recipes/queries";
 import { parisMonth } from "@/lib/recipes/season";
 import { FoodIllu } from "@/components/illus/Illu";
 import { loadEaters } from "@/lib/eaters/store";
@@ -17,8 +18,8 @@ export const dynamic = "force-dynamic";
 
 const NB = " ";
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-// Colonnes du tableau au bureau : dessin, plat, temps actif, part, repères.
-const COLS = "sm:grid-cols-[64px_minmax(0,1fr)_6rem_8rem_10rem]";
+// Colonnes du tableau au bureau : boîte, plat, temps actif, part, repères.
+const COLS = "sm:grid-cols-[56px_minmax(0,1fr)_6rem_8rem_10rem]";
 
 /** Un filtre : un mot, souligné quand il est choisi ; pas de pastille. */
 function TagLink({ href, active, count, children, className = "" }: { href: string; active: boolean; count?: number; children: React.ReactNode; className?: string }) {
@@ -38,6 +39,7 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Pro
   const { tag, q } = await searchParams;
   const all = listRecipesWithSteps(db);
   const keyIngredients = listKeyIngredients(db);
+  const dishes = listDishRecipes(db);
   const cooked = cookedCounts(db);
   const seasonal = seasonalByRecipe(db, parisMonth());
   const active = await activeProfileId();
@@ -154,9 +156,9 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Pro
                   <li key={r.id} className="border-b border-line">
                     <Link
                       href={`/recettes/${r.slug}`}
-                      className={`group -mx-3 grid grid-cols-[44px_minmax(0,1fr)] items-start gap-x-4 sm:items-center rounded-[8px] px-3 py-4 hover:bg-surface-2 sm:gap-x-6 ${COLS}`}
+                      className={`group -mx-3 grid grid-cols-[56px_minmax(0,1fr)] items-start gap-x-4 sm:items-center rounded-[8px] px-3 py-4 hover:bg-surface-2 sm:gap-x-6 ${COLS}`}
                     >
-                      <RecipeTile color={recipeColor(r.slug)} name={r.name} size="lg" className="max-sm:size-11 max-sm:rounded-[8px] max-sm:text-[18px]" />
+                      <DishBox recipe={dishes.get(r.id) ?? { slug: r.slug, name: r.name, ingredients: [] }} color={recipeColor(r.slug)} size="sm" />
                       <span className="grid min-w-0 gap-2">
                         {parent && <span className="text-small text-ink-2">Variante de {parent.name}</span>}
                         <span className="font-display text-h3 font-extrabold [font-stretch:112%] group-hover:underline group-hover:decoration-line-strong group-hover:underline-offset-4">{r.name}</span>

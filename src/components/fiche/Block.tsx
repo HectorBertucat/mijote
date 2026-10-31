@@ -1,6 +1,6 @@
 // Morceaux de mise en page d'une fiche (DA « Carnet de marché ») : section à filet (titre à gauche sur 4
-// colonnes, contenu sur 8 au bureau), titre de colonne, nappe vichy, « Comment c'est calculé » replié. Sans état.
-import type { CSSProperties, ReactNode } from "react";
+// colonnes, contenu sur 8 au bureau), titre de colonne, « Comment c'est calculé » replié. Sans état.
+import type { ReactNode } from "react";
 import { Icon } from "@/components/ui";
 
 /** Titre d'une section : filet fort au-dessus, 24 d'air avant le contenu. `aside` : un repère à droite. */
@@ -38,23 +38,5 @@ export function HowCalculated({ children, title = "Comment c’est calculé", cl
       </summary>
       <div className="grid gap-3 pb-4 pl-6 text-small text-ink-2">{children}</div>
     </details>
-  );
-}
-
-/** La nappe vichy à la couleur du plat : la bande du haut de la fiche. */
-export function Vichy({ color, className = "" }: { color: string; className?: string }) {
-  const stripe = "color-mix(in srgb, var(--rc) 46%, transparent)";
-  return (
-    <span
-      aria-hidden
-      className={`block bg-[color-mix(in_srgb,var(--rc)_14%,var(--c-bg))] ${className}`}
-      style={
-        {
-          "--rc": color,
-          backgroundImage: `linear-gradient(90deg, ${stripe} 50%, transparent 50%), linear-gradient(${stripe} 50%, transparent 50%)`,
-          backgroundSize: "24px 24px",
-        } as CSSProperties
-      }
-    />
   );
 }

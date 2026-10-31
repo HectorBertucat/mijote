@@ -2,6 +2,7 @@
 import { asc, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { cookSessions, cookUsages, equipment, people, recipeIngredients, recipeNotes, recipes, recipeSteps } from "@/lib/db/schema";
+import type { DishRecipe } from "@/lib/illus/dish";
 import { inSeason } from "./season";
 
 export function listRecipes(db: Db) {
@@ -127,4 +128,20 @@ export function listRecipesWithSteps(db: Db) {
   const byRecipe = new Map<string, typeof steps>();
   for (const s of steps) byRecipe.set(s.recipeId, [...(byRecipe.get(s.recipeId) ?? []), s]);
   return rs.map((r) => ({ ...r, steps: byRecipe.get(r.id) ?? [] }));
+}
+
+/** De quoi dessiner la boîte de chaque recette (DishBox) : ses ingrédients et ses étapes, en deux requêtes. */
+export function listDishRecipes(db: Db): Map<string, DishRecipe> {
+  const ings = db
+    .select({ recipeId: recipeIngredients.recipeId, item: recipeIngredients.item, grams: recipeIngredients.grams, units: recipeIngredients.units, foodId: recipeIngredients.foodId, group: recipeIngredients.group, side: recipeIngredients.side, optional: recipeIngredients.optional })
+    .from(recipeIngredients)
+    .where(sql`${recipeIngredients.pantry} = 0`)
+    .orderBy(asc(recipeIngredients.position))
+    .all();
+  const steps = db.select({ recipeId: recipeSteps.recipeId, kind: recipeSteps.kind, text: recipeSteps.text, equipmentId: recipeSteps.equipmentId, bowls: recipeSteps.bowlRefs }).from(recipeSteps).orderBy(asc(recipeSteps.order)).all();
+  const out = new Map<string, DishRecipe>();
+  for (const r of db.select({ id: recipes.id, slug: recipes.slug, name: recipes.name }).from(recipes).all()) out.set(r.id, { slug: r.slug, name: r.name, ingredients: [], steps: [] });
+  for (const { recipeId, ...i } of ings) out.get(recipeId)?.ingredients.push(i);
+  for (const { recipeId, ...s } of steps) out.get(recipeId)?.steps!.push(s);
+  return out;
 }

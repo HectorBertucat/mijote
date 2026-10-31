@@ -12,7 +12,8 @@ import { AdjustButton, AdjustNotice, AdjustProvider, AdjustSlot } from "@/compon
 import { RecipeVariants, VariantOf } from "@/components/RecipeVariants";
 import { DrawMissing } from "@/components/illus/DrawMissing";
 import { missingArt } from "@/lib/illus/ai";
-import { BlockTitle, FicheBlock, Vichy } from "@/components/fiche/Block";
+import { BlockTitle, FicheBlock } from "@/components/fiche/Block";
+import { DishBox } from "@/components/ui/dish";
 import { BigDuration, Figures, type Figure } from "@/components/fiche/Figures";
 import { IngredientTable } from "@/components/fiche/Ingredients";
 import { deName } from "@/components/fiche/words";
@@ -98,6 +99,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
     season.length ? `de saison\u00a0: ${season.join(", ")}` : null,
     r.status === "to_try" && !cookedCounts(db).get(r.id) ? "jamais cuisinée" : null,
   ].filter(Boolean);
+  const dish = { slug: r.slug, name: r.name, ingredients: input.ingredients.filter((i) => !i.pantry), steps: input.steps };
   const sections = [
     { id: "ingredients", label: "Ingrédients" },
     { id: "etapes", label: "Étapes", count: steps.length },
@@ -122,7 +124,6 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
       <article className="grid grid-cols-1">
         <AutoRefresh />
         <header className="grid gap-6">
-          <Vichy color={color} className="h-6" />
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Link href="/recettes" className="label -ml-2 inline-flex min-h-tap items-center gap-1 rounded-[8px] px-2 text-ink-2 hover:bg-surface-2 hover:text-ink">
               <Icon name="chev" size="s" className="rotate-180" />
@@ -133,6 +134,10 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
               <CookAction recipeId={r.id} slug={r.slug} plan={plan} />
             </div>
           </div>
+          {/* Le plat en héros : sa boîte sur la nappe vichy, dessinée à partir de ses ingrédients. */}
+          {/* Téléphone : la taille lg en pleine largeur (hero y serait rognée). */}
+          <DishBox recipe={dish} color={color} size="lg" steam className="-mx-5 !w-auto !rounded-none sm:hidden" />
+          <DishBox recipe={dish} color={color} size="hero" className="max-sm:hidden" />
           <div className="grid gap-4">
             <VariantOf family={family} currentId={r.id} />
             <h1 className="max-w-[20ch] text-h1">{r.name}</h1>

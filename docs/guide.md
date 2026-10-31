@@ -34,7 +34,7 @@ En cuisine, on ne compte pas en unités : en fin de session, on pèse la marmite
 
 ## 3. Recettes
 
-La bibliothèque est une liste : pour chaque plat, ses aliments dessinés, le temps actif, les calories de ta part (verdict de ta cible : dans la cible, sous, au-dessus) et deux repères au plus (jamais cuisinée, à relire, notes, se congèle…). On filtre par étiquette ou on cherche un plat, un ingrédient. Une fiche se lit comme une page de livre de cuisine. En tête, trois chiffres : temps actif, calories de ta part, prix de la part (ou le nombre de repas tant qu'il n'y a pas de prix). Puis :
+La bibliothèque est une liste : pour chaque plat, sa boîte dessinée, ses aliments, le temps actif, les calories de ta part (verdict de ta cible : dans la cible, sous, au-dessus) et deux repères au plus (jamais cuisinée, à relire, notes, se congèle…). On filtre par étiquette ou on cherche un plat, un ingrédient. Une fiche se lit comme une page de livre de cuisine. En tête, la boîte du plat, puis trois chiffres : temps actif, calories de ta part, prix de la part (ou le nombre de repas tant qu'il n'y a pas de prix). Puis :
 - les **ingrédients**, regroupés par **bol de prep** (A, B, C…) : tout est épluché et coupé avant de cuire ; le placard est replié en bas ;
 - les **étapes** avec récipient, foyer, niveau, durée et repère visuel ; les étapes de cuisson sont découpées en **sous-étapes chronométrées** ;
 - la **nutrition** par part et ce qui pèse le plus ; le détail (ce qui ne se mange pas, la méthode) est sous « Comment c’est calculé » ;
