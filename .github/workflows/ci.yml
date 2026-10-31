@@ -4,28 +4,61 @@ on:
     branches: [main]
   pull_request:
 
+# Un nouveau push sur une PR annule l'exécution précédente de la même PR ; sur main, chaque commit va au bout.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
-  check:
-    name: Types, tests, build, fumée
+  typecheck:
+    name: Types
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm typecheck
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - run: pnpm test
+
+  build:
+    name: Build, fumée
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - run: pnpm build
         env:
           MIJOTE_DATA_DIR: /tmp/build-data
       - run: pnpm test:smoke
 
+  # Vérification requise par la protection de main (même nom qu'avant) : verte seulement si les trois le sont.
+  check:
+    name: Types, tests, build, fumée
+    needs: [typecheck, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          echo "Types : ${{ needs.typecheck.result }}, tests : ${{ needs.test.result }}, build et fumée : ${{ needs.build.result }}"
+          [ "${{ needs.typecheck.result }}" = success ] && [ "${{ needs.test.result }}" = success ] && [ "${{ needs.build.result }}" = success ]
+
   docker:
     name: Image Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - name: Construire l'image
