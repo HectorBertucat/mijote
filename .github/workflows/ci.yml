@@ -4,32 +4,81 @@ on:
     branches: [main]
   pull_request:
 
+# Un nouveau push sur une PR annule l'exécution précédente de la même PR ; sur main, chaque commit va au bout.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
-  check:
-    name: Types, tests, build, fumée
+  typecheck:
+    name: Types, lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm typecheck
+      - run: pnpm lint
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - run: pnpm test
+
+  build:
+    name: Build, fumée
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
       - run: pnpm build
         env:
           MIJOTE_DATA_DIR: /tmp/build-data
       - run: pnpm test:smoke
 
+  # Vérification requise par la protection de main (même nom qu'avant) : verte seulement si les trois le sont.
+  check:
+    name: Types, tests, build, fumée
+    needs: [typecheck, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          echo "Types et lint : ${{ needs.typecheck.result }}, tests : ${{ needs.test.result }}, build et fumée : ${{ needs.build.result }}"
+          [ "${{ needs.typecheck.result }}" = success ] && [ "${{ needs.test.result }}" = success ] && [ "${{ needs.build.result }}" = success ]
+
   docker:
     name: Image Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # Seule l'étape des dépendances (apt, pnpm install, compilation de better-sqlite3) va dans le
+      # cache d'Actions : elle ne change qu'avec package.json ou le verrou. Exporter aussi le build
+      # (refait à chaque commit) coûtait plusieurs minutes d'envoi pour ~15 s gagnées.
+      - name: Dépendances de l'image (en cache)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: deps
+          cache-from: type=gha,scope=deps
+          cache-to: type=gha,mode=max,scope=deps,ignore-error=true
       - name: Construire l'image
-        run: docker build -t mijote:ci .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: mijote:ci
       - name: Lancer le conteneur et vérifier la mise en route
         run: |
           docker run -d --name mijote -p 3010:3010 -e MIJOTE_PASSWORD=ci mijote:ci

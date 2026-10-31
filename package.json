@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3010",
     "typecheck": "tsc --noEmit -p .",
+    "lint": "oxlint",
     "db:generate": "drizzle-kit generate",
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "import:recipes": "tsx --env-file-if-exists=.env.local scripts/import-recipes.ts",
@@ -15,6 +16,7 @@
     "shortcut:build": "tsx scripts/shortcut.ts",
     "illus:coverage": "tsx scripts/illus-coverage.ts",
     "plan:audit": "tsx scripts/plan-audit.ts",
+    "changelog": "tsx scripts/changelog.ts",
     "docker:up": "docker compose up -d --build",
     "test:ai": "tsx --env-file-if-exists=.env.local scripts/ai-check.ts",
     "test:smoke": "tsx scripts/smoke.ts"
@@ -37,10 +39,11 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "drizzle-kit": "^0.31.10",
+    "oxlint": "^1.90.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^7.0.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

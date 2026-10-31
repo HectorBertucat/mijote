@@ -1,10 +1,18 @@
 #!/bin/sh
-# Vérifie chaque commit qui part (contenu et messages).
+# Vérifie chaque commit qui part (contenu et messages), puis les types (`next build` ne le fait pas).
+# Passer la vérification des types, pas celle des données privées : MIJOTE_SKIP_TYPECHECK=1 git push
 z=0000000000000000000000000000000000000000
+pushing=0
 while read local_ref local_sha remote_ref remote_sha; do
   [ "$local_sha" = "$z" ] && continue
+  pushing=1
   if [ "$remote_sha" = "$z" ]; then range="$(git rev-list --max-parents=0 "$local_sha" | tail -1)..$local_sha"; full=1; else range="$remote_sha..$local_sha"; full=0; fi
   node scripts/check-private.mjs --range "$range" || exit 1
   [ "$full" = 1 ] && { node scripts/check-private.mjs --all || exit 1; }
 done
+[ "$pushing" = 1 ] || exit 0
+if [ "$MIJOTE_SKIP_TYPECHECK" = 1 ]; then echo "pre-push : types non vérifiés (MIJOTE_SKIP_TYPECHECK=1)"; exit 0; fi
+# Les types de l'arbre de travail (~2 s) : la CI vérifie ceux du commit poussé.
+if [ ! -x node_modules/.bin/tsc ]; then echo "pre-push : pas de node_modules, lancer pnpm install (ou MIJOTE_SKIP_TYPECHECK=1 git push)" >&2; exit 1; fi
+node_modules/.bin/tsc --noEmit -p . || { echo "pre-push : erreurs de types (MIJOTE_SKIP_TYPECHECK=1 git push pour passer outre)" >&2; exit 1; }
 exit 0

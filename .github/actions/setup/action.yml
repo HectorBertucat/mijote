@@ -1,0 +1,12 @@
+name: Préparer
+description: pnpm, Node 22 (avec le cache du magasin pnpm) et les dépendances du verrou.
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 22
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+      shell: bash

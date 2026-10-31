@@ -33,6 +33,8 @@ docker compose up -d --build
 
 Les migrations de la base s'appliquent au démarrage. Les recettes de démonstration mises à jour sont réimportées (tes notes sont gardées).
 
+Construis depuis `main` : chaque commit de `main` a passé la CI (types, tests, build, image). Le build lui-même ne revérifie pas les types (`next.config.ts`) ; si tu construis une branche à toi, lance `pnpm typecheck` avant.
+
 ### Sauvegarder
 
 Toutes les données sont dans le volume `mijote-data`, un seul fichier `mijote.db` (plus ses fichiers `-wal` et `-shm`). Pour une copie cohérente pendant que l'appli tourne :

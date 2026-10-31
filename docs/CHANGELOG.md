@@ -1,5 +1,7 @@
 # Journal des changements
 
+Les entrées les plus récentes peuvent encore être dans [`changelog.d/`](changelog.d/) : `pnpm changelog` affiche le journal complet.
+
 ## 2026-10-31 : mode démo
 - `MIJOTE_DEMO=1` : une démo publique, sans compte ni installation ni mise en route. Chaque visiteur a sa base, copiée d'une base modèle (`<MIJOTE_DATA_DIR>/demo/`), reconnue par le cookie `mijote.demo`, effacée après 2 h d'inactivité ; « Recommencer » la remet à zéro. Plafonds : nombre de bases, taille de chacune (`max_page_count`), créations par minute (`MIJOTE_DEMO_*`), aucun fichier hors du dossier de la démo. Détails et choix (plutôt qu'une base partagée remise à zéro) : docs/demo.md.
 - Base modèle refaite chaque jour, datée par rapport à aujourd'hui : Alex et Sam (profils Santé complets, goûts, habitudes du matin, huit semaines de pesées et de séances), la semaine en cours répartie, cuisinée dimanche et rangée en boîtes (frigo et congélo), la précédente mangée, la suivante avec sa liste à faire. Données pures dans `src/lib/demo/household.ts`, écrites par les fonctions de l'appli (`seed.ts`).
