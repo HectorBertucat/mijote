@@ -16,9 +16,11 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 8. Économie : pas de workflows multi-agents sans demande explicite ; vérifications bon marché (types, tests ciblés).
 
 ## Façon de travailler
-- Une branche par changement (`feat/…`, `fix/…`, `docs/…`), une pull request, la CI verte (types, tests, build, fumée, image Docker), puis fusion « squash » dans `main`. Une correction d'une ligne dans la doc peut aller directement sur `main`.
+- Une branche par changement (`feat/…`, `fix/…`, `docs/…`), une pull request, la CI verte (types, tests, build et fumée en tâches parallèles, image Docker ; vérifications requises « Types, tests, build, fumée » et « Image Docker »), puis fusion « squash » dans `main`. Une correction d'une ligne dans la doc peut aller directement sur `main`.
 - Avant de rendre la main : `pnpm typecheck`, `pnpm test`, et `pnpm build && pnpm test:smoke` si une page ou le démarrage change.
-- Activer les hooks une fois par clone : `git config core.hooksPath .githooks`.
+- Activer les hooks une fois par clone : `git config core.hooksPath .githooks`. Au push, ils vérifient les données privées puis les types (`MIJOTE_SKIP_TYPECHECK=1 git push` pour passer outre les types seulement).
+- `next build` ne vérifie pas les types (`next.config.ts`) : c'est `pnpm typecheck`, obligatoire en CI et au push. Ne construire et déployer que des commits de `main`.
+- Les paires de recettes du planificateur sont testées en quatre morceaux parallèles (`tests/planner-pairs.ts`, `planner-pairs-1…4.test.ts`) ; une recette ajoutée = ses plafonds dans `CEIL`.
 
 ## Commandes
 | Quoi | Commande |
@@ -31,6 +33,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Recettes de `src/seed/recipes/` | `pnpm import:recipes` |
 | Dessins manquants | `pnpm illus:coverage` |
 | Audit du planificateur | `pnpm plan:audit` |
+| Journal (vérifier, afficher ; `--fold` sur main) | `pnpm changelog` |
 | Raccourci Apple Santé | `pnpm shortcut:build` puis signer sur un Mac (docs/sante.md) |
 
 ## Où regarder
@@ -62,4 +65,4 @@ Une instance peut avoir un contexte privé dans `perso/` : un dépôt séparé, 
 @perso/CLAUDE.md
 
 ## Garder le contexte à jour
-À la fin d'une tâche qui change le comportement, le schéma ou une commande : une entrée datée en tête de `docs/CHANGELOG.md`, et ce fichier si une règle, un chemin ou une commande change.
+À la fin d'une tâche qui change le comportement, le schéma ou une commande : un fragment `docs/changelog.d/AAAA-MM-JJ-sujet.md` (un titre `## AAAA-MM-JJ : titre`, des lignes `- …` ; voir le README du dossier), jamais d'écriture directe en tête de `docs/CHANGELOG.md` (conflits entre PR parallèles) ; et ce fichier si une règle, un chemin ou une commande change.

@@ -15,11 +15,11 @@ pnpm test:ai                   # facultatif : les fonctions IA en vrai (clé né
 
 ## Avant le premier commit
 ```bash
-git config core.hooksPath .githooks   # refuse les secrets, les bases, les .env et les mentions d'IA en co-auteur
+git config core.hooksPath .githooks   # refuse les secrets, les bases, les .env et les mentions d'IA en co-auteur ; vérifie les types au push
 ```
 
 ## Branches
-Une branche par changement (`feat/…`, `fix/…`, `docs/…`), une pull request, la CI doit être verte (types, tests, build, test de fumée, image Docker). Les pull requests sont fusionnées en « squash ».
+Une branche par changement (`feat/…`, `fix/…`, `docs/…`), une pull request, la CI doit être verte (types, tests, build, test de fumée, image Docker). Les pull requests sont fusionnées en « squash ». Un changement visible s'accompagne d'un fragment du journal dans `docs/changelog.d/` (voir son README), pas d'une entrée en tête de `docs/CHANGELOG.md`.
 
 ## Conventions
 - **Le calcul est pur et testé.** Ce qui doit être juste (quantités, macros, coûts, planning, vérifications de l'IA) vit dans un module sans base ni réseau, avec ses tests dans `tests/`. Les fichiers `store.ts` font le lien avec la base.

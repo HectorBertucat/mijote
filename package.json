@@ -15,6 +15,7 @@
     "shortcut:build": "tsx scripts/shortcut.ts",
     "illus:coverage": "tsx scripts/illus-coverage.ts",
     "plan:audit": "tsx scripts/plan-audit.ts",
+    "changelog": "tsx scripts/changelog.ts",
     "docker:up": "docker compose up -d --build",
     "test:ai": "tsx --env-file-if-exists=.env.local scripts/ai-check.ts",
     "test:smoke": "tsx scripts/smoke.ts"

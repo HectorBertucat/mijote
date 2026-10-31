@@ -1,5 +1,7 @@
 # Journal des changements
 
+Les entrées les plus récentes peuvent encore être dans [`changelog.d/`](changelog.d/) : `pnpm changelog` affiche le journal complet.
+
 ## 2026-10-31 : assistant, partout dans l'appli
 - Un assistant conversationnel, ouvert d'un bouton dans l'en-tête, de ⌘I / Ctrl I, ou de « Demander » dans ⌘K (panneau à droite, feuille du bas sur téléphone). Il conseille chaque personne selon ses objectifs à partir des vraies données (profils Santé, repères par repas, habitudes hors batch, semaine en cours, frigo, recettes et part de chacun) et connaît la page ouverte.
 - Il peut proposer d'agir : ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch, marquer une boîte mangée, lancer les courses. L'IA ne fait que proposer (outils stricts) ; `checkAction` (`src/lib/assistant/core.ts`, pur et testé) revalide chaque action et chiffre sa carte ; la personne applique ou annule d'un geste ; l'action est revérifiée puis exécutée par les fonctions de l'interface.
