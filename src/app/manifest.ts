@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Mijote",
     short_name: "Mijote",
     description: "Recettes, courses et sessions de cuisine",
-    start_url: "/recettes",
+    start_url: "/",
     display: "standalone",
     background_color: "#f3f1ec",
     theme_color: "#f3f1ec",
