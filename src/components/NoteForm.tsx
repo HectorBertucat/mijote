@@ -1,11 +1,11 @@
 "use client";
 
-// Notes d'une fiche (DA « Plan de travail ») : puces de catégorie qui filtrent, la liste, puis l'ajout en un tap
+// Notes d'une fiche (DA « Carnet de marché ») : catégories qui filtrent, la liste à filets, puis l'ajout en un tap
 // (catégorie, qui, texte, Entrée).
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addNote } from "@/app/recettes/[slug]/actions";
-import { Button, Chip, Chips, EmptyState, List, ListRow, Segmented, Textarea } from "@/components/ui";
+import { Button, Chip, Chips, List, ListRow, Segmented, Textarea } from "@/components/ui";
 import { NOTE_CATEGORIES, NOTE_LABELS } from "@/lib/recipes/format";
 
 type Category = (typeof NOTE_CATEGORIES)[number];
@@ -25,7 +25,7 @@ export function NotesSection({ recipeId, slug, people, notes }: { recipeId: stri
   const used = NOTE_CATEGORIES.filter((c) => counts.has(c));
   const shown = filter ? notes.filter((n) => n.category === filter) : notes;
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-6">
       {used.length > 1 && (
         <Chips>
           <Chip pressed={filter == null} count={notes.length} onClick={() => setFilter(null)}>
@@ -39,20 +39,18 @@ export function NotesSection({ recipeId, slug, people, notes }: { recipeId: stri
         </Chips>
       )}
       {shown.length > 0 ? (
-        <List className="shadow-none">
+        <List className="border-line-strong">
           {shown.map((n) => (
             <ListRow
               key={n.id}
-              className="animate-pop items-start"
+              className="items-start"
               title={<span className="font-medium">{n.text}</span>}
               sub={[NOTE_LABELS[n.category], n.personName, fmtDate(n.createdAt)].filter(Boolean).join(" · ")}
             />
           ))}
         </List>
       ) : (
-        <EmptyState icon="sparkdraft" title="Pas encore de note" className="py-4">
-          Un goût à corriger, un temps de cuisson, un ingrédient pénible : la prochaine fois, il sera là.
-        </EmptyState>
+        <p className="text-body text-ink-2">Pas encore de note. Un goût à corriger, un temps de cuisson, un ingrédient pénible : écris-le ici, il sera là la prochaine fois.</p>
       )}
       <NoteForm recipeId={recipeId} slug={slug} people={people} />
     </div>
@@ -100,7 +98,7 @@ export function NoteForm({ recipeId, slug, people }: { recipeId: string; slug: s
 
   return (
     <form
-      className="grid gap-2.5 rounded-[14px] border border-line bg-surface-2 p-3"
+      className="grid gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -108,7 +106,7 @@ export function NoteForm({ recipeId, slug, people }: { recipeId: string; slug: s
     >
       <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Catégorie de la note">
         {NOTE_CATEGORIES.map((c) => (
-          <Chip key={c} role="radio" aria-checked={category === c} pressed={category === c} onClick={() => setCategory(c)} className="h-[30px] px-2.5 text-[13px]">
+          <Chip key={c} role="radio" aria-checked={category === c} pressed={category === c} onClick={() => setCategory(c)} >
             {NOTE_LABELS[c]}
           </Chip>
         ))}
@@ -125,18 +123,19 @@ export function NoteForm({ recipeId, slug, people }: { recipeId: string; slug: s
         }}
         rows={2}
         aria-label="Nouvelle note"
-        placeholder={`Ajouter une note (${NOTE_LABELS[category].toLowerCase()})… Entrée pour enregistrer`}
+        placeholder={`${NOTE_LABELS[category]} : ce que tu changerais la prochaine fois`}
         className="resize-y"
       />
       <div className="flex flex-wrap items-center gap-2">
         {people.length > 1 ? (
           <Segmented label="Qui écrit" value={personId} onChange={choosePerson} options={people.map((p) => ({ value: p.id, label: p.name }))} />
         ) : null}
+        <span className="text-small text-faint max-sm:hidden">Entrée pour enregistrer</span>
         <Button type="submit" variant="primary" className="ml-auto" disabled={!text.trim() && !saved} state={pending ? "loading" : saved ? "done" : "idle"} loadingLabel="Ajout…" doneLabel="Ajoutée">
           Ajouter
         </Button>
       </div>
-      {error && <p className="text-[14px] text-ko-ink">{error}</p>}
+      {error && <p className="text-small text-ko-ink">{error}</p>}
     </form>
   );
 }
