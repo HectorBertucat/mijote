@@ -1,6 +1,7 @@
 // Test de fumée de l'appli construite (pnpm build d'abord) : le serveur de production démarre sur une
 // base vide, la mise en route s'ouvre, puis, foyer créé, chaque page répond sans erreur, avec et sans
-// mot de passe. Sert en local et en CI (la même chose que l'image Docker exécute).
+// mot de passe ; enfin le mode démo (MIJOTE_DEMO=1), une base par visiteur. Sert en local et en CI (la
+// même chose que l'image Docker exécute).
 //   pnpm build && pnpm test:smoke
 import { spawn, type ChildProcess } from "node:child_process";
 import { once } from "node:events";
@@ -14,7 +15,7 @@ import { authToken } from "@/lib/auth";
 import { buildShoppingList } from "@/lib/shopping/build";
 import { addEvent, createSession } from "@/lib/session/store";
 import { storeBoxes } from "@/lib/boxes/store";
-import { recipes } from "@/lib/db/schema";
+import { cookEvents, cookSessions, recipes, shoppingLists } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
 import { generateProgram } from "@/lib/training/generate";
@@ -69,6 +70,7 @@ async function start(dataDir: string, env: Record<string, string> = {}): Promise
       CHRONOCATALOG_URL: "",
       ANTHROPIC_API_KEY: "",
       MIJOTE_PASSWORD: "",
+      MIJOTE_DEMO: "",
       ...env,
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -146,7 +148,9 @@ async function main() {
     // Sans ANTHROPIC_API_KEY : pas d'assistant (ni bouton, ni route), tout le reste marche.
     const ask = await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) });
     check(ask.status === 404, "assistant sans clé → 404");
-    check(!/Assistant \(⌘I\)/.test(await (await get("/")).text()), "assistant sans clé : pas de bouton");
+    const homeHtml = await (await get("/")).text();
+    check(!/Assistant \(⌘I\)/.test(homeHtml), "assistant sans clé : pas de bouton");
+    check(!/data-demo-banner/.test(homeHtml) && !(await get("/")).headers.get("set-cookie")?.includes("mijote.demo"), "instance normale : ni bandeau ni cookie de démo");
   } finally {
     await stop(server);
   }
@@ -165,8 +169,75 @@ async function main() {
   }
 
   fs.rmSync(dataDir, { recursive: true, force: true });
+  await demo();
   console.log(failures ? `\n${failures} échec(s)` : "\nTout répond.");
   process.exit(failures ? 1 : 0);
+}
+
+/** Le cookie de démo posé par la réponse. */
+const demoCookie = (r: Response) => /mijote\.demo=([0-9a-f]{32})/.exec(r.headers.get("set-cookie") ?? "")?.[1] ?? null;
+
+/** 3. Mode démo : foyer prêt sans mise en route, une base par visiteur, ni mot de passe ni IA même réglés. */
+async function demo() {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "mijote-demo-"));
+  const server = await start(dataDir, { MIJOTE_DEMO: "1", MIJOTE_PASSWORD: "ignore-en-demo", ANTHROPIC_API_KEY: "sk-ignoree-en-demo" });
+  try {
+    const first = await get("/");
+    const a = demoCookie(first);
+    check(first.status === 200 && a != null, "démo : l'accueil s'ouvre sans mise en route ni mot de passe, cookie de visiteur posé");
+    const cookieA = `mijote.demo=${a}`;
+    await page("/", cookieA, /data-demo-banner[\s\S]*Recommencer/);
+    const fileA = path.join(dataDir, "demo", `v-${a}.db`);
+    check(fs.existsSync(fileA), "démo : la base du visiteur est dans le dossier de la démo");
+    const { sqlite, db } = openDb(fileA);
+    const session = db.select({ id: cookSessions.id }).from(cookSessions).where(eq(cookSessions.status, "done")).all().at(-1)!.id;
+    const list = db.select({ id: shoppingLists.id }).from(shoppingLists).where(eq(shoppingLists.status, "draft")).get()!.id;
+    for (const p of ["/recettes", "/recettes/butter-chicken-express", "/semaine", "/composer", "/courses", `/courses/${list}`, "/couts", "/placard", "/frigo", `/session/${session}`, "/sante", "/sante/aujourdhui", "/sante/profil", "/sante/habitudes", "/sante/entrainement", "/reglages"])
+      await page(p, cookieA);
+    await page("/frigo", cookieA, /Congélo|congélo/);
+    await page("/semaine", cookieA, /Butter chicken/);
+    await page("/sante", cookieA, /Alex/);
+    await page("/atelier", cookieA, /besoin de l’IA/);
+    await page("/atelier/importer", cookieA, /besoin de l’IA/);
+    await page("/sante/objectifs", cookieA, /besoin de l’IA/);
+    await page("/sante/apple", cookieA, /Apple Santé reste chez toi/);
+    check((await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) })).status === 404, "démo : pas d'assistant, même avec une clé");
+    check((await get("/api/sante/import", cookieA)).status === 404, "démo : pas d'import Apple Santé");
+    check((await get("/bienvenue", cookieA)).status === 307, "démo : pas de mise en route");
+
+    // Deux visiteurs, deux bases : ce que l'un change, l'autre ne le voit pas.
+    setSetting(db, SETTING.homeName, "Maison du visiteur A");
+    sqlite.close();
+    const b = demoCookie(await get("/recettes"));
+    check(b != null && b !== a, "démo : un autre visiteur reçoit son propre cookie");
+    await page("/", cookieA, /Maison du visiteur A/);
+    const other = await (await get("/", `mijote.demo=${b}`)).text();
+    check(!/Maison du visiteur A/.test(other) && /Chez Alex et Sam/.test(other), "démo : le second visiteur a sa base, intacte");
+    // Une écriture par l'appli va dans la base du visiteur qui l'a faite (la session a le même id dans les deux).
+    const wrote = await fetch(`${BASE}/api/session/${session}/actions`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ kind: "note", payload: { text: "essai" } }) });
+    const events = (file: string) => {
+      const x = openDb(file);
+      const n = x.db.select({ id: cookEvents.id }).from(cookEvents).all().length;
+      x.sqlite.close();
+      return n;
+    };
+    check(wrote.status === 200 && events(fileA) === 1 && events(path.join(dataDir, "demo", `v-${b}.db`)) === 0, "démo : l'écriture d'un visiteur reste dans sa base");
+    // « Recommencer » (formulaire sans script, comme un premier clic) : la base de A repart du modèle.
+    const action = /name="(\$ACTION_ID_[^"]+)"/.exec(await (await get("/", cookieA)).text())?.[1];
+    const form = new FormData();
+    if (action) form.set(action, "");
+    const restart = await fetch(`${BASE}/`, { method: "POST", headers: { cookie: cookieA }, body: form, redirect: "manual" });
+    check(action != null && restart.status < 400, `démo : « Recommencer » → ${restart.status}`);
+    await page("/", cookieA, /Chez Alex et Sam/);
+    check(events(fileA) === 0, "démo : après « Recommencer », plus rien du visiteur");
+    // Un cookie trafiqué ne sort pas du dossier : un nouvel identifiant est donné.
+    const forged = await get("/", "mijote.demo=../../mijote");
+    check(forged.status === 200 && demoCookie(forged) != null, "démo : cookie invalide → nouveau visiteur");
+    check(!fs.existsSync(path.join(dataDir, "mijote.db")), "démo : la base d'instance n'est jamais créée");
+  } finally {
+    await stop(server);
+  }
+  fs.rmSync(dataDir, { recursive: true, force: true });
 }
 
 main().catch((e) => {

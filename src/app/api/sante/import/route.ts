@@ -8,6 +8,7 @@ import { db } from "@/lib/db/client";
 import { ImportPayload, ingest } from "@/lib/health/ingest";
 import { WINDOWS, getLink, linkForKey, markSynced, syncWindow } from "@/lib/health/link";
 import { getPerson } from "@/lib/health/store";
+import { demoEnabled } from "@/lib/demo/core";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ function byKey(req: Request) {
 }
 
 export async function GET(req: Request) {
+  if (demoEnabled()) return fail("pas d’import dans la démo", 404);
   const { link, given } = byKey(req);
   if (!link) return fail(given ? "clé inconnue : recopie le code depuis Santé › Apple Santé" : "clé manquante", 401);
   const person = getPerson(db, link.personId);
@@ -28,6 +30,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  if (demoEnabled()) return fail("pas d’import dans la démo", 404);
   const { link, given } = byKey(req);
   if (!link) return fail(given ? "clé inconnue : recopie le code depuis Santé › Apple Santé" : "clé manquante", 401);
   let body: unknown;

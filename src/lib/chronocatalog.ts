@@ -1,6 +1,7 @@
 // Client typé de l'API de catalogue (contrat : docs/catalogue.md ; exemple : examples/catalogue-csv).
 // On ne type que les champs documentés : un champ absent du contrat s'ajoute côté
 // catalogue, jamais en le devinant ici. Mijote n'interroge jamais un site marchand directement.
+import { demoEnabled } from "@/lib/demo/core";
 
 export type StockStatus = "HIGH_STOCK" | "IN_STOCK" | "LOW_STOCK" | "NO_STOCK" | "BIENTOT" | null;
 
@@ -191,13 +192,14 @@ export function effectivePrice(p: Pick<ResolvedProduct, "promoPriceEur" | "curre
  * la liste de courses donne les quantités à acheter, sans produits ni prix (les coûts se saisissent
  * à la validation de la liste).
  */
-export const catalogEnabled = () => !!process.env.CHRONOCATALOG_URL?.trim();
+export const catalogEnabled = () => !!process.env.CHRONOCATALOG_URL?.trim() && !demoEnabled();
 
 /** Réponse de /resolve quand aucun catalogue n'est relié : rien trouvé, sans erreur. */
 const offlineResolve = (q: string): ResolveResponse => ({ query: q, source: "offline", matchedTypes: [], none: null });
 
 function baseUrl(): string {
-  const url = process.env.CHRONOCATALOG_URL;
+  // En démo, jamais d'appel au catalogue, même si l'adresse est réglée.
+  const url = demoEnabled() ? "" : process.env.CHRONOCATALOG_URL;
   if (!url) throw new ChronocatalogError("CHRONOCATALOG_URL manquante (voir .env.example)");
   return url.replace(/\/$/, "");
 }
@@ -317,7 +319,7 @@ export interface OrdersResult {
   orders: ChronoOrder[];
 }
 
-export const accountEnabled = () => !!process.env.CHRONOCATALOG_ACCOUNT_TOKEN?.trim();
+export const accountEnabled = () => !!process.env.CHRONOCATALOG_ACCOUNT_TOKEN?.trim() && !demoEnabled();
 
 const accountHeaders = () => {
   const token = process.env.CHRONOCATALOG_ACCOUNT_TOKEN?.trim();

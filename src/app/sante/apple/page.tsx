@@ -10,6 +10,8 @@ import { activePerson } from "@/lib/health/active";
 import { lastReceived, recentDaily, recentWorkouts } from "@/lib/health/samples";
 import { todayParis } from "@/lib/health/store";
 import { addDays } from "@/lib/week/propose";
+import { demoEnabled } from "@/lib/demo/core";
+import { DemoNotice } from "@/components/demo/DemoNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +46,12 @@ async function publicUrl(): Promise<string> {
 const NEXT: Record<number, string> = { 180: "les 6 derniers mois (premier envoi)", 35: "le dernier mois", 7: "les 7 derniers jours" };
 
 export default async function Apple() {
+  if (demoEnabled())
+    return (
+      <DemoNotice title="Apple Santé reste chez toi">
+        Sur ton instance, un Raccourci iPhone envoie les pesées, les pas et les séances à Mijote, avec une clé par personne. La démo ne reçoit rien de l’extérieur.
+      </DemoNotice>
+    );
   const person = await activePerson();
   const clientId = getSetting(db, CF_ID);
   const clientSecret = getSetting(db, CF_SECRET);

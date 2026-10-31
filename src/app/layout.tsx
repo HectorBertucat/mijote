@@ -21,6 +21,8 @@ import { redirect } from "next/navigation";
 import { getSetting, isSetupDone, SETTING } from "@/lib/settings";
 import { LaunchSplash } from "@/components/tour/LaunchSplash";
 import { startupImages } from "@/lib/launch";
+import { demoEnabled } from "@/lib/demo/core";
+import { DemoBanner } from "@/components/demo/DemoBanner";
 import "./globals.css";
 
 // Polices variables servies par l'appli (sous-ensemble latin, licence OFL dans ./fonts) : pas de réseau au build.
@@ -82,6 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-dvh">
         <LaunchSplash />
         <CustomArtProvider art={loadCustomArt(db)}>
+        {demoEnabled() && <DemoBanner />}
         <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} assistant={aiEnabled()} />} assistant={aiEnabled() ? <Assistant /> : null} />
         <SessionBanner />
         <main className="mx-auto max-w-[1240px] px-5 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-10 sm:pt-12 sm:pb-28"><PageTransition>{children}</PageTransition></main>

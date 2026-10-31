@@ -27,6 +27,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Types, tests | `pnpm typecheck`, `pnpm test` |
 | Build | `pnpm build` |
 | Docker | `docker compose up -d --build` |
+| Démo | `pnpm build` puis `MIJOTE_DEMO=1 MIJOTE_DATA_DIR=/tmp/mijote-demo pnpm start` (docs/demo.md) |
 | Migration | `pnpm db:generate --name <nom>` |
 | Recettes de `src/seed/recipes/` | `pnpm import:recipes` |
 | Dessins manquants | `pnpm illus:coverage` |
@@ -54,6 +55,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
 | Chargement, transitions de page | `loading.tsx` de chaque rubrique, kit `src/components/ui/skeleton.tsx`, `src/components/PageTransition.tsx`, onglets `src/components/Nav.tsx` |
 | Accès | `src/proxy.ts`, `src/lib/auth.ts` |
+| Mode démo (`MIJOTE_DEMO=1`) | `src/lib/demo/` (`core.ts` pur : ids, chemins, purge, plafonds ; `household.ts` pur : foyer daté ; `seed.ts` ; `store.ts` : base modèle et bases de visiteurs ; `request.ts`), `src/instrumentation.ts`, `src/components/demo/`, docs/demo.md |
 | Schéma | `src/lib/db/schema.ts`, docs/schema.md |
 
 ## Contexte privé d'une instance
