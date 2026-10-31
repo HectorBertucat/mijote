@@ -1,10 +1,10 @@
 // « Paquets entamés » : ce qui restera de chaque paquet après la session, sur toutes les
 // recettes retenues, et ce qu'on peut en faire (calculé en code, src/lib/week/leftovers.ts).
-// DA « Plan de travail » : un Alert « leaf » (anti-gaspillage) par paquet, ses propositions en lignes.
+// « Carnet de marché » : un paquet par ligne sous un filet, ce qu'il sert recette par recette, ses propositions en lignes.
 // Composant serveur asynchrone : à placer dans un <Suspense> (les /resolve sont en cache).
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Alert, buttonClass, Icon, RecipeTile } from "@/components/ui";
+import { buttonClass, Icon, RecipeTile } from "@/components/ui";
 import { db } from "@/lib/db/client";
 import { leftoversFor } from "@/lib/week/store";
 import type { Leftover } from "@/lib/week/leftovers";
@@ -19,7 +19,8 @@ export type LeftoverMode = { kind: "week"; w: string } | { kind: "composer"; sel
 
 const SHOWN = 4;
 
-export async function Leftovers({ sel, mode }: { sel: { slug: string; factor?: number; extras?: Record<string, number> }[]; mode: LeftoverMode }) {
+/** `head={false}` quand la section est déjà titrée (repli de la Semaine). */
+export async function Leftovers({ sel, mode, head = true }: { sel: { slug: string; factor?: number; extras?: Record<string, number> }[]; mode: LeftoverMode; head?: boolean }) {
   if (sel.length === 0) return null;
   const { leftovers, error } = await leftoversFor(db, sel);
   const fresh = leftovers.filter((l) => l.perishable);
@@ -27,47 +28,52 @@ export async function Leftovers({ sel, mode }: { sel: { slug: string; factor?: n
   const extrasOf = Object.assign({}, ...sel.map((x) => x.extras ?? {})) as Record<string, number>;
 
   return (
-    <section id="restes" className="grid scroll-mt-20 grid-cols-[minmax(0,1fr)] gap-2.5" aria-labelledby="restes-titre">
-      <Head />
-      {error && <Alert tone="warn">{error}</Alert>}
-      {!error && fresh.length === 0 && (
-        <Alert tone="ok" title="Aucun paquet frais entamé">
-          Tout ce qui s&apos;achète est utilisé.
-        </Alert>
-      )}
-      {fresh.slice(0, SHOWN).map((l) => (
-        <LeftoverRow key={l.key} l={l} mode={mode} extrasOf={extrasOf} />
-      ))}
-      {fresh.length > SHOWN && (
-        <details className="group min-w-0">
-          <summary className="flex min-h-tap cursor-pointer list-none items-center gap-2 rounded-[12px] border border-line px-3.5 text-[14px] font-semibold hover:bg-surface-2">
-            {fresh.length - SHOWN === 1 ? "1 autre reste" : `${fresh.length - SHOWN} autres restes`}
-            <span className="min-w-0 flex-1 truncate font-normal text-ink-2">{fresh.slice(SHOWN).map((l) => `${fmtG(l.restG)} ${deFood(l.label)}`).join(" · ")}</span>
-            <Icon name="chev" size="s" className="text-faint transition-transform group-open:rotate-90" />
-          </summary>
-          <div className="mt-2.5 grid gap-2.5">
+    <section className="grid grid-cols-[minmax(0,1fr)] gap-6" aria-labelledby={head ? "restes-titre" : undefined} aria-label={head ? undefined : "Paquets entamés"}>
+      {head && <Head />}
+      <div className="border-b border-line">
+        {error && <Line icon="alert">{error}</Line>}
+        {!error && fresh.length === 0 && <Line icon="check">Aucun paquet frais entamé : tout ce qui s’achète est utilisé.</Line>}
+        {fresh.slice(0, SHOWN).map((l) => (
+          <LeftoverRow key={l.key} l={l} mode={mode} extrasOf={extrasOf} />
+        ))}
+        {fresh.length > SHOWN && (
+          <details className="group min-w-0 border-t border-line">
+            <summary className="flex min-h-tap cursor-pointer list-none items-center gap-3 py-4 text-small font-bold hover:text-ink [&::-webkit-details-marker]:hidden">
+              {fresh.length - SHOWN === 1 ? "1 autre reste" : `${fresh.length - SHOWN} autres restes`}
+              <span className="min-w-0 flex-1 truncate font-normal text-ink-2">{fresh.slice(SHOWN).map((l) => `${fmtG(l.restG)} ${deFood(l.label)}`).join(" · ")}</span>
+              <Icon name="chev" size="s" className="text-ink-3 transition-transform duration-[var(--dur-2)] ease-[var(--ease-out)] group-open:rotate-90" />
+            </summary>
             {fresh.slice(SHOWN).map((l) => (
               <LeftoverRow key={l.key} l={l} mode={mode} extrasOf={extrasOf} />
             ))}
-          </div>
-        </details>
-      )}
+          </details>
+        )}
+      </div>
       {keeps.length > 0 && (
-        <p className="text-[13px] text-ink-2">
-          <b className="text-ink">Se garde</b> (sec ou surgelé) : {keeps.map((l) => `${fmtG(l.restG)} ${deFood(l.label)}`).join(" · ")}.
+        <p className="text-small text-ink-2">
+          <b className="text-ink">Se garde</b> (sec ou surgelé)&nbsp;: {keeps.map((l) => `${fmtG(l.restG)} ${deFood(l.label)}`).join(" · ")}.
         </p>
       )}
     </section>
   );
 }
 
+function Line({ icon, children }: { icon: "alert" | "check"; children: ReactNode }) {
+  return (
+    <p className="flex items-start gap-3 border-t border-line py-4 text-small">
+      <Icon name={icon} size="s" className={`mt-[3px] shrink-0 ${icon === "alert" ? "text-warn" : "text-ink-2"}`} />
+      {children}
+    </p>
+  );
+}
+
 function Head() {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-      <h2 id="restes-titre" className="text-[18px] font-bold">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+      <h2 id="restes-titre" className="text-h2">
         Paquets entamés
       </h2>
-      <p className="text-[13px] text-ink-2">sur toutes les recettes, d&apos;après les produits du drive</p>
+      <p className="text-small text-ink-2">sur toutes les recettes, d’après les produits du drive</p>
     </div>
   );
 }
@@ -76,49 +82,50 @@ function LeftoverRow({ l, mode, extrasOf }: { l: Leftover; mode: LeftoverMode; e
   const pct = Math.round((l.needG / l.orderedG) * 100);
   const hasActions = l.add.length > 0 || l.adjust || l.atelierHref;
   return (
-    <Alert tone="leaf" className="animate-pop" title={<>Il restera <span className="num">{fmtG(l.restG)}</span> {deFood(l.label)}</>}>
-      <span className="grid gap-2">
-        <span className="text-[13px] tabular-nums text-ink-2">
-          {l.packs > 1 ? `${l.packs} × ` : ""}
-          {l.quantityLabel ?? fmtG(l.packG)} achetés · {fmtG(l.needG)} utilisés ({pct} %)
-        </span>
-        {/* Ce qui est utilisé, recette par recette, dans le paquet acheté. */}
-        <span className="flex h-2 overflow-hidden rounded-full bg-surface" aria-hidden>
-          {l.uses.map((u) => (
-            <span key={u.slug} style={{ width: `${(u.grams / l.orderedG) * 100}%`, background: recipeColor(u.slug) }} />
-          ))}
-        </span>
-        <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-ink-2">
-          {l.uses.map((u) => (
-            <span key={u.slug} className="inline-flex items-center gap-1.5">
-              <i className="size-2 rounded-full" style={{ background: recipeColor(u.slug) }} aria-hidden />
-              {u.name} <span className="num">{fmtG(u.grams)}</span>
-            </span>
-          ))}
-        </span>
-        {hasActions && (
-          <span className="mt-0.5 grid overflow-hidden rounded-[10px] border border-line bg-surface [&>*:last-child]:border-b-0">
-            {l.add.map((a) => (
-              <AddRow key={a.slug} l={l} a={a} mode={mode} />
-            ))}
-            {l.adjust && <AdjustRow l={l} mode={mode} current={extrasOf[l.adjust.ingredientId] ?? 0} />}
-            {l.atelierHref && (
-              <Proposal lead={<Lead icon="sparkdraft" />} title={`Une recette pour ces ${fmtG(l.restG)}`} sub="créée dans l'atelier, à partir du reste">
-                <Link href={l.atelierHref} className={buttonClass({ size: "sm" })}>
-                  Atelier <PendingMark idle={<Icon name="chev" size="s" />} />
-                </Link>
-              </Proposal>
-            )}
-          </span>
-        )}
+    <article className="grid gap-3 border-t border-line py-6">
+      <h3 className="text-body font-bold tracking-normal [font-family:var(--font-sans)]">
+        Il restera <span className="num">{fmtG(l.restG)}</span> {deFood(l.label)}
+      </h3>
+      <p className="text-small tabular-nums text-ink-2">
+        {l.packs > 1 ? `${l.packs} × ` : ""}
+        {l.quantityLabel ?? fmtG(l.packG)} achetés · {fmtG(l.needG)} utilisés ({pct}&nbsp;%)
+      </p>
+      {/* Ce qui est utilisé, recette par recette, dans le paquet acheté. */}
+      <span className="flex h-2 max-w-[480px] overflow-hidden rounded-[4px] bg-surface-2" aria-hidden>
+        {l.uses.map((u) => (
+          <span key={u.slug} style={{ width: `${(u.grams / l.orderedG) * 100}%`, background: recipeColor(u.slug) }} />
+        ))}
       </span>
-    </Alert>
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-small text-ink-2">
+        {l.uses.map((u) => (
+          <span key={u.slug} className="inline-flex items-center gap-2">
+            <i className="size-2 rounded-[2px]" style={{ background: recipeColor(u.slug) }} aria-hidden />
+            {u.name} <span className="num">{fmtG(u.grams)}</span>
+          </span>
+        ))}
+      </p>
+      {hasActions && (
+        <div className="grid border-b border-line">
+          {l.add.map((a) => (
+            <AddRow key={a.slug} l={l} a={a} mode={mode} />
+          ))}
+          {l.adjust && <AdjustRow l={l} mode={mode} current={extrasOf[l.adjust.ingredientId] ?? 0} />}
+          {l.atelierHref && (
+            <Proposal lead={<Lead icon="sparkdraft" />} title={`Une recette pour ces ${fmtG(l.restG)}`} sub="créée dans l’atelier, à partir du reste">
+              <Link href={l.atelierHref} className={buttonClass({ size: "sm" })}>
+                Atelier <PendingMark idle={<Icon name="chev" size="s" />} />
+              </Link>
+            </Proposal>
+          )}
+        </div>
+      )}
+    </article>
   );
 }
 
 function Lead({ icon }: { icon: "sparkdraft" | "plus" }) {
   return (
-    <span className="grid size-7 shrink-0 place-items-center rounded-[6px] bg-surface-2 text-ink-2">
+    <span className="grid size-7 shrink-0 place-items-center rounded-[4px] bg-surface-2 text-ink-2">
       <Icon name={icon} size="s" />
     </span>
   );
@@ -126,14 +133,14 @@ function Lead({ icon }: { icon: "sparkdraft" | "plus" }) {
 
 function Proposal({ lead, title, sub, children }: { lead: ReactNode; title: ReactNode; sub: ReactNode; children: ReactNode }) {
   return (
-    <span className="flex min-w-0 items-center gap-3 border-b border-line px-3 py-2.5 text-ink">
+    <div className="flex min-w-0 items-center gap-3 border-t border-line py-3 text-ink">
       {lead}
       <span className="grid min-w-0 flex-1">
-        <span className="text-[14px] font-semibold leading-tight">{title}</span>
-        <span className="text-[13px] leading-snug text-ink-2">{sub}</span>
+        <span className="text-small font-bold">{title}</span>
+        <span className="text-small text-ink-2">{sub}</span>
       </span>
       <span className="shrink-0">{children}</span>
-    </span>
+    </div>
   );
 }
 
@@ -200,13 +207,13 @@ function AdjustRow({ l, mode, current }: { l: Leftover; mode: LeftoverMode; curr
   );
 }
 
-export function LeftoversSkeleton() {
+export function LeftoversSkeleton({ head = true }: { head?: boolean }) {
   return (
-    <section className="grid gap-2.5" aria-busy="true" aria-label="Calcul des paquets entamés">
-      <Head />
-      <p className="text-[13px] text-ink-2">Je regarde les paquets du drive pour toutes les recettes…</p>
+    <section className="grid gap-4" aria-busy="true" aria-label="Calcul des paquets entamés">
+      {head && <Head />}
+      <p className="text-small text-ink-2">Je regarde les paquets du drive pour toutes les recettes…</p>
       {[0, 1].map((k) => (
-        <div key={k} className="skeleton h-24 rounded-[12px]" />
+        <div key={k} className="skeleton h-24 !rounded-[8px]" />
       ))}
     </section>
   );

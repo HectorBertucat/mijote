@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-31 : Semaine et Composer au « Carnet de marché »
+- Semaine : la période en titre démesuré, avec ses flèches et « Changer la période » ; grille 4/8 au bureau, la semaine choisie à gauche (trois chiffres : repas couverts, temps en cuisine, repas au congélo ; tes plats ; avertissements en lignes sobres, seulement s'il y en a) et la bibliothèque à droite, en grandes entrées qui se cochent (la coche suit le geste tout de suite).
+- Une barre d'action collante, le seul élément qui flotte : « 2 plats · 24 repas sur 28 » et l'action suivante (proposer la semaine, faire ou refaire la liste, voir la liste, puis « Cuisiner dimanche » quand les courses sont commandées).
+- Absences, menu, quantités, nutrition et paquets entamés repliés sous des filets ; les explications de calcul passent derrière « Comment c'est calculé ». Le menu de la semaine quitte l'ardoise pour des étiquettes d'étiqueteuse sur la couleur du plat (et l'image partagée suit).
+- Composer au même langage : titre en grand, bibliothèque en entrées à cocher, résumé en trois chiffres, avertissements en lignes, « Lancer la session » en bleu cocotte, unités et associations en lignes à filet.
+- Pièces de zone : `src/components/semaine/Pick.tsx` (entrée à cocher), `Parts.tsx` (`Figures`, `Notice`, `Fold`, `HowTo`, `Dock`).
+
 ## 2026-10-31 : l'accueil, la semaine en un regard
 - `/` n'est plus une redirection vers les recettes : un tableau de bord en 7/5 (une colonne au téléphone). Le titre dit la semaine en chiffres (« 4 plats, 28 repas, 4 h 20 demain. »), puis une seule action en cocotte, choisie en code (`src/lib/home/next.ts`, testé) : reprendre la session, choisir les plats, couvrir les repas qui manquent, faire la liste, faire les courses, cuisiner, ouvrir le frigo une fois la session finie.
 - À côté : les repas du jour du profil actif (calories, protéines, le conseil s'il manque quelque chose), le frigo (boîtes regroupées par plat, la plus pressée d'abord, le congélo s'il reste de la place), l'état des courses. En bas, la période jour par jour, midi et soir.
