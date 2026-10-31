@@ -6,12 +6,13 @@
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
+import { handoffLine } from "@/lib/session/people";
 import { batchOf, currentPhase, passiveMin, phaseTimer, stepStatus, stepTimer } from "@/lib/session/state";
 import { applyScales } from "@/app/session/actions";
 import { Alert, Button, Icon, Induction } from "@/components/ui";
 import type { Controls, DayChoice } from "./SessionApp";
 import { DurationOrigin, DurationReport } from "./Durations";
-import { Bowl, BowlFoods, bowlName, bowlOf, clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, RecipeMark, recipeOf, SessionTest, shortName, splitStep, StepCue, StepSpecs } from "./parts";
+import { Bowl, BowlFoods, bowlName, bowlOf, clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, usePeople, RecipeMark, recipeOf, SessionTest, shortName, splitStep, StepCue, StepSpecs } from "./parts";
 import { StepIllu } from "@/components/illus/Illu";
 import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
@@ -240,19 +241,20 @@ export function AllDone({ c }: { c: Controls }) {
 
 export function Summary({ plan }: { plan: SessionPlan }) {
   const mode = modeOf(plan);
+  const n = usePeople();
   const busy = (p: Person) => plan.prep.tasks.filter((t) => t.person === p).reduce((x, t) => x + t.minutes, 0) + plan.steps.filter((x) => x.person === p).reduce((x, st) => x + st.activeMin, 0);
   const cells: [string, string][] =
     mode === "duo" && plan.eve
       ? [
           ["La veille (faite)", dur(plan.eve.minutes)],
           ["Le jour J, à deux", dur(plan.totalMin)],
-          ["A · B en action", `${dur(busy("A"))} · ${dur(busy("B"))}`],
+          [`${n.A.name} · ${n.B.name} en action`, `${dur(busy("A"))} · ${dur(busy("B"))}`],
         ]
       : mode === "duo"
         ? [
             ["À deux", dur(plan.totalMin)],
-            ["A, en action", dur(busy("A"))],
-            ["B, en action", dur(busy("B"))],
+            [`${n.A.name}, en action`, dur(busy("A"))],
+            [`${n.B.name}, en action`, dur(busy("B"))],
           ]
         : mode === "veille"
           ? [
@@ -383,6 +385,7 @@ export function PlanDetails({ plan, open = false }: { plan: SessionPlan; open?: 
 export function ResumeChoice({ plan, c, choice, big }: { plan: SessionPlan; c: Controls; choice: DayChoice | null; big?: boolean }) {
   const solo = choice?.solo ?? { prepMin: plan.prep.minutes, cookingMin: plan.cookingMin, totalMin: plan.prep.minutes + plan.cookingMin };
   const busy = c.resuming != null;
+  const n = usePeople();
   // Les durées du jour J se calculent au rendu serveur : si l’écran vient de passer « au frigo », on les redemande.
   const router = useRouter();
   const stale = !choice?.duo;
@@ -414,10 +417,10 @@ export function ResumeChoice({ plan, c, choice, big }: { plan: SessionPlan; c: C
           <span className="num text-[17px] text-ink-2">
             {choice?.duo ? (
               <>
-                <b className="text-ink">{dur(choice.duo.totalMin)}</b> · A {dur(choice.duo.aMin)} en action, B {dur(choice.duo.bMin)}
+                <b className="text-ink">{dur(choice.duo.totalMin)}</b> · {n.A.name} {dur(choice.duo.aMin)} en action, {n.B.name} {dur(choice.duo.bMin)}
               </>
             ) : (
-              "deux fils, A et B"
+              `deux fils, ${n.A.name} et ${n.B.name}`
             )}
             {" · "}les bols du frigo restent prêts
           </span>
@@ -456,9 +459,10 @@ export function handoffsFor(plan: SessionPlan, c: Controls, person: Person) {
 }
 export function Handoff({ plan, c, h }: { plan: SessionPlan; c: Controls; h: NonNullable<SessionPlan["handoffs"]>[number] }) {
   void plan;
+  const n = usePeople();
   return (
     <HandoffRow from={h.from} at={clock(c.cookingStart + h.atMin * 60000)}>
-      {h.text}
+      {handoffLine(h, n)}
     </HandoffRow>
   );
 }

@@ -9,6 +9,7 @@ import { createContext, useContext, useEffect, useRef, useState, type CSSPropert
 import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
 import type { SessionState, TimerState } from "@/lib/session/state";
 import { stepStatus } from "@/lib/session/state";
+import { LETTERS, type DuoNames } from "@/lib/session/people";
 import { STEP_LABELS } from "@/lib/recipes/format";
 import { BowlBadge, Button, Cue, Icon, Induction, OvenLevel, RecipeTile, Segmented, SpecChip, Timer, Toast, formatClock, type IconName } from "@/components/ui";
 import type { Toast as ToastData } from "./useSession";
@@ -102,12 +103,13 @@ export function Bowl({ bowl, size = "md", ready, className = "" }: { bowl: Pick<
 
 /** Personne d’une session à deux : A en encre pleine, B cerclée (DA `.mono`). */
 export function PersonMono({ person, size = 26, onInk = false }: { person: Person; size?: number; onInk?: boolean }) {
+  const who = usePeople()[person];
   const look = onInk
     ? person === "A" ? "bg-on-inverse text-inverse" : "border-2 border-on-inverse text-on-inverse"
     : person === "A" ? "bg-inverse text-on-inverse" : "border-2 border-ink bg-surface text-ink";
   return (
-    <span className={`inline-grid shrink-0 place-items-center rounded-full font-display font-extrabold leading-none ${look}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.48) }} aria-label={`Personne ${person}`}>
-      {person}
+    <span className={`inline-grid shrink-0 place-items-center rounded-full font-display font-extrabold leading-none ${look}`} style={{ width: size, height: size, fontSize: Math.round(size * 0.48) }} aria-label={who.name === person ? `Personne ${person}` : who.name}>
+      {who.mono}
     </span>
   );
 }
@@ -181,6 +183,9 @@ export type Phase = "prep" | "cooking";
 export const SessionTest = createContext<{ ended: boolean; end: () => void } | null>(null);
 /** La boîte de chaque plat (DishBox, rendue par la page serveur), par slug ; à défaut, BoxGlyph. */
 export const DishArts = createContext<Record<string, ReactNode>>({});
+/** À deux : le prénom et l’initiale de A et de B (membres du foyer), à défaut les lettres. */
+export const People = createContext<DuoNames>(LETTERS);
+export const usePeople = () => useContext(People);
 
 function TestTag({ compact }: { compact: boolean }) {
   const t = useContext(SessionTest);

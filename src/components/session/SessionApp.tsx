@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
+import { LETTERS, type DuoNames } from "@/lib/session/people";
 import {
   backgroundSteps,
   bowlsCompletedBy,
@@ -30,7 +31,7 @@ import {
 import { resumeSession } from "@/app/session/actions";
 import { buttonClass, Icon } from "@/components/ui";
 import { useNow, useSession } from "./useSession";
-import { chime, clock, DishArts, dur, Eyebrow, kindLabel, QrCard, recipeOf, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
+import { chime, clock, DishArts, dur, Eyebrow, kindLabel, QrCard, recipeOf, People, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
 import { DoneView, Issues, PlanDetails, progressLine, recipesLine, ResumeChoice, sessionTitle } from "./blocks";
 import { PrepBowlRow, PrepPhase, Tomorrow } from "./Prep";
 import { CookPhase } from "./Cook";
@@ -67,6 +68,8 @@ export interface SessionProps {
   storage?: RecipeStorage[];
   /** La boîte de chaque plat (DishBox), rendue côté serveur, par slug. */
   dishes?: Record<string, React.ReactNode>;
+  /** À deux : prénoms de A et B (deux premiers membres du foyer). */
+  people?: DuoNames;
 }
 
 export type Controls = ReturnType<typeof useControls>;
@@ -418,6 +421,7 @@ export function SessionApp(props: SessionProps) {
   return (
     <SessionTest.Provider value={test}>
       <DishArts.Provider value={props.dishes ?? {}}>
+      <People.Provider value={props.people ?? LETTERS}>
       {props.view !== "full" ? (
         <SimpleView
           id={props.id}
@@ -438,6 +442,7 @@ export function SessionApp(props: SessionProps) {
       {/* Vue simple : ce qui sonne revient au premier plan dans l’écran lui-même. */}
       {props.view === "full" && <TimerAlert plan={plan} ringing={c.ringing} now={c.now} onStop={c.stopTimer} />}
       <ToastView toast={c.toast} onDone={() => c.setToast(null)} raised={props.view !== "full"} />
+      </People.Provider>
       </DishArts.Provider>
     </SessionTest.Provider>
   );

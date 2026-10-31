@@ -8,13 +8,14 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
+import { ofName } from "@/lib/session/people";
 import { currentPhase, itemStatus, passiveMin, personFocus, personNext, stepTimer, threadOf, type ThreadItem } from "@/lib/session/state";
 import { Alert, Button, Icon } from "@/components/ui";
 import type { Controls, SessionProps } from "./SessionApp";
 import { Bleed, SimpleLink } from "./SessionApp";
 import { DoneView, Handoff, handoffsFor, Issues, NowCard, PlanDetails, progressLine, recipesLine, sessionTitle, timerMinutes } from "./blocks";
 import { prepTitle } from "./Prep";
-import { Bowl, bowlOf, clock, dur, Eyebrow, PersonMono, QrCard, RecipeMark, recipeOf, Resources, SessionHead, stepTitle, TimerList, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlOf, clock, dur, Eyebrow, PersonMono, usePeople, QrCard, RecipeMark, recipeOf, Resources, SessionHead, stepTitle, TimerList, useWakeLock, WakePill } from "./parts";
 
 const PEOPLE: Person[] = ["A", "B"];
 
@@ -26,10 +27,11 @@ export function DuoView(p: SessionProps & { c: Controls }) {
   const { state } = c;
   const wake = useWakeLock();
   const started = state.status === "cooking" || state.status === "done";
+  const n = usePeople();
   return (
     <Bleed>
       <SessionHead
-        title={`${sessionTitle(p.startedAt, plan)} · A et B`}
+        title={`${sessionTitle(p.startedAt, plan)} · ${n.A.name} et ${n.B.name}`}
         sub={[recipesLine(plan), plan.eve ? "prep la veille, le jour J à deux" : null, progressLine(plan, c)].filter(Boolean).join(" · ")}
         online={c.online}
         right={
@@ -48,7 +50,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
         <Issues plan={plan} sessionId={p.id} />
         {plan.eve && state.status !== "done" && <EveRecap plan={plan} c={c} />}
         {!started && (
-          <Alert tone="info" icon="play" title="A et B démarrent en même temps">
+          <Alert tone="info" icon="play" title={`${n.A.name} et ${n.B.name} démarrent en même temps`}>
             Les heures partent du démarrage ; le premier « Fait » démarre aussi la session. Chacun peut ouvrir son fil sur son téléphone avec son QR code.
           </Alert>
         )}
@@ -65,7 +67,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                   {p.personQrs.map((q) => (
                     <QrCard key={q.person} svg={q.svg} url={q.url}>
                       <PersonMono person={q.person} size={24} />
-                      Fil {q.person} sur ton téléphone
+                      Fil {ofName(n[q.person].name)} sur ton téléphone
                     </QrCard>
                   ))}
                 </div>
@@ -85,7 +87,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                 </div>
                 <PlanDetails plan={plan} />
                 <p className="hidden text-small text-ink-2 lg:block">
-                  Clavier : <Kbd>A</Kbd> ou <Kbd>espace</Kbd> = « Fait » de A, <Kbd>B</Kbd> = « Fait » de B.
+                  Clavier : <Kbd>A</Kbd> ou <Kbd>espace</Kbd> = « Fait » {ofName(n.A.name)}, <Kbd>B</Kbd> = « Fait » {ofName(n.B.name)}.
                 </p>
                 <Button variant="quiet" icon="check" block onClick={() => c.setStatus("done")}>
                   Terminer la session
@@ -168,15 +170,16 @@ function PersonColumn({ plan, c, person }: { plan: SessionPlan; c: Controls; per
   const { focus, timers, thread, done } = usePerson(plan, c, person);
   const rows = upcomingRows(plan, c, person, thread, focus?.id);
   const finished = thread.filter((it) => itemStatus(c.state, it) === "done");
+  const who = usePeople()[person].name;
   const box = useRef<HTMLElement>(null);
   useEffect(() => {
     box.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [focus?.id]);
   return (
-    <section ref={box} className="relative grid min-w-0 content-start gap-3 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto lg:pr-1" aria-label={`Fil de ${person}`} data-person={person}>
+    <section ref={box} className="relative grid min-w-0 content-start gap-3 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto lg:pr-1" aria-label={`Fil ${ofName(who)}`} data-person={person}>
       <div className="sticky top-0 z-[1] flex items-center gap-3 bg-bg pb-2">
         <PersonMono person={person} size={36} />
-        <b className="font-display text-[20px]">Fil {person}</b>
+        <b className="font-display text-[20px]">Fil {ofName(who)}</b>
         <span className="num ml-auto text-[14px] text-ink-2">
           {done} fait{done > 1 ? "s" : ""} · {thread.length - done} à venir
         </span>
@@ -186,7 +189,7 @@ function PersonColumn({ plan, c, person }: { plan: SessionPlan; c: Controls; per
       ) : (
         <div className="grid justify-items-center gap-2 rounded-[14px] border-2 border-ink bg-surface p-6 text-center">
           <Icon name="check" size="l" className="text-accent" />
-          <b className="font-display text-[22px]">{person} a tout fini</b>
+          <b className="font-display text-[22px]">{who} a tout fini</b>
         </div>
       )}
       {timers.length > 0 && <TimerList plan={plan} timers={timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} />}
@@ -302,6 +305,7 @@ function PersonActions({ c, item, person, big }: { c: Controls; item: ThreadItem
 
 /** Téléphone sans personne choisie : « Fil A » / « Fil B ». `telephone` : garde la vue plein écran. */
 export function DuoPick({ telephone = true }: { telephone?: boolean }) {
+  const n = usePeople();
   return (
     <div className="mx-auto grid max-w-lg gap-4 px-4 pt-6">
       <h1 className="text-[28px] font-extrabold">Qui es-tu ?</h1>
@@ -309,7 +313,7 @@ export function DuoPick({ telephone = true }: { telephone?: boolean }) {
         {PEOPLE.map((p) => (
           <Link key={p} href={`?${telephone ? "vue=telephone&" : ""}personne=${p}`} className="grid min-h-40 justify-items-center content-center gap-3 rounded-[14px] border-2 border-line bg-surface p-6 hover:border-ink">
             <PersonMono person={p} size={56} />
-            <b className="font-display text-[20px]">Fil {p}</b>
+            <b className="font-display text-[20px]">Fil {ofName(n[p].name)}</b>
           </Link>
         ))}
       </div>
