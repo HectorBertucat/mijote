@@ -9,7 +9,9 @@ import { buildPlan } from "@/lib/session/store";
 import type { SessionMode, SessionPlan } from "@/lib/session/planner";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BuildProgress, CopyButton, LiveVerify } from "@/components/ListActions";
-import { Alert, Card, Icon, Pill, Simmer } from "@/components/ui";
+import { Alert, Icon, Simmer } from "@/components/ui";
+import { BackLink, Figure, PageHead, SectionHead } from "@/components/cart/Carnet";
+import { recipeColor } from "@/lib/ui";
 import { CartList, type RowData } from "@/components/cart/CartList";
 import { acceptedForItems } from "@/lib/products/list";
 import { orderedIngredientsFor } from "@/lib/shopping/ordered";
@@ -25,19 +27,12 @@ import { cartPayload, orderSummary } from "@/lib/shopping/drive";
 
 export const dynamic = "force-dynamic";
 
-const TONE = { ok: "ok", warn: "warn", ko: "ko" } as const;
 const day = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
 
-function Back() {
-  return (
-    <Link href="/courses" className="inline-flex min-h-tap items-center gap-1 text-[14px] font-semibold text-ink-2 hover:text-ink">
-      <Icon name="chev" size="s" className="rotate-180" />
-      Listes
-    </Link>
-  );
-}
 const eur = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2).replace(".", ",")} €`);
-const grams = (g: number | null) => (g == null ? null : g >= 1000 ? `${(g / 1000).toLocaleString("fr-FR")} kg` : `${Math.round(g)} g`);
+const grams = (g: number | null) => (g == null ? null : g >= 1000 ? `${(g / 1000).toLocaleString("fr-FR")}\u00a0kg` : `${Math.round(g)}\u00a0g`);
+/** Titre long (plusieurs plats) : un cran plus petit, pour rester sur deux lignes. */
+const titleSize = (t: string) => (t.length > 26 ? "h1" : "display");
 
 export default async function Liste({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,18 +57,14 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
           .map((l) => l.item.split(/[,(]/)[0].trim())
       : [];
     return (
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-        <div>
-          <Back />
-          <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">Courses du {day(list.createdAt)}</h1>
-          <p className="mt-1.5 text-ink-2">{list.title}{store ? ` · ${store}` : ""}</p>
-        </div>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-12">
+        <PageHead back={<BackLink href="/courses">Listes</BackLink>} kicker={`Courses du ${day(list.createdAt)}${store ? ` · ${store}` : ""}`} title={list.title ?? "Liste de courses"} size={titleSize(list.title ?? "")} />
         <BuildProgress done={list.buildDone ?? 0} total={list.buildTotal ?? 0} lines={lines} error={list.buildError ?? (stuck ? "création interrompue, refais la liste depuis Composer." : null)} />
         {!list.buildError && !stuck && <Simmer label="Je remplis le panier…" className="justify-self-center" />}
         {!list.buildError && !stuck && (
           <div className="grid gap-2" aria-hidden>
             {[0, 1, 2].map((i) => (
-              <div key={i} className="skeleton h-16 rounded-[14px]" style={{ opacity: 1 - i * 0.25 }} />
+              <div key={i} className="skeleton h-12 !rounded-[8px]" style={{ opacity: 1 - i * 0.25 }} />
             ))}
           </div>
         )}
@@ -93,7 +84,12 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
   const total = buy.reduce((s, i) => s + (i.totalPrice ?? 0), 0);
   // Bandeau : la viande, le rouge, et les vrais doutes (pas un simple « vérifié il y a 6 h »).
   const realDoubt = (w: string) => !w.startsWith("vérifié il y a") && w !== "facultatif";
-  const toCheck = buy.filter((i) => i.aisle === "Boucherie" || i.state === "ko" || i.warnings.some(realDoubt));
+  const toCheck = buy.filter((i) => i.state === "ko" || i.warnings.some(realDoubt));
+  const meat = !catalogEnabled() ? 0 : buy.filter((i) => i.aisle === "Boucherie" && !toCheck.includes(i)).length;
+  const reason = (i: (typeof items)[number]): { tone: "ko" | "warn"; text: string } => {
+    const w = i.warnings.find(realDoubt);
+    return i.state === "ko" ? { tone: "ko", text: w ?? "rupture" } : { tone: "warn", text: w ?? "à vérifier" };
+  };
   const acceptedOf = acceptedForItems(db, items);
   const toRow = (i: (typeof items)[number]): RowData => {
     const p = i.productJson as ResolvedProduct | null;
@@ -135,32 +131,41 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
 
   const liveLines = buy.filter((i) => i.productJson).map((i) => ({ label: (i.productJson as ResolvedProduct).name, status: i.liveStatus }));
 
+  const title = list.title ?? "Liste de courses";
+  const checkFirst = !ordered && (toCheck.length > 0 || meat > 0);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
       <AutoRefresh />
-      <div>
-        <Back />
-        <h1 className="text-[30px] font-extrabold leading-[1.05] tracking-[-0.03em] sm:text-[36px] sm:leading-none">Courses du {day(list.createdAt)}</h1>
-        <p className="mt-1.5 text-ink-2">
-          {list.title}{store ? ` · ${store}` : ""} · <span className="num">{buy.length}</span> articles · ≈ <span className="num">{eur(total)}</span>
-        </p>
+      <PageHead
+        back={<BackLink href="/courses">Listes</BackLink>}
+        kicker={`Courses du ${day(list.createdAt)}${store ? ` · ${store}` : ""}`}
+        title={title}
+        size={titleSize(title)}
+        aside={
+          total > 0 ? (
+            <Figure big value={total.toFixed(2).replace(".", ",")} unit="€" label={`${buy.length} articles${ordered ? ", commandés" : catalogEnabled() ? ", estimé" : ", prix saisis"}`} />
+          ) : (
+            <Figure big value={buy.length} label={`articles${ordered ? " commandés" : " à prendre"}`} />
+          )
+        }
+      >
         {(week || scaledRecipes.length > 0 || Object.keys(list.recipeExtras).length > 0) && (
-          <p className="mt-1 text-[14px] text-ink-2">
+          <p className="text-small text-ink-2">
             {week && (
-              <Link href={`/semaine?w=${week.weekStart}`} className="font-semibold text-accent hover:underline">
+              <Link href={`/semaine?w=${week.weekStart}`} className="font-semibold text-accent underline-offset-4 hover:underline">
                 {periodHeading(week.weekStart, week.days)}
               </Link>
             )}
             {scaledRecipes.map((r) => (
               <span key={r.slug}>
                 {" "}
-                · {r.name} {factorLabel(list.recipeScales[r.slug])} (<span className="num">{Math.round(r.servingsUnits * list.recipeScales[r.slug])} u</span>)
+                · {r.name} {factorLabel(list.recipeScales[r.slug])} (<span className="num">{Math.round(r.servingsUnits * list.recipeScales[r.slug])}</span> unités)
               </span>
             ))}
             {Object.keys(list.recipeExtras).length > 0 && <span> · {Object.keys(list.recipeExtras).length === 1 ? "1 paquet fini" : `${Object.keys(list.recipeExtras).length} paquets finis`} (grammes ajoutés)</span>}
           </p>
         )}
-      </div>
+      </PageHead>
 
       {list.archivedAt && (
         <Alert
@@ -180,53 +185,65 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
         </Alert>
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
-        <div className="grid min-w-0 gap-3">
-          {!ordered && toCheck.length > 0 && (
-            <Alert tone="warn" title="À vérifier sur ton drive avant de valider">
-              <span className="mt-1 grid gap-1">
-                {toCheck.map((i) => (
-                  <span key={i.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <Pill tone={TONE[i.state ?? "warn"]} dot>
-                      {i.state === "ko" ? "rupture" : i.state === "ok" ? "en stock" : "à vérifier"}
-                    </Pill>
-                    <b className="font-semibold">{(i.productJson as ResolvedProduct | null)?.name ?? i.item}</b>
-                    {i.warnings.length > 0 && <span className="text-[14px] opacity-80">{i.warnings.join(" · ")}</span>}
-                  </span>
-                ))}
-              </span>
-            </Alert>
-          )}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-x-6">
+        {checkFirst && (
+          <section aria-labelledby="verifier-titre" className="grid content-start gap-3 lg:col-span-4 lg:col-start-9 lg:row-start-1">
+            <SectionHead as="label" id="verifier-titre" title="Avant de valider" count={toCheck.length || undefined} />
+            <ul>
+              {toCheck.map((i) => {
+                const r = reason(i);
+                return (
+                  <li key={i.id} className="border-b border-line">
+                    <a href={`#ligne-${i.id}`} className="grid gap-1 py-3 hover:text-ink [&:hover_b]:underline [&:hover_b]:decoration-line-strong [&:hover_b]:underline-offset-4">
+                      <b className="font-semibold">{(i.productJson as ResolvedProduct | null)?.name ?? i.item}</b>
+                      <span className={`inline-flex items-center gap-1 text-small font-semibold ${r.tone === "ko" ? "text-ko-ink" : "text-warn-ink"}`}>
+                        <Icon name={r.tone === "ko" ? "x" : "alert"} size="s" strokeWidth={2.4} />
+                        {r.text.charAt(0).toUpperCase() + r.text.slice(1)}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            {meat > 0 && <p className="text-small text-ink-2">Boucherie : regarde le poids et le prix au kilo sur le drive ({meat === 1 ? "1 ligne" : `${meat} lignes`}).</p>}
+          </section>
+        )}
 
-          {!ordered && catalogEnabled() && <LiveVerify listId={id} lines={liveLines} />}
-
-          {catalogEnabled() && <DrivePanel
-            listId={id}
-            enabled={accountEnabled()}
-            ordered={ordered}
-            products={cartPayload(items).length}
-            drive={{ status: list.driveStatus, at: list.driveAt, error: list.driveError, summary: list.driveSummary }}
-            order={{ status: list.orderStatus, error: list.orderError, ...(orderSummary(db, id) ?? { paid: null, estimated: null, matched: 0, total: 0 }) }}
-          />}
-
-          <CartList catalog={catalogEnabled()} listId={id} title={list.title ?? "Courses"} ordered={ordered} orderedAt={list.orderedAt} groups={groups} copy={<CopyButton text={copy} />} />
-
-          <Coverage listId={id} ordered={ordered} />
+        <div className="min-w-0 lg:col-span-8 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          <CartList catalog={catalogEnabled()} listId={id} title={title} ordered={ordered} orderedAt={list.orderedAt} groups={groups} copy={<CopyButton text={copy} />} />
         </div>
 
-        <Card as="section" pad="md" className="grid gap-3">
-          <h2 className="text-[18px] font-bold">Session de cuisine</h2>
-      <form action={startSession} className="space-y-2.5">
-        <input type="hidden" name="slugs" value={list.recipeSlugs.join(",")} />
-        <input type="hidden" name="listId" value={id} />
-        <ModePicker plans={plans} />
-        <SubmitButton pendingText="Je planifie la session…" variant={ordered ? undefined : "soft"}>
-          {ordered ? "Lancer la session avec ma commande" : "Lancer la session avec cette liste"}
-        </SubmitButton>
-      </form>
-          {ordered && <CopyButton text={copy} size="sm" />}
-        </Card>
+        {catalogEnabled() && (
+          <aside className={`grid content-start gap-12 lg:col-span-4 lg:col-start-9 ${checkFirst ? "lg:row-start-2" : "lg:row-start-1 lg:row-span-2"}`}>
+            {!ordered && <LiveVerify listId={id} lines={liveLines} />}
+            <DrivePanel
+              listId={id}
+              enabled={accountEnabled()}
+              ordered={ordered}
+              products={cartPayload(items).length}
+              drive={{ status: list.driveStatus, at: list.driveAt, error: list.driveError, summary: list.driveSummary }}
+              order={{ status: list.orderStatus, error: list.orderError, ...(orderSummary(db, id) ?? { paid: null, estimated: null, matched: 0, total: 0 }) }}
+            />
+          </aside>
+        )}
       </div>
+
+      <Coverage listId={id} ordered={ordered} />
+
+      <section aria-labelledby="session-titre" className="grid gap-6">
+        <SectionHead id="session-titre" title="Cuisiner" />
+        <form action={startSession} className="grid gap-4">
+          <input type="hidden" name="slugs" value={list.recipeSlugs.join(",")} />
+          <input type="hidden" name="listId" value={id} />
+          <ModePicker plans={plans} />
+          <div className="flex flex-wrap items-center gap-2">
+            <SubmitButton pendingText="Je planifie la session…" variant={ordered ? undefined : "soft"}>
+              {ordered ? "Lancer la session avec ma commande" : "Lancer la session avec cette liste"}
+            </SubmitButton>
+            {ordered && <CopyButton text={copy} />}
+          </div>
+        </form>
+      </section>
     </div>
   );
 }
@@ -241,46 +258,59 @@ function Coverage({ listId, ordered }: { listId: string; ordered: boolean }) {
   }));
   if (!rows.some((x) => x.short.length || x.surplus.length)) return null;
   return (
-    <section className="mt-2 grid gap-2.5" aria-labelledby="couvre-titre">
-      <h2 id="couvre-titre" className="text-[18px] font-bold">
-        {ordered ? "Ce que la commande couvre" : "Ce que la liste couvre"}
-      </h2>
-      <div className="grid gap-2.5 sm:grid-cols-2">
+    <section className="grid gap-6" aria-labelledby="couvre-titre">
+      <SectionHead id="couvre-titre" title={ordered ? "Ce que la commande couvre" : "Ce que la liste couvre"} />
+      <ul className="grid gap-x-6 lg:grid-cols-2">
         {rows.map(({ r, short, surplus }) => (
-          <Card key={r.recipeId} pad="sm" className="grid content-start gap-2 text-[14px]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <b className="font-display text-[16px]">{r.name}</b>
-              {short.length === 0 ? <Pill tone="ok">tout est couvert</Pill> : <Pill tone="ko">{short.length === 1 ? "1 manque" : `${short.length} manques`}</Pill>}
+          <li key={r.recipeId} className="grid content-start gap-3 border-b border-line py-4 pl-4" style={{ boxShadow: `inset 4px 0 0 ${recipeColor(r.slug)}` }}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h3 className="text-h3">{r.name}</h3>
+              {short.length === 0 ? (
+                <span className="inline-flex items-center gap-1 text-small font-semibold text-ok-ink">
+                  <Icon name="check" size="s" strokeWidth={2.4} />
+                  Tout est couvert
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-small font-semibold text-ko-ink">
+                  <Icon name="x" size="s" strokeWidth={2.4} />
+                  {short.length === 1 ? "1 manque" : `${short.length} manques`}
+                </span>
+              )}
             </div>
             {short.length === 0 ? (
-              <p className="text-ink-2">
+              <p className="text-small text-ink-2">
                 Pour <span className="num">{r.servingsUnits}</span> unités.
               </p>
             ) : (
               <>
-                <ul className="grid gap-0.5 text-ko-ink">
-                  {short.map((i) => (
-                    <li key={i.lineRaw}>
-                      Manque {i.item.split(/[,(]/)[0]} : <span className="num">{grams(i.boughtG ?? 0)}</span> sur <span className="num">{grams(i.needG)}</span>
-                    </li>
-                  ))}
-                </ul>
+                <table className="w-full text-small">
+                  <tbody>
+                    {short.map((i) => (
+                      <tr key={i.lineRaw} className="border-t border-line">
+                        <td className="py-1 pr-4">{i.item.split(/[,(]/)[0]}</td>
+                        <td className="num whitespace-nowrap py-1 text-right text-ink-2">
+                          <span className="text-ink">{grams(i.boughtG ?? 0)}</span> sur {grams(i.needG) ?? "?"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
                 {r.suggestedUnits < r.servingsUnits && (
-                  <Alert tone="ko" className="!py-2 text-[14px]">
-                    Ajuste la recette à <b className="num">{r.suggestedUnits} unités</b> au lieu de {r.servingsUnits}, ou ajoute un paquet.
-                  </Alert>
+                  <p className="text-small text-ink">
+                    Fais <b className="num">{r.suggestedUnits}</b> unités au lieu de <span className="num">{r.servingsUnits}</span>, ou ajoute un paquet.
+                  </p>
                 )}
               </>
             )}
             {surplus.length > 0 && (
-              <p className="flex items-start gap-1.5 text-[13px] text-ink-2">
-                <Icon name="leaf" size="s" className="mt-px shrink-0" />
+              <p className="flex items-start gap-1 text-small text-ink-2">
+                <Icon name="leaf" size="s" className="mt-1 shrink-0" />
                 <span>Restes au placard : {surplus.map((i) => `${i.item.split(/[,(]/)[0]} +${grams(i.gapG)}`).join(" · ")}</span>
               </p>
             )}
-          </Card>
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

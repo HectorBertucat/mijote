@@ -1,11 +1,13 @@
 "use client";
 
-// Actions d'une liste de courses (DA « Plan de travail ») : vérification en direct (VerifyPanel du kit,
-// suivie ligne par ligne), progression pendant la création (LoadList), copie avec les liens.
+// Actions d'une liste de courses (système « Carnet de marché ») : vérification en direct (suivie ligne par
+// ligne), progression pendant la création (LoadList), copie avec les liens. Sections sobres : étiquette à filet,
+// chiffres serrés, un mot plutôt qu'une pastille.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { checkLive, followLive } from "@/app/courses/actions";
-import { Alert, Button, LoadList, Pill, Progress, type LoadItem } from "@/components/ui";
+import { Alert, Button, Icon, LoadList, Progress, type LoadItem } from "@/components/ui";
+import { SectionHead } from "@/components/cart/Carnet";
 
 export type LiveLine = { label: string; status: string | null };
 
@@ -21,13 +23,14 @@ function liveItems(lines: LiveLine[]): { items: LoadItem[]; done: number; total:
     }
     const trail =
       l.status === "done" || l.status === "fresh" ? (
-        <Pill tone="ok">{l.status === "fresh" ? "déjà frais" : "vérifié"}</Pill>
+        <span className="text-small text-ink-3">{l.status === "fresh" ? "déjà frais" : "vérifié"}</span>
       ) : l.status === "failed" ? (
-        <Pill tone="ko">échec</Pill>
+        <span className="inline-flex items-center gap-1 text-small font-semibold text-ko-ink">
+          <Icon name="x" size="s" strokeWidth={2.4} />
+          échec
+        </span>
       ) : (
-        <Pill tone="idle" icon="dash">
-          pas vérifiable
-        </Pill>
+        <span className="text-small text-ink-3">pas vérifiable</span>
       );
     return { label: l.label, state: "done", trail };
   });
@@ -84,24 +87,17 @@ export function LiveVerify({ listId, lines }: { listId: string; lines: LiveLine[
 
   const shown = open || pending > 0 ? items : items.slice(0, 0);
   return (
-    <section className="grid gap-2.5 rounded-[14px] border border-line bg-surface px-3.5 py-3" aria-label="Vérification en direct">
-      <div className="flex items-center justify-between gap-2.5 text-[14px]">
-        <b>Vérification en direct</b>
-        {total > 0 && (
-          <span className="num">
-            {done}/{total} vérifiés
-          </span>
-        )}
-      </div>
+    <section className="grid gap-4" aria-labelledby="direct-titre">
+      <SectionHead as="label" id="direct-titre" title="Vérification en direct" count={total > 0 ? `${done} sur ${total}` : undefined} />
       {total > 0 && <Progress value={done / total} label="Avancement de la vérification" />}
       {shown.length > 0 && <LoadList items={shown.slice(0, 10)} />}
       <div className="flex flex-wrap items-center gap-2">
         <Button
-          variant="primary"
+          variant="secondary"
           size="sm"
           icon="refresh"
           state={busy ? "loading" : "idle"}
-          loadingLabel={pending > 0 ? `${done}/${total} vérifiés…` : "Envoi au worker…"}
+          loadingLabel={pending > 0 ? `${done} sur ${total} vérifiés…` : "Envoi au worker…"}
           onClick={async () => {
             setBusy(true);
             setMsg(null);
@@ -127,8 +123,8 @@ export function LiveVerify({ listId, lines }: { listId: string; lines: LiveLine[
             {open ? "Masquer le détail" : "Voir le détail"}
           </Button>
         )}
-        <span className={`text-[13px] ${msg && !msg.ok ? "text-ko-ink" : "text-ink-2"}`}>{msg?.text ?? (total === 0 ? "prix et stock relus sur le drive, 20 produits au plus" : "")}</span>
       </div>
+      {(msg || total === 0) && <p className={`text-small ${msg && !msg.ok ? "text-ko-ink" : "text-ink-2"}`}>{msg?.text ?? "Prix et stock relus sur le drive, 20 produits au plus."}</p>}
     </section>
   );
 }
@@ -143,7 +139,7 @@ export function BuildProgress({ done, total, lines, error }: { done: number; tot
   }, [router, error]);
   if (error)
     return (
-      <Alert tone="ko" title="La liste n'a pas pu être construite">
+      <Alert tone="ko" title="La liste n’a pas pu être construite">
         {error}
       </Alert>
     );
@@ -151,23 +147,18 @@ export function BuildProgress({ done, total, lines, error }: { done: number; tot
   const second = done >= first;
   const items: LoadItem[] = [
     ...lines.map((l, i): LoadItem => ({ label: l, state: i < done ? "done" : i < done + 6 ? "on" : "idle" })),
-    { label: "Choix des produits et des paquets", state: second ? (done >= total ? "done" : "on") : "idle", trail: second && total > first ? <span className="num text-faint">{Math.min(done - first, total - first)}/{total - first}</span> : undefined },
+    { label: "Choix des produits et des paquets", state: second ? (done >= total ? "done" : "on") : "idle", trail: second && total > first ? <span className="num text-ink-3">{Math.min(done - first, total - first)} sur {total - first}</span> : undefined },
   ];
   // Ce qui tourne en premier, puis la suite ; le fait se replie en bas.
   const rank = { on: 0, idle: 1, done: 2 } as const;
   const ordered = [...items].sort((a, b) => rank[a.state] - rank[b.state]);
   return (
-    <section className="grid gap-2.5 rounded-[14px] border border-line bg-surface px-3.5 py-3" aria-label="Création de la liste">
-      <div className="flex items-center justify-between gap-2.5 text-[14px]">
-        <b>Je prépare la liste…</b>
-        <span className="num">
-          {done}/{total}
-        </span>
-      </div>
+    <section className="grid gap-4" aria-labelledby="creation-titre">
+      <SectionHead as="label" id="creation-titre" title="Je prépare la liste…" count={`${done} sur ${total}`} />
       <Progress value={total ? done / total : 0} label="Avancement" />
       <LoadList items={ordered.slice(0, 9)} />
-      {ordered.length > 9 && <p className="text-[13px] text-faint">{ordered.length - 9 === 1 ? "et 1 autre ligne" : `et ${ordered.length - 9} autres lignes`}</p>}
-      <p className="text-[13px] text-ink-2">Chaque ingrédient d&apos;abord (type de produit, quantité lue), puis un produit et un nombre de paquets par besoin agrégé.</p>
+      {ordered.length > 9 && <p className="text-small text-ink-3">{ordered.length - 9 === 1 ? "et 1 autre ligne" : `et ${ordered.length - 9} autres lignes`}</p>}
+      <p className="text-small text-ink-2">Chaque ingrédient d’abord (type de produit, quantité lue), puis un produit et un nombre de paquets par besoin.</p>
     </section>
   );
 }

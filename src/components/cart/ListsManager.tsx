@@ -3,20 +3,24 @@
 // Les listes de /courses, avec un mode « Sélectionner » : archiver (annulable) ou supprimer une ou
 // plusieurs listes. Supprimer demande un second tap ; une liste déjà commandée ou cuisinée est
 // archivée à la place (src/lib/shopping/archive.ts). Les archivées se rangent en bas, restaurables.
+// Une liste = une ligne à filet : date en chiffres serrés, titre, état en un mot (pas de pastille ni de cachet).
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { archiveListsAction, deleteListsAction, restoreListsAction } from "@/app/courses/actions";
-import { Button, Check, Icon, List, ListRow, Pill, StampCommande, type PillTone } from "@/components/ui";
+import { Button, Check, Icon, type PillTone } from "@/components/ui";
+import { SectionHead } from "./Carnet";
 import { useToast } from "./Toast";
 
 export interface ListRowData {
   id: string;
   title: string;
+  /** Jour de création, court (« 31 oct. »). */
+  day?: string;
   sub: string;
   label: string;
   tone: PillTone;
-  /** Commandée : le cachet « Commandé » remplace la pastille. */
+  /** Commandée : le mot prend une coche. */
   ordered?: boolean;
 }
 
@@ -50,13 +54,28 @@ export function ListsManager({ lists, archived }: { lists: ListRowData[]; archiv
       router.refresh();
     });
 
+  const status = (l: ListRowData) => (
+    <span className={`inline-flex shrink-0 items-center gap-1 text-small ${l.ordered ? "font-semibold text-ink" : "text-ink-3"}`}>
+      {l.ordered && <Icon name="check" size="s" strokeWidth={2.4} />}
+      {l.label.charAt(0).toUpperCase() + l.label.slice(1)}
+    </span>
+  );
+  const row = "grid min-w-0 grid-cols-[72px_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-line py-4";
+  const text = (l: ListRowData) => (
+    <span className="grid min-w-0">
+      <span className="truncate font-semibold">{l.title}</span>
+      <span className="truncate text-small text-ink-2">{l.sub}</span>
+    </span>
+  );
+
   return (
-    <section className="grid gap-2.5" aria-labelledby="listes-titre">
-      <div className="flex min-h-[36px] items-center justify-between gap-2">
-        <h2 id="listes-titre" className="text-[18px] font-bold">
-          Listes
-        </h2>
-        {lists.length > 0 &&
+    <section className="grid gap-6" aria-labelledby="listes-titre">
+      <SectionHead
+        id="listes-titre"
+        title="Listes"
+        count={lists.length || undefined}
+        action={
+          lists.length > 0 &&
           (selecting ? (
             <Button variant="quiet" size="sm" onClick={stop}>
               Annuler
@@ -65,49 +84,40 @@ export function ListsManager({ lists, archived }: { lists: ListRowData[]; archiv
             <Button variant="quiet" size="sm" icon="check" onClick={() => setSelecting(true)}>
               Sélectionner
             </Button>
-          ))}
-      </div>
+          ))
+        }
+      />
 
       {lists.length === 0 ? (
-        <p className="text-[14px] text-ink-2">Toutes les listes sont archivées.</p>
+        <p className="text-small text-ink-2">Toutes les listes sont archivées.</p>
       ) : (
-        <List>
+        <ul className="-mt-6">
           {lists.map((l) =>
             selecting ? (
-              <div key={l.id} className={`flex min-w-0 items-center gap-3 border-b border-line px-3.5 py-1.5 ${picked.has(l.id) ? "bg-accent-soft" : ""}`}>
-                <Check checked={picked.has(l.id)} onChange={(e) => toggle(l.id, e.target.checked)} strike={false} className="min-w-0 flex-1" aria-label={`Sélectionner ${l.title}`}>
-                  <span className="grid min-w-0">
-                    <span className="truncate font-semibold">{l.title}</span>
-                    <span className="truncate text-[14px] text-ink-2">{l.sub}</span>
-                  </span>
+              <li key={l.id} className={`${row} !items-center !py-1 transition-colors duration-[var(--dur-1)] ${picked.has(l.id) ? "bg-accent-soft" : ""}`}>
+                <span className="num-tight text-h3 text-ink-2">{l.day}</span>
+                <Check checked={picked.has(l.id)} onChange={(e) => toggle(l.id, e.target.checked)} strike={false} className="min-w-0" aria-label={`Sélectionner ${l.title}`}>
+                  {text(l)}
                 </Check>
-                <Pill tone={l.tone} icon={l.tone === "idle" ? "sparkdraft" : undefined}>{l.label}</Pill>
-              </div>
+                {status(l)}
+              </li>
             ) : (
-              <ListRow
-                key={l.id}
-                href={`/courses/${l.id}`}
-                lead={<Icon name="basket" className="shrink-0 text-ink-2" />}
-                title={l.title}
-                sub={l.sub}
-                trail={
-                  l.ordered ? (
-                    <StampCommande seed={l.id} size={84} title={l.label} />
-                  ) : (
-                    <Pill tone={l.tone} icon={l.tone === "idle" ? "sparkdraft" : undefined}>
-                      {l.label}
-                    </Pill>
-                  )
-                }
-              />
+              <li key={l.id} className="border-b border-line">
+                <Link href={`/courses/${l.id}`} className={`${row} group -mx-3 grid-cols-[72px_minmax(0,1fr)_auto_auto] rounded-[8px] !border-b-0 px-3 hover:bg-surface-2`}>
+                  <span className="num-tight text-h3">{l.day}</span>
+                  {text(l)}
+                  {status(l)}
+                  <Icon name="chev" size="s" className="self-center text-ink-3 transition-transform duration-[var(--dur-1)] ease-[var(--ease-out)] group-hover:translate-x-1 group-hover:text-ink" />
+                </Link>
+              </li>
             )
           )}
-        </List>
+        </ul>
       )}
 
       {selecting && (
-        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-[14px] border border-line bg-surface px-3.5 py-2.5 shadow-e3 sm:bottom-4">
-          <span className="num mr-auto text-[14px] text-ink-2">{ids.length === 0 ? "Touche les listes à ranger" : `${ids.length} sélectionnée${ids.length > 1 ? "s" : ""}`}</span>
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-[14px] border border-line bg-raised px-4 py-3 shadow-float sm:bottom-4">
+          <span className="num mr-auto text-small text-ink-2">{ids.length === 0 ? "Touche les listes à ranger" : `${ids.length} sélectionnée${ids.length > 1 ? "s" : ""}`}</span>
           <Button
             size="sm"
             icon="archive"
@@ -144,7 +154,7 @@ export function ListsManager({ lists, archived }: { lists: ListRowData[]; archiv
       )}
 
       {undo && !selecting && (
-        <div className="flex items-center gap-2 text-[14px] text-ink-2">
+        <div className="flex items-center gap-2 text-small text-ink-2">
           <Icon name="archive" size="s" />
           {undo.length > 1 ? `${undo.length} listes archivées` : "Liste archivée"}
           <Button variant="quiet" size="sm" onClick={() => run(() => restoreListsAction(undo), () => setUndo(null))}>
@@ -154,24 +164,24 @@ export function ListsManager({ lists, archived }: { lists: ListRowData[]; archiv
       )}
 
       {archived.length > 0 && (
-        <details className="group mt-1">
-          <summary className="flex min-h-tap cursor-pointer list-none items-center gap-2 text-[14px] font-semibold text-ink-2 [&::-webkit-details-marker]:hidden">
-            <Icon name="chev" size="s" className="transition-transform group-open:rotate-90" />
-            Archivées · {archived.length}
+        <details className="group">
+          <summary className="label flex min-h-tap cursor-pointer list-none items-center gap-2 text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+            <Icon name="chev" size="s" className="transition-transform duration-[var(--dur-1)] ease-[var(--ease-out)] group-open:rotate-90" />
+            Archivées · <span className="num">{archived.length}</span>
           </summary>
-          <List className="mt-1.5">
+          <ul className="mt-2 border-t border-line">
             {archived.map((l) => (
-              <div key={l.id} className="flex min-w-0 items-center gap-3 border-b border-line px-3.5 py-2.5">
-                <Link href={`/courses/${l.id}`} className="grid min-w-0 flex-1 opacity-75 hover:opacity-100">
-                  <span className="truncate font-semibold">{l.title}</span>
-                  <span className="truncate text-[14px] text-ink-2">{l.sub}</span>
+              <li key={l.id} className={`${row} !items-center !py-2`}>
+                <span className="num-tight text-h3 text-ink-3">{l.day}</span>
+                <Link href={`/courses/${l.id}`} className="min-w-0 text-ink-2 hover:text-ink">
+                  {text(l)}
                 </Link>
                 <Button variant="quiet" size="sm" icon="refresh" disabled={pending} onClick={() => run(() => restoreListsAction([l.id]))}>
                   Restaurer
                 </Button>
-              </div>
+              </li>
             ))}
-          </List>
+          </ul>
         </details>
       )}
       {toast.node}
