@@ -28,7 +28,7 @@ export function ProfileSwitch({ profiles, active, className = "" }: { profiles: 
   if (profiles.length < 2) return null;
   const initials = profileInitials(profiles);
   return (
-    <div role="group" aria-label="Profil" className={`flex items-stretch ${className}`}>
+    <div role="group" aria-label="Profil" data-tour="profil" className={`flex items-stretch ${className}`}>
       {profiles.map((p) => {
         const on = p.id === current;
         return (

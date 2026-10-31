@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { activeProfileId } from "@/lib/health/active";
 import { Settings } from "./Settings";
 
 export const dynamic = "force-dynamic";
 
-export default function Reglages() {
+export default async function Reglages() {
   return (
     <div className="grid gap-12 sm:gap-18">
       <header className="grid gap-4 lg:grid-cols-12 lg:gap-x-6">
@@ -16,7 +17,7 @@ export default function Reglages() {
           .
         </p>
       </header>
-      <Settings />
+      <Settings profileId={await activeProfileId()} />
     </div>
   );
 }

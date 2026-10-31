@@ -13,6 +13,11 @@ import { homeView, type HomeBoxGroup, type HomeView } from "@/lib/home/store";
 import { addDays, type Meal } from "@/lib/week/propose";
 import { periodHeading } from "@/lib/week/period";
 import { recipeColor } from "@/lib/ui";
+import { FirstSteps } from "@/components/accueil/FirstSteps";
+import { Tour } from "@/components/tour/Tour";
+import { tourView } from "@/lib/tour/store";
+import { catalogEnabled } from "@/lib/chronocatalog";
+import { listPeople } from "@/lib/health/store";
 
 export const dynamic = "force-dynamic";
 
@@ -81,8 +86,12 @@ function StepAction({ step, h }: { step: HomeStep; h: HomeView }) {
 
 const QUIET_LINK = "inline-flex min-h-tap items-center gap-1 rounded-[8px] font-semibold text-ink-2 underline decoration-line-strong decoration-1 underline-offset-[6px] hover:text-ink hover:decoration-ink";
 
-export default async function Accueil() {
-  const h = homeView(db, await activeProfileId());
+export default async function Accueil({ searchParams }: { searchParams: Promise<{ visite?: string }> }) {
+  const profileId = await activeProfileId();
+  const h = homeView(db, profileId);
+  // Prise en main : la visite guidée (proposée une fois, ou relancée par ?visite=1) et les premiers pas.
+  const tour = tourView(db, profileId);
+  const replay = (await searchParams).visite != null;
   const lines = headline({ dishes: h.dishes.length, meals: h.toEat, minutes: h.minutes, cookDay: h.cookDay, today: h.today, cooked: h.cooked });
   const ready = h.step.kind === "cook";
 
@@ -150,12 +159,14 @@ export default async function Accueil() {
 
       {/* Le reste du foyer : aujourd’hui, le frigo, les courses. */}
       <div className="grid min-w-0 content-start gap-12 lg:col-span-5 lg:border-l lg:border-line lg:pl-8">
+        {tour.showSteps && <FirstSteps view={tour.steps} />}
         {h.todayMeals.length > 0 && h.lead && <Today h={h} />}
         <Fridge h={h} />
         <Shopping h={h} />
       </div>
 
       {h.dishes.length > 0 && <Week h={h} />}
+      <Tour start={tour.offer || replay} catalog={catalogEnabled()} profiles={listPeople(db).length} />
     </div>
   );
 }

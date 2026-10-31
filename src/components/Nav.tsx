@@ -40,6 +40,7 @@ export function TopNav({ profiles, active, search, home }: { profiles: ProfileOp
               <Link
                 key={t.href}
                 href={t.href}
+                data-tour={t.href.slice(1)}
                 aria-current={on ? "page" : undefined}
                 className={`relative inline-flex items-center text-[15px] font-bold tracking-[-0.005em] ${on ? "text-ink" : "text-ink-2 hover:text-ink"}`}
               >
@@ -71,7 +72,7 @@ export function TabBar() {
         {TABS.map((t) => {
           const on = path.startsWith(t.href);
           return (
-            <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={`relative grid justify-items-center gap-1 pb-2 pt-3 ${on ? "text-ink" : "text-ink-3"}`}>
+            <Link key={t.href} href={t.href} data-tour={t.href.slice(1)} aria-current={on ? "page" : undefined} className={`relative grid justify-items-center gap-1 pb-2 pt-3 ${on ? "text-ink" : "text-ink-3"}`}>
               <span aria-hidden className={`absolute inset-x-5 top-0 h-0.5 bg-ink transition-transform duration-[var(--dur-2)] ease-[var(--ease-out)] ${on ? "scale-x-100" : "scale-x-0"}`} />
               {/* Ouvrir une rubrique : son icône fait son geste une fois (panier qui se balance, page qui tourne…). */}
               <span key={on ? path : "off"} data-g={t.icon} className={`grid place-items-center ${on ? "k-gesture" : ""}`}>

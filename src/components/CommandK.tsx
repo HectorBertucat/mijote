@@ -69,7 +69,7 @@ export function CommandK({ recipes }: { recipes: SearchRecipe[] }) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="hidden h-9 items-center gap-2 rounded-[8px] border border-line px-3 text-small font-semibold text-ink-2 hover:border-line-strong hover:text-ink lg:inline-flex" aria-label="Chercher (⌘K)">
+      <button type="button" data-tour="recherche" onClick={() => setOpen(true)} className="hidden h-9 items-center gap-2 rounded-[8px] border border-line px-3 text-small font-semibold text-ink-2 hover:border-line-strong hover:text-ink lg:inline-flex" aria-label="Chercher (⌘K)">
         <Icon name="search" size="s" />
         Chercher
         <kbd className="label rounded-[4px] bg-surface-2 px-1 py-0.5 text-ink-2">⌘K</kbd>
