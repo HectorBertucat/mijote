@@ -16,6 +16,8 @@ import { listPeople } from "@/lib/health/store";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSetting, isSetupDone, SETTING } from "@/lib/settings";
+import { LaunchSplash } from "@/components/tour/LaunchSplash";
+import { startupImages } from "@/lib/launch";
 import "./globals.css";
 
 // Polices variables servies par l'appli (sous-ensemble latin, licence OFL dans ./fonts) : pas de réseau au build.
@@ -42,7 +44,7 @@ const SEASON_ART: Record<Season, { id: FoodArtId; label: string }> = {
 export const metadata: Metadata = {
   title: "Mijote",
   description: "Batch cooking planifié, courses, nutrition juste et sport à la maison, pour tout le foyer",
-  appleWebApp: { capable: true, title: "Mijote", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Mijote", statusBarStyle: "default", startupImage: startupImages() },
 };
 export const viewport: Viewport = {
   width: "device-width",
@@ -73,6 +75,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-dvh">
+        <LaunchSplash />
         <CustomArtProvider art={loadCustomArt(db)}>
         <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} />} />
         <SessionBanner />
