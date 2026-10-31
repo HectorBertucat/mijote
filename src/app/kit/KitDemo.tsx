@@ -1,6 +1,7 @@
 "use client";
 
-// Page /kit : chaque composant du kit dans ses états, avec le nom à importer depuis "@/components/ui".
+// Page /kit : la vitrine du système v3 (Systeme.tsx), puis chaque composant du kit dans ses états, avec le nom à
+// importer depuis "@/components/ui".
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Alert,
@@ -57,20 +58,22 @@ import {
   type Place,
   type LoadItem,
 } from "@/components/ui";
+import { Systeme } from "./Systeme";
 
+/** Un composant : filet, nom, ce qu'on importe, puis la démonstration vivante. Pas de carte : des filets et de l'air. */
 function Panel({ title, use, children, wide }: { title: string; use: string; children: ReactNode; wide?: boolean }) {
   return (
-    <Card as="section" pad="md" className={`grid content-start gap-3.5 ${wide ? "lg:col-span-2" : ""}`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[17px] font-bold">{title}</h2>
-        <code className="text-[12px] text-faint">{use}</code>
+    <section className={`grid min-w-0 content-start gap-6 border-t border-line-strong pt-4 ${wide ? "lg:col-span-2" : ""}`}>
+      <div className="grid gap-1">
+        <h3 className="text-h3">{title}</h3>
+        <code className="num text-small text-faint">{use}</code>
       </div>
       {children}
-    </Card>
+    </section>
   );
 }
 function Help({ children }: { children: ReactNode }) {
-  return <p className="text-[13px] text-ink-2">{children}</p>;
+  return <p className="max-w-[60ch] text-small text-ink-2">{children}</p>;
 }
 
 const VITEMS = ["Sauté de porc sans os Label Rouge", "Champignons de Paris", "Échalotes", "Ricotta 250 g", "Saucisses de Toulouse", "Pulpe de tomates"];
@@ -106,16 +109,15 @@ export function KitDemo() {
   const shortLeft = useCountdown(short, 0);
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-1.5">
-        <div className="font-display text-[12px] font-bold uppercase tracking-[0.12em] text-faint">Kit interne · non lié</div>
-        <h1 className="text-[36px] font-extrabold leading-none tracking-[-0.03em]">Les pièces, vivantes</h1>
-        <p className="max-w-[70ch] text-ink-2">
-          Tout vient de <code>@/components/ui</code> et des tokens de <code>src/app/cuisine-tokens.css</code>. Maquettes complètes : <code>docs/design/plan-de-travail.html</code>. Basculer le thème en haut à droite pour voir le sombre.
-        </p>
-      </div>
+    <div className="grid gap-12 sm:gap-18">
+      <Systeme />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <header className="grid gap-4 border-t-2 border-ink pt-6">
+        <h2 className="text-h1">Les pièces, vivantes</h2>
+        <p className="max-w-[52ch] text-lead text-ink-2">Chaque composant du kit dans ses états. Tout s’importe depuis <code className="num">@/components/ui</code>.</p>
+      </header>
+
+      <div className="grid gap-x-12 gap-y-18 lg:grid-cols-2">
         <Panel title="Boutons" use="Button, buttonClass">
           <Chips>
             <Button
@@ -144,7 +146,7 @@ export function KitDemo() {
             <Button variant="quiet" size="sm">Annuler</Button>
             <Button variant="danger-solid" size="sm">Supprimer la session</Button>
             <Button variant="ink" size="sm" icon="check">Fait (encre)</Button>
-            <span className="inline-flex rounded-[10px] bg-inverse p-1.5"><Button variant="on-inverse" size="sm" icon="check">Arrêter (sur encre)</Button></span>
+            <span className="inline-flex rounded-[8px] bg-inverse p-2"><Button variant="on-inverse" size="sm" icon="check">Arrêter (sur encre)</Button></span>
             <Button variant="primary" disabled>Désactivé</Button>
             <Button variant="primary" iconOnly icon="plus" aria-label="Nouvelle recette" />
             <Button variant="quiet" size="sm" iconOnly icon="x" aria-label="Fermer" />
@@ -213,8 +215,8 @@ export function KitDemo() {
             <div className="flex items-start gap-3">
               <RecipeTile color={6} name="Chasseur de porc" />
               <div className="min-w-0">
-                <h3 className="text-[17px] font-bold leading-tight [font-stretch:100%]">Chasseur de porc</h3>
-                <p className="mt-0.5 text-[13px] text-ink-2">4 repas à deux · 9 unités par repas</p>
+                <h3 className="text-h3 font-bold leading-tight [font-stretch:100%]">Chasseur de porc</h3>
+                <p className="mt-1 text-small text-ink-2">4 repas à deux · 9 unités par repas</p>
               </div>
             </div>
             <MacroRow>
@@ -235,7 +237,7 @@ export function KitDemo() {
           <Tabs label="Fiche" value={tab} onChange={setTab} items={[{ value: "bols", label: "Ingrédients" }, { value: "etapes", label: "Étapes" }, { value: "nutrition", label: "Nutrition" }, { value: "notes", label: "Notes", count: 2 }]} />
           <Segmented label="Part" options={[{ value: "h", label: "Alex · 5 u" }, { value: "j", label: "Sam · 4 u" }]} />
           <Segmented label="Mode de session" value={mode} onChange={setMode} options={[{ value: "seul", label: "Seul" }, { value: "duo", label: "À deux" }, { value: "veille", label: "Prep la veille" }]} />
-          <div className="rounded-[12px] bg-inverse p-3">
+          <div className="rounded-[8px] bg-inverse p-3">
             <Segmented label="Vue" tone="inverse" options={[{ value: "a", label: "Maintenant" }, { value: "b", label: "Plan" }]} />
           </div>
           <Help>Contrôlés (value + onChange) ou libres (defaultValue). tone=&quot;inverse&quot; sur fond d&apos;encre, size=&quot;icon&quot; pour le thème.</Help>
@@ -401,7 +403,7 @@ export function KitDemo() {
             const st = (on: boolean, d: boolean): LoadItem["state"] => (d ? "done" : on ? "on" : "idle");
             return (
               <StepProgress
-                title="L'IA prépare une variante"
+                title="L’IA prépare une variante"
                 running={aiStart != null && !over}
                 value={aiStart == null ? 0 : over ? 1 : ai ? calibrated(t, EXP, 0.86) : 0.86 + (0.12 * done) / 3}
                 aside={aiStart == null ? "≈ 8 s" : over ? "fini" : ai ? `≈ ${Math.max(1, Math.ceil((EXP - t) / 1000))} s` : "presque fini"}
@@ -409,7 +411,7 @@ export function KitDemo() {
                   { label: "Lecture de la fiche", state: st(aiStart != null && t < 300, aiStart != null && t >= 300) },
                   { label: "Recherche des leviers", state: st(ai && t >= 300 && t < EXP / 3, !ai || t >= EXP / 3) },
                   { label: "Proposition de la variante", state: st(ai && t >= EXP / 3, aiStart != null && !ai) },
-                  { label: "Vérification au drive", state: st(aiStart != null && !ai && !over, over), trail: aiStart != null && !ai ? <span className="num text-[13px] text-ink-2">{done}/3</span> : undefined },
+                  { label: "Vérification au drive", state: st(aiStart != null && !ai && !over, over), trail: aiStart != null && !ai ? <span className="num text-small text-ink-2">{done}/3</span> : undefined },
                 ]}
               />
             );
@@ -438,7 +440,7 @@ export function KitDemo() {
 
         <StampsPanel />
 
-        <Panel title="Étiquette sur ruban" use="Tape">
+        <Panel title="Étiquette d’étiqueteuse" use="Tape">
           <div className="flex flex-wrap gap-3">
             <Tape tint="var(--c-recipe-1)" sub="mardi midi">Chasseur</Tape>
             <Tape tint="var(--c-recipe-2)" sub="jeudi soir">Forno</Tape>
@@ -460,12 +462,12 @@ export function KitDemo() {
 
         <Panel title="Navigation" use="TopNav, TabBar, SessionBanner (src/components/)" wide>
           <Card flat className="overflow-hidden">
-            <div className="flex items-center gap-2.5 bg-inverse py-2 pl-3 pr-2.5 text-[14px] text-on-inverse">
+            <div className="flex items-center gap-2 bg-inverse py-2 pl-3 pr-2.5 text-small text-on-inverse">
               <span className="k-live size-2 shrink-0 rounded-full bg-on-inverse" aria-hidden />
               <span className="min-w-0 flex-1 truncate">
                 <b>Session en cours</b> · Chasseur de porc + Pasta al forno · <span className="num font-bold">étape 14 sur 38</span>
               </span>
-              <span className="inline-flex min-h-[30px] items-center rounded-[8px] bg-on-inverse px-2.5 font-display text-[13px] font-[650] text-inverse">Cuisson →</span>
+              <span className="inline-flex min-h-[30px] items-center rounded-[8px] bg-on-inverse px-2.5 font-display text-small font-[650] text-inverse">Cuisson →</span>
             </div>
           </Card>
           <Help>Le bandeau de session est la seule bande d&apos;encre pleine de l&apos;appli. Santé reste grisé « bientôt » tant que le module n&apos;existe pas.</Help>
@@ -474,7 +476,7 @@ export function KitDemo() {
         <Panel title="Icônes" use={'<Icon name="…" size="s|m|l" />'} wide>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
             {ICON_NAMES.map((n) => (
-              <div key={n} className="grid justify-items-center gap-1 rounded-[10px] bg-surface-2 px-1 py-2.5 text-[11px] text-ink-2">
+              <div key={n} className="grid justify-items-center gap-1 rounded-[8px] bg-surface-2 px-1 py-3 text-label text-ink-2">
                 <Icon name={n} className="text-ink" />
                 {n}
               </div>
@@ -502,7 +504,7 @@ export function KitDemo() {
           <Chip>Prise de masse</Chip>
           <Chip>Plus équilibré</Chip>
         </Chips>
-        <div className="max-w-[88%] rounded-[14px] rounded-bl-[4px] bg-surface-2 px-3 py-2.5 text-[14px]">Que veux-tu changer ? La part d&apos;Alex est à 760 kcal, 40 au-dessus de sa cible.</div>
+        <div className="max-w-[88%] rounded-[14px] rounded-bl-[4px] bg-surface-2 px-3 py-3 text-small">Que veux-tu changer ? La part d&apos;Alex est à 760 kcal, 40 au-dessus de sa cible.</div>
         <Input placeholder="Ex. garde le goût fumé" aria-label="Message" value={msg} onChange={(e) => setMsg(e.target.value)} />
       </Sheet>
 
@@ -531,7 +533,7 @@ function StampsPanel() {
   const f = n > 0;
   return (
     <Panel title="Cachets" use="Stamp · StampCommande · StampFaitMaison…" wide>
-      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 rounded-[12px] bg-raised p-4">
+      <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 rounded-[8px] bg-raised p-4">
         <StampFaitMaison key={`a${n}`} date={new Date()} fresh={f} />
         <StampCommande key={`b${n}`} date={new Date()} fresh={f} />
         <StampSaison key={`c${n}`} fresh={f} />
@@ -545,7 +547,7 @@ function StampsPanel() {
         <Button size="sm" onClick={() => setN((x) => x + 1)}>
           Tamponner
         </Button>
-        <span className="text-[13px] text-ink-2">Une encre par cachet, inclinaison fixe (`seed`), deux par écran au plus, « pof » seulement avec `fresh`.</span>
+        <span className="text-small text-ink-2">Une encre par cachet, inclinaison fixe (`seed`), deux par écran au plus, « pof » seulement avec `fresh`.</span>
       </div>
     </Panel>
   );

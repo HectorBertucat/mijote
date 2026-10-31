@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-31 : « Carnet de marché » pour les réglages, la mise en route, la connexion, l'atelier et le kit
+- Mise en route (`/bienvenue`, `src/app/bienvenue/Onboarding.tsx`) : une question par écran (qui mange, la cuisine en sept questions et un résumé, où se font les courses), la question en titre démesuré, l'aide concrète en marge sur bureau et repliée sur téléphone, trois temps en filets pour la progression. Le dernier écran enregistre les courses et ouvre l'appli (Santé › Mise en route).
+- Réglages : un document à sections à filets (titre à gauche, contenu à droite), le foyer en lignes (prénom corrigé sur place), la cuisine en résumé dont chaque ligne ouvre sa question. Plus de marque dans les exemples de champ.
+- Connexion au mot-symbole, en grand ; sélecteur de profil de l'en-tête réduit aux initiales, au langage des rubriques.
+- Atelier et import : zone de collage (bouton « Coller » si le navigateur le permet), « ce qui se passe » en trois temps, aperçu au langage de la fiche (étiquette du plat, ingrédients par bol, étapes), avertissements et vérifications en lignes nettes au lieu de bandeaux et de pastilles.
+- `/kit` : vitrine du système v3 (couleurs, typographie, espacements, rayons et ombre, mouvement, ton) avant les composants, posés sur des filets.
+
 ## 2026-10-31 : système graphique « Carnet de marché » (fondation)
 - Nouveau système graphique, décrit dans `docs/design/systeme.md` : audit de la v2, références, direction, polices, palette, espacements, rayons, ombre, grille, ton et mouvement.
 - Jetons : papier `#F3F1EC`, encre `#15161A`, filets, une seule ombre (`--sh-float`) pour ce qui flotte, échelle de texte `display / h1 / h2 / h3 / lead / body / small / label / num-xl`, trois rayons, mouvement en `--dur-1/2/3/sheet` et courbes `--ease-out`, `--ease-sheet`.
