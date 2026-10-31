@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 2026-10-31 : pause des minuteurs, prénoms à deux, polices et base au démarrage
+- Session : chaque minuteur se met en pause et repart (bouton « Pause » sur le cadran de la vue simple, dans « Ça sonne bientôt » et dans la liste de la vue détaillée), et « Tout mettre en pause » / « Tout reprendre » quand on doit s’absenter. Deux événements au journal, `timer_pause` et `timer_resume` (rejoués par chaque écran, synchronisés par le flux SSE) ; la reprise repousse la fin prévue du temps passé en pause, « ↺ » en tient compte, un minuteur en pause ne sonne pas et son étape reste « en fond ». Logique pure dans `src/lib/session/state.ts` (`timerEnd`, `liveTimer`, `storedEnd`, `originalEnd`), testée (`tests/session-pause.test.ts`). Pas de migration : la colonne `kind` est un texte.
+- Session à deux : A et B prennent le prénom des deux premiers membres du foyer (fils, pastilles avec l’initiale, relais, durées du jour J, avis des autres écrans) ; sans prénom, en double ou avec la même initiale, les lettres restent (`src/lib/session/people.ts`, testé).
+- Polices servies par l’appli (`next/font/local`, `src/app/fonts/`) : Archivo (wght 100–900, wdth 62–125) et Atkinson Hyperlegible Next (wght 200–800), sous-ensemble latin, avec leur licence OFL. Le build ne dépend plus de Google Fonts.
+- Base : `PRAGMA journal_mode = WAL` peut répondre « database is locked » sans attendre quand plusieurs processus ouvrent une base neuve (workers de `next build`) ; il est maintenant réessayé (`setWal`, `src/lib/db/open.ts`). Reproduit avec 20 processus sur une base neuve : 2 échecs sur 2 000 ouvertures avant, aucun après.
+
 ## 2026-10-31 : refonte « Carnet de marché », finitions de direction artistique
 - Le petit visuel d'un plat (`RecipeTile`) n'est plus un monogramme : c'est sa boîte de verre sur un carré de nappe vichy, partout où il restait (accueil, semaine, recherche, coûts, journal…).
 - Micro-typographie : `typo()` (`src/lib/typo.ts`, testé) pose l'apostrophe courbe, les espaces insécables avant « : ; ? ! », dans les guillemets et entre un nombre et son unité, à l'affichage des fiches (nom, description, ingrédients, étapes, repères) et des consignes de session ; les textes de l'interface passent à l'apostrophe courbe.
