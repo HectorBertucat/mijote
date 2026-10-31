@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Atkinson_Hyperlegible_Next } from "next/font/google";
+import localFont from "next/font/local";
 import { TabBar, TopNav } from "@/components/Nav";
 import { SessionBanner } from "@/components/SessionBanner";
 import { CommandK } from "@/components/CommandK";
@@ -18,8 +18,15 @@ import { redirect } from "next/navigation";
 import { getSetting, isSetupDone, SETTING } from "@/lib/settings";
 import "./globals.css";
 
-const title = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-title", display: "swap" });
-const body = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--font-body", display: "swap" });
+// Polices variables servies par l'appli (sous-ensemble latin, licence OFL dans ./fonts) : pas de réseau au build.
+const title = localFont({
+  src: "./fonts/archivo-latin.woff2",
+  weight: "100 900",
+  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
+  variable: "--font-title",
+  display: "swap",
+});
+const body = localFont({ src: "./fonts/atkinson-hyperlegible-next-latin.woff2", weight: "200 800", variable: "--font-body", display: "swap" });
 
 // Thème choisi (clair, sombre) posé avant le premier rendu ; sans choix, on suit le système.
 const THEME_SCRIPT = `try{var t=localStorage.getItem("mijote.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
