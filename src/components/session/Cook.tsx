@@ -1,9 +1,9 @@
 "use client";
 
-// Phase 2, la cuisson (DA « Session · cuisson ») : l'étape en cours en très grand, la suivante en
+// Phase 2, la cuisson (DA « Session · cuisson ») : l’étape en cours en très grand, la suivante en
 // pointillé, le bol à prendre, ce qui tourne en fond, le fil des étapes, les minuteurs et le
 // schéma des foyers et du four. Ordinateur : fil | étape | minuteurs et ressources ; iPad : deux
-// colonnes, le fil sous l'étape ; téléphone sans ?vue=telephone : une colonne.
+// colonnes, le fil sous l’étape ; téléphone sans ?vue=telephone : une colonne.
 import { useEffect, useRef, type ReactNode } from "react";
 import type { SessionPlan } from "@/lib/session/planner";
 import { backgroundSteps, batchOf, currentPhase, inWait, stepStatus } from "@/lib/session/state";
@@ -16,7 +16,7 @@ import { bowlOf, clock, dur, Eyebrow, kindLabel, NextCard, RecipeMark, Resources
 export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; side?: ReactNode }) {
   const { state, focus, upcoming, now, cookingStart } = c;
   const bg = backgroundSteps(plan, state, focus);
-  // Un geste glissé dans la cuisson remplit ses bols : on n'y « prend » rien.
+  // Un geste glissé dans la cuisson remplit ses bols : on n’y « prend » rien.
   const takeFrom = [focus, upcoming].find((s) => s && s.bowls.length && !s.tasks) ?? null;
   const take = takeFrom?.bowls.map((l) => bowlOf(plan, l)).find(Boolean);
   return (
@@ -33,7 +33,7 @@ export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; s
           <section className="grid gap-2" aria-label="En cours en fond">
             <Eyebrow>En cours en fond</Eyebrow>
             {bg.map((s) => {
-              // Son minuteur d'attente, ou celui de la sous-étape d'attente en cours (le riz cuit).
+              // Son minuteur d’attente, ou celui de la sous-étape d’attente en cours (le riz cuit).
               const wait = inWait(state, s) ? s.phases![currentPhase(state, s)!] : null;
               const t = [...state.timers.values()].find((x) => x.stepId === s.id && x.doneAt == null && (x.phase == null || (wait != null && x.phase === currentPhase(state, s))));
               return (

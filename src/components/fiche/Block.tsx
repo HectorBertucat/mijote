@@ -1,9 +1,9 @@
-// Morceaux de mise en page d'une fiche (DA « Carnet de marché ») : section à filet (titre à gauche sur 4
-// colonnes, contenu sur 8 au bureau), titre de colonne, « Comment c'est calculé » replié. Sans état.
+// Morceaux de mise en page d’une fiche (DA « Carnet de marché ») : section à filet (titre à gauche sur 4
+// colonnes, contenu sur 8 au bureau), titre de colonne, « Comment c’est calculé » replié. Sans état.
 import type { ReactNode } from "react";
 import { Icon } from "@/components/ui";
 
-/** Titre d'une section : filet fort au-dessus, 24 d'air avant le contenu. `aside` : un repère à droite. */
+/** Titre d’une section : filet fort au-dessus, 24 d’air avant le contenu. `aside` : un repère à droite. */
 export function BlockTitle({ children, aside, id }: { children: ReactNode; aside?: ReactNode; id?: string }) {
   return (
     <div className="mb-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 lg:border-t lg:border-line-strong lg:pt-6">
@@ -28,7 +28,7 @@ export function FicheBlock({ title, aside, label, children, className = "" }: { 
   );
 }
 
-/** Les explications de calcul quittent l'écran : repliées derrière ce lien. */
+/** Les explications de calcul quittent l’écran : repliées derrière ce lien. */
 export function HowCalculated({ children, title = "Comment c’est calculé", className = "" }: { children: ReactNode; title?: string; className?: string }) {
   return (
     <details className={`group rule-top ${className}`}>

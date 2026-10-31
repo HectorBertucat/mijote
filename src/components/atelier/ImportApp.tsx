@@ -1,9 +1,9 @@
 "use client";
 
-// Importer une recette : on colle le texte (légende d'un post, page de blog) et son lien, l'IA la met au
-// format standard, le code la vérifie, et on voit l'aperçu avant d'enregistrer. Téléphone d'abord.
-// DA v3 : une grande zone de collage, l'aperçu au langage de la fiche (étiquette du plat, ingrédients par bol,
-// étapes numérotées), les avertissements en lignes nettes, l'enregistrement en marge.
+// Importer une recette : on colle le texte (légende d’un post, page de blog) et son lien, l’IA la met au
+// format standard, le code la vérifie, et on voit l’aperçu avant d’enregistrer. Téléphone d’abord.
+// DA v3 : une grande zone de collage, l’aperçu au langage de la fiche (étiquette du plat, ingrédients par bol,
+// étapes numérotées), les avertissements en lignes nettes, l’enregistrement en marge.
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { proposeImportAction, saveImportAction, type ImportLimits } from "@/app/atelier/actions";
@@ -35,7 +35,7 @@ export function ImportApp({ limits: limits0, estimateUsd, maxChars }: { limits: 
   const [pending, start] = useTransition();
   const [saving, startSave] = useTransition();
   const top = useRef<HTMLDivElement>(null);
-  // « Coller » n'apparaît que si le navigateur sait lire le presse-papiers.
+  // « Coller » n’apparaît que si le navigateur sait lire le presse-papiers.
   const [canPaste, setCanPaste] = useState(false);
   useEffect(() => setCanPaste(typeof navigator !== "undefined" && !!navigator.clipboard?.readText), []);
   const paste = async () => {

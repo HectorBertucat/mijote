@@ -1,5 +1,5 @@
-// L'état de la liste de courses faite depuis la semaine (en préparation, brouillon, commandée), en une ligne-lien.
-// Un mot plutôt qu'une pastille : seul le changement depuis la liste prend la couleur d'alerte.
+// L’état de la liste de courses faite depuis la semaine (en préparation, brouillon, commandée), en une ligne-lien.
+// Un mot plutôt qu’une pastille : seul le changement depuis la liste prend la couleur d’alerte.
 import Link from "next/link";
 import { Icon } from "@/components/ui";
 import { PendingMark } from "@/components/PendingMark";

@@ -1,12 +1,12 @@
 "use client";
 
 // Séance guidée, plein écran et sombre (comme la cuisson sur téléphone), partagée entre les écrans :
-// le MacBook posé à 2 m fait l'écran (barre espace = bouton principal), chaque téléphone peut servir
+// le MacBook posé à 2 m fait l’écran (barre espace = bouton principal), chaque téléphone peut servir
 // de télécommande (?vue=telecommande, par le QR). L'état vit sur le serveur (src/lib/training/live.ts,
-// useLiveSync) : un geste sur un écran s'affiche sur tous.
-// Pendant l'effort, un chiffre héros (la répétition ou les secondes) et rien à saisir : « Série faite »
+// useLiveSync) : un geste sur un écran s’affiche sur tous.
+// Pendant l’effort, un chiffre héros (la répétition ou les secondes) et rien à saisir : « Série faite »
 // en un geste, ou toute seule à la fin du rythme guidé. Le compte se corrige pendant le repos, qui
-// montre aussi l'exercice suivant qui tourne. Le rythme guidé ne garde que son heure de départ : la
+// montre aussi l’exercice suivant qui tourne. Le rythme guidé ne garde que son heure de départ : la
 // figure, la phase, les bips et le compte en découlent, à la même seconde sur chaque écran.
 import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
 import { beep, Button, Check, Field, formatClock, Sheet, Stepper, Textarea } from "@/components/ui";
@@ -21,13 +21,13 @@ import { useLiveSync, type LiveRowClient } from "./useLiveSync";
 
 export type LiveView = "ecran" | "telecommande";
 
-/** Séance à deux : chaque séance tient dans une moitié de l'écran, sans raccourcis clavier (on ne saurait pas à qui ils s'adressent). */
+/** Séance à deux : chaque séance tient dans une moitié de l’écran, sans raccourcis clavier (on ne saurait pas à qui ils s’adressent). */
 const PaneCtx = createContext(false);
 type ExStep = Extract<LiveStep, { k: "ex" }>;
 type Sound = (f: number, d: number) => void;
 type Dispatch = (a: LiveAction) => void;
 
-/** Bips : sur l'écran par défaut, coupés sur la télécommande (un seul appareil qui sonne, pas d'écho). */
+/** Bips : sur l’écran par défaut, coupés sur la télécommande (un seul appareil qui sonne, pas d’écho). */
 function useSound(view: LiveView) {
   const key = `mijote.kb.sound.${view}`;
   const [on, setOn] = useState(view === "ecran");
@@ -47,7 +47,7 @@ function useSound(view: LiveView) {
   return { on, toggle, beep: (f: number, d: number) => on && beep(f, d) };
 }
 
-/** Raccourcis clavier de l'écran affiché (Space, KeyG, ArrowLeft…), ignorés dans un champ. */
+/** Raccourcis clavier de l’écran affiché (Space, KeyG, ArrowLeft…), ignorés dans un champ. */
 function useKeys(map: Partial<Record<string, () => void>>) {
   const ref = useRef(map);
   ref.current = map;
@@ -97,7 +97,7 @@ export function LiveSession({ program: p, initial, workouts, view, onEnd, pane }
     if (sync.ended) endRef.current();
   }, [sync.ended]);
 
-  // L'écran reste allumé pendant la séance (si le navigateur le permet).
+  // L’écran reste allumé pendant la séance (si le navigateur le permet).
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null;
     const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } };
@@ -197,7 +197,7 @@ function Elapsed({ t0, now }: { t0: number; now: () => number }) {
 
 // ---------- Carte de la séance ----------
 
-/** Blocs de la séance (dans l'ordre), avec leurs séries faites et le tour en cours. */
+/** Blocs de la séance (dans l’ordre), avec leurs séries faites et le tour en cours. */
 export function sessionMap(steps: LiveStep[], i: number) {
   const blocks: { label: string; total: number; done: number; set: number; sets: number; current: boolean }[] = [];
   steps.forEach((s, j) => {
@@ -287,7 +287,7 @@ function Warmup({ items, remote, onNext }: { items: string[]; remote: boolean; o
       )}
       <div className="flex items-center gap-3">
         <Button variant="primary" size="kitchen" onClick={onNext}>
-          C'est parti
+          C’est parti
         </Button>
         <KeyHint>Espace</KeyHint>
       </div>
@@ -351,7 +351,7 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
   const finish = () => dispatch({ k: "record", at, ex: step.ex, set: step.set, value: partial, level });
   useKeys({ Space: finish, KeyG: () => (running ? stopGuide() : startGuide()), KeyD: onDetails });
 
-  // Le chiffre héros : la répétition en cours, les secondes restantes, ou l'objectif avant de commencer.
+  // Le chiffre héros : la répétition en cours, les secondes restantes, ou l’objectif avant de commencer.
   const hero = g?.phase === "switch" ? String(Math.ceil(switchLeft)) : g?.phase === "done" ? "✓" : g ? (seconds ? String(Math.max(0, Math.ceil(reps - g.t))) : String(Math.min(reps, count + 1))) : String(reps);
   const heroSub = g?.phase === "switch" ? "Change de côté" : g?.phase === "done" ? "Série terminée" : g ? (seconds ? `secondes${ex.uni ? ` · côté ${g.side}` : ""}` : `sur ${reps}${ex.uni ? ` · côté ${g.side}` : ""}`) : `${seconds ? "secondes" : "répétitions"}${ex.uni ? " par côté" : ""}`;
   const phase = g?.phase === "switch" ? "Autre côté" : g?.phase === "done" ? "Bien" : frame.label;
@@ -622,7 +622,7 @@ function Emom({ p, live, dispatch, offset, sound, remote, step }: Common & { ste
 
   const begin = () => dispatch({ k: "emom", at });
   const stop = () => dispatch({ k: "record", at, ex: step.ex, set: 1, value: (since == null ? 0 : round) * step.reps });
-  useKeys({ Space: since == null ? begin : undefined }); // pas d'arrêt au clavier : un appui de trop couperait le finisher
+  useKeys({ Space: since == null ? begin : undefined }); // pas d’arrêt au clavier : un appui de trop couperait le finisher
 
   const f = working ? frameAt(motionOf(p, step.ex), inRound) : null;
   const hero = since == null ? String(step.rounds) : working ? String(Math.min(step.reps, swings + 1)) : String(Math.ceil(step.every - inRound));

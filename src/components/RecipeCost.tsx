@@ -1,6 +1,6 @@
-// Bloc coût d'une fiche recette (DA « Carnet de marché ») : la part de chacun en gros chiffre (paquets entiers),
-// d'où vient le prix, le gaspillage s'il y en a ; la fournée et ce qui est consommé passent sous « Comment c'est
-// calculé ». « J'ai cuisiné » est en tête de fiche (CookAction). Sans état.
+// Bloc coût d’une fiche recette (DA « Carnet de marché ») : la part de chacun en gros chiffre (paquets entiers),
+// d’où vient le prix, le gaspillage s’il y en a ; la fournée et ce qui est consommé passent sous « Comment c’est
+// calculé ». « J’ai cuisiné » est en tête de fiche (CookAction). Sans état.
 import Link from "next/link";
 import type { PlannedUsage, RecipeCost as Cost } from "@/lib/costs";
 import { HowCalculated } from "./fiche/Block";
@@ -12,7 +12,7 @@ const num = (v: number) => v.toFixed(2).replace(".", ",");
 /** Un prix connu : au moins une ligne de la recette a un prix. */
 export const hasPrice = (cost: Cost | null) => Boolean(cost && cost.kind !== "none" && cost.coverage > 0 && cost.parts.length);
 
-/** D'où vient le chiffre, en quelques mots. */
+/** D’où vient le chiffre, en quelques mots. */
 export function costSource(cost: Cost) {
   return cost.kind === "real" ? `Réel, sur ${cost.cooks} cuisson${cost.cooks > 1 ? "s" : ""}` : cost.kind === "estimate" ? "Estimé sur la dernière liste" : "Pas encore de liste";
 }

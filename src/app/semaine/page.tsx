@@ -45,7 +45,7 @@ const longDate = (ymd: string) => {
 
 export default async function Semaine({ searchParams }: { searchParams: Promise<{ w?: string; n?: string; done?: string; f?: string }> }) {
   const { w: wParam, n: nParam, done, f } = await searchParams;
-  // La période : `w` = premier jour ; `n` = nombre de jours d'une période pas encore créée (navigation).
+  // La période : `w` = premier jour ; `n` = nombre de jours d’une période pas encore créée (navigation).
   const plans = periodPlans(db);
   const def = defaultPeriod(plans, new Date());
   const w = isDay(wParam) ? wParam : def.start;
@@ -435,7 +435,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
         )}
       </div>
 
-      {/* La seule chose qui flotte : où on en est, et l'action suivante. */}
+      {/* La seule chose qui flotte : où on en est, et l’action suivante. */}
       <Dock
         title={selected.length ? `${plural(selected.length, "plat")} · ${covered} repas sur ${toEat}` : `Aucun plat · ${toEat} repas à couvrir`}
         sub={dockSub({ n: selected.length, missing: a.uncovered.length, minutes, cookDay, list: view.list })}

@@ -1,7 +1,7 @@
 "use client";
 
 // Sheet : panneau à droite sur ordinateur (420 px), feuille du bas avec poignée sur téléphone. Fond voilé, Échap ferme,
-// défilement de la page bloqué pendant l'ouverture. Composant client.
+// défilement de la page bloqué pendant l’ouverture. Composant client.
 import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { Button } from "./button";
 
@@ -10,7 +10,7 @@ import { Button } from "./button";
 export function Sheet({ open, onClose, title, children, footer, headerAction, scrim = true, modal = true, width = 420, className = "" }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; headerAction?: ReactNode; scrim?: boolean; modal?: boolean; width?: number; className?: string }) {
   const id = useId();
   const panel = useRef<HTMLDivElement>(null);
-  // onClose en ref : un onClose en ligne (nouvelle identité à chaque rendu) ne doit pas relancer l'effet ni voler le focus.
+  // onClose en ref : un onClose en ligne (nouvelle identité à chaque rendu) ne doit pas relancer l’effet ni voler le focus.
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {

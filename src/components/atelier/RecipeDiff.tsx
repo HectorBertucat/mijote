@@ -1,6 +1,6 @@
 "use client";
 
-// Briques visuelles de l'atelier (DA v3 « Carnet de marché ») : ingrédients par bol avant → après (barrés, ajoutés,
+// Briques visuelles de l’atelier (DA v3 « Carnet de marché ») : ingrédients par bol avant → après (barrés, ajoutés,
 // quantités qui changent et se posent), jauges nutrition qui glissent, restes de paquet (anti-gaspillage), étapes.
 // Des sections à filets, pas de cartes ; les vérifications en lignes nettes, pas en pastilles.
 import Link from "next/link";
@@ -37,7 +37,7 @@ const STATE: Record<"ok" | "warn" | "replace", { icon: IconName; cls: string; te
   replace: { icon: "x", cls: "text-ko-ink", text: "à remplacer" },
 };
 
-/** Vérification catalogue d'une ligne : l'état (forme et mot) et le produit retenu (lien vers le drive). */
+/** Vérification catalogue d’une ligne : l’état (forme et mot) et le produit retenu (lien vers le drive). */
 function CheckLine({ row }: { row: DiffRow }) {
   const c = row.check;
   if (!c) return null;
@@ -223,8 +223,8 @@ export function Checks({ v, duplicate }: { v: Verification; duplicate?: { slug: 
 type Suggestion = Leftover["suggestions"][number] & { usesG?: number | null; fits?: boolean };
 
 /**
- * Reste de paquet : d'abord les recettes de la bibliothèque qui le finissent (celle qui en prend le plus près
- * du reste en bouton principal, avec ce qu'elle en prend), puis « une recette pour le reste » dans l'atelier.
+ * Reste de paquet : d’abord les recettes de la bibliothèque qui le finissent (celle qui en prend le plus près
+ * du reste en bouton principal, avec ce qu’elle en prend), puis « une recette pour le reste » dans l’atelier.
  */
 export function Leftovers({ items }: { items: (Omit<Leftover, "suggestions"> & { suggestions: Suggestion[] })[] }) {
   if (!items.length) return null;

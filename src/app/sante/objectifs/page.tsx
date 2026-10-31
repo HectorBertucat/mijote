@@ -24,7 +24,7 @@ export default async function Objectifs() {
       role: m.role,
       text: m.text,
       status: m.status,
-      // « avant → après » seulement tant que la proposition est en attente : après, l'avant a changé.
+      // « avant → après » seulement tant que la proposition est en attente : après, l’avant a changé.
       changes: p ? describeChanges(m.status === "proposed" ? current : none, p) : [],
       notes: m.notes ?? [],
       eta: p?.eta && p.eta.weeks > 0 ? `${frDate(p.eta.date)}, dans ${p.eta.weeks} semaines` : null,

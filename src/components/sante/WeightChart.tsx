@@ -1,6 +1,6 @@
 "use client";
 
-// Courbe du poids : pesées du jour en points pâles, tendance (moyenne exponentielle) en un trait d'encre,
+// Courbe du poids : pesées du jour en points pâles, tendance (moyenne exponentielle) en un trait d’encre,
 // sans aplat. Période au choix ; survol ou tap = lecture du jour (pesée et tendance).
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -46,7 +46,7 @@ export function WeightChart({ series }: { series: ChartPoint[] }) {
   const line = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(p.trend).toFixed(1)}`).join(" ");
   const months = pts.length > 60;
   const labelEvery = Math.max(1, Math.ceil(pts.length / Math.max(3, Math.floor(W / 110))));
-  // Repères de l'axe : le premier jour de chaque mois sur une longue période, sinon un jour sur `labelEvery`.
+  // Repères de l’axe : le premier jour de chaque mois sur une longue période, sinon un jour sur `labelEvery`.
   const xLabels = months
     ? pts.flatMap((p, i) => (i === 0 || p.date.slice(5, 7) !== pts[i - 1].date.slice(5, 7) ? [{ i, text: fmtDay(p.date, { month: "short" }) }] : [])).filter((l, k, all) => k === 0 || x(l.i) - x(all[k - 1].i) > 48)
     : pts.flatMap((p, i) => (i % labelEvery === 0 ? [{ i, text: fmtDay(p.date) }] : []));

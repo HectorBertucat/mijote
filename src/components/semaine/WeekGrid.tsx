@@ -1,7 +1,7 @@
 "use client";
 
 // Grille de la période (« Carnet de marché » : cases à filet, le plat en étiquette) : du premier au dernier jour, midi et soir,
-// par rangées de 7 jours (une période va jusqu'à 14 jours).
+// par rangées de 7 jours (une période va jusqu’à 14 jours).
 // Ordinateur et iPad : chaque case porte la recette et une pastille par personne (un tap : maison → bureau → absent).
 // Téléphone : grille compacte (étiquette de recette + points) ; toucher un jour ouvre une feuille avec les pastilles.
 import { useState } from "react";
@@ -22,7 +22,7 @@ export function WeekGrid({ cells, days, proposed }: { cells: GridCell[]; days: G
   const [openDay, setOpenDay] = useState<number | null>(null);
   const at = (day: number, meal: "lunch" | "dinner") => cells.find((c) => c.day === day && c.meal === meal)!;
   const meals = ["lunch", "dinner"] as const;
-  // Rangées de 7 jours : les colonnes restent alignées d'une rangée à l'autre.
+  // Rangées de 7 jours : les colonnes restent alignées d’une rangée à l’autre.
   const rows = Array.from({ length: Math.ceil(days.length / 7) }, (_, r) => days.slice(r * 7, r * 7 + 7).map((d, k) => ({ ...d, i: r * 7 + k })));
 
   return (

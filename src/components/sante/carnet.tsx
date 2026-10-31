@@ -15,7 +15,7 @@ export const de = (name: string) => (/^[aeiouyhàâéèêîôû]/i.test(name) ? 
 /** Nombre signé avec un vrai moins (−0,19). */
 export const signed = (v: number, digits = 1) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 
-/** Chiffre clé : repère en étiquette, le chiffre en Archivo serrée, l'unité plus petite, une ligne de contexte. */
+/** Chiffre clé : repère en étiquette, le chiffre en Archivo serrée, l’unité plus petite, une ligne de contexte. */
 export function KeyFigure({ label, value, unit, sub, size = "xl", tone, className = "" }: { label: ReactNode; value: ReactNode; unit?: string; sub?: ReactNode; size?: "display" | "xl" | "lg"; tone?: "ok" | "warn" | "ko"; className?: string }) {
   const big = { display: "text-[clamp(4.5rem,3rem+7vw,8.5rem)] leading-[0.82]", xl: "text-num-xl", lg: "text-[clamp(2.5rem,2rem+1.5vw,3rem)] leading-[0.9]" }[size];
   return (
@@ -33,7 +33,7 @@ export function KeyFigure({ label, value, unit, sub, size = "xl", tone, classNam
 const TONE_TEXT = { ok: "text-ok", warn: "text-warn", ko: "text-ko" } as const;
 const TONE_ICON: Record<"ok" | "warn" | "ko" | "idle", IconName> = { ok: "check", warn: "clock", ko: "x", idle: "info" };
 
-/** Verdict : une forme et un mot, la couleur réservée seulement si c'en est un (ok, warn, ko). */
+/** Verdict : une forme et un mot, la couleur réservée seulement si c’en est un (ok, warn, ko). */
 export function Verdict({ tone, children, className = "" }: { tone: "ok" | "warn" | "ko" | "idle"; children: ReactNode; className?: string }) {
   const color = tone === "idle" ? "text-ink-2" : `${TONE_TEXT[tone]}`;
   return (
@@ -44,7 +44,7 @@ export function Verdict({ tone, children, className = "" }: { tone: "ok" | "warn
   );
 }
 
-/** Section de page : un filet fort au-dessus, le titre, une action à droite, puis 24 px d'air. */
+/** Section de page : un filet fort au-dessus, le titre, une action à droite, puis 24 px d’air. */
 export function Section({ title, id, aside, children, className = "", level = 2 }: { title: ReactNode; id?: string; aside?: ReactNode; children: ReactNode; className?: string; level?: 2 | 3 }) {
   const H = level === 2 ? "h2" : "h3";
   return (
@@ -60,7 +60,7 @@ export function Section({ title, id, aside, children, className = "", level = 2 
   );
 }
 
-/** Les explications de calcul quittent l'écran : repliées derrière « Comment c'est calculé ». */
+/** Les explications de calcul quittent l’écran : repliées derrière « Comment c’est calculé ». */
 export function HowCalc({ children, title = "Comment c’est calculé", className = "" }: { children: ReactNode; title?: string; className?: string }) {
   return (
     <details className={`group text-small text-ink-2 ${className}`}>
@@ -73,7 +73,7 @@ export function HowCalc({ children, title = "Comment c’est calculé", classNam
   );
 }
 
-/** Note dans le fil de la page (remplace l'encadré coloré) : un filet à gauche, un titre, une action. */
+/** Note dans le fil de la page (remplace l’encadré coloré) : un filet à gauche, un titre, une action. */
 export function Note({ title, children, action, tone = "idle" }: { title: ReactNode; children?: ReactNode; action?: ReactNode; tone?: "idle" | "warn" | "accent" }) {
   const bar = { idle: "border-line-strong", warn: "border-warn", accent: "border-accent" }[tone];
   return (

@@ -32,7 +32,7 @@ const K = ({ children }: { children: React.ReactNode }) => <code className="roun
 
 const SHORTCUT_FILE = "raccourcis/sante-mijote.shortcut";
 
-/** Adresse publique de l'appli (MIJOTE_PUBLIC_URL), sinon celle par laquelle on consulte la page. */
+/** Adresse publique de l’appli (MIJOTE_PUBLIC_URL), sinon celle par laquelle on consulte la page. */
 async function publicUrl(): Promise<string> {
   const env = process.env.MIJOTE_PUBLIC_URL?.trim();
   if (env) return env.replace(/\/$/, "");

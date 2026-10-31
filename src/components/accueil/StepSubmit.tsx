@@ -1,6 +1,6 @@
 "use client";
 
-// Bouton d'envoi de l'action du moment (accueil) : cocotte, grand, en chargement tant que l'action tourne.
+// Bouton d’envoi de l’action du moment (accueil) : cocotte, grand, en chargement tant que l’action tourne.
 import { useFormStatus } from "react-dom";
 import { Button, type ButtonVariant } from "@/components/ui";
 

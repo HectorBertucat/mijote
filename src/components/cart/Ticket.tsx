@@ -1,6 +1,6 @@
 "use client";
 
-// Ticket de caisse d'une commande validée : papier, lignes « 2 × produit … prix », total, et le cachet « Commandé »
+// Ticket de caisse d’une commande validée : papier, lignes « 2 × produit … prix », total, et le cachet « Commandé »
 // posé en biais. Chiffres de caisse en Archivo serrée (deux polices, pas une de plus), sans ombre : il est posé. Le cachet se pose avec son « pof » seulement juste après la validation (moins de 20 s).
 import { useEffect, useState } from "react";
 import { StampCommande } from "@/components/ui";

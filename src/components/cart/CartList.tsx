@@ -1,8 +1,8 @@
 "use client";
 
-// La liste de courses interactive (système « Carnet de marché ») : une vraie liste qu'on coche en magasin ou qu'on
-// envoie au drive. Par rayon (étiquette et compteur), une ligne = case généreuse, dessin de l'aliment, quantité en
-// chiffres serrés, nom, prix aligné à droite ; un seul signal, et seulement s'il demande d'agir (rupture, à vérifier,
+// La liste de courses interactive (système « Carnet de marché ») : une vraie liste qu’on coche en magasin ou qu’on
+// envoie au drive. Par rayon (étiquette et compteur), une ligne = case généreuse, dessin de l’aliment, quantité en
+// chiffres serrés, nom, prix aligné à droite ; un seul signal, et seulement s’il demande d’agir (rupture, à vérifier,
 // introuvable). Le reste (marque, besoin, paquets, autre produit) est dans le détail de la ligne (feuille).
 // Chaque tap répond tout de suite (état optimiste, sans animation), puis la page se recharge.
 import Link from "next/link";
@@ -30,9 +30,9 @@ export interface RowData {
   alts: { id: string; label: string; price: number | null }[];
   inCart: boolean;
   liveStatus: string | null;
-  /** Produits acceptés pour l'ingrédient (onglet « Produits » de la fiche), préféré d'abord. */
+  /** Produits acceptés pour l’ingrédient (onglet « Produits » de la fiche), préféré d’abord. */
   accepted: { id: string; label: string; price: number | null; preferred: boolean; current: boolean }[];
-  /** « Ne correspond pas » possible : le produit de la ligne et la clé de l'ingrédient sont connus. */
+  /** « Ne correspond pas » possible : le produit de la ligne et la clé de l’ingrédient sont connus. */
   canRefuse: boolean;
   /** Ce que le vrai panier du drive a dit de la ligne (added, already, partial, unavailable, failed, skipped). */
   drive?: { outcome: string; qty: number | null } | null;
@@ -40,13 +40,13 @@ export interface RowData {
 
 type Opt = { kind: "cart"; id: string; on: boolean } | { kind: "all"; on: boolean } | { kind: "packs"; id: string; packs: number } | { kind: "price"; id: string; price: number | null };
 
-/** Un vrai doute, pas l'âge d'une vérification ni « facultatif ». */
+/** Un vrai doute, pas l’âge d’une vérification ni « facultatif ». */
 const realDoubt = (w: string) => !w.startsWith("vérifié il y a") && w !== "facultatif";
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type Signal = { tone: "ko" | "warn" | "wait"; text: string; act: boolean };
 
-/** Le seul signal d'une ligne, par ordre d'urgence ; rien quand tout va bien (en stock, au panier, vérifié). */
+/** Le seul signal d’une ligne, par ordre d’urgence ; rien quand tout va bien (en stock, au panier, vérifié). */
 export function signalOf(r: RowData, catalog: boolean, ordered: boolean): Signal | null {
   if (ordered || r.pantry) return null;
   if (catalog && !r.product) return { tone: "ko", text: "Introuvable", act: true };
@@ -62,7 +62,7 @@ export function signalOf(r: RowData, catalog: boolean, ordered: boolean): Signal
   return null;
 }
 
-export function CartList({ listId, title = "Courses", ordered, orderedAt, groups, copy, catalog = true }: { listId: string; title?: string; ordered: boolean; orderedAt: string | null; groups: { aisle: string; rows: RowData[] }[]; copy?: ReactNode; /** Catalogue relié : sinon les lignes n'ont pas de produit, et se cochent et se paient à la main. */ catalog?: boolean }) {
+export function CartList({ listId, title = "Courses", ordered, orderedAt, groups, copy, catalog = true }: { listId: string; title?: string; ordered: boolean; orderedAt: string | null; groups: { aisle: string; rows: RowData[] }[]; copy?: ReactNode; /** Catalogue relié : sinon les lignes n’ont pas de produit, et se cochent et se paient à la main. */ catalog?: boolean }) {
   const all = groups.flatMap((g) => g.rows);
   const [rows, apply] = useOptimistic(all, (cur: RowData[], o: Opt) =>
     cur.map((r) => {
@@ -331,7 +331,7 @@ function RowName({ qty, name, done, hover = false }: { qty: string | null; name:
   );
 }
 
-/** Détail d'une ligne (feuille) : le produit, pour quoi, combien, puis changer de produit. */
+/** Détail d’une ligne (feuille) : le produit, pour quoi, combien, puis changer de produit. */
 function Detail({ r, catalog, ordered, pending, start, show, onPacks, close }: { r: RowData; catalog: boolean; ordered: boolean; pending: boolean; start: (fn: () => Promise<void>) => void; show: (m: string, ok: boolean) => void; onPacks: (n: number) => void; close: () => void }) {
   const p = r.product;
   const sig = signalOf(r, catalog, ordered);
@@ -449,7 +449,7 @@ function Choice({ label, price, note, disabled, onClick, submit = false }: { lab
   );
 }
 
-/** Prix payé d'une ligne sans catalogue, saisi en magasin (euros, virgule acceptée) : enregistré en quittant le champ. */
+/** Prix payé d’une ligne sans catalogue, saisi en magasin (euros, virgule acceptée) : enregistré en quittant le champ. */
 function PriceInput({ value, label, onSave }: { value: number | null; label: string; onSave: (eur: number | null) => void }) {
   const [text, setText] = useState(value != null ? value.toFixed(2).replace(".", ",") : "");
   const save = () => {
@@ -475,7 +475,7 @@ function PriceInput({ value, label, onSave }: { value: number | null; label: str
   );
 }
 
-/** Glisser une ligne au doigt : vers la droite la met dans le panier, vers la gauche l'en retire (seuil 72 px). La souris et le défilement vertical ne sont pas touchés. */
+/** Glisser une ligne au doigt : vers la droite la met dans le panier, vers la gauche l’en retire (seuil 72 px). La souris et le défilement vertical ne sont pas touchés. */
 function useSwipe(enabled: boolean, onSwipe: (dir: "left" | "right") => void) {
   const start = useRef<{ x: number; y: number; id: number; locked: boolean | null } | null>(null);
   const [dx, setDx] = useState(0);

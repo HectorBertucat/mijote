@@ -1,7 +1,7 @@
 "use client";
 
 // Timer : minuteur (anneau de progression, horloge condensée, état fini inversé qui pulse et « sonne »),
-// useCountdown pour le faire tourner, formatClock pour l'afficher. Composant client.
+// useCountdown pour le faire tourner, formatClock pour l’afficher. Composant client.
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Button } from "./button";
 
@@ -16,7 +16,7 @@ export function formatClock(seconds: number): string {
   return h ? `${h}:${mm}:${rr}` : `${mm}:${rr}`;
 }
 
-/** Compte à rebours local : `endsAt` (ms epoch, l'heure de fin partagée par la session) ou `null` en pause avec `remainingWhenPaused`. Renvoie les secondes restantes. */
+/** Compte à rebours local : `endsAt` (ms epoch, l’heure de fin partagée par la session) ou `null` en pause avec `remainingWhenPaused`. Renvoie les secondes restantes. */
 export function useCountdown(endsAt: number | null, remainingWhenPaused = 0): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -32,7 +32,7 @@ export function useCountdown(endsAt: number | null, remainingWhenPaused = 0): nu
 let armed = false;
 let ctx: AudioContext | null = null;
 if (typeof window !== "undefined") window.addEventListener("pointerdown", () => (armed = true), { once: true });
-/** Bip court du minuteur fini (silencieux tant que la page n'a pas été touchée). `freq`/`length` : tons du tempo guidé. */
+/** Bip court du minuteur fini (silencieux tant que la page n’a pas été touchée). `freq`/`length` : tons du tempo guidé. */
 export function beep(freq = 880, length = 0.35) {
   if (!armed) return;
   try {
@@ -92,7 +92,7 @@ function useDragAdjust(remaining: number, onAdjust?: (deltaSec: number) => void)
         const s = st.current;
         if (!s) return;
         if (!s.on) {
-          if (Math.abs(e.clientY - s.y) > 4) end(); // bougé avant la fin de l'appui : pas un réglage
+          if (Math.abs(e.clientY - s.y) > 4) end(); // bougé avant la fin de l’appui : pas un réglage
           return;
         }
         setDelta(clampDelta(Math.round((s.y - e.clientY) / ADJUST_PX) * ADJUST_STEP));

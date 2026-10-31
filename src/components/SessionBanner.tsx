@@ -27,7 +27,7 @@ export function SessionBanner() {
     };
   }, [path]);
   if (!active || path.startsWith("/session")) return null;
-  // Seule bande d'encre pleine de l'appli : sous l'en-tête sur ordinateur, juste au-dessus de la barre d'onglets
+  // Seule bande d’encre pleine de l’appli : sous l’en-tête sur ordinateur, juste au-dessus de la barre d’onglets
   // sur téléphone (à portée de pouce ; kit.css agrandit alors la marge basse de <main>).
   return (
     <div data-session-banner className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 sm:static">

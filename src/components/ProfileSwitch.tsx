@@ -1,8 +1,8 @@
 "use client";
 
 // Sélecteur de profil (une personne du foyer) de la barre du haut : un cookie par appareil, lu par les pages
-// serveur (src/lib/health/active.ts). DA v3 : les initiales en capitales serrées, comme les rubriques de l'en-tête ;
-// le profil ouvert est en encre et souligné, les autres en gris ; le prénom entier au survol et pour les lecteurs d'écran.
+// serveur (src/lib/health/active.ts). DA v3 : les initiales en capitales serrées, comme les rubriques de l’en-tête ;
+// le profil ouvert est en encre et souligné, les autres en gris ; le prénom entier au survol et pour les lecteurs d’écran.
 import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setActiveProfile } from "@/app/sante/actions";

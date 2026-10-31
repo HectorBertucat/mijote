@@ -1,5 +1,5 @@
-// Chip (filtre à bascule aria-pressed avec compteur), ChipLink (le même en lien, pour les filtres d'URL) et Tag (étiquette).
-// Sans hook : utilisables côté serveur (Chip a besoin d'un composant client seulement pour son onClick).
+// Chip (filtre à bascule aria-pressed avec compteur), ChipLink (le même en lien, pour les filtres d’URL) et Tag (étiquette).
+// Sans hook : utilisables côté serveur (Chip a besoin d’un composant client seulement pour son onClick).
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 
@@ -7,7 +7,7 @@ const CHIP = "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap roun
 const OFF = "border-line bg-transparent text-ink-2 hover:border-line-strong hover:text-ink";
 const ON = "border-inverse bg-inverse text-on-inverse";
 
-/** Classes d'une puce, active ou non (pour un élément maison). */
+/** Classes d’une puce, active ou non (pour un élément maison). */
 export function chipClass(active: boolean, className = "") {
   return `${CHIP} ${active ? ON : OFF} ${className}`;
 }
@@ -27,7 +27,7 @@ export function Chip({ pressed = false, count, children, className = "", type = 
   );
 }
 
-/** Puce de filtre en lien (filtre porté par l'URL) : `active` met aria-current. */
+/** Puce de filtre en lien (filtre porté par l’URL) : `active` met aria-current. */
 export function ChipLink({ active = false, count, children, className = "", ...rest }: { active?: boolean; count?: number; children: ReactNode } & ComponentProps<typeof Link>) {
   return (
     <Link aria-current={active ? "true" : undefined} className={chipClass(active, className)} {...rest}>
@@ -37,7 +37,7 @@ export function ChipLink({ active = false, count, children, className = "", ...r
   );
 }
 
-/** Étiquette discrète (tags d'une recette, ustensile…). `tone="warn"` pour « à relire ». */
+/** Étiquette discrète (tags d’une recette, ustensile…). `tone="warn"` pour « à relire ». */
 export function Tag({ children, tone, className = "" }: { children: ReactNode; tone?: "warn"; className?: string }) {
   const look = tone === "warn" ? "text-warn-ink" : "text-ink-3";
   return <span className={`label inline-flex shrink-0 items-center whitespace-nowrap ${look} ${className}`}>{children}</span>;

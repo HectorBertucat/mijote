@@ -1,4 +1,4 @@
-// Tape : étiquette d'étiqueteuse (nom d'un plat, jour où le manger), comme on marque ses boîtes. Capitales Archivo
+// Tape : étiquette d’étiqueteuse (nom d’un plat, jour où le manger), comme on marque ses boîtes. Capitales Archivo
 // serrées, en clair sur la couleur du plat, légèrement de travers (angle tiré du texte, stable). Sans état.
 import type { CSSProperties, ReactNode } from "react";
 import { stampAngle } from "./angle";

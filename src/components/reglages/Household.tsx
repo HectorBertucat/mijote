@@ -2,7 +2,7 @@
 
 // Le foyer : qui mange. Ajouter une personne (prénom, taille de part, et de quoi estimer sa cible),
 // renommer, retirer. Le reste du profil (goûts, hors batch, objectifs) se règle dans Santé.
-// DA v3 : une ligne à filet par personne, le formulaire d'ajout ouvert dessous, sans carte.
+// DA v3 : une ligne à filet par personne, le formulaire d’ajout ouvert dessous, sans carte.
 import { useActionState, useState, useTransition } from "react";
 import { Alert, Button, Field, Icon, Input, Segmented } from "@/components/ui";
 import { addPersonAction, removePersonAction, renamePersonAction, type FormState } from "@/app/reglages/actions";
@@ -108,7 +108,7 @@ function PersonLine({ p, busy, onSave, onRemove }: { p: PersonRow; busy: boolean
   const changed = name.trim() !== p.name || Number(units) !== p.portionUnits;
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line py-4">
-      {/* Le prénom se corrige sur place : un champ qui ne se montre qu'au survol et au focus. */}
+      {/* Le prénom se corrige sur place : un champ qui ne se montre qu’au survol et au focus. */}
       <input
         aria-label={`Prénom de ${p.name}`}
         value={name}

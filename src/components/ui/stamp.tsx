@@ -1,6 +1,6 @@
 "use client";
 
-// Stamp : cachet d'encre (tampon de marché). Une seule encre (couleur de recette ou de rubrique, bleu pour une
+// Stamp : cachet d’encre (tampon de marché). Une seule encre (couleur de recette ou de rubrique, bleu pour une
 // confirmation), bords irréguliers (filtre SVG), inclinaison fixe tirée de `seed`. `fresh` : il se pose avec un
 // « pof » (une seule fois, au moment où la chose arrive) ; sinon il est simplement là. Deux par écran au plus.
 import { useId, type CSSProperties } from "react";
@@ -48,14 +48,14 @@ export function Stamp({
   icon?: StampIcon;
   /** Valeur CSS : var(--c-recipe-3), var(--c-sec-semaine)… */
   color?: string;
-  /** Graine de l'inclinaison (id de la liste, slug…). Sinon le mot. */
+  /** Graine de l’inclinaison (id de la liste, slug…). Sinon le mot. */
   seed?: string;
   angle?: number;
   /** Largeur en px (la hauteur suit la forme). */
   size?: number;
   fresh?: boolean;
   className?: string;
-  /** Texte lu par les lecteurs d'écran (sinon le mot et la petite ligne). */
+  /** Texte lu par les lecteurs d’écran (sinon le mot et la petite ligne). */
   title?: string;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -166,7 +166,7 @@ export function Stamp({
   );
 }
 
-// Les cachets de l'appli : un seul endroit pour leur forme, leur encre et leur mot.
+// Les cachets de l’appli : un seul endroit pour leur forme, leur encre et leur mot.
 type P = Partial<Parameters<typeof Stamp>[0]>;
 const dayMonth = (d: Date) => ({ day: String(d.getDate()), month: d.toLocaleDateString("fr-FR", { month: "short", timeZone: "Europe/Paris" }).replace(".", "") });
 

@@ -1,4 +1,4 @@
-// Lanes : frise des ressources d'une session (four, foyers, planche) — une piste par ressource, une barre par étape,
+// Lanes : frise des ressources d’une session (four, foyers, planche) — une piste par ressource, une barre par étape,
 // à la couleur de sa recette ; `clash` cerne une barre en rouge (conflit). Axe des minutes en dessous. Sans état.
 import type { CSSProperties } from "react";
 import { recipeVar, type RecipeColor } from "./recipe";
@@ -8,7 +8,7 @@ export type Lane = { label: string; bars: LaneBar[] };
 
 const tick = (m: number) => (m === 0 ? "0" : m % 60 === 0 ? `${m / 60} h` : m > 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`);
 
-/** Frise. `total` = minutes de l'axe ; `step` = pas des graduations (30 min par défaut, 60 au-delà de 4 h). */
+/** Frise. `total` = minutes de l’axe ; `step` = pas des graduations (30 min par défaut, 60 au-delà de 4 h). */
 export function Lanes({ lanes, total, step, className = "" }: { lanes: Lane[]; total: number; step?: number; className?: string }) {
   const span = Math.max(1, total);
   const st = step ?? (span > 240 ? 60 : 30);

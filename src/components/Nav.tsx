@@ -1,8 +1,8 @@
 "use client";
 
-// Coque de l'appli (DA v3 « Carnet de marché ») : en-tête sur papier, mot-symbole à la cocotte, rubriques en texte
-// (soulignées d'encre quand elles sont ouvertes : la couleur reste aux plats), recherche, profil, réglages, thème.
-// Sur téléphone, barre d'onglets en bas.
+// Coque de l’appli (DA v3 « Carnet de marché ») : en-tête sur papier, mot-symbole à la cocotte, rubriques en texte
+// (soulignées d’encre quand elles sont ouvertes : la couleur reste aux plats), recherche, profil, réglages, thème.
+// Sur téléphone, barre d’onglets en bas.
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { ProfileSwitch, type ProfileOption } from "./ProfileSwitch";
@@ -18,13 +18,13 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/sante", label: "Santé", icon: "pulse" },
 ];
 
-// Trait sous l'onglet visé pendant le chargement de la page (retour immédiat au clic).
+// Trait sous l’onglet visé pendant le chargement de la page (retour immédiat au clic).
 function Pending({ className = "" }: { className?: string }) {
   const { pending } = useLinkStatus();
   return <span aria-hidden className={`pointer-events-none absolute h-0.5 bg-ink-3 transition-opacity duration-[var(--dur-1)] ${pending ? "opacity-100" : "opacity-0"} ${className}`} />;
 }
 
-/** `motif` : gardé pour compatibilité (le dessin de saison n'est plus affiché : le mot-symbole suffit). */
+/** `motif` : gardé pour compatibilité (le dessin de saison n’est plus affiché : le mot-symbole suffit). */
 export function TopNav({ profiles, active, search, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; home?: string | null }) {
   const path = usePathname();
   return (

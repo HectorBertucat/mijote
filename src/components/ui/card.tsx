@@ -1,5 +1,5 @@
 // Card (panneau : surface, filet, sans ombre ; « lift » : le filet se renforce au survol), List et ListRow (lignes
-// séparées d'un filet). Sans état. v3 : une page se découpe d'abord par des filets et de l'air ; Card est pour ce
+// séparées d’un filet). Sans état. v3 : une page se découpe d’abord par des filets et de l’air ; Card est pour ce
 // qui doit vraiment se détacher (panneau latéral, élément cliquable).
 import Link from "next/link";
 import type { HTMLAttributes, ReactNode } from "react";
@@ -18,7 +18,7 @@ export function Card({ as: Tag = "div", lift = false, flat = false, pad = "none"
   );
 }
 
-/** Classes d'une carte, pour un <Link> qui doit ressembler à une carte. */
+/** Classes d’une carte, pour un <Link> qui doit ressembler à une carte. */
 export function cardClass({ lift = true, className = "" }: { lift?: boolean; className?: string } = {}) {
   return `block min-w-0 rounded-[14px] border border-line bg-surface ${lift ? "transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] hover:border-line-strong" : ""} ${className}`;
 }
@@ -28,7 +28,7 @@ export function List({ children, className = "", as: Tag = "div" }: { children: 
   return <Tag className={`grid border-t border-line [&>*:last-child]:border-b [&>*:last-child]:border-line ${className}`}>{children}</Tag>;
 }
 
-/** Ligne : `lead` (étiquette, case…), `title`, `sub`, `trail` (prix, pastille). Avec `href`, toute la ligne est un lien et un chevron s'ajoute. */
+/** Ligne : `lead` (étiquette, case…), `title`, `sub`, `trail` (prix, pastille). Avec `href`, toute la ligne est un lien et un chevron s’ajoute. */
 export function ListRow({ lead, title, sub, trail, href, className = "", as: Tag = "div" }: { lead?: ReactNode; title: ReactNode; sub?: ReactNode; trail?: ReactNode; href?: string; className?: string; as?: "div" | "li" }) {
   const inner = (
     <>

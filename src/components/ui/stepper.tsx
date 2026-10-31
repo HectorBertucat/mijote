@@ -1,11 +1,11 @@
 "use client";
 
-// Stepper : compteur −/+ dont le chiffre « tique » (arrive d'en haut sur +, d'en bas sur −). Composant client.
+// Stepper : compteur −/+ dont le chiffre « tique » (arrive d’en haut sur +, d’en bas sur −). Composant client.
 import { useState, type CSSProperties } from "react";
 import { Icon } from "./icon";
 
 /** Compteur. Contrôlé (`value` + `onChange`) ou libre (`defaultValue`) ; `name` ajoute un input caché pour les formulaires ; `size="kitchen"` = boutons de 64 px, `size="sm"` = 36 px (lignes de courses).
- * `onStep` : pas non linéaire (unités d'une recette ×0,5 → ×3) — le compteur ne calcule rien, il appelle `onStep(±1)` et tique ; `canDec` / `canInc` disent si le pas existe ; `busy` grise le chiffre (serveur). */
+ * `onStep` : pas non linéaire (unités d’une recette ×0,5 → ×3) — le compteur ne calcule rien, il appelle `onStep(±1)` et tique ; `canDec` / `canInc` disent si le pas existe ; `busy` grise le chiffre (serveur). */
 export function Stepper({ value, defaultValue = 0, onChange, onStep, canDec, canInc, busy = false, min = 0, max = Infinity, step = 1, size = "md", name, unit, decLabel = "Un de moins", incLabel = "Un de plus", className = "" }: { value?: number; defaultValue?: number; onChange?: (v: number) => void; onStep?: (dir: 1 | -1) => void; canDec?: boolean; canInc?: boolean; busy?: boolean; min?: number; max?: number; step?: number; size?: "sm" | "md" | "kitchen"; name?: string; unit?: string; decLabel?: string; incLabel?: string; className?: string }) {
   const [inner, setInner] = useState(defaultValue);
   const cur = value ?? inner;

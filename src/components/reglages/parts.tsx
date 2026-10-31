@@ -4,7 +4,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui";
 
-/** Section d'une page-document : filet fort, titre et chapeau sur 4 colonnes, contenu sur 8. */
+/** Section d’une page-document : filet fort, titre et chapeau sur 4 colonnes, contenu sur 8. */
 export function DocSection({ id, title, lead, children, className = "" }: { id: string; title: ReactNode; lead?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section aria-labelledby={id} className={`grid gap-6 border-t border-line-strong pt-6 lg:grid-cols-12 lg:gap-x-6 ${className}`}>
@@ -30,7 +30,7 @@ export function Ticks({ total, at, label }: { total: number; at: number; label: 
   );
 }
 
-/** En-tête d'un écran de question : repère (« Cuisine · 2 sur 7 »), la question en grand, une phrase d'aide. */
+/** En-tête d’un écran de question : repère (« Cuisine · 2 sur 7 »), la question en grand, une phrase d’aide. */
 export function QuestionHead({ kicker, title, hint, as: H = "h2", size = "page" }: { kicker?: ReactNode; title: ReactNode; hint?: ReactNode; as?: "h1" | "h2" | "h3"; size?: "page" | "section" }) {
   return (
     <header className="grid gap-3">
@@ -60,7 +60,7 @@ export function HowTo({ title, children }: { title: string; children: ReactNode 
   );
 }
 
-/** Choix en ligne (doigt d'abord) : repère rond à gauche, titre, aide ; la ligne est séparée de la suivante par un filet. */
+/** Choix en ligne (doigt d’abord) : repère rond à gauche, titre, aide ; la ligne est séparée de la suivante par un filet. */
 export function ChoiceRow({ on, title, hint, icon, art, ...rest }: { on: boolean; title: ReactNode; hint?: ReactNode; icon?: IconName; art?: ReactNode } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title">) {
   return (
     <button
@@ -86,7 +86,7 @@ export function Choices({ children, className = "" }: { children: ReactNode; cla
   return <div className={`grid divide-y divide-line border-y border-line ${className}`}>{children}</div>;
 }
 
-/** Bloc d'un récipient ou d'un réglage dans un écran : filet au-dessus, titre, contenu. */
+/** Bloc d’un récipient ou d’un réglage dans un écran : filet au-dessus, titre, contenu. */
 export function Block({ title, icon, aside, children }: { title?: ReactNode; icon?: IconName; aside?: ReactNode; children?: ReactNode }) {
   return (
     <div className="grid gap-4 border-t border-line py-4">
@@ -102,7 +102,7 @@ export function Block({ title, icon, aside, children }: { title?: ReactNode; ico
   );
 }
 
-/** Ligne de réglage : contrôle à gauche, ce qu'il règle à droite. */
+/** Ligne de réglage : contrôle à gauche, ce qu’il règle à droite. */
 export function Line({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-body">{children}</div>;
 }

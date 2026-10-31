@@ -1,8 +1,8 @@
 "use client";
 
-// Actions d'une liste de courses (système « Carnet de marché ») : vérification en direct (suivie ligne par
+// Actions d’une liste de courses (système « Carnet de marché ») : vérification en direct (suivie ligne par
 // ligne), progression pendant la création (LoadList), copie avec les liens. Sections sobres : étiquette à filet,
-// chiffres serrés, un mot plutôt qu'une pastille.
+// chiffres serrés, un mot plutôt qu’une pastille.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { checkLive, followLive } from "@/app/courses/actions";
@@ -34,7 +34,7 @@ function liveItems(lines: LiveLine[]): { items: LoadItem[]; done: number; total:
       );
     return { label: l.label, state: "done", trail };
   });
-  // En cours d'abord, puis l'attente, puis le fait.
+  // En cours d’abord, puis l’attente, puis le fait.
   const rank = { on: 0, idle: 1, done: 2 } as const;
   items.sort((a, b) => rank[a.state] - rank[b.state]);
   return { items, done: asked.filter((l) => l.status !== "pending").length, total: asked.length, pending: asked.filter((l) => l.status === "pending").length };

@@ -1,7 +1,7 @@
 "use client";
 
 // Conversation avec le coach Santé. Le coach propose des objectifs ; la carte montre ce qui change,
-// ce que la vérification de l'appli a corrigé, et on applique d'un tap.
+// ce que la vérification de l’appli a corrigé, et on applique d’un tap.
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Icon, Textarea } from "@/components/ui";

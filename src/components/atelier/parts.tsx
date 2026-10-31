@@ -1,5 +1,5 @@
-// Briques de l'atelier et de l'import (DA v3 « Carnet de marché ») : en-tête de page (retour, grand titre, chapeau),
-// titre de section à filet, notes en lignes nettes (avertissements, vérifications) et coût de l'IA en pied.
+// Briques de l’atelier et de l’import (DA v3 « Carnet de marché ») : en-tête de page (retour, grand titre, chapeau),
+// titre de section à filet, notes en lignes nettes (avertissements, vérifications) et coût de l’IA en pied.
 // Sans état : utilisables côté serveur.
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -60,12 +60,12 @@ export function Notes({ items, title, className = "" }: { items: { tone: NoteTon
   );
 }
 
-/** Ce que l'IA coûte, en pied de formulaire : petit, gris, en chiffres. */
+/** Ce que l’IA coûte, en pied de formulaire : petit, gris, en chiffres. */
 export function CostLine({ children }: { children: ReactNode }) {
   return <p className="num text-small text-faint">{children}</p>;
 }
 
-/** Ce qui va se passer, en trois temps numérotés (à la place d'un état vide). */
+/** Ce qui va se passer, en trois temps numérotés (à la place d’un état vide). */
 export function HowItGoes({ title, steps }: { title: string; steps: ReactNode[] }) {
   return (
     <div className="grid content-start gap-4 border-t border-line-strong pt-4">

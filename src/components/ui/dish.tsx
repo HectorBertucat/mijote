@@ -1,7 +1,7 @@
 // La boîte (docs/design/systeme.md, « Signatures ») : la boîte de verre du plat, dessinée à partir de
 // ses ingrédients (dishArt, src/lib/illus/dish.ts), couvercle cocotte, posée sur la nappe vichy de la
 // couleur de la recette. Elle remplace le monogramme. Sans état ni effet : composant serveur, rendu
-// en liste sans calcul côté client. `steam` dessine la vapeur, `live` l'anime (rien ne bouge avec
+// en liste sans calcul côté client. `steam` dessine la vapeur, `live` l’anime (rien ne bouge avec
 // prefers-reduced-motion, voir illus.css).
 import type { CSSProperties } from "react";
 import { FOODS } from "@/lib/illus/art";
@@ -132,7 +132,7 @@ function Contents({ art, pid }: { art: DishArt; pid: string }) {
 }
 
 /**
- * La boîte d'un plat sur sa nappe vichy. Tailles : sm 56 (ligne de liste), md 128 × 96 (carte),
+ * La boîte d’un plat sur sa nappe vichy. Tailles : sm 56 (ligne de liste), md 128 × 96 (carte),
  * lg 256 × 192, hero (bande plein cadre en haut de la fiche). `aria-label` = nom du plat.
  */
 export function DishBox({

@@ -1,7 +1,7 @@
 "use client";
 
 // Le nom de la maison (en-tête) et le magasin où se font les courses (liste, IA).
-// `finish` : dernier écran de la mise en route, enregistrer ouvre l'appli (finishSetupAction).
+// `finish` : dernier écran de la mise en route, enregistrer ouvre l’appli (finishSetupAction).
 import { useActionState } from "react";
 import { Button, Field, Input } from "@/components/ui";
 import { finishSetupAction, saveHomeAction, type FormState } from "@/app/reglages/actions";

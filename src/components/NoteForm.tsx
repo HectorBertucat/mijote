@@ -1,6 +1,6 @@
 "use client";
 
-// Notes d'une fiche (DA « Carnet de marché ») : catégories qui filtrent, la liste à filets, puis l'ajout en un tap
+// Notes d’une fiche (DA « Carnet de marché ») : catégories qui filtrent, la liste à filets, puis l’ajout en un tap
 // (catégorie, qui, texte, Entrée).
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";

@@ -1,6 +1,6 @@
 "use client";
 
-// Bonhomme animé d'un exercice. L'horloge (`t`, en secondes) vient de l'appelant quand le geste doit
+// Bonhomme animé d’un exercice. L’horloge (`t`, en secondes) vient de l’appelant quand le geste doit
 // rester synchro avec le décompte et les bips (séance guidée) ; sinon useMotionClock la fait tourner.
 // Couleurs : jetons uniquement (encre, trait discret pour le côté éloigné, accent pour la kettlebell).
 import { createContext, useContext, useEffect, useState } from "react";
@@ -8,10 +8,10 @@ import { figure, VIEWBOX } from "@/lib/training/draw";
 import { MOTIONS } from "@/lib/training/figures";
 import { sample, type Frame, type Motion } from "@/lib/training/motion";
 
-/** Figures des exercices inventés (programme créé par l'IA), posées par la page Entraînement. */
+/** Figures des exercices inventés (programme créé par l’IA), posées par la page Entraînement. */
 export const MotionsContext = createContext<Record<string, Motion>>({});
 
-/** La figure d'un exercice : celle du programme, sinon celle de la bibliothèque. */
+/** La figure d’un exercice : celle du programme, sinon celle de la bibliothèque. */
 export function useMotion(ex: string): Motion | null {
   const extra = useContext(MotionsContext);
   return extra[ex] ?? MOTIONS[ex] ?? null;
@@ -51,7 +51,7 @@ export function frameAt(m: Motion | null, t: number): Frame | null {
   return m ? sample(m, t) : null;
 }
 
-/** Image du mouvement à l'instant `t`. Avec « réduire les animations », la pose clé la plus parlante, fixe. */
+/** Image du mouvement à l’instant `t`. Avec « réduire les animations », la pose clé la plus parlante, fixe. */
 export function KbFigure({ ex, t, className = "", label }: { ex: string; t: number; className?: string; label?: string }) {
   const reduced = useReducedMotion();
   const m = useMotion(ex);

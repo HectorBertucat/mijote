@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-31 : refonte « Carnet de marché », finitions de direction artistique
+- Le petit visuel d'un plat (`RecipeTile`) n'est plus un monogramme : c'est sa boîte de verre sur un carré de nappe vichy, partout où il restait (accueil, semaine, recherche, coûts, journal…).
+- Micro-typographie : `typo()` (`src/lib/typo.ts`, testé) pose l'apostrophe courbe, les espaces insécables avant « : ; ? ! », dans les guillemets et entre un nombre et son unité, à l'affichage des fiches (nom, description, ingrédients, étapes, repères) et des consignes de session ; les textes de l'interface passent à l'apostrophe courbe.
+- Fiche : plus de mot « unité » à l'écran (on parle en repas).
+- Liste de courses : le titre est le jour (« Courses du 30 octobre »), les plats passent dessous.
+- Frigo vide : une phrase et l'action, alignées comme le reste, au lieu de l'état vide centré.
+
 ## 2026-10-31 : courses, placard et coûts au « Carnet de marché »
 - Liste de courses refaite comme une vraie liste à cocher : par rayon (étiquette et compteur « 2 sur 6 »), une ligne = case de 28 px dans une cible de 48, dessin de l'aliment, quantité en chiffres serrés, nom, prix aligné à droite. Cocher répond tout de suite, sans coche animée ni barré qui se trace.
 - Un seul signal par ligne, et seulement quand il faut agir (`signalOf` dans `CartList.tsx`) : introuvable, rupture, à vérifier (un vrai doute), souci du panier drive, vérification en cours. Plus de « en stock », « vérifié il y a 8 h » ni « au panier » en pastilles. Marque, besoin, paquets et choix d'un autre produit passent dans le détail de la ligne (feuille).

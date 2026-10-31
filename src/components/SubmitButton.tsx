@@ -1,7 +1,7 @@
 "use client";
 
-// Bouton d'envoi de formulaire serveur : Button du kit en chargement tant que l'action tourne (useFormStatus).
-// solid = primary ; soft = secondaire bleu pâle (action d'appoint à côté d'une principale).
+// Bouton d’envoi de formulaire serveur : Button du kit en chargement tant que l’action tourne (useFormStatus).
+// solid = primary ; soft = secondaire bleu pâle (action d’appoint à côté d’une principale).
 import { useFormStatus } from "react-dom";
 import { Button, type ButtonSize } from "./ui/button";
 import type { IconName } from "./ui/icon";

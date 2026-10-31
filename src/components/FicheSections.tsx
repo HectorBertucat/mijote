@@ -1,8 +1,8 @@
 "use client";
 
-// Sections d'une fiche : sur téléphone et iPad, des onglets (Ingrédients, Étapes, Chiffres, Notes, Produits) et une seule section
-// visible ; sur ordinateur (lg), tout est affiché dans la grille. L'onglet suit l'ancre de l'URL (#etapes…),
-// ce qui permet au panneau « Ajuster » d'ouvrir les bols quand la variante arrive.
+// Sections d’une fiche : sur téléphone et iPad, des onglets (Ingrédients, Étapes, Chiffres, Notes, Produits) et une seule section
+// visible ; sur ordinateur (lg), tout est affiché dans la grille. L’onglet suit l’ancre de l’URL (#etapes…),
+// ce qui permet au panneau « Ajuster » d’ouvrir les bols quand la variante arrive.
 import { createContext, useContext, useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Tabs } from "@/components/ui";
 
@@ -10,7 +10,7 @@ type Section = { id: string; label: string; count?: number };
 const Ctx = createContext<string | null>(null);
 const CountCtx = createContext<Dispatch<SetStateAction<Record<string, number | undefined>>> | null>(null);
 
-/** Le compteur d'un onglet calculé côté client (ex. « Produits » : ingrédients encore à associer ; 0 l'efface). */
+/** Le compteur d’un onglet calculé côté client (ex. « Produits » : ingrédients encore à associer ; 0 l’efface). */
 export function useSectionCount(id: string, n: number | undefined) {
   const set = useContext(CountCtx);
   useEffect(() => {

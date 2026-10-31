@@ -1,9 +1,9 @@
 "use client";
 
-// Atelier de création (DA v3 « Carnet de marché ») : une envie → une base proposée par l'IA, puis on garde ou retire
+// Atelier de création (DA v3 « Carnet de marché ») : une envie → une base proposée par l’IA, puis on garde ou retire
 // les aliments sur des tuiles (chacune vérifiée au drive) et on en ajoute depuis le catalogue ; la recette se met
 // à jour sous les yeux. Si un indispensable manque, la recette passe « indisponible » et le dit.
-// Sobre : sections à filets, l'aperçu au langage de la fiche, l'état d'un aliment en forme et en mot.
+// Sobre : sections à filets, l’aperçu au langage de la fiche, l’état d’un aliment en forme et en mot.
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -213,7 +213,7 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
                 <Notes items={[{ tone: "info", key: proposal.explanation, text: proposal.explanation }]} />
               </header>
 
-              {/* Téléphone : l'essentiel en tête (indisponible, la part). */}
+              {/* Téléphone : l’essentiel en tête (indisponible, la part). */}
               <div className="grid gap-4 lg:hidden">
                 {unavailable}
                 {macros}
@@ -318,7 +318,7 @@ const STATE: Record<Check["state"], { icon: IconName; cls: string; word: string 
   replace: { icon: "x", cls: "text-ko-ink", word: "à remplacer" },
 };
 
-/** État d'un aliment : la forme et le mot, en couleur de verdict (jamais la couleur seule). */
+/** État d’un aliment : la forme et le mot, en couleur de verdict (jamais la couleur seule). */
 function StateWord({ icon, cls, children }: { icon: IconName; cls: string; children: string }) {
   return (
     <span className={`inline-flex items-center gap-1 text-small font-bold ${cls}`}>
@@ -328,7 +328,7 @@ function StateWord({ icon, cls, children }: { icon: IconName; cls: string; child
   );
 }
 
-/** Tuiles d'aliments : gardé (case d'encre cochée), retiré (pointillés, barré), ajouté depuis le catalogue. */
+/** Tuiles d’aliments : gardé (case d’encre cochée), retiré (pointillés, barré), ajouté depuis le catalogue. */
 function FoodTiles({
   ingredients,
   adds,

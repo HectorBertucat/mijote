@@ -1,8 +1,8 @@
 "use client";
 
-// Unités cuites d'une recette : Stepper du kit (− 45 u +, le chiffre tique) et « ×1,25 la fiche » dessous.
+// Unités cuites d’une recette : Stepper du kit (− 45 u +, le chiffre tique) et « ×1,25 la fiche » dessous.
 // Le pas n'est pas linéaire (×0,5 → ×3, src/lib/week/propose.ts) : chaque côté porte sa cible `to`.
-// Sur la Semaine, un pas appelle l'action serveur ; sur le Composer, il change l'URL (la sélection y vit).
+// Sur la Semaine, un pas appelle l’action serveur ; sur le Composer, il change l’URL (la sélection y vit).
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Stepper } from "@/components/ui";
@@ -32,7 +32,7 @@ export function FactorStepper({ name, factor, units, dec, inc, className = "" }:
   };
   return (
     <div className={`grid justify-items-center gap-1 ${className}`} role="group" aria-label={`Unités cuites de ${name}`}>
-      <Stepper value={cur.units} unit="u" onStep={step} canDec={!!dec && !pending} canInc={!!inc && !pending} busy={pending} decLabel={`Moins d'unités de ${name}`} incLabel={`Plus d'unités de ${name}`} />
+      <Stepper value={cur.units} unit="u" onStep={step} canDec={!!dec && !pending} canInc={!!inc && !pending} busy={pending} decLabel={`Moins d’unités de ${name}`} incLabel={`Plus d’unités de ${name}`} />
       <span className={`label ${cur.factor === 1 ? "text-ink-3" : "text-ink"}`}>{cur.factor === 1 ? "la fiche" : `${label(cur.factor)} la fiche`}</span>
     </div>
   );

@@ -13,7 +13,7 @@ const LOOK: Record<PillTone, string> = {
 };
 /** Icône par défaut de chaque état : coche, horloge, croix, attente. */
 export const TONE_ICON: Record<PillTone, IconName> = { ok: "check", warn: "clock", ko: "x", idle: "refresh" };
-/** Classe de texte d'une valeur colorée par son verdict (chiffres kcal, protéines…). */
+/** Classe de texte d’une valeur colorée par son verdict (chiffres kcal, protéines…). */
 export const TONE_TEXT: Record<Tone, string> = { ok: "text-ok", warn: "text-warn", ko: "text-ko" };
 
 /** Verdict nutrition du code (`ok` / `low` / `high`, cf. verdictFor) → ton du kit. */
@@ -25,7 +25,7 @@ export function verdictWord(v: "ok" | "low" | "high"): string {
   return v === "ok" ? "dans la cible" : v === "low" ? "sous la cible" : "au-dessus";
 }
 
-/** Pastille d'état. `dot` : rond avec l'icône seule (le mot passe en title et aria-label, obligatoire via `children`). */
+/** Pastille d’état. `dot` : rond avec l’icône seule (le mot passe en title et aria-label, obligatoire via `children`). */
 export function Pill({ tone, children, icon, dot = false, className = "" }: { tone: PillTone; children: ReactNode; icon?: IconName; dot?: boolean; className?: string }) {
   const ic = <Icon name={icon ?? TONE_ICON[tone]} size={14} strokeWidth={2.4} />;
   if (dot) {

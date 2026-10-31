@@ -32,7 +32,6 @@ const day = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "n
 const eur = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2).replace(".", ",")} €`);
 const grams = (g: number | null) => (g == null ? null : g >= 1000 ? `${(g / 1000).toLocaleString("fr-FR")}\u00a0kg` : `${Math.round(g)}\u00a0g`);
 /** Titre long (plusieurs plats) : un cran plus petit, pour rester sur deux lignes. */
-const titleSize = (t: string) => (t.length > 26 ? "h1" : "display");
 
 export default async function Liste({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -43,7 +42,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
   // Serveur redémarré pendant la création (déploiement) : la liste ne finira jamais.
   const stuck = building && !list.buildError && Date.now() - new Date(list.createdAt).getTime() > 5 * 60_000;
   if (building || list.buildError) {
-    // Les lignes de recette qui passent par /resolve, dans l'ordre (affichage de la progression).
+    // Les lignes de recette qui passent par /resolve, dans l’ordre (affichage de la progression).
     const rids = db.select({ id: recipes.id, slug: recipes.slug }).from(recipes).where(inArray(recipes.slug, list.recipeSlugs)).all();
     const order = new Map(list.recipeSlugs.map((s, i) => [s, i]));
     const slugOf = new Map(rids.map((r) => [r.id, r.slug]));
@@ -58,7 +57,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
       : [];
     return (
       <div className="grid grid-cols-[minmax(0,1fr)] gap-12">
-        <PageHead back={<BackLink href="/courses">Listes</BackLink>} kicker={`Courses du ${day(list.createdAt)}${store ? ` · ${store}` : ""}`} title={list.title ?? "Liste de courses"} size={titleSize(list.title ?? "")} />
+        <PageHead back={<BackLink href="/courses">Listes</BackLink>} kicker={store ?? "Liste de courses"} title={`Courses du ${day(list.createdAt)}`} size="display" />
         <BuildProgress done={list.buildDone ?? 0} total={list.buildTotal ?? 0} lines={lines} error={list.buildError ?? (stuck ? "création interrompue, refais la liste depuis Composer." : null)} />
         {!list.buildError && !stuck && <Simmer label="Je remplis le panier…" className="justify-self-center" />}
         {!list.buildError && !stuck && (
@@ -131,16 +130,18 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
 
   const liveLines = buy.filter((i) => i.productJson).map((i) => ({ label: (i.productJson as ResolvedProduct).name, status: i.liveStatus }));
 
-  const title = list.title ?? "Liste de courses";
+  // Le titre est le jour ; les plats (ancien titre « A + B + C ») passent dessous, ils ne tiennent pas en titre.
+  const title = `Courses du ${day(list.createdAt)}`;
+  const dishes = (list.title ?? "").split(" + ").filter(Boolean);
   const checkFirst = !ordered && (toCheck.length > 0 || meat > 0);
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
       <AutoRefresh />
       <PageHead
         back={<BackLink href="/courses">Listes</BackLink>}
-        kicker={`Courses du ${day(list.createdAt)}${store ? ` · ${store}` : ""}`}
+        kicker={store ?? "Liste de courses"}
         title={title}
-        size={titleSize(title)}
+        size="display"
         aside={
           total > 0 ? (
             <Figure big value={total.toFixed(2).replace(".", ",")} unit="€" label={`${buy.length} articles${ordered ? ", commandés" : catalogEnabled() ? ", estimé" : ", prix saisis"}`} />
@@ -149,6 +150,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
           )
         }
       >
+        {dishes.length > 0 && <p className="max-w-[60ch] text-lead text-ink-2">{dishes.join(" · ")}</p>}
         {(week || scaledRecipes.length > 0 || Object.keys(list.recipeExtras).length > 0) && (
           <p className="text-small text-ink-2">
             {week && (
@@ -159,7 +161,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
             {scaledRecipes.map((r) => (
               <span key={r.slug}>
                 {" "}
-                · {r.name} {factorLabel(list.recipeScales[r.slug])} (<span className="num">{Math.round(r.servingsUnits * list.recipeScales[r.slug])}</span> unités)
+                · {r.name} {factorLabel(list.recipeScales[r.slug])}
               </span>
             ))}
             {Object.keys(list.recipeExtras).length > 0 && <span> · {Object.keys(list.recipeExtras).length === 1 ? "1 paquet fini" : `${Object.keys(list.recipeExtras).length} paquets finis`} (grammes ajoutés)</span>}

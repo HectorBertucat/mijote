@@ -56,7 +56,7 @@ export default async function Sante() {
         </Note>
       )}
 
-      {/* Les trois chiffres du jour, en grand : la tendance d'abord, la cible et les protéines ensuite. */}
+      {/* Les trois chiffres du jour, en grand : la tendance d’abord, la cible et les protéines ensuite. */}
       <section aria-label="Chiffres du jour" className="grid gap-8 lg:grid-cols-12 lg:gap-6">
         <div className="grid content-start gap-4 lg:col-span-5">
           {last ? (

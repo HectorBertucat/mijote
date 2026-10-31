@@ -98,7 +98,7 @@ export default async function Bibliotheque({ searchParams }: { searchParams: Pro
             Toutes
           </TagLink>
           {tags.map((t) => (
-            // Au bureau, les étiquettes d'un seul plat se trouvent par la recherche ; sur téléphone, la rangée défile.
+            // Au bureau, les étiquettes d’un seul plat se trouvent par la recherche ; sur téléphone, la rangée défile.
             <TagLink key={t} href={href(t)} active={tag === t} count={count.get(t)} className={count.get(t)! < 2 && tag !== t ? "sm:hidden" : ""}>
               {t}
             </TagLink>

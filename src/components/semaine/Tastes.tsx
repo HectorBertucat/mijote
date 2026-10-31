@@ -1,4 +1,4 @@
-// Goûts respectés par la proposition : ce que chacun n'aime pas (table preferences), et les
+// Goûts respectés par la proposition : ce que chacun n’aime pas (table preferences), et les
 // recettes de la bibliothèque qui en contiennent (jamais servies à cette personne).
 import type { DislikeRule } from "@/lib/week/tastes";
 import { joinFr } from "@/lib/week/tastes";

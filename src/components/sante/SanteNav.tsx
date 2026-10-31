@@ -1,7 +1,7 @@
 "use client";
 
-// Onglets du module Santé (liens), soulignés d'encre comme les Tabs du kit. Chaque partie est une page :
-// on en ajoute une en l'ajoutant ici.
+// Onglets du module Santé (liens), soulignés d’encre comme les Tabs du kit. Chaque partie est une page :
+// on en ajoute une en l’ajoutant ici.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 

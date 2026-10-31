@@ -1,6 +1,6 @@
 "use client";
 
-// Saisie rapide d'une pesée ou d'un tour de taille (en attendant l'envoi automatique d'Apple Santé).
+// Saisie rapide d’une pesée ou d’un tour de taille (en attendant l’envoi automatique d’Apple Santé).
 import { useState, useTransition } from "react";
 import { Button, Input } from "@/components/ui";
 import { useToast } from "@/components/cart/Toast";

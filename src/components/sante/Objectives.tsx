@@ -1,5 +1,5 @@
-// Résumé des objectifs et historique d'activité (vue d'ensemble, page Objectifs). Sans état, côté serveur.
-// Mise en page carnet : sections à filet, lignes de définition, barres d'encre.
+// Résumé des objectifs et historique d’activité (vue d’ensemble, page Objectifs). Sans état, côté serveur.
+// Mise en page carnet : sections à filet, lignes de définition, barres d’encre.
 import Link from "next/link";
 import { buttonClass } from "@/components/ui";
 import { GOAL_LABEL } from "@/lib/health/core";
@@ -12,7 +12,7 @@ const shortDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("f
 
 export interface GoalSummary {
   goal: keyof typeof GOAL_LABEL | null;
-  ratePct: number; // rythme effectif (profil ou défaut de l'objectif)
+  ratePct: number; // rythme effectif (profil ou défaut de l’objectif)
   proteinText: string | null;
   targetWeightKg: number | null;
   targetDate: string | null;

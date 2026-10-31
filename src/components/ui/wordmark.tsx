@@ -1,5 +1,5 @@
-// Mot-symbole « mijote » : le « o » est une cocotte (corps cocotte, couvercle tomate) d'où monte un filet de vapeur.
-// Archivo large 125, graisse 800. Sans état ; la vapeur ne bouge qu'au survol du lien parent (classe group).
+// Mot-symbole « mijote » : le « o » est une cocotte (corps cocotte, couvercle tomate) d’où monte un filet de vapeur.
+// Archivo large 125, graisse 800. Sans état ; la vapeur ne bouge qu’au survol du lien parent (classe group).
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (

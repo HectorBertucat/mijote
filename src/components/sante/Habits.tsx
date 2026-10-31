@@ -1,7 +1,7 @@
 "use client";
 
 // Santé › Habitudes : ce que la personne mange hors des repas du batch (shaker, petit-déjeuner,
-// en-cas), composé d'aliments de la table nutritionnelle, avec ses jours. Les macros sont
+// en-cas), composé d’aliments de la table nutritionnelle, avec ses jours. Les macros sont
 // recalculées en direct (src/lib/eaters/habits.ts, le même calcul que le serveur) ; le hors batch
 // du jour, et donc la part de chaque recette, en découle.
 import { useState, useTransition } from "react";
@@ -33,7 +33,7 @@ const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const num = (s: string) => Number(s.replace(",", ".").trim());
 const SELECT = "min-h-12 w-full min-w-0 rounded-[8px] border border-line-strong bg-surface px-4 text-[17px] text-ink focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none";
 
-// Les aliments de l'éditeur : ceux du matin d'abord, puis le reste de la table.
+// Les aliments de l’éditeur : ceux du matin d’abord, puis le reste de la table.
 const OTHER_FOODS = (Object.keys(FOODS) as FoodId[]).filter((id) => id !== "zero" && !HABIT_FOODS.includes(id)).sort((a, b) => FOODS[a].name.localeCompare(FOODS[b].name, "fr"));
 
 const fromPreset = (p: HabitPreset): Draft => ({ id: null, label: p.label, meal: p.meal, weekdays: [...EVERY_DAY], items: p.items.map((i) => ({ food: i.food, grams: String(i.grams) })) });

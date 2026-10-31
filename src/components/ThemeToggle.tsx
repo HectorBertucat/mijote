@@ -1,6 +1,6 @@
 "use client";
 
-// Sélecteur de thème : un bouton qui fait le tour Auto / Clair / Sombre (icônes auto, sun, moon). Le choix vit sur l'appareil
+// Sélecteur de thème : un bouton qui fait le tour Auto / Clair / Sombre (icônes auto, sun, moon). Le choix vit sur l’appareil
 // (localStorage `mijote.theme`, absent = suivre le système), posé avant le premier rendu par le script de layout.tsx.
 import { useEffect, useState } from "react";
 import { Icon } from "./ui/icon";
@@ -22,7 +22,7 @@ const NEXT: Record<Mode, Mode> = { system: "light", light: "dark", dark: "system
 const LABEL: Record<Mode, string> = { system: "Thème : suit le système", light: "Thème : clair", dark: "Thème : sombre" };
 const ICON = { system: "auto", light: "sun", dark: "moon" } as const;
 
-/** Un seul bouton qui fait le tour Auto → Clair → Sombre (l'en-tête reste léger). */
+/** Un seul bouton qui fait le tour Auto → Clair → Sombre (l’en-tête reste léger). */
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const [mode, setMode] = useState<Mode>("system");
   useEffect(() => {

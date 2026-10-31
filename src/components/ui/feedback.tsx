@@ -1,4 +1,4 @@
-// Retours : Alert (info, warn, ko, ok, leaf pour l'anti-gaspillage), Toast (fond d'encre, action), Progress (barre), LoadList (vérification ligne par ligne), StepProgress (long chargement par étapes), EmptyState. Sans état.
+// Retours : Alert (info, warn, ko, ok, leaf pour l’anti-gaspillage), Toast (fond d’encre, action), Progress (barre), LoadList (vérification ligne par ligne), StepProgress (long chargement par étapes), EmptyState. Sans état.
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./icon";
 import { Scene, type SceneName } from "./scenes";
@@ -12,7 +12,7 @@ const ALERT: Record<AlertTone, { box: string; icon: IconName; ic: string }> = {
   leaf: { box: "bg-surface-2 text-ink border-dashed border-line-strong", icon: "leaf", ic: "text-ink-2" },
 };
 
-/** Bandeau. `title` en gras, `children` en dessous ; `action` à droite (p. ex. un Button sm) ; `icon` remplace l'icône du ton. */
+/** Bandeau. `title` en gras, `children` en dessous ; `action` à droite (p. ex. un Button sm) ; `icon` remplace l’icône du ton. */
 export function Alert({ tone = "info", title, children, action, icon, className = "", role }: { tone?: AlertTone; title?: ReactNode; children?: ReactNode; action?: ReactNode; icon?: IconName; className?: string; role?: "status" | "alert" }) {
   const t = ALERT[tone];
   return (
@@ -27,7 +27,7 @@ export function Alert({ tone = "info", title, children, action, icon, className 
   );
 }
 
-/** Toast : bulle d'encre qui monte avec un léger rebond, `action` (Button variant="inverse" size="sm", p. ex. « Annuler »). À poser dans une zone fixe (ToastZone). */
+/** Toast : bulle d’encre qui monte avec un léger rebond, `action` (Button variant="inverse" size="sm", p. ex. « Annuler »). À poser dans une zone fixe (ToastZone). */
 export function Toast({ children, action, className = "" }: { children: ReactNode; action?: ReactNode; className?: string }) {
   return (
     <div role="status" className={`inline-flex animate-toast-in items-center gap-3 rounded-[12px] bg-inverse py-2.5 pl-4 pr-2.5 text-[15px] text-on-inverse shadow-e3 ${action ? "" : "pr-4"} ${className}`}>
@@ -37,7 +37,7 @@ export function Toast({ children, action, className = "" }: { children: ReactNod
   );
 }
 
-/** Zone fixe des toasts : en bas au centre, au-dessus de la barre d'onglets sur téléphone. */
+/** Zone fixe des toasts : en bas au centre, au-dessus de la barre d’onglets sur téléphone. */
 export function ToastZone({ children }: { children?: ReactNode }) {
   return <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-center gap-2 px-4 sm:bottom-6 [&>*]:pointer-events-auto">{children}</div>;
 }
@@ -54,7 +54,7 @@ export function Progress({ value, label, active = false, className = "" }: { val
 
 export type LoadItem = { label: ReactNode; state: "idle" | "on" | "done"; trail?: ReactNode };
 
-/** Liste qui dit ce qu'elle vérifie : en attente (gris), en cours (roue d'accent), fait (rond plein). `trail` à droite (prix, pastille). */
+/** Liste qui dit ce qu’elle vérifie : en attente (gris), en cours (roue d’accent), fait (rond plein). `trail` à droite (prix, pastille). */
 export function LoadList({ items, className = "" }: { items: LoadItem[]; className?: string }) {
   return (
     <div className={`grid gap-2 text-[14px] ${className}`} aria-live="polite">
@@ -89,7 +89,7 @@ export function VerifyPanel({ title, done, total, items, className = "" }: { tit
 
 /**
  * Long chargement (appel IA) : titre, temps restant à droite, barre calée sur la durée attendue (reflet tant que ça
- * travaille), puis les étapes réelles en LoadList. Sans état : la valeur et les étapes viennent de l'appelant
+ * travaille), puis les étapes réelles en LoadList. Sans état : la valeur et les étapes viennent de l’appelant
  * (useCalibratedProgress dans "./progress").
  */
 export function StepProgress({ title, value, items, aside, running = true, className = "" }: { title: ReactNode; value: number; items: LoadItem[]; aside?: ReactNode; running?: boolean; className?: string }) {

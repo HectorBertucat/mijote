@@ -28,7 +28,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
   // Par défaut, la vue simple (trois temps, une consigne à la fois) ; ?vue=detail : la vue détaillée
   // (fil, ressources, minuteurs) ; ?vue=telephone : la vue simple en plein écran, posée à côté du feu.
   const view = vue === "telephone" ? "phone" : vue === "detail" ? "full" : "simple";
-  // L'adresse vue par le navigateur (derrière Caddy et le tunnel : en-têtes transmis).
+  // L’adresse vue par le navigateur (derrière Caddy et le tunnel : en-têtes transmis).
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3010";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.") || /^\d+\.\d+\.\d+\.\d+/.test(host) ? "http" : "https");
@@ -47,7 +47,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pr
       : undefined;
   const person = personne === "A" || personne === "B" ? personne : null;
   const events = eventsAfter(db, id, 0);
-  // Prep la veille, bols au frigo : ce que donnerait le jour J à deux (le plan n'est enregistré qu'à la reprise).
+  // Prep la veille, bols au frigo : ce que donnerait le jour J à deux (le plan n’est enregistré qu’à la reprise).
   let dayChoice: DayChoice | null = null;
   if (modeOf(s.plan) === "veille" && s.status === "fridge") {
     const d = dayPlan(db, id, events);

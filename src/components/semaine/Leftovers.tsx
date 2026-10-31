@@ -1,6 +1,6 @@
 // « Paquets entamés » : ce qui restera de chaque paquet après la session, sur toutes les
 // recettes retenues, et ce qu'on peut en faire (calculé en code, src/lib/week/leftovers.ts).
-// « Carnet de marché » : un paquet par ligne sous un filet, ce qu'il sert recette par recette, ses propositions en lignes.
+// « Carnet de marché » : un paquet par ligne sous un filet, ce qu’il sert recette par recette, ses propositions en lignes.
 // Composant serveur asynchrone : à placer dans un <Suspense> (les /resolve sont en cache).
 import Link from "next/link";
 import type { ReactNode } from "react";

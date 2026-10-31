@@ -1,6 +1,6 @@
 "use client";
 
-// Blocs des vues de session partagés par la vue seule, à deux et le téléphone : l'étape en cours
+// Blocs des vues de session partagés par la vue seule, à deux et le téléphone : l’étape en cours
 // (.now) et ses boutons, le résumé du plan (durées, choix du planificateur, manques), la reprise
 // d'une prep la veille (seul ou à deux), la fin de session (bilan prévu / réel).
 import { useRouter } from "next/navigation";
@@ -43,11 +43,11 @@ export function progressLine(plan: SessionPlan, c: Controls): string {
   return parts.filter(Boolean).join(" · ");
 }
 
-// ─── L'étape en cours (.now) ───
+// ─── L’étape en cours (.now) ───
 
 const isHandoff = (n: string) => n.startsWith("Relais") || n.startsWith("Braisage sur la plaque");
 
-/** L'étape à faire maintenant, en très grand : la première phrase, le reste, les puces, le bol, le repère, les boutons. */
+/** L’étape à faire maintenant, en très grand : la première phrase, le reste, les puces, le bol, le repère, les boutons. */
 export function NowCard({ plan, c, step, size = "lg", actions }: { plan: SessionPlan; c: Controls; step: PlanStep; size?: "lg" | "md"; actions?: ReactNode }) {
   const { state, now, cookingStart } = c;
   const st = stepStatus(state, step.id);
@@ -185,10 +185,10 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
 
 const fmtMin = (m: number) => (m < 1 ? `${Math.round(m * 60)} s` : `${Number.isInteger(m) ? m : m.toFixed(1).replace(".", ",")} min`);
 
-/** Minutes d'un minuteur proposé pour une étape : l'attente s'il y en a, sinon la durée. */
+/** Minutes d’un minuteur proposé pour une étape : l’attente s’il y en a, sinon la durée. */
 export const timerMinutes = (step: PlanStep) => Math.round(passiveMin(step) >= 3 ? passiveMin(step) : step.durationMin);
 
-/** « Fait, étape suivante » (espace), minuteur de l'étape, « Finie » sans lancer la suivante. */
+/** « Fait, étape suivante » (espace), minuteur de l’étape, « Finie » sans lancer la suivante. */
 export function StepActions({ c, step, compact }: { c: Controls; step: PlanStep; compact?: boolean }) {
   const st = stepStatus(c.state, step.id);
   const timer = stepTimer(c.state, step.id);
@@ -202,11 +202,11 @@ export function StepActions({ c, step, compact }: { c: Controls; step: PlanStep;
       </Button>
       <div className="flex gap-3">
         {/* Retour : ordinateur seulement (le téléphone garde deux boutons). */}
-        <Button size="kitchen" variant="secondary" onClick={c.back} className="hidden flex-1 lg:inline-flex" title="Revenir à la sous-étape ou à l'étape d'avant (flèche gauche)">
+        <Button size="kitchen" variant="secondary" onClick={c.back} className="hidden flex-1 lg:inline-flex" title="Revenir à la sous-étape ou à l’étape d’avant (flèche gauche)">
           <Icon name="chev" className="rotate-180" /> Retour
         </Button>
         {st === "active" && (
-          <Button size="kitchen" variant="quiet" onClick={() => c.toggleStep(step)} className="flex-1" title="Marquer l'étape finie sans lancer la suivante">
+          <Button size="kitchen" variant="quiet" onClick={() => c.toggleStep(step)} className="flex-1" title="Marquer l’étape finie sans lancer la suivante">
             Finie
           </Button>
         )}
@@ -383,7 +383,7 @@ export function PlanDetails({ plan, open = false }: { plan: SessionPlan; open?: 
 export function ResumeChoice({ plan, c, choice, big }: { plan: SessionPlan; c: Controls; choice: DayChoice | null; big?: boolean }) {
   const solo = choice?.solo ?? { prepMin: plan.prep.minutes, cookingMin: plan.cookingMin, totalMin: plan.prep.minutes + plan.cookingMin };
   const busy = c.resuming != null;
-  // Les durées du jour J se calculent au rendu serveur : si l'écran vient de passer « au frigo », on les redemande.
+  // Les durées du jour J se calculent au rendu serveur : si l’écran vient de passer « au frigo », on les redemande.
   const router = useRouter();
   const stale = !choice?.duo;
   useEffect(() => {
@@ -438,7 +438,7 @@ export function DoneView({ plan, c, startedAt }: { plan: SessionPlan; c: Control
       <div className="flex flex-wrap items-center gap-4 border-t border-line pt-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-h2">{test ? "Bilan du test" : "Bilan de la session"}</h2>
-          <p className="mt-2 text-[17px] text-ink-2">{test ? "Prévu et réel, comme pour une vraie session. Rien n'est compté." : "Prévu et réel, geste par geste. Ces durées corrigent les prochaines sessions."}</p>
+          <p className="mt-2 text-[17px] text-ink-2">{test ? "Prévu et réel, comme pour une vraie session. Rien n’est compté." : "Prévu et réel, geste par geste. Ces durées corrigent les prochaines sessions."}</p>
         </div>
         <Button variant="quiet" icon="refresh" onClick={() => c.setStatus("cooking")}>
           Rouvrir la session
@@ -450,7 +450,7 @@ export function DoneView({ plan, c, startedAt }: { plan: SessionPlan; c: Control
   );
 }
 
-/** Relais d'une personne à venir (à deux) : « B libère le faitout pour A », à l'heure prévue. */
+/** Relais d’une personne à venir (à deux) : « B libère le faitout pour A », à l’heure prévue. */
 export function handoffsFor(plan: SessionPlan, c: Controls, person: Person) {
   return (plan.handoffs ?? []).filter((h) => (h.to === person || h.from === person) && stepStatus(c.state, h.toStepId) === "todo");
 }

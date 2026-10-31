@@ -1,6 +1,6 @@
 "use client";
 
-// Recherche dans le catalogue (GET /search, produits disponibles) pour changer le produit d'une ligne.
+// Recherche dans le catalogue (GET /search, produits disponibles) pour changer le produit d’une ligne.
 import { useEffect, useRef, useState, useTransition } from "react";
 import { pickProduct, searchProducts } from "@/app/courses/actions";
 import type { CatalogChoice } from "@/lib/shopping/cart";

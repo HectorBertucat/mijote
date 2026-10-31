@@ -49,7 +49,7 @@ const PATHS = {
   kb: (<><path d="M9 8.5a3 3 0 0 1 6 0" /><path d="M8 8.5h8l1.5 3a6 6 0 1 1-11 0L8 8.5z" /></>),
   scale: (<><rect x="3.5" y="4.5" width="17" height="15" rx="3" /><path d="M8.5 9.5a4 4 0 0 1 7 0L12 11" /></>),
   sparkdraft: <path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 0 0-3-3L5 16l-1 4zM13.5 7.5l3 3" />,
-  // Préféré (produit du drive) : passer fill="currentColor" pour l'état actif.
+  // Préféré (produit du drive) : passer fill="currentColor" pour l’état actif.
   star: <path d="M12 4.2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.6l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 4.2z" />,
 } as const;
 
@@ -59,7 +59,7 @@ export const ICON_NAMES = Object.keys(PATHS) as IconName[];
 const SIZE = { s: 16, m: 20, l: 28 } as const;
 export type IconSize = keyof typeof SIZE;
 
-/** Icône du jeu de la DA. `size` s=16, m=20 (défaut), l=28 ; `label` la rend lisible par les lecteurs d'écran, sinon décorative. */
+/** Icône du jeu de la DA. `size` s=16, m=20 (défaut), l=28 ; `label` la rend lisible par les lecteurs d’écran, sinon décorative. */
 export function Icon({ name, size = "m", label, strokeWidth = 1.8, className = "", ...rest }: { name: IconName; size?: IconSize | number; label?: string; strokeWidth?: number } & Omit<SVGProps<SVGSVGElement>, "name">) {
   const px = typeof size === "number" ? size : SIZE[size];
   return (
