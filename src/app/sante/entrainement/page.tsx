@@ -8,7 +8,7 @@ import type { Program } from "@/lib/training/program";
 import { activeLive, getLive } from "@/lib/training/live-store";
 import { listWorkouts } from "@/lib/training/store";
 import { addDays } from "@/lib/week/propose";
-import { aiMockEnabled } from "@/lib/ai";
+import { aiEnabled } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export default async function Entrainement({ searchParams }: { searchParams: Pro
   for (const p of [mine, other?.p, live ? programById(db, live.live.program) : null, pair ? programById(db, pair.live.program) : null]) if (p) programs[p.id] = p;
   const builder = {
     templates: TEMPLATES.map((t) => ({ id: t.id, name: t.name, perWeek: t.perWeek, weekNote: t.weekNote, sample: t.order[0] })),
-    aiReady: Boolean(process.env.ANTHROPIC_API_KEY) || aiMockEnabled(),
+    aiReady: aiEnabled(),
   };
   const today = todayParis();
   // Lundi de la semaine en cours (heure de Paris).

@@ -43,6 +43,7 @@ src/
     chronocatalog.ts   client du catalogue de produits (facultatif)
     costs/             achats, lots du placard, coût par part
     db/                schéma Drizzle, migrations, ouverture
+    demo/              mode démo : foyer fictif daté, une base par visiteur (docs/demo.md)
     boxes/             la marmite pesée → les boîtes de chacun, stock du frigo et du congélo
     eaters/            mangeurs, cible d'un repas, part de chacun
     health/            santé : tendance, dépense, cibles, journal, coach, Apple Santé
@@ -58,7 +59,8 @@ src/
     training/          programmes, bibliothèque, générateur, IA, figures, séance partagée
     week/              période, présence, proposition, restes, goûts
   seed/                données de départ et recettes de démonstration
-  proxy.ts             mot de passe facultatif, mise en route
+  proxy.ts             mot de passe facultatif, mise en route, visiteur de la démo
+  instrumentation.ts   au démarrage : base modèle de la démo
 tests/                 node:test, un fichier par domaine
 ```
 

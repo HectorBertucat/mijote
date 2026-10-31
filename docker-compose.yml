@@ -12,5 +12,15 @@ services:
     volumes:
       - mijote-data:/data
 
+  # Démo publique (docs/demo.md) : un foyer fictif prêt, une base par visiteur, effacée après inactivité ;
+  # ni IA, ni catalogue, ni mot de passe. Rien à sauvegarder : pas de volume.
+  # mijote-demo:
+  #   image: mijote:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${MIJOTE_DEMO_PORT:-3011}:3010"
+  #   environment:
+  #     MIJOTE_DEMO: "1"
+
 volumes:
   mijote-data:

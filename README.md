@@ -47,6 +47,8 @@ docker compose up -d --build
 
 Puis http://localhost:3010. La mise en route demande qui mange, avec quoi tu cuisines (type de plaque, nombre de feux, four, poêle, cocotte…) et où tu fais tes courses. Ça prend deux minutes, et tout se change ensuite dans Réglages.
 
+Pour seulement voir l'appli, sans rien régler : `docker build -t mijote . && docker run --rm -p 3010:3010 -e MIJOTE_DEMO=1 mijote` ouvre une démo avec un foyer déjà rempli ([docs/demo.md](docs/demo.md)).
+
 Dans `.env`, tout est facultatif :
 
 | Variable | Rôle |

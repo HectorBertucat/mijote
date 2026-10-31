@@ -19,7 +19,7 @@ import { BigDuration, Figures, type Figure } from "@/components/fiche/Figures";
 import { IngredientTable } from "@/components/fiche/Ingredients";
 import { deName } from "@/components/fiche/words";
 import { Alert, Icon, TONE_TEXT, verdictTone, verdictWord } from "@/components/ui";
-import { aiMockEnabled, expectedDurationMs, monthlyCapUsd, spentThisMonth } from "@/lib/ai";
+import { aiEnabled, aiMockEnabled, expectedDurationMs, monthlyCapUsd, spentThisMonth } from "@/lib/ai";
 import { adjustOptions, loadProposal, loadRecipeInput, type AdjustProposal } from "@/lib/atelier";
 import { familyOf } from "@/lib/recipes/variants";
 import { planCookUsage, recipeCost } from "@/lib/costs";
@@ -178,7 +178,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
                   <BlockTitle aside={meals > 0 ? `${meals}\u00a0repas${eaters.length > 1 ? ` à\u00a0${eaters.length}` : ""}` : "une fournée"}>Ingrédients</BlockTitle>
                   <IngredientTable ingredients={input.ingredients} color={color} />
                 </AdjustSlot>
-                <DrawMissing slug={r.slug} items={missingArt(db, ingredients.map((i) => ({ item: i.item, food: i.foodId })))} aiReady={Boolean(process.env.ANTHROPIC_API_KEY) || aiMockEnabled()} />
+                <DrawMissing slug={r.slug} items={missingArt(db, ingredients.map((i) => ({ item: i.item, food: i.foodId })))} aiReady={aiEnabled()} />
               </FicheSection>
               <FicheSection id="etapes" className="lg:col-span-7">
                 <AdjustSlot part="steps">

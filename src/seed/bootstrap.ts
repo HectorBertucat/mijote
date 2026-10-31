@@ -20,7 +20,7 @@ import { seedBase } from "./seed";
  * la bibliothèque de base (src/seed/recipes). Les deux sont importés ; sur un même slug, l'instance gagne.
  */
 export function recipesDirs(): string[] {
-  const candidates = [process.env.MIJOTE_RECIPES_DIR, path.join(process.cwd(), "src/seed/recipes")].filter((p): p is string => Boolean(p) && fs.existsSync(p!));
+  const candidates = [process.env.MIJOTE_RECIPES_DIR, path.join(process.cwd(), "src/seed/recipes")].filter((p): p is string => Boolean(p) && fs.existsSync(/*turbopackIgnore: true*/ p!));
   return [...new Set(candidates.map((c) => path.resolve(c)))];
 }
 

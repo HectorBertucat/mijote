@@ -95,7 +95,11 @@ Les flux temps réel (session de cuisine, séance de sport) sont en SSE : ils pa
 
 > **Sécurité.** Sans `MIJOTE_PASSWORD` et sans proxy qui protège l'accès, n'importe qui qui atteint l'adresse peut lire et modifier les données, et utiliser ta clé IA (dans la limite du plafond mensuel). Le chemin `/api/sante/import` est le seul ouvert sans mot de passe : il exige la clé secrète de la personne.
 
-## 4. Premiers pas
+## 4. Démo publique
+
+Pour montrer Mijote sans installation, `MIJOTE_DEMO=1` donne à chaque visiteur un foyer fictif prêt, dans sa propre base, effacée après inactivité : `docker run --rm -p 3010:3010 -e MIJOTE_DEMO=1 mijote`. Ni IA, ni catalogue, ni mot de passe. Détails et garde-fous : [demo.md](demo.md).
+
+## 5. Premiers pas
 
 Voir le [guide](guide.md). En bref :
 1. **Mise en route** : qui mange, la cuisine, le magasin.

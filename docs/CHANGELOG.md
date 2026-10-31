@@ -2,6 +2,12 @@
 
 Les entrées les plus récentes peuvent encore être dans [`changelog.d/`](changelog.d/) : `pnpm changelog` affiche le journal complet.
 
+## 2026-10-31 : mode démo
+- `MIJOTE_DEMO=1` : une démo publique, sans compte ni installation ni mise en route. Chaque visiteur a sa base, copiée d'une base modèle (`<MIJOTE_DATA_DIR>/demo/`), reconnue par le cookie `mijote.demo`, effacée après 2 h d'inactivité ; « Recommencer » la remet à zéro. Plafonds : nombre de bases, taille de chacune (`max_page_count`), créations par minute (`MIJOTE_DEMO_*`), aucun fichier hors du dossier de la démo. Détails et choix (plutôt qu'une base partagée remise à zéro) : docs/demo.md.
+- Base modèle refaite chaque jour, datée par rapport à aujourd'hui : Alex et Sam (profils Santé complets, goûts, habitudes du matin, huit semaines de pesées et de séances), la semaine en cours répartie, cuisinée dimanche et rangée en boîtes (frigo et congélo), la précédente mangée, la suivante avec sa liste à faire. Données pures dans `src/lib/demo/household.ts`, écrites par les fonctions de l'appli (`seed.ts`).
+- `db` (`src/lib/db/client.ts`) retrouve la base du visiteur à chaque usage ; construite au démarrage par `src/instrumentation.ts`. Sans `MIJOTE_DEMO`, rien ne change (vérifié par `tests/demo.test.ts` et le test de fumée).
+- En démo : ni IA (même avec une clé ; Atelier, import et coach expliquent ce qu'ils font), ni catalogue, ni import Apple Santé, ni mot de passe. Bandeau discret en tête de page, lien vers l'installation. Service `mijote-demo` commenté dans `docker-compose.yml`.
+
 ## 2026-10-31 : assistant, partout dans l'appli
 - Un assistant conversationnel, ouvert d'un bouton dans l'en-tête, de ⌘I / Ctrl I, ou de « Demander » dans ⌘K (panneau à droite, feuille du bas sur téléphone). Il conseille chaque personne selon ses objectifs à partir des vraies données (profils Santé, repères par repas, habitudes hors batch, semaine en cours, frigo, recettes et part de chacun) et connaît la page ouverte.
 - Il peut proposer d'agir : ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch, marquer une boîte mangée, lancer les courses. L'IA ne fait que proposer (outils stricts) ; `checkAction` (`src/lib/assistant/core.ts`, pur et testé) revalide chaque action et chiffre sa carte ; la personne applique ou annule d'un geste ; l'action est revérifiée puis exécutée par les fonctions de l'interface.
