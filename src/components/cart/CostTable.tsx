@@ -25,9 +25,9 @@ export function CostTable({ costs, compact = false, dishes = {} }: { costs: Reci
           {costs.map((c) => {
             const wastePct = c.batch && c.batch.practical > 0 ? Math.round(((c.waste ?? 0) / c.batch.practical) * 100) : 0;
             return (
-              <tr key={c.recipeId} className="group border-b border-line align-baseline">
+              <tr key={c.recipeId} className="group border-b border-line align-top">
                 <td className={`py-4 ${dishes[c.slug] ? "" : "pl-4"}`} style={dishes[c.slug] ? undefined : { boxShadow: `inset 3px 0 0 ${recipeColor(c.slug)}` }}>
-                  <Link href={`/recettes/${c.slug}#cout`} className="flex min-w-0 items-center gap-4">
+                  <Link href={`/recettes/${c.slug}#cout`} className="flex min-w-0 items-start gap-4">
                     {dishes[c.slug]}
                     <span className="grid min-w-0 gap-1">
                     <span className="font-semibold leading-snug underline decoration-transparent underline-offset-4 group-hover:decoration-line-strong">{c.name}</span>
