@@ -10,7 +10,7 @@ import { periodPlans, weekView } from "@/lib/week/store";
 import { composerHref } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
 import { estimateRecipe, estimateSession } from "@/lib/session/estimate";
-import { portionOf } from "@/lib/eaters/core";
+import { fitBadge, fitRank, fitsAll, fitSummary, recipeFits, weekFit, type Served } from "@/lib/week/fit";
 import { buildPlan } from "@/lib/session/store";
 import { FactorStepper, type Control } from "@/components/semaine/FactorStepper";
 import { Leftovers, LeftoversSkeleton } from "@/components/semaine/Leftovers";
@@ -22,6 +22,7 @@ import { WeekGrid, type GridCell } from "@/components/semaine/WeekGrid";
 import { MenuBoard, type BoardDay } from "@/components/semaine/MenuBoard";
 import { PeriodPicker } from "@/components/semaine/PeriodPicker";
 import { PickButton } from "@/components/semaine/Pick";
+import { FitMark, FitNote, FitWarnings } from "@/components/semaine/Fit";
 import { Dock, Figures, Fold, HowTo, Notice } from "@/components/semaine/Parts";
 import { fmtG, fmtMin, plural } from "@/components/semaine/format";
 import { recipeColor } from "@/lib/ui";
@@ -131,28 +132,47 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
     .filter((x): x is string => !!x);
   const officeMeals = cells.reduce((s, c) => s + c.slots.filter((x) => x.place === "office").length, 0);
 
+  // Objectifs de chacun (src/lib/week/fit.ts) : une pastille par plat, un tri, et l’écart de la sélection.
+  const goals = eaters.some((e) => e.ref);
+  const shelfLib = library.filter((r) => r.status !== "archived" && r.servingsUnits > 0);
+  const fitsOf = new Map(shelfLib.map((r) => [r.slug, recipeFits(eaters, r, tastes.excluded.get(r.slug))]));
+  const served: Served = new Map();
+  for (const rp of a.recipes)
+    for (const m of rp.meals)
+      for (const pid of m.personIds) {
+        const by = served.get(pid) ?? new Map<string, number>();
+        by.set(rp.slug, (by.get(rp.slug) ?? 0) + 1);
+        served.set(pid, by);
+      }
+  const fit = goals && selected.length ? weekFit(eaters, selected, { served, library: shelfLib, excluded: tastes.excluded }) : null;
+  const farOff = selected.flatMap((r) => {
+    const b = fitBadge(recipeFits(eaters, r, tastes.excluded.get(r.slug)));
+    return b?.tone === "warn" ? [`${r.name}, ${b.text.charAt(0).toLowerCase()}${b.text.slice(1)}`] : [];
+  });
+
   // Bibliothèque (choisir ses plats) : filtres simples, sans unités ni nombre de repas.
-  const filter = FILTERS.find((x) => x.id === f) ?? FILTERS[0];
+  const filters = FILTERS.filter((x) => goals || x.id !== "objectifs");
+  const filter = filters.find((x) => x.id === f) ?? filters[0];
+  const byGoals = filter.id === "objectifs";
   const chosen = new Set(slugs);
-  const shelf = library
-    .filter((r) => r.status !== "archived" && r.servingsUnits > 0)
+  const shelf = shelfLib
     .map((r) => ({ r, est: estimateRecipe(r) }))
-    .filter(({ r, est }) => filter.match(r, est.activeMin))
-    .sort((x, y) => Number(chosen.has(y.r.slug)) - Number(chosen.has(x.r.slug)) || (x.r.status === "liked" ? 0 : 1) - (y.r.status === "liked" ? 0 : 1) || x.r.name.localeCompare(y.r.name, "fr"));
+    .filter(({ r, est }) => (byGoals ? fitsAll(fitsOf.get(r.slug) ?? []) : filter.match(r, est.activeMin)))
+    .sort(
+      (x, y) =>
+        Number(chosen.has(y.r.slug)) - Number(chosen.has(x.r.slug)) ||
+        (byGoals ? fitRank(fitsOf.get(x.r.slug) ?? []) - fitRank(fitsOf.get(y.r.slug) ?? []) : 0) ||
+        (x.r.status === "liked" ? 0 : 1) - (y.r.status === "liked" ? 0 : 1) ||
+        x.r.name.localeCompare(y.r.name, "fr")
+    );
   // Repas servis par recette (une personne à un repas = un repas), pour parler en repas et pas en unités.
   const servedOf = (slug: string) => a.recipes.find((p) => p.slug === slug)?.meals.reduce((s, m) => s + m.personIds.length, 0) ?? 0;
   const frozenOf = (slug: string) => a.recipes.find((p) => p.slug === slug)?.meals.filter((m) => m.frozen).reduce((s, m) => s + m.personIds.length, 0) ?? 0;
   const toEat = cells.reduce((s, c) => s + c.slots.filter((x) => x.place !== "away").length, 0);
   const covered = toEat - a.uncovered.length;
   const frozenMeals = slugs.reduce((s, x) => s + frozenOf(x), 0);
-  // Une part hors repère seulement quand elle compte : protéines trop basses, ou part bloquée (plat trop léger ou trop riche).
-  const offTarget = selected.flatMap((r) =>
-    eaters
-      .filter((e) => e.ref)
-      .map((e) => ({ e, p: portionOf(e, r) }))
-      .filter(({ p }) => p.verdict && (p.verdict.protein === "low" || p.capped))
-      .map(({ e, p }) => `${r.name} : ${p.verdict!.protein === "low" ? `un peu léger en protéines pour ${e.name}` : `part de ${e.name} difficile à caler`}`)
-  );
+  // Un écart au repère seulement quand il compte, sur la moyenne de la semaine de chacun (fit.ts).
+  const fitWarnings = fit?.warnings ?? [];
   const minutes = plan ? plan.totalMin : est ? est.totalMin : null;
   const title = periodHeading(w, N);
   const cookDate = addDays(w, COOK_DAY);
@@ -160,7 +180,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   const missing = missingText(a.uncovered, people.length, names, dayName);
   const full = selected.length >= MAX;
   // Sans plat choisi, rien à avertir : tout « manque » par définition.
-  const hasNotices = selected.length > 0 && (a.uncovered.length > 0 || offTarget.length > 0 || (est?.conflicts.length ?? 0) > 0 || toSetup.length > 0);
+  const hasNotices = selected.length > 0 && (a.uncovered.length > 0 || fitWarnings.length > 0 || (est?.conflicts.length ?? 0) > 0 || toSetup.length > 0);
   const keep = (extra?: Record<string, string>) => (
     <>
       <input type="hidden" name="w" value={w} />
@@ -296,11 +316,21 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                     {c.message} <span className="num whitespace-nowrap text-ink-2">+{fmtMin(c.extraMin)}</span>
                   </Notice>
                 ))}
-                {offTarget.map((t) => (
-                  <Notice key={t} icon="scale">
-                    {t}.
-                  </Notice>
-                ))}
+                <FitWarnings
+                  warnings={fitWarnings}
+                  add={
+                    full
+                      ? undefined
+                      : (slug, name) => (
+                          <form action={addAction}>
+                            {keep({ slug })}
+                            <PendingButton loadingLabel="J’ajoute…" label={`Ajouter ${name}`}>
+                              Ajouter
+                            </PendingButton>
+                          </form>
+                        )
+                  }
+                />
                 {toSetup.map((e) => (
                   <Notice
                     key={e.id}
@@ -317,6 +347,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
               </ul>
             </section>
           )}
+          {fit && <FitNote fit={fit} summary={fitSummary(fit)} loin={farOff} />}
           <TastesNote rules={tastes.rules} dislikes={tastes.dislikes} names={names} recipeNames={recipeNames} selected={slugs} />
         </section>
 
@@ -328,7 +359,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             <span className="text-small text-ink-2">{full ? "4 plats au plus : retire-en un pour changer" : `${plural(shelf.length, "plat")} · un tap pour cocher`}</span>
           </div>
           <Chips scroll>
-            {FILTERS.map((x) => (
+            {filters.map((x) => (
               <ChipLink key={x.id} href={`/semaine?w=${w}${x.id === "tout" ? "" : `&f=${encodeURIComponent(x.id)}`}#biblio-titre`} active={x.id === filter.id} scroll={false}>
                 {x.label}
               </ChipLink>
@@ -342,7 +373,13 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                 <li key={r.slug} className="min-w-0">
                   <form action={on ? removeAction : addAction} className="h-full">
                     {keep({ slug: r.slug })}
-                    <PickButton on={on} disabled={!on && full} name={r.name} visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")} facts={facts} label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
+                    <PickButton on={on} disabled={!on && full} name={r.name} visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")} facts={
+                        <>
+                          {facts}
+                          <FitMark badge={fitBadge(fitsOf.get(r.slug) ?? [])} />
+                        </>
+                      }
+                      label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
                   </form>
                 </li>
               );
@@ -503,6 +540,8 @@ function missingText(slots: { day: number; meal: Meal; personId: string }[], eve
 type Filter = { id: string; label: string; match: (r: { tags: string[]; freezerOk: boolean; status?: string }, activeMin: number) => boolean };
 const FILTERS: Filter[] = [
   { id: "tout", label: "Tout", match: () => true },
+  // Filtré et trié par la page (fit.ts) : seulement quand quelqu’un a un repère.
+  { id: "objectifs", label: "Pour nos objectifs", match: () => true },
   { id: "one pot", label: "One pot", match: (r) => r.tags.includes("one pot") },
   { id: "rapide", label: "Rapide", match: (r, m) => r.tags.includes("rapide") || m <= 40 },
   { id: "four", label: "Four", match: (r) => r.tags.includes("four") },

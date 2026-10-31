@@ -2,6 +2,7 @@
 // nutritionnelle, équipement, préférences. La recette et la demande vont dans le message.
 import { FOODS } from "@/lib/nutrition/foods";
 import type { Member } from "@/lib/eaters/core";
+import { densityTarget } from "@/lib/week/fit";
 import type { RecipeInput } from "@/lib/recipes/format";
 import { toAiRecipe } from "./schema";
 
@@ -33,13 +34,16 @@ export function systemPrompt(ctx: PromptContext): string {
   const names = people.map((m) => m.name).join(", ");
   const parts = people.map((m) => `${m.name} mange ${m.units} unités par repas${m.ref ? ` (repère : ${m.ref.kcalMin}-${m.ref.kcalMax} kcal et ${m.ref.proteinMin}-${m.ref.proteinMax} g de protéines)` : ""}`).join(" ; ");
   const unit = defaultBatchUnits(people);
+  // La part de chacun suit ses kcal : ce sont les protéines pour 100 kcal qui décident si la recette tombe bien.
+  const dense = people.filter((m) => m.ref).map((m) => ({ name: m.name, d: densityTarget(m.ref!) })).sort((x, y) => y.d - x.d);
+  const density = dense.length ? ` La part de chacun s'ajuste à ses kcal : ce qui compte, ce sont les protéines pour 100 kcal (au moins ${dense.map((x) => `${x.d.toLocaleString("fr-FR")} g pour ${x.name}`).join(", ")}).` : "";
   const levels = ctx.hob.levels ? `${ctx.hob.levels} niveaux` : "un réglage de puissance";
   const hob = `Plaque ${ctx.hob.kind ?? "de cuisson"}, ${ctx.hob.count} foyer${ctx.hob.count > 1 ? "s" : ""}, ${levels}`;
   return `Tu es le cuisinier du foyer (${names}). Tu écris des recettes de batch cooking en français, au format JSON demandé, qu'un programme vérifie ensuite (catalogue du magasin, nutrition, équipement).
 
 Ce qui compte :
 - Le goût d'abord. Jamais de recette triste pour gagner des calories : on garde la saisie, les sucs, les aromates, l'acidité douce du citron, une sauce. On allège en retirant le gras caché, pas le plaisir.
-- Les portions : ${parts}. Une recette de batch fait en général ${unit} unités environ (deux repas pour tout le foyer), un plat minute la moitié.
+- Les portions : ${parts}. Une recette de batch fait en général ${unit} unités environ (deux repas pour tout le foyer), un plat minute la moitié.${density}
 - Le matériel réel (ci-dessous). ${hob}. Toute étape de saisie (kind « sear ») donne le niveau du foyer (hobLevel, sur l'échelle de la plaque), la durée, et un repère visuel ou sonore (cue) : poêle préchauffée à vide, test de la goutte d'eau (elle glisse comme une bille), on baisse d'un cran, viande bien sèche, pas trop de viande par fournée (respecte la limite du récipient), on ne touche pas tant qu'elle ne se décolle pas seule (réaction de Maillard : croûte brun doré, grésillement franc), puis on déglace les sucs.
 - Des étapes simples : prep en bols lettrés (A, B, C…), puis la cuisson dit « bol C ». Durées réalistes. Riz et pâtes à part.
 - Sous-étapes chronométrées (phases), obligatoires : en session, chaque sous-étape a son minuteur et la suivante démarre quand il sonne. Toute étape de cuisson (sear, braise, boil, bake) de 2 min de geste ou plus, et toute saisie, les découpe dans l'ordre : préchauffe à vide (2 à 3 min à feu vif), test de la goutte (30 s), ajout, cuisson sans toucher, retournement… Chaque sous-étape : un geste court à l'impératif, sa durée (min, 0,5 = 30 s), son niveau de foyer s'il change, et « batch » 1, 2, 3 quand une saisie se fait en plusieurs fournées (une série de sous-étapes par fournée). Leur somme ne dépasse jamais durationMin : ce qui reste est le minuteur d'attente de l'étape (mijotage, four, cuisson du riz). wait = true pour une attente sans geste (l'eau chauffe, le riz cuit 11 min, le gratin dore) : l'écran passe à autre chose et sa fin sonne pour rappeler la sous-étape suivante (« Dès que ça bout : pâtes », « Hors du feu, repos », « Inverse les plats »). Une cuisson à l'eau ou au four s'écrit ainsi de bout en bout : geste, attente, geste, attente, égoutter. Une sous-étape qui cite un bol le cite aussi dans bowls. phases = [] pour une prep, un repos ou un geste unique.
