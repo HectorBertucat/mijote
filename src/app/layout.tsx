@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import { TabBar, TopNav } from "@/components/Nav";
 import { SessionBanner } from "@/components/SessionBanner";
 import { CommandK } from "@/components/CommandK";
+import { Assistant } from "@/components/assistant/Assistant";
+import { aiEnabled } from "@/lib/ai";
 import { PageTransition } from "@/components/PageTransition";
 import { listRecipes } from "@/lib/recipes/queries";
 import { recipeIngredients } from "@/lib/db/schema";
@@ -80,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-dvh">
         <LaunchSplash />
         <CustomArtProvider art={loadCustomArt(db)}>
-        <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} />} />
+        <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} assistant={aiEnabled()} />} assistant={aiEnabled() ? <Assistant /> : null} />
         <SessionBanner />
         <main className="mx-auto max-w-[1240px] px-5 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-10 sm:pt-12 sm:pb-28"><PageTransition>{children}</PageTransition></main>
         <TabBar />

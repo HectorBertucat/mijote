@@ -712,3 +712,20 @@ export const coachMessages = sqliteTable(
   },
   (t) => [index("idx_coach_person").on(t.personId, t.createdAt)]
 );
+
+// Assistant (partout dans l'appli) : une conversation courte par personne. Les actions proposées
+// sont gardées avec leur vérification par le code et leur sort (appliquée, annulée, écartée).
+export const assistantMessages = sqliteTable(
+  "assistant_messages",
+  {
+    id: text("id").primaryKey(),
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    text: text("text").notNull(),
+    actions: json<Record<string, unknown>[]>("actions"), // AssistantAction[] (src/lib/assistant/core.ts)
+    page: text("page"), // la page d'où la question est posée
+    model: text("model"),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("idx_assistant_person").on(t.personId, t.createdAt)]
+);

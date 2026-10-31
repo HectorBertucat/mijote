@@ -6,7 +6,7 @@
 Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recettes, semaine, courses, session de cuisine multi-écrans planifiée selon l'équipement réel, nutrition et coût par part, module Santé et programmes de sport à la maison avec figures animées. Interface en français. Open source (MIT).
 
 ## Règles
-1. **L'IA propose, le code vérifie.** Pas de chat (sauf le coach de Santé › Objectifs, dont chaque proposition est vérifiée). Tout appel IA passe par `src/lib/ai/` (`structured()`, schéma imposé, journal `ai_calls`, plafond `AI_MONTHLY_CAP_USD`). Sonnet pour planifier, Haiku pour les petites tâches ; ids dans `src/lib/ai/pricing.ts`.
+1. **L'IA propose, le code vérifie.** Deux conversations seulement : le coach de Santé › Objectifs et l'assistant (partout, `src/lib/assistant/`). Elles ne font que *proposer* des actions typées (sortie structurée, outils stricts) ; le code les revalide (existence, bornes, cohérence nutritionnelle par les modules purs), la personne confirme chaque action d'un geste, et le code l'exécute avec les mêmes fonctions que l'interface. Jamais d'écriture directe par l'IA ; les chiffres affichés viennent du code. Tout appel IA passe par `src/lib/ai/` (`structured()` ou `chat()` en flux, schéma imposé, journal `ai_calls`, plafond `AI_MONTHLY_CAP_USD`). Sonnet pour planifier, Haiku pour les petites tâches et l'assistant au quotidien ; ids dans `src/lib/ai/pricing.ts`. Sans `ANTHROPIC_API_KEY`, rien d'IA n'apparaît et tout le reste marche.
 2. **Déterministe en code** : quantités, portions, macros, coûts, planning de session, proposition de la semaine, générateur de programmes, vérification des figures et des dessins. Modules purs et testés (`tests/`).
 3. **Rien de personnel dans le dépôt** : le foyer, la cuisine et le magasin viennent de la mise en route (`/bienvenue`, table `app_settings`). Pas de prénom, d'adresse, de date de naissance, de marque d'équipement ni de secret en dur. Les tests utilisent le foyer fictif « Alex et Sam » (`tests/helpers.ts`, `seedTest`). Les hooks git (`.githooks/`, `scripts/check-private.mjs`) le vérifient à chaque commit et push.
 4. **Une migration par changement** (`pnpm db:generate --name <nom>`), jamais de modification d'une migration publiée.
@@ -47,6 +47,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Courses | `src/lib/shopping/`, catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
 | Session | `src/lib/session/` (`planner.ts`, `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`) |
 | Boîtes, frigo | `src/lib/boxes/` (`core.ts` pur : grammes par boîte, rangement ; `store.ts`), `src/app/frigo/`, `src/components/boxes/` |
+| Assistant (partout, ⌘I) | `src/lib/assistant/` (`core.ts` pur : contexte, outils, `checkAction` ; `store.ts` : instantané, conversation, exécution), `src/app/api/assistant/route.ts` (flux), `src/components/assistant/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
 | Santé | `src/lib/health/`, docs/sante.md |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |

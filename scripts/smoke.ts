@@ -143,6 +143,10 @@ async function main() {
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
     check((await get("/bienvenue")).status === 307, "mise en route faite → /bienvenue renvoie à l'accueil");
     check((await get("/api/sante/import", undefined)).status === 401, "import Apple Santé sans clé → 401");
+    // Sans ANTHROPIC_API_KEY : pas d'assistant (ni bouton, ni route), tout le reste marche.
+    const ask = await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) });
+    check(ask.status === 404, "assistant sans clé → 404");
+    check(!/Assistant \(⌘I\)/.test(await (await get("/")).text()), "assistant sans clé : pas de bouton");
   } finally {
     await stop(server);
   }

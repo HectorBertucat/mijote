@@ -35,7 +35,7 @@ function useActiveTab() {
 }
 
 /** `motif` : gardé pour compatibilité (le dessin de saison n’est plus affiché : le mot-symbole suffit). */
-export function TopNav({ profiles, active, search, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; home?: string | null }) {
+export function TopNav({ profiles, active, search, assistant, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; assistant?: React.ReactNode; home?: string | null }) {
   const { current, pick } = useActiveTab();
   // Trait d’encre qui glisse d’une rubrique à l’autre : mesuré après l’hydratation (les rubriques n’ont pas la même
   // largeur) ; avant, chaque rubrique ouverte porte son propre trait, au même endroit.
@@ -87,6 +87,7 @@ export function TopNav({ profiles, active, search, home }: { profiles: ProfileOp
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:ml-0">
           {search}
+          {assistant}
           <ProfileSwitch profiles={profiles} active={active} />
           <Link href="/reglages" aria-label="Réglages" title="Réglages" className="grid size-tap place-items-center rounded-[8px] text-ink-2 hover:bg-surface-2 hover:text-ink">
             <Icon name="sliders" />
