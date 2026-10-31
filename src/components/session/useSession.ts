@@ -6,6 +6,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SessionPlan } from "@/lib/session/planner";
+import { LETTERS, type DuoNames } from "@/lib/session/people";
 import { randomId, reduce, type EventKind, type SessionEvent, type SessionState } from "@/lib/session/state";
 
 export interface Toast {
@@ -15,10 +16,13 @@ export interface Toast {
   error?: boolean;
 }
 
-export function describe(e: SessionEvent, plan: SessionPlan): string {
+/** À deux, l'auteur de l'action en tête (son prénom, sinon sa lettre). */
+const whoOf = (e: SessionEvent, names: DuoNames) => (e.payload?.person === "A" || e.payload?.person === "B" ? `${names[e.payload.person].name} · ` : "");
+
+export function describe(e: SessionEvent, plan: SessionPlan, names: DuoNames = LETTERS): string {
   const step = (id: string | null) => plan.steps.find((s) => s.id === id);
   const undo = e.payload?.undo === true;
-  const who = typeof e.payload?.person === "string" ? `${e.payload.person} · ` : "";
+  const who = whoOf(e, names);
   return who + describeKind(e, plan, step, undo);
 }
 
@@ -57,18 +61,18 @@ function describeKind(e: SessionEvent, plan: SessionPlan, step: (id: string | nu
 }
 
 /** Plusieurs actions d'un coup : la personne une seule fois, sans la note de démarrage. */
-function describeMany(evs: SessionEvent[], plan: SessionPlan): string {
+function describeMany(evs: SessionEvent[], plan: SessionPlan, names: DuoNames): string {
   const shown = evs.length > 1 ? evs.filter((e) => !(e.kind === "note" && e.payload?.person)) : evs;
   // Tout mettre en pause (ou reprendre) : une phrase pour tous les minuteurs.
   if (shown.length > 1 && shown.every((e) => e.kind === shown[0].kind) && (shown[0].kind === "timer_pause" || shown[0].kind === "timer_resume"))
     return shown[0].kind === "timer_pause" ? `${shown.length} minuteurs en pause` : `${shown.length} minuteurs repris`;
-  const texts = shown.map((e) => describe(e, plan));
-  const who = typeof shown[0]?.payload?.person === "string" ? `${shown[0].payload.person} · ` : "";
+  const texts = shown.map((e) => describe(e, plan, names));
+  const who = shown[0] ? whoOf(shown[0], names) : "";
   if (who && texts.every((t) => t.startsWith(who))) return who + texts.map((t) => t.slice(who.length)).join(" · ");
   return texts.join(" · ");
 }
 
-export function useSession(opts: { id: string; plan: SessionPlan; initialEvents: SessionEvent[]; initialStatus: SessionState["status"] }) {
+export function useSession(opts: { id: string; plan: SessionPlan; initialEvents: SessionEvent[]; initialStatus: SessionState["status"]; people?: DuoNames }) {
   const { id, plan } = opts;
   const [events, setEvents] = useState<SessionEvent[]>(opts.initialEvents);
   const [offset, setOffset] = useState(0);
@@ -78,6 +82,8 @@ export function useSession(opts: { id: string; plan: SessionPlan; initialEvents:
   const lastSeq = useRef(Math.max(0, ...opts.initialEvents.map((e) => e.seq ?? 0)));
   const planRef = useRef(plan);
   planRef.current = plan;
+  const namesRef = useRef(opts.people ?? LETTERS);
+  namesRef.current = opts.people ?? LETTERS;
   const router = useRouter();
   const routerRef = useRef(router);
   routerRef.current = router;
@@ -105,7 +111,7 @@ export function useSession(opts: { id: string; plan: SessionPlan; initialEvents:
         }
         return [...prev, ev];
       });
-      if (!local.current.has(ev.id) && !(ev.kind === "note" && ev.payload?.person)) show({ text: describe(ev, planRef.current), remote: true });
+      if (!local.current.has(ev.id) && !(ev.kind === "note" && ev.payload?.person)) show({ text: describe(ev, planRef.current, namesRef.current), remote: true });
       // Le plan a changé (reprise à deux, réduction des unités) : chaque écran le recharge.
       if (ev.kind === "note" && ev.payload?.replan === true) routerRef.current.refresh();
     };
@@ -124,7 +130,7 @@ export function useSession(opts: { id: string; plan: SessionPlan; initialEvents:
       if (!evs.length) return;
       evs.forEach((e) => local.current.add(e.id));
       setEvents((prev) => [...prev, ...evs]);
-      show({ text: describeMany(evs, planRef.current), remote: false });
+      show({ text: describeMany(evs, planRef.current, namesRef.current), remote: false });
       (async () => {
         for (const e of evs) {
           try {

@@ -36,3 +36,11 @@ test("la pastille lit le prénom du contexte, sinon la lettre", () => {
   assert.match(html, />S</);
   assert.match(renderToStaticMarkup(createElement(PersonMono, { person: "B" })), /aria-label="Personne B">B</);
 });
+
+test("l’avis « autre écran » nomme la personne par son prénom", async () => {
+  const { describe } = await import("@/components/session/useSession");
+  const plan = { steps: [{ id: "s1", no: 3 }], prep: { tasks: [] }, recipes: [], mode: "duo" } as unknown as Parameters<typeof describe>[1];
+  const e = { id: "e1", at: "2026-10-21T18:00:00Z", kind: "step_start" as const, ref: "s1", payload: { person: "B" } };
+  assert.equal(describe(e, plan, duoNames(["Alex", "Sam"])), "Sam · Étape 3 lancée");
+  assert.equal(describe(e, plan), "B · Étape 3 lancée");
+});

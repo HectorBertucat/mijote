@@ -82,7 +82,7 @@ export type Controls = ReturnType<typeof useControls>;
 
 function useControls(p: SessionProps) {
   const { plan } = p;
-  const s = useSession({ id: p.id, plan, initialEvents: p.initialEvents, initialStatus: p.initialStatus });
+  const s = useSession({ id: p.id, plan, initialEvents: p.initialEvents, initialStatus: p.initialStatus, people: p.people });
   const { state, send } = s;
   const now = useNow(s.offset, p.serverNow);
   const mode = modeOf(plan);
