@@ -32,7 +32,7 @@ export function PeriodPicker({ start, days }: { start: string; days: number }) {
 
   return (
     <>
-      <Button size="sm" icon="cal" onClick={show}>
+      <Button icon="cal" onClick={show}>
         Changer la période
       </Button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Période">
@@ -49,14 +49,14 @@ export function PeriodPicker({ start, days }: { start: string; days: number }) {
             <Field label="Du">{(id) => <Input id={id} name="from" type="date" value={from} onChange={(e) => changeFrom(e.target.value)} required />}</Field>
             <Field label="Au">{(id) => <Input id={id} name="to" type="date" value={to} min={isDay(from) ? from : undefined} max={isDay(from) ? endOf(from, MAX_DAYS) : undefined} onChange={(e) => setTo(e.target.value)} required />}</Field>
           </div>
-          <p className={`text-[14px] ${error ? "font-semibold text-warn-ink" : "text-ink-2"}`} role="status">
+          <p className={`text-small ${error ? "font-semibold text-warn-ink" : "text-ink-2"}`} role="status">
             {error ?? (
               <>
-                <b className="num text-ink">{n}</b> jour{n > 1 ? "s" : ""} · session la veille, le {longDate(addDays(from, -1))}
+                <b className="num text-ink">{n}</b>&nbsp;jour{n > 1 ? "s" : ""} · cuisine la veille, le {longDate(addDays(from, -1))}
               </>
             )}
           </p>
-          <p className="text-[13px] text-ink-2">Les recettes choisies restent ; les quantités et les repas se recalent. Chaque jour garde ses absences.</p>
+          <p className="text-small text-ink-2">Les plats choisis restent ; les quantités et les repas se recalent. Chaque jour garde ses absences.</p>
           {!error && (
             <div>
               <SubmitButton pendingText="Je recale…" icon="check">

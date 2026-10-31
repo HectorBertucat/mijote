@@ -255,6 +255,7 @@
   --color-ink-2: var(--c-ink-2);
   --color-muted: var(--c-ink-2);
   --color-faint: var(--c-ink-3);
+  --color-ink-3: var(--c-ink-3); /* même teinte que faint, sous le nom du système v3 */
   --color-line: var(--c-line);
   --color-line-strong: var(--c-line-strong);
   --color-inverse: var(--c-inverse);

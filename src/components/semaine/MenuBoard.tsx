@@ -1,14 +1,19 @@
 "use client";
 
-// Le menu de la semaine en ardoise de bistrot : fond d'encre, écriture à la craie, une pastille par plat.
-// « Partager » dessine la même ardoise dans une image (canvas, couleurs et polices lues sur la page) et ouvre
-// la feuille de partage du téléphone ; sans partage de fichiers (ordinateur), l'image se télécharge.
+// Le menu de la semaine, comme une feuille de marché : un jour par ligne sous un filet, midi et soir en colonnes,
+// chaque plat en étiquette d'étiqueteuse (Tape) sur sa couleur. « Partager » dessine la même feuille dans une image
+// (canvas, couleurs et polices lues sur la page) et ouvre la feuille de partage du téléphone ; sans partage de
+// fichiers (ordinateur), l'image se télécharge.
 import { useRef, useState } from "react";
-import { Button, RecipeTile } from "@/components/ui";
+import { Button, Tape } from "@/components/ui";
 
 export type BoardDay = { label: string; lunch: { name: string; color: string }[]; dinner: { name: string; color: string }[] };
 
-const short = (name: string) => name.replace(/\s*\(.*\)\s*/g, "").trim();
+const short = (name: string) => name.replace(/\s*\(.*\)\s*/g, "").split(/,| façon | au | aux | à la /)[0].trim();
+const MEALS = [
+  ["lunch", "midi"],
+  ["dinner", "soir"],
+] as const;
 
 export function MenuBoard({ title, days, ready }: { title: string; days: BoardDay[]; ready: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,7 +28,7 @@ export function MenuBoard({ title, days, ready }: { title: string; days: BoardDa
     setMsg(null);
     try {
       const blob = await drawBoard(el, title, shown, ready);
-      const file = new File([blob], `menu-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`, { type: "image/png" });
+      const file = new File([blob], `menu-${title.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-")}.png`, { type: "image/png" });
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       if (nav.canShare?.({ files: [file] })) {
         await nav.share({ files: [file], title: `Menu · ${title}` });
@@ -36,133 +41,126 @@ export function MenuBoard({ title, days, ready }: { title: string; days: BoardDa
         setMsg("Image téléchargée.");
       }
     } catch (e) {
-      if ((e as Error).name !== "AbortError") setMsg("Impossible de faire l'image.");
+      if ((e as Error).name !== "AbortError") setMsg("Impossible de faire l’image.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section aria-labelledby="ardoise-titre" className="grid gap-2">
-      <div ref={ref} className="kitchen-dark relative overflow-hidden rounded-[16px] border-[6px] border-[color-mix(in_srgb,var(--c-recipe-6)_75%,var(--c-surface))] bg-surface px-5 py-4 text-ink shadow-e2">
-        <h2 id="ardoise-titre" className="text-[32px] leading-none">
-          Au menu
-          <span className="label ml-3 align-middle opacity-70">{title}</span>
-        </h2>
-        <ul className="mt-3 grid gap-x-8 gap-y-1.5 sm:grid-cols-2">
+    <div className="grid gap-6">
+      <div ref={ref} className="grid max-w-[880px]">
+        <div className="grid grid-cols-[56px_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 pb-2 sm:grid-cols-[96px_minmax(0,1fr)_minmax(0,1fr)]" aria-hidden>
+          <span />
+          {MEALS.map(([, l]) => (
+            <span key={l} className="label text-ink-3">
+              {l}
+            </span>
+          ))}
+        </div>
+        <ul className="border-b border-line" aria-label={`Menu, ${title}`}>
           {shown.map((d) => (
-            <li key={d.label} className="grid grid-cols-[3.2rem_minmax(0,1fr)] items-baseline gap-2 border-b border-dashed border-[color-mix(in_srgb,var(--c-ink)_25%,transparent)] pb-1.5">
-              <span className="label opacity-70">{d.label}</span>
-              <span className="grid gap-1 text-[16px] leading-[1.3]">
-                {(["lunch", "dinner"] as const).map((m) =>
-                  d[m].length ? (
-                    <span key={m} className="flex min-w-0 items-center gap-1.5">
-                      <span className="label w-10 shrink-0 opacity-60">{m === "lunch" ? "midi" : "soir"}</span>
-                      {d[m].map((x) => (
-                        <span key={x.name} className="inline-flex min-w-0 items-center gap-1.5">
-                          <RecipeTile color={x.color} name={x.name} size="sm" className="!size-5 !text-[10px]" />
-                          <span className="truncate">{short(x.name)}</span>
-                        </span>
-                      ))}
-                    </span>
-                  ) : null
-                )}
-              </span>
+            <li key={d.label} className="grid grid-cols-[56px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-x-4 border-t border-line py-3 sm:grid-cols-[96px_minmax(0,1fr)_minmax(0,1fr)]">
+              <span className="label pt-1 text-ink">{d.label}</span>
+              {MEALS.map(([m, l]) => (
+                <span key={m} className="flex min-w-0 flex-wrap gap-2" aria-label={`${l} : ${d[m].map((x) => x.name).join(", ") || "rien"}`}>
+                  {d[m].length ? (
+                    d[m].map((x) => (
+                      <Tape key={x.name} tint={x.color} seed={`${d.label}${m}${x.name}`}>
+                        {short(x.name)}
+                      </Tape>
+                    ))
+                  ) : (
+                    <span className="pt-1 text-small text-ink-3">—</span>
+                  )}
+                </span>
+              ))}
             </li>
           ))}
         </ul>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" icon="link" state={busy ? "loading" : "idle"} loadingLabel="J'écris l'ardoise…" onClick={share}>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" icon="link" state={busy ? "loading" : "idle"} loadingLabel="J’imprime le menu…" onClick={share}>
           Partager le menu en image
         </Button>
-        {msg && <span className="text-[13px] text-ink-2">{msg}</span>}
+        {msg && <span className="text-small text-ink-2" role="status">{msg}</span>}
       </div>
-    </section>
+    </div>
   );
 }
 
-/** L'ardoise en PNG (2×), avec les couleurs et polices réelles de la page (aucune couleur en dur). */
+/** La feuille en PNG (1080 px de large), avec les couleurs et polices réelles de la page (aucune couleur en dur). */
 async function drawBoard(el: HTMLElement, title: string, days: BoardDay[], ready: boolean): Promise<Blob> {
-  const css = getComputedStyle(el);
-  const v = (name: string) => css.getPropertyValue(name).trim();
-  const bg = css.backgroundColor;
-  const ink = css.color;
-  const frame = css.borderTopColor;
-  const hand = getComputedStyle(el.querySelector("h2")!).fontFamily;
-  const display = getComputedStyle(document.body).getPropertyValue("--font-display") || "sans-serif";
+  const root = getComputedStyle(document.documentElement);
+  const v = (name: string) => root.getPropertyValue(name).trim();
+  const display = getComputedStyle(el.querySelector(".label") ?? el).fontFamily;
   await document.fonts?.ready;
   const W = 1080;
-  const rowH = 116;
-  const H = 230 + days.length * rowH + 90;
+  const rowH = 132;
+  const top = 300;
+  const H = top + days.length * rowH + 140;
   const cv = document.createElement("canvas");
   cv.width = W;
   cv.height = H;
   const g = cv.getContext("2d")!;
-  g.fillStyle = frame;
+  const stretch = (s: CanvasFontStretch) => {
+    if ("fontStretch" in g) g.fontStretch = s;
+  };
+  g.fillStyle = v("--c-bg");
   g.fillRect(0, 0, W, H);
-  g.fillStyle = bg;
-  g.beginPath();
-  g.roundRect(24, 24, W - 48, H - 48, 22);
-  g.fill();
-  g.fillStyle = ink;
+  g.fillStyle = v("--c-ink");
   g.textBaseline = "alphabetic";
-  g.font = `700 92px ${hand}`;
-  g.fillText("Au menu", 80, 150);
-  const after = 80 + g.measureText("Au menu").width + 28;
-  g.globalAlpha = 0.75;
-  g.font = `600 52px ${hand}`;
-  g.fillText(title, after, 150);
-  g.globalAlpha = 1;
+  stretch("expanded");
+  g.font = `800 112px ${display}`;
+  g.fillText("Au menu", 72, 170);
+  stretch("normal");
+  g.fillStyle = v("--c-ink-2");
+  g.font = `600 40px ${display}`;
+  g.fillText(title, 72, 232);
+  const col = [72, 260, 660];
+  stretch("condensed");
+  g.fillStyle = v("--c-ink-3");
+  g.font = `650 26px ${display}`;
+  g.fillText("MIDI", col[1], top - 16);
+  g.fillText("SOIR", col[2], top - 16);
   days.forEach((d, i) => {
-    const y = 250 + i * rowH;
-    g.globalAlpha = 0.25;
-    g.setLineDash([10, 10]);
-    g.strokeStyle = ink;
-    g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(80, y + 78);
-    g.lineTo(W - 80, y + 78);
-    g.stroke();
-    g.setLineDash([]);
-    g.globalAlpha = 0.7;
-    g.fillStyle = ink;
-    g.font = `700 50px ${hand}`;
-    g.fillText(d.label, 80, y + 20);
-    (["lunch", "dinner"] as const).forEach((m, k) => {
-      const ly = y + k * 52;
-      let x = 230;
-      if (!d[m].length) return;
-      g.globalAlpha = 0.6;
-      g.font = `600 36px ${hand}`;
-      g.fillText(m === "lunch" ? "midi" : "soir", x, ly);
-      g.globalAlpha = 1;
-      x += 90;
-      for (const dish of d[m]) {
+    const y = top + i * rowH;
+    g.fillStyle = v("--c-line");
+    g.fillRect(72, y, W - 144, 2);
+    g.fillStyle = v("--c-ink");
+    g.font = `650 30px ${display}`;
+    g.fillText(d.label.toUpperCase(), col[0], y + 62);
+    MEALS.forEach(([m], k) => {
+      let ly = y + 24;
+      for (const dish of d[m].slice(0, 2)) {
+        const text = fit(g, short(dish.name).toUpperCase(), 360);
+        const tw = g.measureText(text).width;
+        g.save();
+        g.translate(col[k + 1], ly);
+        g.rotate((-1.5 * Math.PI) / 180);
         g.fillStyle = resolveColor(dish.color, v);
-        g.beginPath();
-        g.roundRect(x, ly - 30, 30, 30, 7);
-        g.fill();
-        g.fillStyle = ink;
-        g.font = `600 44px ${hand}`;
-        const text = fit(g, short(dish.name), W - 90 - (x + 42));
-        g.fillText(text, x + 42, ly);
-        x += 42 + g.measureText(text).width + 34;
-        if (x > W - 160) break;
+        g.fillRect(0, 0, tw + 28, 46);
+        g.fillStyle = v("--c-on-recipe");
+        g.fillText(text, 14, 34);
+        g.restore();
+        ly += 54;
       }
     });
   });
+  g.fillStyle = v("--c-line");
+  g.fillRect(72, top + days.length * rowH, W - 144, 2);
   if (ready) {
     g.save();
-    g.translate(W - 230, H - 120);
+    g.translate(W - 230, H - 80);
     g.rotate(-0.12);
     g.strokeStyle = v("--c-hot");
     g.fillStyle = v("--c-hot");
     g.lineWidth = 6;
     g.strokeRect(-150, -46, 300, 92);
-    g.font = `900 40px ${display}`;
+    stretch("expanded");
+    g.font = `800 36px ${display}`;
     g.textAlign = "center";
-    g.fillText("SEMAINE PRÊTE", 0, 14);
+    g.fillText("SEMAINE PRÊTE", 0, 13);
     g.restore();
   }
   return await new Promise<Blob>((res, rej) => cv.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/png"));
