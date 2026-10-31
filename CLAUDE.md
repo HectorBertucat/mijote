@@ -50,6 +50,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Santé | `src/lib/health/`, docs/sante.md |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |
 | Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
+| Chargement, transitions de page | `loading.tsx` de chaque rubrique, kit `src/components/ui/skeleton.tsx`, `src/components/PageTransition.tsx`, onglets `src/components/Nav.tsx` |
 | Accès | `src/proxy.ts`, `src/lib/auth.ts` |
 | Schéma | `src/lib/db/schema.ts`, docs/schema.md |
 
