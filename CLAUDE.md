@@ -36,10 +36,12 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 ## Où regarder
 | Besoin | Fichier |
 |---|---|
+| Accueil (action du moment) | `src/app/page.tsx`, `src/lib/home/` (`next.ts` pur, `store.ts` : `homeView`) |
 | Mise en route, réglages, foyer | `src/app/bienvenue/`, `src/app/reglages/`, `src/lib/household.ts`, `src/lib/settings.ts` |
 | Cuisine → équipement | `src/lib/kitchen/` (`presets.ts` pur, `store.ts`) |
 | Mangeurs et parts | `src/lib/eaters/` (`core.ts` et `habits.ts` purs : part, habitudes hors batch, conseil ; `store.ts` : `loadEaters`, `householdMembers`, `leadOf`, `adviceFor`) |
 | Nutrition | `src/lib/nutrition/` (incrémenter `NUTRITION_VERSION` si le calcul change) |
+| Fiche recette, bibliothèque | `src/app/recettes/`, `src/components/fiche/` (bloc à filet, chiffres de tête, tableau d'ingrédients), `src/components/RecipeParts.tsx` (`StepItem`) |
 | Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus) |
 | Courses | `src/lib/shopping/`, catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
 | Session | `src/lib/session/` (`planner.ts`, `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`) |
@@ -47,7 +49,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
 | Santé | `src/lib/health/`, docs/sante.md |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |
-| Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `sanitize.ts`, `ai.ts`), docs/illustrations.md |
+| Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
 | Accès | `src/proxy.ts`, `src/lib/auth.ts` |
 | Schéma | `src/lib/db/schema.ts`, docs/schema.md |
 

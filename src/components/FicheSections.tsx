@@ -1,6 +1,6 @@
 "use client";
 
-// Sections d'une fiche : sur téléphone et iPad, des onglets (Bols, Étapes, Nutrition, Notes) et une seule section
+// Sections d'une fiche : sur téléphone et iPad, des onglets (Ingrédients, Étapes, Chiffres, Notes, Produits) et une seule section
 // visible ; sur ordinateur (lg), tout est affiché dans la grille. L'onglet suit l'ancre de l'URL (#etapes…),
 // ce qui permet au panneau « Ajuster » d'ouvrir les bols quand la variante arrive.
 import { createContext, useContext, useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
@@ -33,7 +33,7 @@ export function FicheSections({ sections, children }: { sections: Section[]; chi
   return (
     <CountCtx.Provider value={setCounts}>
     <Ctx.Provider value={active}>
-      <div className="sticky top-[calc(49px+env(safe-area-inset-top))] z-10 -mx-4 bg-[color-mix(in_srgb,var(--c-bg)_94%,transparent)] px-4 backdrop-blur-md lg:hidden">
+      <div className="sticky top-[calc(49px+env(safe-area-inset-top))] z-10 -mx-5 bg-bg px-5 lg:hidden">
         <Tabs
           label="Sections de la fiche"
           value={active}
@@ -54,7 +54,7 @@ export function FicheSections({ sections, children }: { sections: Section[]; chi
 export function FicheSection({ id, className = "", children }: { id: string; className?: string; children: ReactNode }) {
   const active = useContext(Ctx);
   return (
-    <div id={id} className={`min-w-0 scroll-mt-32 ${active === id ? "" : "max-lg:hidden"} ${className}`}>
+    <div id={id} className={`min-w-0 scroll-mt-32 ${active === id ? "max-lg:animate-[reveal-in_var(--dur-3)_var(--ease-out)] motion-reduce:animate-none" : "max-lg:hidden"} ${className}`}>
       {children}
     </div>
   );

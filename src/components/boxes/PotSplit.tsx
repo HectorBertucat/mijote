@@ -38,14 +38,14 @@ export function PotSplit({ model, color, session, stored, head = true }: { model
     });
 
   return (
-    <div className="grid gap-3.5" data-pot={model.slug}>
+    <div className="grid gap-4" data-pot={model.slug}>
       {head && (
         <div className="flex items-center gap-3">
           <RecipeTile color={color} name={model.name} size="sm" />
           <b className="min-w-0 flex-1 font-display text-[18px] leading-tight">{model.name}</b>
         </div>
       )}
-      <div className={`grid gap-3 ${model.side ? "grid-cols-2" : ""}`}>
+      <div className={`grid gap-3 sm:max-w-md ${model.side ? "grid-cols-2" : ""}`}>
         <Field label={model.side ? "Plat cuit" : "Marmite cuite"}>
           {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={dish} onChange={(e) => setDish(e.target.value)} data-field="plat" />}
         </Field>
@@ -55,11 +55,11 @@ export function PotSplit({ model, color, session, stored, head = true }: { model
           </Field>
         )}
       </div>
-      <p className="text-[13px] text-ink-2">Pèse le récipient plein, et retire le poids du récipient vide.</p>
+      <p className="text-small text-ink-2">Pèse le récipient plein, retire le poids du récipient vide.</p>
 
-      <ul className="grid gap-2" aria-live="polite">
+      <ul className="border-t border-line-strong" aria-live="polite">
         {split.byPerson.map((p) => (
-          <li key={p.personId} className="grid gap-0.5 rounded-[12px] bg-surface-2 px-3.5 py-2.5">
+          <li key={p.personId} className="grid gap-1 border-b border-line py-4">
             <span className="flex flex-wrap items-baseline gap-x-2">
               <b className="text-[16px]">{p.name}</b>
               <span className="num text-[16px]">
