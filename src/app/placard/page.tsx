@@ -5,6 +5,8 @@ import { CostTable } from "@/components/cart/CostTable";
 import { buttonClass, EmptyState, Icon } from "@/components/ui";
 import { BackLink, Figure, Figures, PageHead, SectionHead } from "@/components/cart/Carnet";
 import { db } from "@/lib/db/client";
+import { DishBox } from "@/components/ui/dish";
+import { listDishRecipes } from "@/lib/recipes/queries";
 import { allRecipeCosts, listLots, pantryTotals } from "@/lib/costs";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +31,8 @@ export default function Placard() {
     boughtAt: l.boughtAt,
     closedAt: l.lot.closedAt,
   });
+  const slugs = new Set(costs.map((c) => c.slug));
+  const dishes = Object.fromEntries([...listDishRecipes(db).values()].filter((d) => slugs.has(d.slug)).map((d) => [d.slug, <DishBox key={d.slug} recipe={d} size="sm" />]));
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
       <AutoRefresh />
@@ -81,7 +85,7 @@ export default function Placard() {
               </Link>
             }
           />
-          {costs.length ? <CostTable costs={costs} compact /> : <p className="text-small text-ink-2">Pas encore de coût : il faut une liste de courses avec la recette.</p>}
+          {costs.length ? <CostTable costs={costs} compact dishes={dishes} /> : <p className="text-small text-ink-2">Pas encore de coût : il faut une liste de courses avec la recette.</p>}
         </section>
       </div>
     </div>

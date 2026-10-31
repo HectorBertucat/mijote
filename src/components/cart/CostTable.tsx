@@ -1,14 +1,15 @@
 // Coût par part et par recette (placard et coûts) : un tableau à filets, chiffres tabulaires alignés à droite.
 // Part de base, ce qui est réellement consommé, en paquets entiers, et ce qui est jeté. Une ligne = un lien vers
-// la fiche ; la couleur du plat en filet à gauche (son identité, pas un état).
+// la fiche ; la boîte du plat (DishBox) à gauche, ou à défaut sa couleur en filet (son identité, pas un état).
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Icon } from "@/components/ui";
 import type { RecipeCost } from "@/lib/costs";
 import { recipeColor } from "@/lib/ui";
 import { eur } from "./format";
 
 /** `compact` : la recette et ce que coûte la part payée, seulement (colonne étroite du placard). */
-export function CostTable({ costs, compact = false }: { costs: RecipeCost[]; compact?: boolean }) {
+export function CostTable({ costs, compact = false, dishes = {} }: { costs: RecipeCost[]; compact?: boolean; /** Boîte de chaque plat, par slug. */ dishes?: Record<string, ReactNode> }) {
   return (
     <div className="k-noscroll overflow-x-auto">
       <table className={`w-full border-collapse ${compact ? "" : "min-w-[480px]"}`}>
@@ -25,8 +26,10 @@ export function CostTable({ costs, compact = false }: { costs: RecipeCost[]; com
             const wastePct = c.batch && c.batch.practical > 0 ? Math.round(((c.waste ?? 0) / c.batch.practical) * 100) : 0;
             return (
               <tr key={c.recipeId} className="group border-b border-line align-baseline">
-                <td className="py-4 pl-4" style={{ boxShadow: `inset 3px 0 0 ${recipeColor(c.slug)}` }}>
-                  <Link href={`/recettes/${c.slug}#cout`} className="grid min-w-0 gap-1">
+                <td className={`py-4 ${dishes[c.slug] ? "" : "pl-4"}`} style={dishes[c.slug] ? undefined : { boxShadow: `inset 3px 0 0 ${recipeColor(c.slug)}` }}>
+                  <Link href={`/recettes/${c.slug}#cout`} className="flex min-w-0 items-center gap-4">
+                    {dishes[c.slug]}
+                    <span className="grid min-w-0 gap-1">
                     <span className="font-semibold leading-snug underline decoration-transparent underline-offset-4 group-hover:decoration-line-strong">{c.name}</span>
                     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-2">
                       <span className="text-ink-3">{c.kind === "real" ? `réel, cuisiné ${c.cooks === 1 ? "1 fois" : `${c.cooks} fois`}` : "estimé"}</span>
@@ -41,6 +44,7 @@ export function CostTable({ costs, compact = false }: { costs: RecipeCost[]; com
                           <span className="num">{Math.round(c.coverage * 100)}&nbsp;%</span> des prix connus
                         </span>
                       )}
+                    </span>
                     </span>
                   </Link>
                 </td>

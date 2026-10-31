@@ -3,6 +3,8 @@ import { CostTable } from "@/components/cart/CostTable";
 import { buttonClass, EmptyState, Icon } from "@/components/ui";
 import { BackLink, Figure, Figures, PageHead, SectionHead } from "@/components/cart/Carnet";
 import { db } from "@/lib/db/client";
+import { DishBox } from "@/components/ui/dish";
+import { listDishRecipes } from "@/lib/recipes/queries";
 import { allRecipeCosts, pantryTotals, spendingTotals } from "@/lib/costs";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +18,8 @@ export default function Couts() {
   const known = costs.filter((c) => c.kind !== "none");
   const unknown = costs.filter((c) => c.kind === "none");
   const waste = known.reduce((s, c) => s + (c.waste ?? 0), 0);
+  const slugs = new Set(known.map((c) => c.slug));
+  const dishes = Object.fromEntries([...listDishRecipes(db).values()].filter((d) => slugs.has(d.slug)).map((d) => [d.slug, <DishBox key={d.slug} recipe={d} size="sm" />]));
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
       <PageHead back={<BackLink href="/courses">Courses</BackLink>} title="Coûts" lead="Ce que coûte une part de chaque plat, et ce qui part à la poubelle.">
@@ -42,7 +46,7 @@ export default function Couts() {
       ) : (
         <section className="grid gap-6" aria-labelledby="part-titre">
           <SectionHead id="part-titre" title="Coût par part" count={known.length} />
-          <CostTable costs={known} />
+          <CostTable costs={known} dishes={dishes} />
           <details className="group max-w-[70ch]">
             <summary className="label flex min-h-tap cursor-pointer list-none items-center gap-2 text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
               <Icon name="chev" size="s" className="transition-transform duration-[var(--dur-1)] ease-[var(--ease-out)] group-open:rotate-90" />
