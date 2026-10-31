@@ -70,13 +70,35 @@ export function migrate(sqlite: Database.Database, folder = findMigrationsFolder
   return applied;
 }
 
+const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/**
+ * Passe la base en WAL. Sur une base neuve, quand plusieurs processus l'ouvrent ensemble, ce pragma
+ * peut répondre « database is locked » tout de suite, sans passer par busy_timeout (constaté avec
+ * 12 processus : un échec sur quelques centaines d'ouvertures). On réessaie donc nous-mêmes ; une fois
+ * en WAL, le mode est écrit dans le fichier et les ouvertures suivantes n'ont plus rien à changer.
+ */
+export function setWal(sqlite: Database.Database, timeoutMs = 60000) {
+  const until = Date.now() + timeoutMs;
+  for (let wait = 5; ; wait = Math.min(wait * 2, 200)) {
+    try {
+      if (sqlite.pragma("journal_mode", { simple: true }) === "wal") return;
+      sqlite.pragma("journal_mode = WAL");
+      return;
+    } catch (e) {
+      if ((e as { code?: string }).code?.startsWith("SQLITE_BUSY") !== true || Date.now() > until) throw e;
+      sleep(wait + Math.random() * wait);
+    }
+  }
+}
+
 export function openDb(file = dbPath()) {
   const sqlite = new Database(file);
   // busy_timeout d'abord : passer en WAL prend aussi un verrou. Large : au premier démarrage (ou pendant
   // `next build`, plusieurs processus à la fois), un seul fait les migrations et l'import des recettes,
   // qui peuvent prendre plus de 5 s sur une petite machine ; les autres attendent au lieu d'échouer.
   sqlite.pragma("busy_timeout = 60000");
-  sqlite.pragma("journal_mode = WAL");
+  setWal(sqlite);
   sqlite.pragma("foreign_keys = ON");
   migrate(sqlite);
   return { sqlite, db: drizzle(sqlite, { schema }) };

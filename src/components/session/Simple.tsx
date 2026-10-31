@@ -12,7 +12,7 @@
 import Link from "next/link";
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
-import { backgroundSteps, batchOf, currentPhase, passiveMin, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
+import { backgroundSteps, batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
 import { prepBowls, prepExtras, soonTimers, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
 import { Button, Check, Icon, Tape, type ButtonVariant, type IconName } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
@@ -24,7 +24,7 @@ import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
-import { Bowl, bowlName, bowlOf, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlName, bowlOf, clock, DishArts, dur, hobName, mmss, PauseAll, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
 
 export interface SimpleProps {
   id: string;
@@ -536,7 +536,7 @@ function CookScreen({ plan, c }: { plan: SessionPlan; c: Controls }) {
   const { focus } = c;
   if (!focus) return null;
   // Sur téléphone, ce qui sonne dans moins de 2 min passe au-dessus de la consigne.
-  const close = soonTimers(c.timers, c.now, focus.id).some((t) => t.endsAt - c.now < 120_000);
+  const close = soonTimers(c.timers, c.now, focus.id).some((t) => t.pausedAt == null && t.endsAt - c.now < 120_000);
   return (
     <div className={`${COLUMN} grid gap-12 pt-6 md:grid-cols-12 md:gap-6`}>
       <div className="min-w-0 md:col-span-7">
@@ -658,7 +658,8 @@ function Dials({ plan, c, step, level }: { plan: SessionPlan; c: Controls; step:
   const { state, now } = c;
   const st = stepStatus(state, step.id);
   const n = st === "active" ? currentPhase(state, step) : null;
-  const t = (n != null ? phaseTimer(state, step.id, n) : undefined) ?? stepTimer(state, step.id);
+  const raw = (n != null ? phaseTimer(state, step.id, n) : undefined) ?? stepTimer(state, step.id);
+  const t = raw && liveTimer(raw, now);
   const lv = level ?? (step.hobLevelLabel ? null : step.hobLevel);
   const dials: ReactNode[] = [];
   if (st === "todo") {
@@ -670,9 +671,16 @@ function Dials({ plan, c, step, level }: { plan: SessionPlan; c: Controls; step:
       );
   } else if (t) {
     const left = Math.max(0, t.endsAt - now);
+    const paused = t.pausedAt != null;
+    const foot = (
+      <span className="flex flex-wrap gap-3">
+        <Button size="kitchen" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)} aria-label="Une minute de plus" className="w-fit">1 min</Button>
+        <Button size="kitchen" variant={paused ? "primary" : "quiet"} icon={paused ? "play" : "pause"} onClick={() => c.pauseTimer(t)} aria-pressed={paused} data-action={paused ? "reprendre-minuteur" : "pause-minuteur"} className="w-fit">{paused ? "Reprendre" : "Pause"}</Button>
+      </span>
+    );
     dials.push(
-      <Dial key="t" label={<><Icon name="clock" size="s" />{phase(step, n)?.wait ? "Attente" : "Minuteur"} · fin {clock(t.endsAt)}</>} foot={<Button size="kitchen" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)} aria-label="Une minute de plus" className="w-fit">1 min</Button>}>
-        <span className="sx-giant" role="timer" aria-label={`Minuteur : ${mmss(left)}`}>
+      <Dial key="t" label={<><Icon name="clock" size="s" />{phase(step, n)?.wait ? "Attente" : "Minuteur"} · {paused ? "en pause" : `fin ${clock(t.endsAt)}`}</>} foot={foot}>
+        <span className={`sx-giant ${paused ? "text-ink-2" : ""}`} role="timer" aria-label={`Minuteur${paused ? " en pause" : ""} : ${mmss(left)}`}>
           {mmss(left)}
         </span>
       </Dial>
@@ -743,26 +751,36 @@ export function Soon({ plan, c, exclude, person }: { plan: SessionPlan; c: Contr
   const row = "sx-row grid min-h-16 w-full grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left md:-mx-3 md:w-[calc(100%+24px)]";
   return (
     <section className="grid gap-3" aria-labelledby="sonne-bientot">
-      <h2 id="sonne-bientot" className="label text-ink-2">
-        Ça sonne bientôt
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="sonne-bientot" className="label text-ink-2">
+          Ça sonne bientôt
+        </h2>
+        <PauseAll timers={c.timers} now={c.now} allPaused={c.allPaused} onClick={c.pauseAll} />
+      </div>
       <ul className="grid border-b border-line">
         {timers.map((t) => {
           const st = plan.steps.find((x) => x.id === t.stepId);
           const on = open === t.id;
+          const paused = t.pausedAt != null;
           return (
             <li key={t.id} className="border-t border-line">
-              <button type="button" onClick={() => setOpen(on ? null : t.id)} aria-expanded={on} aria-label={`${name(st)} : ${labelOf(t)}, dans ${mmss(t.endsAt - c.now)}`} className={row}>
+              <button type="button" onClick={() => setOpen(on ? null : t.id)} aria-expanded={on} aria-label={`${name(st)} : ${labelOf(t)}, ${paused ? "en pause, reste" : "dans"} ${mmss(t.endsAt - c.now)}`} className={row}>
                 {st ? <StepIllu kind={st.kind} text={labelOf(t)} size={40} live /> : <Icon name="clock" />}
                 <span className="grid min-w-0">
                   <b className="truncate text-[17px]">{name(st)}</b>
                   <span className="truncate text-[14px] text-ink-2">{labelOf(t)}</span>
                 </span>
-                <span className="num-tight text-[2rem] leading-none">{mmss(t.endsAt - c.now)}</span>
+                <span className={`num-tight text-[2rem] leading-none ${paused ? "text-ink-2" : ""}`}>
+                  {paused && <Icon name="pause" size="s" className="mr-1 inline align-middle" />}
+                  {mmss(t.endsAt - c.now)}
+                </span>
               </button>
               {on && (
                 <div className="sx-swap flex flex-wrap items-center gap-3 pb-4">
-                  <span className="w-full text-[14px] text-ink-2">Fin à {clock(t.endsAt)}</span>
+                  <span className="w-full text-[14px] text-ink-2">{paused ? "En pause : la fin repart à la reprise." : `Fin à ${clock(t.endsAt)}`}</span>
+                  <Button size="kitchen" variant={paused ? "primary" : "secondary"} icon={paused ? "play" : "pause"} onClick={() => c.pauseTimer(t)} aria-pressed={paused}>
+                    {paused ? "Reprendre" : "Pause"}
+                  </Button>
                   <Button size="kitchen" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)}>
                     1 min
                   </Button>

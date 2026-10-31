@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 2026-10-31 : pause des minuteurs, prénoms à deux, polices et base au démarrage
+- Session : chaque minuteur se met en pause et repart (bouton « Pause » sur le cadran de la vue simple, dans « Ça sonne bientôt » et dans la liste de la vue détaillée), et « Tout mettre en pause » / « Tout reprendre » quand on doit s’absenter. Deux événements au journal, `timer_pause` et `timer_resume` (rejoués par chaque écran, synchronisés par le flux SSE) ; la reprise repousse la fin prévue du temps passé en pause, « ↺ » en tient compte, un minuteur en pause ne sonne pas et son étape reste « en fond ». Logique pure dans `src/lib/session/state.ts` (`timerEnd`, `liveTimer`, `storedEnd`, `originalEnd`), testée (`tests/session-pause.test.ts`). Pas de migration : la colonne `kind` est un texte.
+- Session à deux : A et B prennent le prénom des deux premiers membres du foyer (fils, pastilles avec l’initiale, relais, durées du jour J, avis des autres écrans) ; sans prénom, en double ou avec la même initiale, les lettres restent (`src/lib/session/people.ts`, testé).
+- Polices servies par l’appli (`next/font/local`, `src/app/fonts/`) : Archivo (wght 100–900, wdth 62–125) et Atkinson Hyperlegible Next (wght 200–800), sous-ensemble latin, avec leur licence OFL. Le build ne dépend plus de Google Fonts.
+- Base : `PRAGMA journal_mode = WAL` peut répondre « database is locked » sans attendre quand plusieurs processus ouvrent une base neuve (workers de `next build`) ; il est maintenant réessayé (`setWal`, `src/lib/db/open.ts`). Reproduit avec 20 processus sur une base neuve : 2 échecs sur 2 000 ouvertures avant, aucun après.
+
 ## 2026-10-31 : écran de lancement, visite guidée et premiers pas
 - Écran de lancement (`src/components/tour/LaunchSplash.tsx`) : le mot-symbole au centre du papier, la vapeur monte de la cocotte, puis fondu vers l'appli en 660 ms. Une fois par lancement pour l'appli installée, une seule fois par appareil dans un navigateur, jamais avec `prefers-reduced-motion` ; il ne bloque jamais le toucher et reste caché sans script.
 - Images de démarrage iOS : `/lancement?w=…&h=…&theme=clair|sombre` (la cocotte seule sur le papier ou l'encre), une par écran d'iPhone et d'iPad connu (`src/lib/launch.ts`), déclarées dans `appleWebApp.startupImage` ; route ouverte sans connexion. Manifeste aux couleurs du papier (`#f3f1ec`).
