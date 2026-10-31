@@ -1,5 +1,10 @@
 # Journal des changements
 
+## 2026-10-31 : la boîte, visuel des plats
+- `dishArt(recipe)` (`src/lib/illus/dish.ts`, pur, testé dans `tests/dish.test.ts`) compose la boîte d'un plat à partir de ses ingrédients et de ses étapes : la sauce (couleur `--i-*` tirée de la tomate, de la crème, du curry, du coco, du laqué soja-miel, de la moutarde, du bouillon), la garniture (les 2 ou 3 ingrédients les plus lourds, hors oignon, ail, farine et fromage, avec leur dessin `foodArt`), le compartiment du féculent cuit à part (`side`, ou riz et semoule, ou bouilli à part sans rejoindre la cocotte) avec le légume cuit à part, et la touche finale (herbe, citron, sésame). Quatre modèles : garni, mijoté, velouté, gratiné (fromage et cuisson au plat). Même recette, même boîte ; la variante `without` enlève un ingrédient ; un aliment sans dessin prend un morceau générique.
+- `<DishBox recipe size="sm|md|lg|hero" />` (`src/components/ui/dish.tsx`, composant serveur) : la boîte de verre de trois quarts, couvercle cocotte (`--c-accent`), sur la nappe vichy de la couleur de la recette (`vichy()`, en CSS sur `--c-bg`). `hero` : bande plein cadre avec vapeur ; `live` l'anime (rien avec `prefers-reduced-motion`). `role="img"`, nom du plat en `aria-label`. Elle remplacera le monogramme de `RecipeTile` dans les pages.
+- Démonstration : `/kit/boites` (les recettes de `src/seed/recipes`, toutes les tailles), ajoutée au test de fumée.
+
 ## 2026-10-31 : système graphique « Carnet de marché » (fondation)
 - Nouveau système graphique, décrit dans `docs/design/systeme.md` : audit de la v2, références, direction, polices, palette, espacements, rayons, ombre, grille, ton et mouvement.
 - Jetons : papier `#F3F1EC`, encre `#15161A`, filets, une seule ombre (`--sh-float`) pour ce qui flotte, échelle de texte `display / h1 / h2 / h3 / lead / body / small / label / num-xl`, trois rayons, mouvement en `--dur-1/2/3/sheet` et courbes `--ease-out`, `--ease-sheet`.

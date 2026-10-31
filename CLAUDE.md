@@ -47,7 +47,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
 | Santé | `src/lib/health/`, docs/sante.md |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |
-| Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `sanitize.ts`, `ai.ts`), docs/illustrations.md |
+| Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
 | Accès | `src/proxy.ts`, `src/lib/auth.ts` |
 | Schéma | `src/lib/db/schema.ts`, docs/schema.md |
 
