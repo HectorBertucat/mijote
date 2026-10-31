@@ -11,7 +11,7 @@ export function Segmented<T extends string>({ options, value, defaultValue, onCh
   const [inner, setInner] = useState<T | undefined>(defaultValue ?? options[0]?.value);
   const cur = value ?? inner;
   const wrap = tone === "inverse" ? "border-transparent bg-[color-mix(in_srgb,var(--c-on-inverse)_12%,transparent)]" : "border-line bg-surface-2";
-  const pad = size === "icon" ? "gap-0.5 rounded-[9px] p-0.5" : "gap-0.5 rounded-[12px] p-[3px]";
+  const pad = size === "icon" ? "gap-0.5 rounded-[8px] p-0.5" : "gap-0.5 rounded-[8px] p-[3px]";
   return (
     <div role="group" aria-label={label} className={`inline-flex w-fit max-w-full justify-self-start border ${wrap} ${pad} ${className}`}>
       {options.map((o) => {
@@ -19,8 +19,8 @@ export function Segmented<T extends string>({ options, value, defaultValue, onCh
         const look =
           tone === "inverse"
             ? on ? "bg-on-inverse text-inverse" : "text-[color-mix(in_srgb,var(--c-on-inverse)_70%,transparent)]"
-            : on ? "bg-surface text-ink shadow-e1" : "text-ink-2 hover:text-ink";
-        const shape = size === "icon" ? "h-7 w-[30px] justify-center rounded-[7px]" : "min-h-9 gap-1.5 rounded-[9px] px-3 text-[14px] font-semibold";
+            : on ? "bg-surface text-ink ring-1 ring-line-strong" : "text-ink-2 hover:text-ink";
+        const shape = size === "icon" ? "h-7 w-[30px] justify-center rounded-[6px]" : "min-h-9 gap-2 rounded-[6px] px-3 text-[14px] font-bold";
         return (
           <button
             key={o.value}
@@ -32,7 +32,7 @@ export function Segmented<T extends string>({ options, value, defaultValue, onCh
               setInner(o.value);
               onChange?.(o.value);
             }}
-            className={`inline-flex items-center transition-[background-color,color,transform] duration-[var(--dur-quick)] active:scale-[0.96] disabled:opacity-45 ${shape} ${look}`}
+            className={`inline-flex items-center transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] disabled:opacity-40 ${shape} ${look}`}
           >
             {o.icon && <Icon name={o.icon} size="s" />}
             {o.label}
@@ -57,7 +57,7 @@ export function Tabs<T extends string>({ items, value, defaultValue, onChange, l
     <div
       role="tablist"
       aria-label={label}
-      className={`k-noscroll flex gap-1 overflow-x-auto border-b border-line ${className}`}
+      className={`k-noscroll flex gap-6 overflow-x-auto border-b border-line ${className}`}
       onKeyDown={(e) => {
         if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
         const i = items.findIndex((t) => t.value === cur);
@@ -79,7 +79,7 @@ export function Tabs<T extends string>({ items, value, defaultValue, onChange, l
             aria-selected={on}
             tabIndex={on ? 0 : -1}
             onClick={() => pick(t.value)}
-            className={`-mb-px whitespace-nowrap border-b-[2.5px] px-3 py-2.5 text-[15px] font-semibold transition-colors duration-[var(--dur-quick)] active:scale-100 ${on ? "border-accent text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+            className={`-mb-px whitespace-nowrap border-b-2 py-3 text-[15px] font-bold transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] ${on ? "border-ink text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
           >
             {t.label}
             {t.count != null && <span className="num ml-1.5 text-faint">{t.count}</span>}

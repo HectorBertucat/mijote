@@ -45,19 +45,19 @@ export function MenuBoard({ title, days, ready }: { title: string; days: BoardDa
   return (
     <section aria-labelledby="ardoise-titre" className="grid gap-2">
       <div ref={ref} className="kitchen-dark relative overflow-hidden rounded-[16px] border-[6px] border-[color-mix(in_srgb,var(--c-recipe-6)_75%,var(--c-surface))] bg-surface px-5 py-4 text-ink shadow-e2">
-        <h2 id="ardoise-titre" className="font-hand text-[34px] leading-none font-bold">
+        <h2 id="ardoise-titre" className="text-[32px] leading-none">
           Au menu
-          <span className="ml-2 text-[22px] font-semibold opacity-75">{title}</span>
+          <span className="label ml-3 align-middle opacity-70">{title}</span>
         </h2>
         <ul className="mt-3 grid gap-x-8 gap-y-1.5 sm:grid-cols-2">
           {shown.map((d) => (
             <li key={d.label} className="grid grid-cols-[3.2rem_minmax(0,1fr)] items-baseline gap-2 border-b border-dashed border-[color-mix(in_srgb,var(--c-ink)_25%,transparent)] pb-1.5">
-              <span className="font-hand text-[22px] font-bold opacity-70">{d.label}</span>
-              <span className="grid gap-0.5 font-hand text-[22px] leading-[1.15]">
+              <span className="label opacity-70">{d.label}</span>
+              <span className="grid gap-1 text-[16px] leading-[1.3]">
                 {(["lunch", "dinner"] as const).map((m) =>
                   d[m].length ? (
                     <span key={m} className="flex min-w-0 items-center gap-1.5">
-                      <span className="w-10 shrink-0 text-[17px] opacity-60">{m === "lunch" ? "midi" : "soir"}</span>
+                      <span className="label w-10 shrink-0 opacity-60">{m === "lunch" ? "midi" : "soir"}</span>
                       {d[m].map((x) => (
                         <span key={x.name} className="inline-flex min-w-0 items-center gap-1.5">
                           <RecipeTile color={x.color} name={x.name} size="sm" className="!size-5 !text-[10px]" />

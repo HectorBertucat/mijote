@@ -1,5 +1,12 @@
 # Journal des changements
 
+## 2026-10-31 : système graphique « Carnet de marché » (fondation)
+- Nouveau système graphique, décrit dans `docs/design/systeme.md` : audit de la v2, références, direction, polices, palette, espacements, rayons, ombre, grille, ton et mouvement.
+- Jetons : papier `#F3F1EC`, encre `#15161A`, filets, une seule ombre (`--sh-float`) pour ce qui flotte, échelle de texte `display / h1 / h2 / h3 / lead / body / small / label / num-xl`, trois rayons, mouvement en `--dur-1/2/3/sheet` et courbes `--ease-out`, `--ease-sheet`.
+- Deux polices seulement : Archivo (titres larges, chiffres et étiquettes serrés) et Atkinson Hyperlegible Next. Caveat est retirée : rubans et ardoise deviennent des étiquettes d'étiqueteuse (classe `.label`).
+- Kit : bouton principal plein encre, variante `accent` réservée à l'action du moment, cartes sans ombre, puces et onglets sobres, champs et tiroirs aux nouveaux rayons. Seuls les boutons s'enfoncent à la pression ; entrée décalée des listes avec `.reveal`.
+- En-tête : mot-symbole à la cocotte (`Wordmark`), rubriques en texte soulignées d'encre, sans couleur par rubrique ; un seul bouton de thème ; barre d'onglets à cinq rubriques (le Composer reste accessible par son adresse).
+
 ## 2026-10-30 : la cuisine, pas à pas
 - Description de la cuisine en parcours guidé (mise en route et Réglages) : une question par écran, choix par défaut, « Je ne sais pas » toujours possible (rubrique « à vérifier » au récapitulatif), aides « comment savoir » et « comment mesurer ».
 - Plaque : type, préréglages courants (3 foyers dont un grand de 28 cm, 4, 2, 5 foyers ; feux de gaz), diamètre de chaque foyer, dessin de la plaque à l'échelle. Four : gradins, chaleur tournante. Poêles (inox, fonte, antiadhésive ; diamètre ; la fournée suit la taille), casseroles (diamètre, contenance), faitout et cocotte (contenance, passe au four), plats à four. Appareils : air fryer (contenance), mixeur plongeant, blender, petit hachoir, robot, autocuiseur, cuiseur à riz, balance.

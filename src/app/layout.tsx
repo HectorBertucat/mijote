@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Atkinson_Hyperlegible_Next, Caveat } from "next/font/google";
+import { Archivo, Atkinson_Hyperlegible_Next } from "next/font/google";
 import { TabBar, TopNav } from "@/components/Nav";
 import { SessionBanner } from "@/components/SessionBanner";
 import { CommandK } from "@/components/CommandK";
@@ -20,8 +20,6 @@ import "./globals.css";
 
 const title = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--font-title", display: "swap" });
 const body = Atkinson_Hyperlegible_Next({ subsets: ["latin"], variable: "--font-body", display: "swap" });
-// Écriture à la main : seulement les étiquettes sur ruban (bols) et l'ardoise du menu.
-const hand = Caveat({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-script", display: "swap" });
 
 // Thème choisi (clair, sombre) posé avant le premier rendu ; sans choix, on suit le système.
 const THEME_SCRIPT = `try{var t=localStorage.getItem("mijote.theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
@@ -63,7 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   for (const i of db.select({ recipeId: recipeIngredients.recipeId, item: recipeIngredients.item }).from(recipeIngredients).all()) itemsOf.set(i.recipeId, [...(itemsOf.get(i.recipeId) ?? []), i.item]);
   const searchRecipes = listRecipes(db).map((r) => ({ slug: r.slug, name: r.name, color: recipeColor(r.slug), items: itemsOf.get(r.id) ?? [] }));
   return (
-    <html lang="fr" className={`${title.variable} ${body.variable} ${hand.variable}`} suppressHydrationWarning>
+    <html lang="fr" className={`${title.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
@@ -71,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <CustomArtProvider art={loadCustomArt(db)}>
         <TopNav home={home} profiles={profiles} active={active} motif={<FoodIllu id={season.id} size={22} label={`en ${season.label}`} />} search={<CommandK recipes={searchRecipes} />} />
         <SessionBanner />
-        <main className="mx-auto max-w-5xl px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:pb-10">{children}</main>
+        <main className="mx-auto max-w-[1240px] px-5 pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-10 sm:pt-12 sm:pb-28">{children}</main>
         <TabBar />
         </CustomArtProvider>
       </body>

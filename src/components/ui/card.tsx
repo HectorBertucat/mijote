@@ -1,4 +1,6 @@
-// Card (surface blanche, trait, ombre e1, option « lift » au survol), List et ListRow (lignes séparées d'un trait). Sans état.
+// Card (panneau : surface, filet, sans ombre ; « lift » : le filet se renforce au survol), List et ListRow (lignes
+// séparées d'un filet). Sans état. v3 : une page se découpe d'abord par des filets et de l'air ; Card est pour ce
+// qui doit vraiment se détacher (panneau latéral, élément cliquable).
 import Link from "next/link";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Icon } from "./icon";
@@ -8,7 +10,7 @@ export function Card({ as: Tag = "div", lift = false, flat = false, pad = "none"
   const P = { none: "", sm: "p-3.5", md: "px-5 py-4", lg: "p-6" }[pad];
   return (
     <Tag
-      className={`min-w-0 rounded-[14px] border border-line bg-surface ${flat ? "" : "shadow-e1"} ${lift ? "transition-[transform,box-shadow] duration-[var(--dur-quick)] ease-[var(--ease-out)] hover:-translate-y-px hover:shadow-e2" : ""} ${P} ${className}`}
+      className={`min-w-0 rounded-[14px] border border-line ${flat ? "bg-transparent" : "bg-surface"} ${lift ? "transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] hover:border-line-strong" : ""} ${P} ${className}`}
       {...rest}
     >
       {children}
@@ -18,12 +20,12 @@ export function Card({ as: Tag = "div", lift = false, flat = false, pad = "none"
 
 /** Classes d'une carte, pour un <Link> qui doit ressembler à une carte. */
 export function cardClass({ lift = true, className = "" }: { lift?: boolean; className?: string } = {}) {
-  return `block min-w-0 rounded-[14px] border border-line bg-surface shadow-e1 ${lift ? "transition-[transform,box-shadow] duration-[var(--dur-quick)] ease-[var(--ease-out)] hover:-translate-y-px hover:shadow-e2" : ""} ${className}`;
+  return `block min-w-0 rounded-[14px] border border-line bg-surface ${lift ? "transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] hover:border-line-strong" : ""} ${className}`;
 }
 
 /** Liste dans une carte : chaque ListRow est séparée par un trait, la dernière non. */
 export function List({ children, className = "", as: Tag = "div" }: { children: ReactNode; className?: string; as?: "div" | "ul" }) {
-  return <Tag className={`grid overflow-hidden rounded-[14px] border border-line bg-surface [&>*:last-child]:border-b-0 ${className}`}>{children}</Tag>;
+  return <Tag className={`grid border-t border-line [&>*:last-child]:border-b [&>*:last-child]:border-line ${className}`}>{children}</Tag>;
 }
 
 /** Ligne : `lead` (étiquette, case…), `title`, `sub`, `trail` (prix, pastille). Avec `href`, toute la ligne est un lien et un chevron s'ajoute. */
@@ -39,11 +41,11 @@ export function ListRow({ lead, title, sub, trail, href, className = "", as: Tag
       {href && <Icon name="chev" className="text-faint" />}
     </>
   );
-  const row = `flex min-w-0 items-center gap-3 border-b border-line px-3.5 py-3 ${className}`;
+  const row = `flex min-w-0 items-center gap-4 border-b border-line py-4 ${className}`;
   if (href)
     return (
       <Tag className="border-b border-line">
-        <Link href={href} className={`${row} border-b-0 hover:bg-surface-2 active:scale-100`}>
+        <Link href={href} className={`${row} -mx-3 border-b-0 rounded-[8px] px-3 hover:bg-surface-2`}>
           {inner}
         </Link>
       </Tag>

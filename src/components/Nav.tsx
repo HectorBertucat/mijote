@@ -1,43 +1,39 @@
 "use client";
 
-// Coque de l'appli (DA « Plan de travail ») : en-tête léger (logo, navigation sur ordinateur, sélecteur de profil,
-// sélecteur de thème), barre d'onglets en bas sur téléphone (pastille sur l'onglet actif).
-import type { CSSProperties } from "react";
+// Coque de l'appli (DA v3 « Carnet de marché ») : en-tête sur papier, mot-symbole à la cocotte, rubriques en texte
+// (soulignées d'encre quand elles sont ouvertes : la couleur reste aux plats), recherche, profil, réglages, thème.
+// Sur téléphone, barre d'onglets en bas.
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { ProfileSwitch, type ProfileOption } from "./ProfileSwitch";
 import { ThemeToggle } from "./ThemeToggle";
 import { Icon, type IconName } from "./ui/icon";
+import { Wordmark } from "./ui/wordmark";
 
-
-// Chaque rubrique a sa couleur (tokens sec-*) : pastille dans le menu, fond teinté quand elle est ouverte.
-const TABS: { href: string; label: string; icon: IconName; sec: string }[] = [
-  { href: "/recettes", label: "Recettes", icon: "book", sec: "var(--c-sec-recettes)" },
-  { href: "/semaine", label: "Semaine", icon: "cal", sec: "var(--c-sec-semaine)" },
-  { href: "/composer", label: "Composer", icon: "pot", sec: "var(--c-sec-composer)" },
-  { href: "/courses", label: "Courses", icon: "basket", sec: "var(--c-sec-courses)" },
-  { href: "/frigo", label: "Frigo", icon: "fridge", sec: "var(--c-sec-frigo)" },
-  { href: "/sante", label: "Santé", icon: "pulse", sec: "var(--c-sec-sante)" },
+const TABS: { href: string; label: string; icon: IconName }[] = [
+  { href: "/recettes", label: "Recettes", icon: "book" },
+  { href: "/semaine", label: "Semaine", icon: "cal" },
+  { href: "/courses", label: "Courses", icon: "basket" },
+  { href: "/frigo", label: "Frigo", icon: "fridge" },
+  { href: "/sante", label: "Santé", icon: "pulse" },
 ];
-const secStyle = (sec: string) => ({ "--sec": sec }) as CSSProperties;
 
-// Fin trait d'accent qui pulse pendant le chargement de la page visée.
+// Trait sous l'onglet visé pendant le chargement de la page (retour immédiat au clic).
 function Pending({ className = "" }: { className?: string }) {
   const { pending } = useLinkStatus();
-  return <span aria-hidden className={`pointer-events-none absolute h-0.5 rounded-full bg-accent transition-opacity ${pending ? "animate-pulse opacity-100" : "opacity-0"} ${className}`} />;
+  return <span aria-hidden className={`pointer-events-none absolute h-0.5 bg-ink-3 transition-opacity duration-[var(--dur-1)] ${pending ? "opacity-100" : "opacity-0"} ${className}`} />;
 }
 
-/** `motif` : le dessin de saison à côté du logo, rendu par le layout (serveur) pour garder les dessins hors du paquet client. */
-export function TopNav({ profiles, active, motif, search, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; home?: string | null }) {
+/** `motif` : gardé pour compatibilité (le dessin de saison n'est plus affiché : le mot-symbole suffit). */
+export function TopNav({ profiles, active, search, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; home?: string | null }) {
   const path = usePathname();
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-[color-mix(in_srgb,var(--c-bg)_92%,transparent)] pt-[env(safe-area-inset-top)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-5xl items-center gap-[22px] px-4 py-3 sm:px-7">
-        <Link href="/recettes" title={home ?? undefined} className="group inline-flex items-center gap-1 font-display text-[19px] font-extrabold tracking-[-0.03em] text-ink [font-stretch:125%] active:scale-100">
-          mijote
-          {motif && <span className="-my-1 inline-grid transition-transform duration-[var(--dur-base)] group-hover:-rotate-12">{motif}</span>}
+    <header className="sticky top-0 z-20 border-b border-line bg-bg pt-[env(safe-area-inset-top)]">
+      <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-8 px-5 sm:px-10">
+        <Link href="/" title={home ?? undefined} className="group -mx-1 rounded-[4px] px-1">
+          <Wordmark />
         </Link>
-        <nav className="hidden flex-1 gap-0.5 sm:flex" aria-label="Navigation">
+        <nav className="hidden h-full flex-1 items-stretch gap-7 sm:flex" aria-label="Rubriques">
           {TABS.map((t) => {
             const on = path.startsWith(t.href);
             return (
@@ -45,22 +41,23 @@ export function TopNav({ profiles, active, motif, search, home }: { profiles: Pr
                 key={t.href}
                 href={t.href}
                 aria-current={on ? "page" : undefined}
-                style={secStyle(t.sec)}
-                className={`relative inline-flex items-center gap-1.5 rounded-[8px] px-3 py-[7px] text-[14px] font-semibold ${on ? "bg-[color-mix(in_srgb,var(--sec)_15%,var(--c-surface))] text-ink" : "text-ink-2 hover:bg-surface-2 hover:text-ink"}`}
+                className={`relative inline-flex items-center text-[15px] font-bold tracking-[-0.005em] ${on ? "text-ink" : "text-ink-2 hover:text-ink"}`}
               >
-                <span key={on ? "on" : "off"} aria-hidden className={`size-2 rounded-[3px] bg-[var(--sec)] ${on ? "k-gesture" : ""}`} data-g="dot" />
                 {t.label}
-                <Pending className="inset-x-3 -bottom-px" />
+                <span aria-hidden className={`absolute inset-x-0 -bottom-px h-0.5 bg-ink transition-transform duration-[var(--dur-2)] ease-[var(--ease-out)] ${on ? "scale-x-100" : "scale-x-0"}`} />
+                <Pending className="inset-x-0 -bottom-px" />
               </Link>
             );
           })}
         </nav>
-        {search}
-        <ProfileSwitch profiles={profiles} active={active} className="ml-auto sm:ml-0" />
-        <Link href="/reglages" aria-label="Réglages" title="Réglages" className="grid size-tap place-items-center rounded-[10px] text-ink-2 hover:bg-surface-2 hover:text-ink">
-          <Icon name="sliders" />
-        </Link>
-        <ThemeToggle />
+        <div className="ml-auto flex items-center gap-2 sm:ml-0">
+          {search}
+          <ProfileSwitch profiles={profiles} active={active} />
+          <Link href="/reglages" aria-label="Réglages" title="Réglages" className="grid size-tap place-items-center rounded-[8px] text-ink-2 hover:bg-surface-2 hover:text-ink">
+            <Icon name="sliders" />
+          </Link>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );
@@ -69,19 +66,18 @@ export function TopNav({ profiles, active, motif, search, home }: { profiles: Pr
 export function TabBar() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-[color-mix(in_srgb,var(--c-surface)_94%,transparent)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden" aria-label="Navigation">
-      <div className="mx-auto grid max-w-md grid-cols-6">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Rubriques">
+      <div className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map((t) => {
           const on = path.startsWith(t.href);
           return (
-            <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} style={secStyle(t.sec)} className={`relative grid justify-items-center gap-0.5 pb-1 pt-2 text-[11px] font-semibold active:scale-100 ${on ? "text-ink" : "text-ink-2"}`}>
-              <span className={`grid h-[30px] w-12 place-items-center rounded-full transition-colors duration-[var(--dur-quick)] ${on ? "bg-[color-mix(in_srgb,var(--sec)_18%,var(--c-surface))] text-[var(--sec)]" : ""}`}>
-                {/* Ouvrir une rubrique : son icône fait son geste une fois (panier qui se balance, page qui tourne…). */}
-                <span key={on ? path : "off"} data-g={t.icon} className={`grid place-items-center ${on ? "k-gesture" : ""}`}>
-                  <Icon name={t.icon} />
-                </span>
+            <Link key={t.href} href={t.href} aria-current={on ? "page" : undefined} className={`relative grid justify-items-center gap-1 pb-2 pt-3 ${on ? "text-ink" : "text-ink-3"}`}>
+              <span aria-hidden className={`absolute inset-x-5 top-0 h-0.5 bg-ink transition-transform duration-[var(--dur-2)] ease-[var(--ease-out)] ${on ? "scale-x-100" : "scale-x-0"}`} />
+              {/* Ouvrir une rubrique : son icône fait son geste une fois (panier qui se balance, page qui tourne…). */}
+              <span key={on ? path : "off"} data-g={t.icon} className={`grid place-items-center ${on ? "k-gesture" : ""}`}>
+                <Icon name={t.icon} />
               </span>
-              {t.label}
+              <span className="label !tracking-[0.04em]">{t.label}</span>
               <Pending className="inset-x-5 top-0" />
             </Link>
           );

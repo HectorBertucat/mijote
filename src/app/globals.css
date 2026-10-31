@@ -37,13 +37,28 @@
   animation: var(--animate-strike);
 }
 
-/* Retour au toucher : tout ce qui se clique s'enfonce légèrement. */
+/* Retour au toucher : seulement les boutons s'enfoncent (pas les liens ni les lignes). */
 a, button, summary, [role="radio"] {
-  transition: transform var(--dur-press) var(--ease-out), background-color var(--dur-quick) ease, border-color var(--dur-quick) ease, color var(--dur-quick) ease, opacity var(--dur-quick) ease;
+  transition: background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), opacity var(--dur-1) var(--ease-out);
 }
-a:active, button:active:not(:disabled), summary:active, [role="radio"]:active {
-  transform: scale(0.97);
-}
+.k-btn { transition: transform var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.k-btn:active:not(:disabled) { transform: scale(0.98); }
+
+/* Entrée d'une liste au premier affichage : 8 px et fondu, décalés de 30 ms, huit éléments au plus.
+   Usage : <ul className="reveal"> ; jamais rejoué sur une action (pas de clé qui change). */
+@keyframes reveal-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.reveal > * { animation: reveal-in var(--dur-3) var(--ease-out) both; }
+.reveal > :nth-child(2) { animation-delay: 30ms; }
+.reveal > :nth-child(3) { animation-delay: 60ms; }
+.reveal > :nth-child(4) { animation-delay: 90ms; }
+.reveal > :nth-child(5) { animation-delay: 120ms; }
+.reveal > :nth-child(6) { animation-delay: 150ms; }
+.reveal > :nth-child(7) { animation-delay: 180ms; }
+.reveal > :nth-child(n + 8) { animation-delay: 210ms; }
+
+/* Filet de section : la v3 délimite par des filets et de l'air, pas par des cartes. */
+.rule-top { border-top: 1px solid var(--c-line); }
+.rule-strong-top { border-top: 1px solid var(--c-line-strong); }
 
 .skeleton {
   background: linear-gradient(90deg, var(--c-line) 25%, var(--c-surface-2) 50%, var(--c-line) 75%);
@@ -53,5 +68,7 @@ a:active, button:active:not(:disabled), summary:active, [role="radio"]:active {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  a:active, button:active { transform: none; }
+  .k-btn:active { transform: none; }
+  .reveal > * { animation-name: fade-in; }
 }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

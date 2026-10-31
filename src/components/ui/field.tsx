@@ -2,7 +2,7 @@
 import { useId, type ComponentProps, type InputHTMLAttributes, type ReactNode } from "react";
 import { Icon, type IconName } from "./icon";
 
-const INPUT = "min-h-12 w-full rounded-[10px] border bg-surface px-3.5 text-[16px] text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-[var(--dur-quick)] focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none disabled:opacity-50";
+const INPUT = "min-h-12 w-full rounded-[8px] border bg-surface px-4 text-[17px] text-ink placeholder:text-faint transition-[border-color,box-shadow] duration-[var(--dur-1)] ease-[var(--ease-out)] hover:border-ink-3 focus:border-accent focus:shadow-[0_0_0_3px_var(--c-accent-soft)] focus:outline-none disabled:opacity-50";
 
 /** Champ texte. `icon` (p. ex. "search") se pose à gauche ; `invalid` borde en rouge et met aria-invalid ; `num` pour des chiffres tabulaires. */
 export function Input({ icon, invalid = false, num = false, className = "", ...rest }: { icon?: IconName; invalid?: boolean; num?: boolean } & InputHTMLAttributes<HTMLInputElement>) {
@@ -27,7 +27,7 @@ export function Field({ label, help, error, children, className = "" }: { label:
   const hid = help || error ? `${id}-help` : undefined;
   return (
     <div className={`grid gap-1.5 ${className}`}>
-      <label htmlFor={id} className="text-[14px] font-semibold">
+      <label htmlFor={id} className="label text-ink-2">
         {label}
       </label>
       {children(id, hid)}
