@@ -52,6 +52,7 @@ SQLite + Drizzle, une migration initiale (`src/lib/db/migrations/0000_init.sql`)
 | `workouts` | id, person_id, date, ts, type, minutes, note, entries | Carnet des séances |
 | `training_live` | id, person_id, state, version, updated_at, ended_at | Séance en cours partagée entre écrans |
 | `food_art` | key (nom normalisé), label, category, svg | Dessins d'aliments créés par l'IA, filtrés par `sanitizeIllu` |
+| `assistant_messages` | id, person_id (cascade), role (`user`, `assistant`), text, actions (json : actions proposées, leur vérification, leur sort `proposed`/`applied`/`dismissed`/`refused`), page, model, created_at ; index (person_id, created_at) | Conversation de l'assistant, une par personne, 30 messages gardés (migration 0005, `src/lib/assistant/`) |
 | `app_settings` | key, value | Réglages de l'instance : mise en route, cuisine, magasin, nom de la maison |
 
 ## Coûts dérivés (en code, `src/lib/costs/`, sans IA)

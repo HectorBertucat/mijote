@@ -2,7 +2,7 @@
 
 ## Le principe : l'IA propose, le code vérifie
 
-Mijote n'est pas un chat. Tout ce qui doit être juste est **déterministe, en code, testé** :
+Mijote n'est pas un chat qui écrit dans la base. Tout ce qui doit être juste est **déterministe, en code, testé** :
 - quantités, portions et macros par part (`src/lib/nutrition/`, `src/lib/eaters/`) ;
 - coûts (`src/lib/costs/`) ;
 - planning de session sous contraintes de ressources (`src/lib/session/planner.ts`) ;
@@ -14,12 +14,13 @@ L'IA (API Claude, sorties JSON structurées) **rédige et propose** derrière de
 | Bouton | Ce que propose l'IA | Ce que vérifie le code |
 |---|---|---|
 | Ajuster / Atelier / Importer | une recette complète | ingrédients connus de la table nutritionnelle, macros recalculées, équipement réel, sous-étapes, doublons de la bibliothèque, produits du catalogue |
+| Assistant (partout, ⌘I) | une réponse en flux et des actions typées (ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch, manger une boîte, lancer les courses) | `checkAction` : existence (recette, personne, habitude, boîte), bornes (4 recettes, aliments de la table, grammes, jours), cohérence nutritionnelle (la journée ne dépasse pas la cible de plus de 300 kcal, pas de deuxième shaker) ; chiffres des cartes calculés par le code ; la personne applique d'un geste, l'action est revérifiée puis exécutée par les fonctions de l'interface |
 | Coach (Santé › Objectifs) | des objectifs | rythme −1 à +0,5 %/sem., protéines 1,2–2,4 g/kg, IMC visé sain, cible jamais sous le métabolisme de base |
 | Programme sur mesure | séances, et exercices inventés avec leurs figures | ids de la bibliothèque, matériel, séries et repos bornés, durée, figures résolues par le squelette (sol, cadre, appuis, membres qui atteignent leur cible) |
 | Dessiner un aliment | un fragment SVG | liste blanche stricte de balises, attributs, couleurs (jetons du thème) et animations |
 | Estimer un repas | kcal et macros | marqué « estimation » dans le journal |
 
-Tous les appels passent par **un seul module** (`src/lib/ai/`) qui impose le schéma, journalise chaque appel (`ai_calls` : modèle, jetons, coût, écran, durée) et applique un plafond mensuel.
+Tous les appels passent par **un seul module** (`src/lib/ai/` : `structured()`, et `chat()` pour l'assistant en flux avec des outils stricts) qui impose le schéma, journalise chaque appel (`ai_calls` : modèle, jetons, coût, écran, durée) et applique un plafond mensuel.
 
 ## Les modules
 
@@ -37,6 +38,7 @@ src/
   components/          composants (kit dans components/ui)
   lib/
     ai/                point d'entrée unique de l'IA
+    assistant/         assistant : contexte chiffré, actions proposées et vérifiées, exécution
     atelier/           ajuster et créer une recette (prompts, vérification)
     chronocatalog.ts   client du catalogue de produits (facultatif)
     costs/             achats, lots du placard, coût par part
@@ -60,7 +62,7 @@ src/
 tests/                 node:test, un fichier par domaine
 ```
 
-Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `boxes/core.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
+Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `boxes/core.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `assistant/core.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
 
 ## Données
 

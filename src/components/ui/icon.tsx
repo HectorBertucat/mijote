@@ -51,6 +51,8 @@ const PATHS = {
   sparkdraft: <path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 0 0-3-3L5 16l-1 4zM13.5 7.5l3 3" />,
   // Préféré (produit du drive) : passer fill="currentColor" pour l’état actif.
   star: <path d="M12 4.2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.6l-4.8 2.5.9-5.4-3.9-3.8 5.4-.8L12 4.2z" />,
+  // Assistant : une bulle de parole.
+  talk: <path d="M5.5 5h13A2 2 0 0 1 20.5 7v8a2 2 0 0 1-2 2H11l-4.5 3.5V17h-1a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8.5 10h7M8.5 13h4.5" />,
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -2,7 +2,7 @@
 // Écriture du cache = 1,25 × l'entrée (TTL 5 min).
 export const MODELS = {
   plan: "claude-sonnet-5-5", // planifier, créer ou adapter une recette
-  small: "claude-haiku-5-5", // petites tâches : ranger une note
+  small: "claude-haiku-5-5", // petites tâches : ranger une note, l'assistant au quotidien
 } as const;
 
 export type ModelId = (typeof MODELS)[keyof typeof MODELS];

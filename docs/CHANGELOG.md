@@ -1,5 +1,11 @@
 # Journal des changements
 
+## 2026-10-31 : assistant, partout dans l'appli
+- Un assistant conversationnel, ouvert d'un bouton dans l'en-tête, de ⌘I / Ctrl I, ou de « Demander » dans ⌘K (panneau à droite, feuille du bas sur téléphone). Il conseille chaque personne selon ses objectifs à partir des vraies données (profils Santé, repères par repas, habitudes hors batch, semaine en cours, frigo, recettes et part de chacun) et connaît la page ouverte.
+- Il peut proposer d'agir : ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch, marquer une boîte mangée, lancer les courses. L'IA ne fait que proposer (outils stricts) ; `checkAction` (`src/lib/assistant/core.ts`, pur et testé) revalide chaque action et chiffre sa carte ; la personne applique ou annule d'un geste ; l'action est revérifiée puis exécutée par les fonctions de l'interface.
+- Réponse en flux (`chat()` dans `src/lib/ai/`, route `/api/assistant`), conversation courte par personne (table `assistant_messages`, migration 0005), « Repartir de zéro ». Haiku par défaut, Sonnet seulement pour composer toute la semaine ; contexte compact construit en code, instructions et contexte du foyer en cache ; plafond mensuel respecté avec un message clair. Sans `ANTHROPIC_API_KEY`, ni bouton ni route.
+- Règle 1 de `CLAUDE.md` mise à jour : deux conversations (coach, assistant), qui ne font que proposer.
+
 ## 2026-10-31 : refonte « Carnet de marché », finitions de direction artistique
 - Le petit visuel d'un plat (`RecipeTile`) n'est plus un monogramme : c'est sa boîte de verre sur un carré de nappe vichy, partout où il restait (accueil, semaine, recherche, coûts, journal…).
 - Micro-typographie : `typo()` (`src/lib/typo.ts`, testé) pose l'apostrophe courbe, les espaces insécables avant « : ; ? ! », dans les guillemets et entre un nombre et son unité, à l'affichage des fiches (nom, description, ingrédients, étapes, repères) et des consignes de session ; les textes de l'interface passent à l'apostrophe courbe.

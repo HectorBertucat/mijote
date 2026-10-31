@@ -1,10 +1,12 @@
 "use client";
 
 // Recherche rapide au clavier (ordinateur) : ⌘K ou Ctrl K ouvre une barre qui trouve une recette (par son nom ou
-// un de ses ingrédients) ou une page. ↑ ↓ pour choisir, Entrée pour ouvrir, Échap pour fermer.
+// un de ses ingrédients) ou une page, ou pose la question à l’assistant. ↑ ↓ pour choisir, Entrée pour ouvrir,
+// Échap pour fermer.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, RecipeTile, type IconName } from "@/components/ui";
+import { askAssistant } from "@/components/assistant/Assistant";
 
 export type SearchRecipe = { slug: string; name: string; color: string; items: string[] };
 
@@ -22,9 +24,10 @@ const PAGES: { href: string; label: string; icon: IconName; words: string }[] = 
 
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-type Hit = { key: string; href: string; label: string; sub?: string; lead: React.ReactNode };
+type Hit = { key: string; href: string; label: string; sub?: string; lead: React.ReactNode; ask?: string };
 
-export function CommandK({ recipes }: { recipes: SearchRecipe[] }) {
+/** `assistant` : l’assistant est disponible (clé d’API), une ligne « Demander à l’assistant » s’ajoute. */
+export function CommandK({ recipes, assistant = false }: { recipes: SearchRecipe[]; assistant?: boolean }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [at, setAt] = useState(0);
@@ -58,13 +61,18 @@ export function CommandK({ recipes }: { recipes: SearchRecipe[] }) {
       if (byName || item) out.push({ key: `r${r.slug}`, href: `/recettes/${r.slug}`, label: r.name, sub: item ? `avec ${item.split(/[,(]/)[0].trim().toLowerCase()}` : "recette", lead: <RecipeTile color={r.color} name={r.name} size="sm" /> });
     }
     for (const p of PAGES) if (!n || fold(`${p.label} ${p.words}`).includes(n)) out.push({ key: `p${p.href}`, href: p.href, label: p.label, sub: "page", lead: <span className="grid size-7 place-items-center rounded-[4px] bg-surface-2 text-ink-2"><Icon name={p.icon} size="s" /></span> });
-    return out.slice(0, 12);
-  }, [q, recipes]);
+    const lead = <span className="grid size-7 place-items-center rounded-[4px] bg-surface-2 text-ink-2"><Icon name="talk" size="s" /></span>;
+    // Une vraie question (ou rien ne correspond) : l’assistant en tête ; sinon en dernier.
+    const ask = assistant ? { key: "ask", href: "", label: q.trim() ? `Demander : ${q.trim()}` : "Demander à l’assistant", sub: "⌘I", lead, ask: q.trim() } : null;
+    const top = ask && (/\?\s*$/.test(q) || q.trim().split(/\s+/).length >= 4 || (n && !out.length));
+    return ask ? (top ? [ask, ...out.slice(0, 11)] : [...out.slice(0, 11), ask]) : out.slice(0, 12);
+  }, [q, recipes, assistant]);
 
   const go = (h: Hit | undefined) => {
     if (!h) return;
     setOpen(false);
-    router.push(h.href);
+    if (h.ask != null) askAssistant(h.ask);
+    else router.push(h.href);
   };
 
   return (

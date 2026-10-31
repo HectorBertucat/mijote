@@ -25,7 +25,7 @@ function Pending({ className = "" }: { className?: string }) {
 }
 
 /** `motif` : gardé pour compatibilité (le dessin de saison n’est plus affiché : le mot-symbole suffit). */
-export function TopNav({ profiles, active, search, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; home?: string | null }) {
+export function TopNav({ profiles, active, search, assistant, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; assistant?: React.ReactNode; home?: string | null }) {
   const path = usePathname();
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg pt-[env(safe-area-inset-top)]">
@@ -52,6 +52,7 @@ export function TopNav({ profiles, active, search, home }: { profiles: ProfileOp
         </nav>
         <div className="ml-auto flex items-center gap-2 sm:ml-0">
           {search}
+          {assistant}
           <ProfileSwitch profiles={profiles} active={active} />
           <Link href="/reglages" aria-label="Réglages" title="Réglages" className="grid size-tap place-items-center rounded-[8px] text-ink-2 hover:bg-surface-2 hover:text-ink">
             <Icon name="sliders" />

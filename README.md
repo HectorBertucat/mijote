@@ -24,7 +24,7 @@ Je l'ai d'abord écrite pour mon foyer, et je m'en sers chaque semaine. Cette ve
 
 ## L'IA propose, le code vérifie
 
-Mijote n'est pas un chat. L'IA (l'API Claude) intervient derrière des boutons : ajuster une recette (« −150 kcal », « sans brocoli pour Sam »), en créer une, en importer une depuis un texte collé, fixer des objectifs avec un coach, écrire un programme de sport, dessiner un aliment qui n'a pas de dessin.
+L'IA (l'API Claude) intervient derrière des boutons : ajuster une recette (« −150 kcal », « sans brocoli pour Sam »), en créer une, en importer une depuis un texte collé, fixer des objectifs avec un coach, écrire un programme de sport, dessiner un aliment qui n'a pas de dessin. Un assistant, disponible partout (⌘I), répond aux questions du foyer (« dois-je prendre un shaker ? ») et propose des actions : chacune est vérifiée par l'appli et appliquée d'un geste.
 
 Ce qu'elle rend n'est jamais utilisé tel quel :
 - les macros d'une recette sont recalculées depuis les grammes ;

@@ -82,6 +82,10 @@ Les durées réelles sont mesurées et corrigent les estimations des sessions su
 
 L'onglet **Frigo** liste les boîtes du frigo et du congélo, la plus pressée d'abord, avec sa date limite (jours au frigo de la recette, trois mois au congélo, le lendemain une fois sortie). Une faim : on pioche ici avant de commander. **Je la mange** note la boîte au journal de Santé de la personne de l'appareil (macros de la boîte) ; **Au congélo**, **Sortir au frigo** et **Jetée** d'un tap.
 
+## 6 ter. Assistant
+
+Le bouton en forme de bulle, en haut (⌘I au clavier, ou « Demander » dans ⌘K), ouvre l'assistant. On lui parle avec ses mots : « dois-je prendre un shaker ? », « quelle recette cette semaine pour plus de protéines ? », « quelle boîte manger ce soir ? ». Il lit les objectifs de chacun, la semaine, le frigo et les recettes, et sait quelle page est ouverte. Quand il propose d'agir (ajouter une recette, un shaker, marquer une boîte mangée, lancer les courses), une carte montre ce qui change, chiffré par l'appli : **Appliquer** ou **Annuler**. Une proposition que l'appli refuse est montrée avec sa raison. **Repartir de zéro** efface la conversation. Sans clé d'API, le bouton n'apparaît pas.
+
 ## 7. Santé
 
 - **Vue d'ensemble** : poids et tendance lissée, rythme, cible de la semaine expliquée.
