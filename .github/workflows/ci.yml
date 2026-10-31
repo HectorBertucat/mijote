@@ -61,8 +61,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # Couches gardées dans le cache d'Actions : l'étape des dépendances (apt, pnpm install,
+      # compilation de better-sqlite3) n'est refaite que si package.json ou le verrou changent.
       - name: Construire l'image
-        run: docker build -t mijote:ci .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: mijote:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Lancer le conteneur et vérifier la mise en route
         run: |
           docker run -d --name mijote -p 3010:3010 -e MIJOTE_PASSWORD=ci mijote:ci
