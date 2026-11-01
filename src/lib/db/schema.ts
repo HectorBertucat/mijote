@@ -809,7 +809,7 @@ export const runSessions = sqliteTable(
     hash: text("hash").notNull(),
     version: integer("version").notNull().default(1),
     status: text("status", { enum: ["prevue", "programmee", "faite", "manquee", "annulee"] }).notNull().default("prevue"),
-    edit: json<{ date?: string; minutes?: number; kind?: string; skip?: boolean }>("edit"),
+    edit: json<{ date?: string; minutes?: number; kind?: string }>("edit"),
     sampleId: text("sample_id"), // la séance faite (health_samples) qui l'a remplie
     watchVersion: integer("watch_version"), // version programmée sur la montre
     watchAt: text("watch_at"),
