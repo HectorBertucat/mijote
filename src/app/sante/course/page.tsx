@@ -8,7 +8,7 @@ import { activePerson } from "@/lib/health/active";
 import { todayParis } from "@/lib/health/store";
 import { DEFAULT_AGE, getRunProfile, PAIN_PLACES, syncPlan } from "@/lib/running/store";
 import { dayLabel, WEEKDAY_LABEL } from "@/lib/running/dates";
-import { FORM_LABEL, formBand, LOAD_SOURCE_LABEL } from "@/lib/running/load";
+import { acwr, FORM_LABEL, formBand, LOAD_SOURCE_LABEL } from "@/lib/running/load";
 import { GOAL_LABEL, GOALS, PHASE_LABEL } from "@/lib/running/plan";
 import { describe, type RunSession } from "@/lib/running/workout";
 import { METHOD_LABEL, ZONE_NAMES, zoneRange } from "@/lib/running/zones";
@@ -124,10 +124,12 @@ export default async function Course({ searchParams }: { searchParams: Promise<{
             </ul>
             {(() => {
               const f = state.data.fitness[state.data.fitness.length - 1];
+              const ratio = acwr(state.data.dailyRun, today);
               return f ? (
                 <p className="text-ink-2">
                   Condition {Math.round(f.ctl)}, fatigue {Math.round(f.atl)}
                   {f.tsbPct != null ? `, fraîcheur ${Math.round(f.tsbPct)} % (${FORM_LABEL[formBand(f.tsbPct)].toLowerCase()})` : ""}.
+                  {ratio ? ` Rapport aigu/chronique de course : ${ratio.value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} (indicatif, bande 0,8–1,3 ; il ne décide de rien).` : ""}
                 </p>
               ) : null;
             })()}

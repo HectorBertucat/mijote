@@ -410,7 +410,8 @@ function weekTargets(st: State, w: string, x: PlanInput, runs: DoneRun[], n0: nu
   const limit = GOAL_LIMIT[x.settings.goal];
   const notes: string[] = [];
   const override = x.overrides.find((o) => o.weekStart === w);
-  const deload = (st.cycle === DELOAD_EVERY || st.deloadNext || !!override?.deload) && st.weekInPhase > 1;
+  // Une décharge demandée (page, action confirmée) s'applique dès qu'il y a une semaine de référence.
+  const deload = ((st.cycle === DELOAD_EVERY || st.deloadNext) && st.weekInPhase > 1) || (!!override?.deload && st.refV != null);
   let n = n0;
   const share = LONG_SHARE[n] ?? 0.35;
   let V: number;
