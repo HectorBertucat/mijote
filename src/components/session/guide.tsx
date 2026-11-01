@@ -268,10 +268,10 @@ function LaneRow({ plan, c, item, onFinish }: { plan: SessionPlan; c: Controls; 
       <div className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3">
         <StepIllu kind={step.kind} text={item.doing} size={40} live />
         <span className="grid min-w-0 gap-1">
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 text-[14px] text-ink-2">
-            <span className="size-2.5 shrink-0 rounded-full bg-[var(--rc)]" aria-hidden />
-            <span className="min-w-0">{recipe?.name ?? "Four"} · étape {step.no}</span>
-            <AttentionTag a={item.attention} />
+          <span className="text-[14px] leading-snug text-ink-2">
+            <span className="mr-2 inline-block size-2.5 rounded-full bg-[var(--rc)]" aria-hidden />
+            {recipe?.name ?? "Four"} · étape {step.no}
+            <AttentionTag a={item.attention} className="ml-2 align-[-1px]" />
           </span>
           <b className="text-[17px] leading-snug"><BowlText plan={plan} text={item.doing} ready={c.state.bowlsReady} /></b>
           {rem.due ? (
@@ -337,8 +337,8 @@ export function Lanes({ plan, c, focus, person, showNow = false }: { plan: Sessi
               <li key={s.id} className={`grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 py-3 ${k ? "border-t border-line text-ink-2" : ""}`} style={rc(recipeOf(plan, s.recipeSlug)?.color ?? "var(--c-ink-3)")}>
                 <StepIllu kind={s.kind} text={s.text} size={40} />
                 <span className="grid min-w-0">
-                  <span className="flex items-center gap-2 text-[14px] text-ink-2">
-                    <span className="size-2.5 shrink-0 rounded-full bg-[var(--rc)]" aria-hidden />
+                  <span className="text-[14px] leading-snug text-ink-2">
+                    <span className="mr-2 inline-block size-2.5 rounded-full bg-[var(--rc)]" aria-hidden />
                     {recipeOf(plan, s.recipeSlug)?.name ?? "Four"} · étape {s.no}
                   </span>
                   <span className="text-[17px] leading-snug"><BowlText plan={plan} text={stepTitleOf(s, 90)} ready={c.state.bowlsReady} /></span>

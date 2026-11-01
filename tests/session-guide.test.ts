@@ -123,7 +123,7 @@ test("retour : défait la dernière action encore visible, et le dit", () => {
   assert.equal(undoFor(plan, j.state(), j.events, null), null, "rien à défaire");
   j.act(step, 0);
   const u1 = undoFor(plan, j.state(), j.events, null)!;
-  assert.match(u1.label, /^Pas encore : /);
+  assert.match(u1.label, /^Pas encore commencé : /);
   j.act(step, 1, null, mainAction(plan, j.state(), step).kind === "phase-timer");
   const u2 = undoFor(plan, j.state(), j.events, null)!;
   assert.match(u2.label, /^Revenir à : /);
@@ -131,7 +131,7 @@ test("retour : défait la dernière action encore visible, et le dit", () => {
   assert.equal(j.state().phasesDone.size, 0, "la sous-étape redevient en cours");
   // Le retour suivant défait le « Commencer » (la sous-étape défaite ne compte plus).
   const u3 = undoFor(plan, j.state(), j.events, null)!;
-  assert.match(u3.label, /^Pas encore : /);
+  assert.match(u3.label, /^Pas encore commencé : /);
   j.write(u3.events, 3);
   assert.equal(stepStatus(j.state(), step.id), "todo");
 });

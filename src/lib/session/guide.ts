@@ -184,7 +184,7 @@ export function laneItem(plan: SessionPlan, state: SessionState, step: PlanStep,
   const timer = raw ? liveTimer(raw, now) : null;
   const passive = n == null && timer != null && timer.phase == null;
   const ph = n != null ? step.phases![n] : null;
-  const doing = ph ? ph.text : passive ? `${cap(passiveLabel(step))} · ${stepTitleOf(step, 40)}` : stepTitleOf(step);
+  const doing = ph ? ph.text : passive && step.kind !== "preheat" ? `${cap(passiveLabel(step))} · ${stepTitleOf(step, 40)}` : stepTitleOf(step);
   return {
     step,
     phase: n,
@@ -412,7 +412,7 @@ export function undoFor(plan: SessionPlan, state: SessionState, events: SessionE
     if (state.started.get(step.id) !== at || state.done.has(step.id)) continue;
     const timers = [...state.timers.values()].filter((t) => t.stepId === step.id && t.doneAt == null);
     return {
-      label: `Pas encore : ${stepTitleOf(step, 34)}`,
+      label: `Pas encore commencé : ${stepTitleOf(step, 26)}`,
       detail: `L’étape ${step.no} redevient à commencer${timers.length ? ", son minuteur s’arrête" : ""}.`,
       events: [...timers.map((t) => ({ kind: "timer_done" as const, ref: t.id })), { kind: "step_start", ref: step.id, payload: pay() }],
     };
