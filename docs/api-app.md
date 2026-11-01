@@ -68,13 +68,14 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 ```
 
 - **`state`** : ce que l'app affiche sans recalculer : `{ revision, serverTime, phase, phaseEndsAt?, pausedPhase?, side?, auto }`. `revision` = `version` (monte à chaque changement). `phase` : `warmup` (échauffement, attend un geste), `setup` (mise en place avant une série ou le finisher), `work` (série ou finisher en cours ; sans rythme guidé, pas de `phaseEndsAt` : elle attend `log`), `switch` (changement de côté), `rest`, `bonus` (gainage proposé), `paused` (avec `pausedPhase`, sans `phaseEndsAt`), `done`. `phaseEndsAt` : fin de la phase en ms, heure du serveur. `side` : côté en cours d'un exercice unilatéral.
+- **Gestes automatiques** : `state.autoGesture` (`record` d'une série guidée ou du finisher, `go` d'un repos), `state.autoAt` et `state.autoUntil` (ms, heure du serveur). Un écran envoie ce geste seul quand l'heure du serveur est entre `autoAt` et `autoUntil` (5 minutes) ; après, la séance a été oubliée : il attend un geste de la personne (`log`, `next`). Absents en pause et quand la phase attend un geste. Le site applique la même règle.
 - **`figureIds`** : les figures dont la séance a besoin (à télécharger avant de commencer) ; `GET sport` les donne aussi par séance du programme (`program.figureIds.A`…).
 - `steps[i]` est l'étape affichée : `warm`, `ex` (`ex`, `set`, `sets`, `block`), `rest` (`sec`), `emom` (`ex`, `rounds`, `every`, `reps`, `block`), `bonus`, `end`. `view.exercise` est la fiche de l'exercice en cours (forme de `program.exercises[]`), `view.reps` l'objectif de la série.
 - **Rythme guidé** : `cur.guide` est l'heure de départ ; elle peut être dans le futur (la mise en place). Avec `T` = (`cur.paused` ?? heure du serveur) − `cur.guide`, en secondes, et `dur` = `reps × cycle` (ou `reps` secondes pour une tenue) :
   - `T < 0` : mise en place, `−T` secondes restantes (bips à 3, 2, 1) ;
   - `T < dur` : en cours, côté 1 ; la figure se lit à `T mod cycle`, la répétition en cours est `floor(T / cycle) + 1` ;
   - unilatéral (`uni`) : de `dur` à `dur + 5`, changement de côté, puis côté 2 jusqu'à `2 × dur + 5` ;
-  - ensuite : fini. Un écran envoie alors `record` (1,2 s après la fin) avec `value` = l'objectif (des répétitions, ou des secondes pour une tenue) ; le serveur ignore les doublons.
+  - ensuite : fini. Un écran envoie alors `record` (1,2 s après la fin, et seulement dans les 5 minutes qui suivent : voir `state.autoGesture`) avec `value` = l'objectif (des répétitions, ou des secondes pour une tenue) ; le serveur ignore les doublons.
 - **Repos** : `cur.restEnd` ; `view.restLeft` en secondes. À 0, un écran envoie `go` `n: 1`.
 - **Finisher** (`emom`) : `cur.emom` est le départ (peut être dans le futur : mise en place) ; un tour toutes les `every` secondes.
 - **Pause** : `cur.paused` fige toutes ces horloges à cet instant ; `resume` les décale du temps passé.

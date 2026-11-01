@@ -13,6 +13,11 @@ import { buildSteps, levelFor, withBonus, type LiveStep, type Program, type Work
 
 export const SWITCH_SEC = 5; // pause pour changer de côté
 export const AUTO_NEXT_MS = 1200; // fin du rythme guidé → série notée toute seule
+/** Un geste automatique (série notée, repos qui passe, finisher noté) ne part que dans ce délai après la fin :
+ * un écran qui rouvre une séance oubliée ne note pas une série finie depuis des heures, il attend un geste. */
+export const AUTO_LATE_MS = 5 * 60_000;
+/** Le geste automatique d'une phase finie à `end` (ms) est-il encore à faire à `now` ? */
+export const autoDue = (end: number, now: number) => now >= end && now - end < AUTO_LATE_MS;
 
 /** Réglages du rythme guidé d'une personne (gardés avec elle, copiés dans chaque séance). */
 export interface GuideOpts {
