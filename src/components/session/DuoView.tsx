@@ -9,11 +9,13 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
 import { ofName } from "@/lib/session/people";
-import { currentPhase, itemStatus, passiveMin, personFocus, personNext, stepTimer, threadOf, type ThreadItem } from "@/lib/session/state";
+import { itemStatus, personFocus, personNext, threadOf, type ThreadItem } from "@/lib/session/state";
+import { weighItems } from "@/lib/session/guide";
+import { BackButton, BowlChip, BowlItems, BowlText, RestartButtons } from "./guide";
 import { Alert, Button, Icon } from "@/components/ui";
 import type { Controls, SessionProps } from "./SessionApp";
 import { Bleed, SimpleLink } from "./SessionApp";
-import { DoneView, Handoff, handoffsFor, Issues, NowCard, PlanDetails, progressLine, recipesLine, sessionTitle, timerMinutes } from "./blocks";
+import { DoneView, Handoff, handoffsFor, Issues, NowCard, PlanDetails, progressLine, recipesLine, sessionTitle, StepActions } from "./blocks";
 import { prepTitle } from "./Prep";
 import { Bowl, bowlOf, clock, dur, Eyebrow, PauseAll, PersonMono, usePeople, QrCard, RecipeMark, recipeOf, Resources, SessionHead, stepTitle, TimerList, useWakeLock, WakePill } from "./parts";
 
@@ -95,6 +97,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                 <Button variant="quiet" icon="check" block onClick={() => c.setStatus("done")}>
                   Terminer la session
                 </Button>
+                <RestartButtons id={c.id} />
               </div>
             </aside>
           </div>
@@ -270,13 +273,17 @@ function PrepNow({ plan, c, task, big, actions }: { plan: SessionPlan; c: Contro
             );
           })}
         </ul>
+      ) : task.kind === "weigh" ? (
+        <div className="grid gap-2">
+          <p className="flex flex-wrap items-center gap-2 text-[17px]">
+            Pèse et verse dans {task.bowls?.map((l) => <BowlChip key={l} plan={plan} letter={l} size="sm" />)}
+          </p>
+          <BowlItems bowl={{ items: weighItems(plan, task) }} />
+        </div>
       ) : (
         <div className="flex items-start gap-3">
-          {task.bowls?.map((l) => {
-            const b = bowlOf(plan, l);
-            return b ? <Bowl key={l} bowl={b} size={big ? "lg" : "md"} /> : null;
-          })}
-          <p className={big ? "text-[19px] leading-snug" : "text-[17px] leading-snug"}>{task.text}</p>
+          {task.bowls?.map((l) => <BowlChip key={l} plan={plan} letter={l} size={big ? "lg" : "md"} />)}
+          <p className={big ? "text-[19px] leading-snug" : "text-[17px] leading-snug"}><BowlText plan={plan} text={task.text ?? ""} /></p>
         </div>
       )}
       {task.tools?.length ? <p className="text-[14px] text-ink-2">Avec : {task.tools.join(" · ")}</p> : null}
@@ -290,18 +297,16 @@ function PrepNow({ plan, c, task, big, actions }: { plan: SessionPlan; c: Contro
   );
 }
 
-function PersonActions({ c, item, person, big }: { c: Controls; item: ThreadItem; person: Person; big?: boolean }) {
-  const st = itemStatus(c.state, item);
-  const step = item.type === "step" ? item.step : null;
-  const timer = step ? stepTimer(c.state, step.id) : undefined;
-  const auto = step && st === "active" && !timer && passiveMin(step) >= 3;
-  const ph = step && st === "active" ? currentPhase(c.state, step) : null;
-  const label = item.type === "prep" ? "Fait" : st === "todo" ? "Commencer" : ph != null && ph < step!.phases!.length - 1 ? "Sous-étape suivante" : auto ? `Fait · minuteur ${timerMinutes(step!)} min` : "Fait";
+/** Les boutons du fil d’une personne : l’action de son étape (nommée), ou son geste de prep fait ; son propre retour. */
+function PersonActions({ c, item, person }: { c: Controls; item: ThreadItem; person: Person }) {
+  if (item.type === "step") return <StepActions c={c} step={item.step} person={person} compact />;
+  const u = c.undo(person);
   return (
-    <div className="flex gap-3">
-      <Button variant={big ? "ink" : "primary"} size="kitchen" icon={st === "todo" && item.type === "step" ? "play" : "check"} onClick={() => c.nextFor(person)} data-action={`fait-${person}`} className={`flex-1 ${big ? "min-h-[88px] text-[22px]" : ""}`}>
-        {label}
+    <div className="grid gap-3">
+      <Button variant="primary" size="kitchen" icon="check" onClick={() => c.nextFor(person)} data-action={`fait-${person}`} className="w-full !whitespace-normal py-3 text-left leading-tight">
+        Fait : {item.task.kind === "weigh" ? `bol${(item.task.bowls?.length ?? 0) > 1 ? "s" : ""} ${(item.task.bowls ?? []).join(", ")} pesé${(item.task.bowls?.length ?? 0) > 1 ? "s" : ""}` : item.task.title.toLowerCase()}
       </Button>
+      <BackButton undo={u} onBack={() => c.back(person)} className="min-h-tap" />
     </div>
   );
 }

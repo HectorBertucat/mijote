@@ -6,52 +6,20 @@
 // colonnes, le fil sous l’étape ; téléphone sans ?vue=telephone : une colonne.
 import { useEffect, useRef, type ReactNode } from "react";
 import type { SessionPlan } from "@/lib/session/planner";
-import { backgroundSteps, batchOf, currentPhase, inWait, stepStatus } from "@/lib/session/state";
+import { batchOf, stepStatus } from "@/lib/session/state";
 import { Button } from "@/components/ui";
-import { StepIllu } from "@/components/illus/Illu";
+import { Lanes, RestartButtons } from "./guide";
 import type { Controls } from "./SessionApp";
 import { AllDone, NowCard, PlanDetails } from "./blocks";
-import { bowlOf, clock, dur, Eyebrow, kindLabel, NextCard, PauseAll, RecipeMark, Resources, stepTitle, TakeBowl, TimerList } from "./parts";
+import { clock, dur, Eyebrow, PauseAll, RecipeMark, Resources, stepTitle, TimerList } from "./parts";
 
 export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; side?: ReactNode }) {
-  const { state, focus, upcoming, now, cookingStart } = c;
-  const bg = backgroundSteps(plan, state, focus);
-  // Un geste glissé dans la cuisson remplit ses bols : on n’y « prend » rien.
-  const takeFrom = [focus, upcoming].find((s) => s && s.bowls.length && !s.tasks) ?? null;
-  const take = takeFrom?.bowls.map((l) => bowlOf(plan, l)).find(Boolean);
+  const { state, focus, now, cookingStart } = c;
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-      <div className="grid min-w-0 content-start gap-4 md:col-start-1 md:row-start-1 xl:col-start-2">
+      <div className="grid min-w-0 content-start gap-6 md:col-start-1 md:row-start-1 xl:col-start-2">
         {focus ? <NowCard plan={plan} c={c} step={focus} /> : <AllDone c={c} />}
-        {(upcoming || take) && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {upcoming && <NextCard plan={plan} step={upcoming} at={cookingStart + upcoming.startMin * 60000} />}
-            {take && <TakeBowl bowl={take} ready={state.bowlsReady.has(take.letter)} label={takeFrom === focus ? "Bol à prendre" : "Bol à prendre ensuite"} />}
-          </div>
-        )}
-        {bg.length > 0 && (
-          <section className="grid gap-2" aria-label="En cours en fond">
-            <Eyebrow>En cours en fond</Eyebrow>
-            {bg.map((s) => {
-              // Son minuteur d’attente, ou celui de la sous-étape d’attente en cours (le riz cuit).
-              const wait = inWait(state, s) ? s.phases![currentPhase(state, s)!] : null;
-              const t = c.timers.find((x) => x.stepId === s.id && (x.phase == null || (wait != null && x.phase === currentPhase(state, s))));
-              return (
-                <div key={s.id} className="flex animate-pop items-center gap-3 rounded-[8px] border border-line bg-surface px-3 py-2 text-[17px]">
-                  <RecipeMark plan={plan} slug={s.recipeSlug} />
-                  <StepIllu kind={s.kind} text={s.text} size="s" live />
-                  <span className="min-w-0 flex-1 truncate">
-                    <b>{s.no}.</b> {wait ? wait.text : `${kindLabel(s.kind)} · ${s.equipmentName}`}
-                  </span>
-                  {t && <span className="num shrink-0 font-bold">{Math.max(0, Math.ceil((t.endsAt - now) / 60000))} min</span>}
-                  <Button size="sm" variant="secondary" onClick={() => c.toggleStep(s)}>
-                    Finie
-                  </Button>
-                </div>
-              );
-            })}
-          </section>
-        )}
+        <Lanes plan={plan} c={c} focus={focus} />
       </div>
 
       <aside className="grid min-w-0 content-start gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1 md:sticky md:top-4 md:self-start">
@@ -67,6 +35,7 @@ export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; s
         <Button variant="quiet" icon="check" onClick={() => c.setStatus("done")} block>
           Terminer la session
         </Button>
+        <RestartButtons id={c.id} />
       </aside>
 
       <Feed plan={plan} c={c} />
