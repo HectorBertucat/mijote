@@ -50,6 +50,8 @@ export interface SessionState {
   phaseAt: Map<string, number>;
   /** Le rangement : recettes mises en boîtes (note « boxed »). */
   boxed: Set<string>;
+  /** Étapes closes d'avance par l'étape qui les suit (« le four est chaud ? enfourne ») : leur durée ne s'apprend pas. */
+  early: Set<string>;
 }
 
 export function reduce(initialStatus: SessionState["status"], events: SessionEvent[]): SessionState {
@@ -66,6 +68,7 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
     phasesDone: new Set(),
     phaseAt: new Map(),
     boxed: new Set(),
+    early: new Set(),
   };
   // L'état initial vient du statut en base ; les notes de statut le rejouent dans l'ordre.
   for (const e of events) {
@@ -82,6 +85,7 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
         if (undo) {
           s.started.delete(e.ref);
           s.done.delete(e.ref);
+          s.early.delete(e.ref);
         } else if (!s.started.has(e.ref)) s.started.set(e.ref, at);
         break;
       case "step_done":
@@ -98,10 +102,14 @@ export function reduce(initialStatus: SessionState["status"], events: SessionEve
           else s.prepDone.add(e.ref.slice(5));
           break;
         }
-        if (undo) s.done.delete(e.ref);
-        else {
+        if (undo) {
+          s.done.delete(e.ref);
+          s.early.delete(e.ref);
+        } else {
           s.done.set(e.ref, at);
           if (!s.started.has(e.ref)) s.started.set(e.ref, at);
+          if (e.payload?.early === true) s.early.add(e.ref);
+          else s.early.delete(e.ref);
         }
         break;
       case "timer_start": {
@@ -260,12 +268,54 @@ export function focusStep(plan: SessionPlan, s: SessionState, now: number): Plan
   const running = (x: PlanStep) => waiting(s, x, now) || [...s.timers.values()].some((t) => t.stepId === x.id && t.phase == null && t.doneAt == null && timerEnd(t, now) > now);
   const free = active.find((x) => !running(x));
   if (free) return free;
-  // Tout ce qui est lancé attend : la suite du plan, sauf si une attente de sous-étape tient l'écran faute de suite.
-  return (active.some((x) => waiting(s, x, now)) ? nextTodo(plan, s) : null) ?? active[0] ?? nextTodo(plan, s);
+  // Tout ce qui est lancé attend (minuteur, attente) : la suite du plan si elle est prête (ce qu'elle reprend
+  // existe) ; sinon ce qui tourne tient l'écran, et faute de rien, la suite quand même.
+  const nxt = nextTodo(plan, s);
+  return (nxt && isReady(plan, s, nxt) ? nxt : null) ?? active[0] ?? nxt;
 }
 
-export const nextTodo = (plan: SessionPlan, s: SessionState, after?: PlanStep | null) =>
-  plan.steps.find((x) => stepStatus(s, x.id) === "todo" && x.id !== after?.id) ?? null;
+// ─── Prérequis : ce qu'une étape attend (four chaud, produit repris, récipient libéré) ───
+
+/** Les sous-étapes qui restent ne sont que de l'attente, ou un geste d'un instant (« Sors-les », « Égrène ») : on peut clore. */
+function onlyWaitLeft(s: SessionState, step: PlanStep): boolean {
+  const n = currentPhase(s, step);
+  if (n == null) return true;
+  return step.phases!.slice(n).every((p, k) => p.wait === true || (k > 0 && p.min < 1));
+}
+
+export interface NeedLeft {
+  step: PlanStep;
+  /** Lancée et il ne reste qu'à attendre (préchauffage, cuisson au four, repos) : la commencer la clôt. */
+  closable: boolean;
+}
+
+/** Les prérequis d'une étape pas encore finis, chacun avec ce qu'on peut en faire. */
+export function needsLeft(plan: Pick<SessionPlan, "steps">, s: SessionState, step: Pick<PlanStep, "needs">): NeedLeft[] {
+  return (step.needs ?? []).flatMap((id) => {
+    const n = plan.steps.find((x) => x.id === id);
+    if (!n || stepStatus(s, id) === "done") return [];
+    return [{ step: n, closable: stepStatus(s, id) === "active" && (n.kind === "preheat" || onlyWaitLeft(s, n)) }];
+  });
+}
+
+/** Une étape prête : tous ses prérequis finis, ou ouverts mais qu'il suffit de clore (le four chauffe encore). */
+export const isReady = (plan: Pick<SessionPlan, "steps">, s: SessionState, step: Pick<PlanStep, "needs">) => needsLeft(plan, s, step).every((n) => n.closable);
+
+/**
+ * La prochaine étape à faire : la première prête dans l'ordre du plan (ce qu'elle reprend existe, son four
+ * chauffe ou est chaud), sinon la première à faire.
+ */
+export function nextTodo(plan: SessionPlan, s: SessionState, after?: PlanStep | null, person?: Person | null): PlanStep | null {
+  const todo = plan.steps.filter((x) => stepStatus(s, x.id) === "todo" && x.id !== after?.id && (!person || (x.person ?? "A") === person));
+  return todo.find((x) => isReady(plan, s, x)) ?? todo[0] ?? null;
+}
+
+/** L'état une fois l'étape finie (pour dire ce qui viendra vraiment ensuite). */
+export function withDone(s: SessionState, id: string, at = 0): SessionState {
+  const done = new Map(s.done).set(id, at);
+  const started = s.started.has(id) ? s.started : new Map(s.started).set(id, at);
+  return { ...s, done, started };
+}
 
 /** Les étapes lancées qui tournent « en fond » (mijotage, four) pendant qu'on fait autre chose. */
 export function backgroundSteps(plan: SessionPlan, s: SessionState, focus: PlanStep | null) {
@@ -312,11 +362,16 @@ export function personFocus(plan: SessionPlan, s: SessionState, person: Person, 
   const running = (it: ThreadItem) =>
     (it.type === "step" && waiting(s, it.step, now)) || [...s.timers.values()].some((t) => t.stepId === it.id && t.phase == null && t.doneAt == null && timerEnd(t, now) > now);
   const active = th.filter((it) => it.type === "step" && itemStatus(s, it) === "active").sort((a, b) => lastActivity(s, b.id) - lastActivity(s, a.id));
-  return active.find((it) => !running(it)) ?? th.find((it) => itemStatus(s, it) === "todo") ?? active[0] ?? null;
+  return active.find((it) => !running(it)) ?? nextItem(plan, s, th, null) ?? active[0] ?? null;
 }
 
-export const personNext = (plan: SessionPlan, s: SessionState, person: Person, after: ThreadItem | null) =>
-  threadOf(plan, person).find((it) => itemStatus(s, it) === "todo" && it.id !== after?.id) ?? null;
+/** Le prochain élément du fil : le premier prêt (un geste de prep l'est toujours), sinon le premier à faire. */
+function nextItem(plan: SessionPlan, s: SessionState, th: ThreadItem[], after: ThreadItem | null): ThreadItem | null {
+  const todo = th.filter((it) => itemStatus(s, it) === "todo" && it.id !== after?.id);
+  return todo.find((it) => it.type === "prep" || isReady(plan, s, it.step)) ?? todo[0] ?? null;
+}
+
+export const personNext = (plan: SessionPlan, s: SessionState, person: Person, after: ThreadItem | null) => nextItem(plan, s, threadOf(plan, person), after);
 
 /** Les bols dont tous les gestes sont faits (à deux : un bol se remplit par plusieurs tâches). */
 export function bowlsCompletedBy(plan: SessionPlan, done: Set<string>): string[] {
