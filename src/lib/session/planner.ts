@@ -2221,11 +2221,13 @@ export function validatePlan(plan: Pick<SessionPlan, "steps" | "recipes"> & Part
         .filter((t) => t.person && t.startMin != null)
         .map((t) => ({ id: `prep:${t.id}`, who: t.person!, from: t.startMin!, to: t.startMin! + t.minutes, label: `prep · ${t.title}` })),
     ];
+    const seenPairs = new Set<string>();
     for (let i = 0; i < acts.length; i++)
       for (let j = i + 1; j < acts.length; j++) {
         const a = acts[i];
         const b = acts[j];
-        if (a.id === b.id || a.who !== b.who || !overlaps(a.from, a.to, b.from, b.to)) continue;
+        if (a.id === b.id || a.who !== b.who || !overlaps(a.from, a.to, b.from, b.to) || seenPairs.has(`${a.id}|${b.id}`)) continue;
+        seenPairs.add(`${a.id}|${b.id}`);
         issues.push({ kind: "person_busy", message: `${a.who} est demandé à deux endroits en même temps (${a.label} et ${b.label}).`, stepIds: [a.id, b.id] });
       }
     const uses = (plan.prep?.tasks ?? []).filter((t) => t.tools?.length && t.startMin != null);
