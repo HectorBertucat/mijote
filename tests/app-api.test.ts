@@ -62,6 +62,9 @@ test("api app : sport, figures échantillonnées, muscles, réglages du rythme",
   const s = call(alex, "GET", "sport").body as { program: { id: string; exercises: { id: string; muscles: { load: number }[] }[] }; guide: { auto: boolean } };
   assert.equal(s.program.id, "kb12");
   assert.ok(s.program.exercises.every((e) => e.muscles.some((m) => m.load === 3)));
+  // La durée d'une répétition, la même que celle du site (figure de l'exercice).
+  const ex = s.program.exercises as unknown as { id: string; cycle: number }[];
+  assert.equal(ex.find((e) => e.id === "goblet")!.cycle, 5.4);
   const f = call(alex, "GET", "sport/figures?ex=goblet,swing").body as { figures: Record<string, { cycle: number; fps: number; frames: { j: number[]; bell?: unknown }[] }>; drawing: { body: { front: object } } };
   assert.deepEqual(Object.keys(f.figures), ["goblet", "swing"]);
   const g = f.figures.goblet;

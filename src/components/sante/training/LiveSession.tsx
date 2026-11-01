@@ -14,7 +14,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
 import { beep, Button, Check, Field, formatClock, Sheet, Stepper, Textarea } from "@/components/ui";
 import { de, Verdict } from "../carnet";
-import { MOTIONS, motionOf } from "@/lib/training/figures";
+import { guideMotion, motionOf } from "@/lib/training/figures";
 import { AUTO_NEXT_MS, clockOf, entriesOf, guideAt, OPTS_BOUNDS, optsOf, suggestedReps, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
 import { cycleDuration, sample } from "@/lib/training/motion";
 import { heightAt } from "@/lib/training/rhythm";
@@ -351,7 +351,7 @@ interface Common {
 function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, level, onDetails }: Common & { step: ExStep; level: number; onDetails: () => void }) {
   const at = live.i;
   const ex = p.exercises[step.ex];
-  const motion = motionOf(p, step.ex) ?? MOTIONS.jPlank; // un programme a toujours ses figures ; filet de sécurité
+  const motion = guideMotion(p, step.ex);
   const last = lastFor(workouts, step.ex);
   const seconds = ex.unit === "s";
   const reps = live.cur.reps ?? suggestedReps(live, workouts, step.ex, step.set, ex.reps[0]);
