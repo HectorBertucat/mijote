@@ -11,7 +11,7 @@ import { sportOf } from "./goals";
 import { planOf } from "./objectives";
 import { nights, type Night, type Stage } from "./sleep";
 import { listWeighIns, todayParis, type Person } from "./store";
-import { bucketOf, daily, fillBuckets, minutesByType, periodOf, recent, sessionsSince, synthesis, weightView, type Activity, type Bucket, type BucketRow, type Grain, type Period, type PeriodKey } from "./series";
+import { bucketOf, daily, fillBuckets, lineGrainOf, minutesByType, periodOf, recent, sessionsSince, synthesis, weightView, type Activity, type Bucket, type BucketRow, type Grain, type Period, type PeriodKey } from "./series";
 
 /** Totaux du jour (une ligne par jour civil du téléphone, `start` = AAAA-MM-JJ). */
 export const DAILY_KINDS = ["steps", "active_kcal", "basal_energy", "exercise_min", "walk_run_m"] as const satisfies HealthKind[];
@@ -53,17 +53,21 @@ export function dayValues(db: Db, personId: string, kind: SeriesKind, from: stri
   return bucketRows(db, personId, kind, from, to, "day").map((r) => ({ date: r.bucket, value: r.total / r.n }));
 }
 
-/** Les types reçus pour la personne (une requête), pour n'afficher que ce qui existe. */
-export function kindsPresent(db: Db, personId: string): Set<HealthKind> {
-  return new Set(db.select({ kind: healthSamples.kind }).from(healthSamples).where(eq(healthSamples.personId, personId)).groupBy(healthSamples.kind).all().map((r) => r.kind));
+/** Les types reçus pour la personne (on n'affiche que ce qui existe) et le premier instant de chacun : une requête, sur l'index. */
+export function kindsFirst(db: Db, personId: string): Map<HealthKind, string> {
+  const rows = db.all<{ kind: HealthKind; first: string }>(sql`select kind, min(start) as first from health_samples where person_id = ${personId} group by kind`);
+  return new Map(rows.map((r) => [r.kind, r.first]));
 }
 
-/** Premier jour connu (pesée, mesure, séance) : le début de « Tout ». */
-export function firstDay(db: Db, personId: string): string | null {
+/** Les types qui ne datent pas l'historique (journal des repas, eau, cycle). */
+const UNDATED: HealthKind[] = ["diet_energy", "diet_protein", "water", "menstrual"];
+
+/** Premier jour connu (pesée, mesure, séance) : le début de « Tout ». `kinds` : `kindsFirst`, s'il est déjà lu. */
+export function firstDay(db: Db, personId: string, kinds = kindsFirst(db, personId)): string | null {
   const w = db.select({ d: min(weighIns.date) }).from(weighIns).where(eq(weighIns.personId, personId)).get()?.d ?? null;
-  const s = db.select({ d: min(healthSamples.start) }).from(healthSamples).where(and(eq(healthSamples.personId, personId), sql`${healthSamples.kind} not in ('diet_energy', 'diet_protein', 'water', 'menstrual')`)).get()?.d ?? null;
+  const s = [...kinds].filter(([k]) => !UNDATED.includes(k)).map(([, first]) => first.slice(0, 10));
   const k = db.select({ d: min(workouts.date) }).from(workouts).where(eq(workouts.personId, personId)).get()?.d ?? null;
-  const all = [w, s?.slice(0, 10) ?? null, k].filter((x): x is string => !!x).sort();
+  const all = [w, ...s, k].filter((x): x is string => !!x).sort();
   return all[0] ?? null;
 }
 
@@ -97,10 +101,12 @@ export function listActivities(db: Db, personId: string, from = "0000-00-00"): (
 
 /** Les nuits entre `from` et `to` (date du réveil), phases réunies (./sleep). */
 export function sleepNights(db: Db, personId: string, from: string, to: string): Night[] {
-  const rows = db.all<{ start: string; end: string | null; stage: string | null }>(sql`
-    select start, "end", json_extract(meta, '$.stage') as stage from health_samples
+  // Les instants en millisecondes, lus par SQLite : des dizaines de milliers de phases sur des années.
+  const rows = db.all<{ start: number; end: number | null; stage: string | null }>(sql`
+    select cast(round(unixepoch(start, 'subsec') * 1000) as integer) as start, cast(round(unixepoch("end", 'subsec') * 1000) as integer) as "end",
+      json_extract(meta, '$.stage') as stage from health_samples
     where person_id = ${personId} and kind = 'sleep' and start >= ${addDays(from, -1)} and start <= ${`${to}~`}`);
-  const segs = rows.filter((r) => r.end).map((r) => ({ stage: (r.stage ?? "asleep") as Stage, start: r.start, end: r.end! }));
+  const segs = rows.filter((r) => r.end != null && r.start != null).map((r) => ({ stage: (r.stage ?? "asleep") as Stage, start: r.start, end: r.end! }));
   return nights(segs).filter((n) => n.date >= from && n.date <= to);
 }
 
@@ -114,7 +120,12 @@ export interface SleepBucket extends Bucket {
 /** Les nuits regroupées : sommeil moyen par nuit et ses phases. */
 export function sleepBuckets(list: Night[], period: Pick<Period, "from" | "to" | "grain">): SleepBucket[] {
   const by = new Map<string, Night[]>();
-  for (const n of list) by.set(bucketOf(n.date, period.grain), [...(by.get(bucketOf(n.date, period.grain)) ?? []), n]);
+  for (const n of list) {
+    const b = bucketOf(n.date, period.grain);
+    const xs = by.get(b);
+    if (xs) xs.push(n);
+    else by.set(b, [n]);
+  }
   const rows: BucketRow[] = [...by.entries()].map(([bucket, xs]) => ({ bucket, total: xs.reduce((s, n) => s + n.asleepMin, 0), n: xs.length }));
   const avgOf = (xs: Night[], k: "deepMin" | "coreMin" | "remMin") => {
     const v = xs.flatMap((n) => (n[k] != null ? [n[k]!] : []));
@@ -147,19 +158,19 @@ function latest(db: Db, personId: string, kind: SeriesKind, today: string) {
 /** Tout ce que la vue d'ensemble affiche, pour une personne et une période. */
 export function overview(db: Db, person: Person, key: PeriodKey, today = todayParis()) {
   const id = person.id;
-  const kinds = kindsPresent(db, id);
-  const period = periodOf(key, today, firstDay(db, id));
+  const kinds = kindsFirst(db, id);
+  const period = periodOf(key, today, firstDay(db, id, kinds));
   const has = (k: HealthKind) => kinds.has(k);
 
   // Poids : toute l'histoire pour la tendance (une ligne par pesée, quelques milliers au plus).
   const weighs = listWeighIns(db, id);
   const dailyKg = dailyWeights(weighs);
   const series = trendSeries(dailyKg, today);
-  const weight = series.length > 1 ? weightView(dailyKg, period) : [];
+  const weight = series.length > 1 ? weightView(dailyKg, period, series) : [];
 
   const bars = (kind: SeriesKind, mode: "mean" | "sum" = "mean") => (has(kind) ? fillBuckets(bucketRows(db, id, kind, period.from, period.to, period.grain), period, mode) : null);
-  // Les courbes du cœur : au jour jusqu'à un an, sinon le paquet de la période.
-  const lineGrain: Grain = period.grain === "month" ? "week" : "day";
+  // Les courbes du cœur : au jour jusqu'à un an, au mois sur plusieurs années.
+  const lineGrain = lineGrainOf(period.grain);
   const line = (kind: SeriesKind) => (has(kind) ? fillBuckets(bucketRows(db, id, kind, period.from, period.to, lineGrain), { ...period, grain: lineGrain }, "mean") : null);
 
   const acts = listActivities(db, id, addDays(today, -400) < period.from ? addDays(today, -400) : period.from);

@@ -1,7 +1,7 @@
 // Les pièces communes des graphiques, sans état (rendu serveur) : le cadre (titre, chiffre de tête, légende,
 // tableau pour les lecteurs d'écran), la grille horizontale, l'axe des dates, l'état vide.
 import type { ReactNode } from "react";
-import type { Tip } from "./core";
+import { tableRows, type Tip } from "./core";
 
 /** Un graphique dans la page : un repère, une lecture à droite (la valeur qui compte), le dessin, la légende. */
 export function ChartFigure({ title, value, aside, legend, table, children, className = "" }: { title: ReactNode; value?: ReactNode; aside?: ReactNode; legend?: ReactNode; table?: ReactNode; children: ReactNode; className?: string }) {
@@ -54,7 +54,7 @@ export function Legend({ items, className = "" }: { items: LegendItem[]; classNa
 }
 
 /** Les mêmes chiffres en tableau, pour les lecteurs d'écran (le dessin, lui, est muet). Dans une boîte masquée :
- * un tableau ne se laisse pas réduire à 1 px et allongerait la page. */
+ * un tableau ne se laisse pas réduire à 1 px et allongerait la page. Les suites sans mesure tiennent en une ligne (`tableRows`). */
 export function ChartTable({ caption, tips }: { caption: string; tips: Tip[] }) {
   const cols = tips[0]?.rows.map((r) => r.label ?? "Valeur") ?? [];
   return (
@@ -72,7 +72,7 @@ export function ChartTable({ caption, tips }: { caption: string; tips: Tip[] }) 
           </tr>
         </thead>
         <tbody>
-          {tips.map((t, i) => (
+          {tableRows(tips).map((t, i) => (
             <tr key={i}>
               <th scope="row">{t.title}</th>
               {cols.map((c, k) => (

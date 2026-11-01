@@ -1,5 +1,6 @@
 // Le calcul commun des graphiques (échelles, graduations, dates, nombres). Pur, sans React : utilisable
 // côté serveur et dans l'île client. Testé dans tests/charts.test.ts.
+import { dayString, weekdayOf } from "@/lib/days";
 
 export const NB = " ";
 export const NNB = " ";
@@ -17,8 +18,17 @@ export const VIZ_SLEEP = { deep: "var(--c-viz-sleep-deep)", core: "var(--c-viz-s
 /** Zones cardiaques 1 à 5 (rampe ordinale). */
 export const VIZ_ZONE: VizColor[] = ["var(--c-viz-zone-1)", "var(--c-viz-zone-2)", "var(--c-viz-zone-3)", "var(--c-viz-zone-4)", "var(--c-viz-zone-5)"];
 
+// Un formateur par réglage, gardé : `toLocaleString` avec des options en crée un à chaque appel (~30 µs),
+// et un graphique de plusieurs années formate des milliers de valeurs et de dates.
+const numFmts = new Map<number, Intl.NumberFormat>();
+const dayFmts = new Map<string, Intl.DateTimeFormat>();
+
 /** « 8 400 », « 81,2 » : chiffres à la française (espace fine insécable pour les milliers). */
-export const fmt = (v: number, digits = 0) => v.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+export function fmt(v: number, digits = 0) {
+  let f = numFmts.get(digits);
+  if (!f) numFmts.set(digits, (f = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits })));
+  return f.format(v);
+}
 /** Graduation courte : « 12 k » au-delà de 10 000 ; les décimales (`digits` au plus) seulement si le repère en a. */
 export const tickText = (v: number, digits = 0) => (Math.abs(v) >= 10_000 ? `${fmt(v / 1000, v % 1000 ? 1 : 0)}${NNB}k` : fmt(v, Number.isInteger(v) ? 0 : digits));
 /** « 7 h 05 » à partir de minutes. */
@@ -65,7 +75,7 @@ export const frac = (v: number, lo: number, hi: number) => (hi === lo ? 0.5 : (v
 
 /** Jour → nombre de jours depuis 1970 (abscisse d'une courbe datée). */
 export const dayNum = (d: string) => Math.round(Date.parse(`${d}T00:00:00Z`) / 86_400_000);
-const fromNum = (n: number) => new Date(n * 86_400_000).toISOString().slice(0, 10);
+const fromNum = dayString;
 /** Le jour `n` jours plus tard (ou plus tôt). */
 export const shiftDay = (d: string, n: number) => fromNum(dayNum(d) + n);
 
@@ -73,7 +83,14 @@ export const shiftDay = (d: string, n: number) => fromNum(dayNum(d) + n);
 export function fmtDay(d: string, style: "day" | "month" | "year" | "weekday" | "full" = "day") {
   const opts: Intl.DateTimeFormatOptions =
     style === "month" ? { month: "short" } : style === "year" ? { year: "numeric" } : style === "weekday" ? { weekday: "short", day: "numeric", month: "short" } : style === "full" ? { day: "numeric", month: "short", year: "numeric" } : { day: "numeric", month: "short" };
-  return new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", ...opts });
+  return dateFmt(style, opts).format(Date.parse(`${d}T12:00:00Z`));
+}
+
+/** Le formateur de dates (fr-FR, UTC) d'un style, créé une fois. */
+export function dateFmt(style: string, opts: Intl.DateTimeFormatOptions) {
+  let f = dayFmts.get(style);
+  if (!f) dayFmts.set(style, (f = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", ...opts })));
+  return f;
 }
 
 /**
@@ -86,7 +103,7 @@ export function dateTicks(from: string, to: string, max = 6): { date: string; la
   const all: { date: string; label: string }[] = [];
   for (let n = dayNum(from); n <= dayNum(to); n++) {
     const d = fromNum(n);
-    const wd = new Date(`${d}T00:00:00Z`).getUTCDay();
+    const wd = weekdayOf(n);
     if (span <= 10) all.push({ date: d, label: fmtDay(d, "weekday").split(" ")[0] });
     else if (span <= 120) {
       if (wd === 1) all.push({ date: d, label: fmtDay(d) });
@@ -167,5 +184,24 @@ export interface Tip {
   title: string;
   rows: TipRow[];
 }
+/** La ligne d'une barre sans mesure. */
+export const NO_DATA = "pas de mesure";
+const empty = (t: Tip) => t.rows.length === 0 || (t.rows.length === 1 && t.rows[0].value === NO_DATA && !t.rows[0].label);
+
+/**
+ * Les lignes du tableau pour les lecteurs d'écran : une par point, mais une suite de points sans mesure en
+ * une seule ligne (« février 2019 – avril 2021 ») ; un historique de plusieurs années en a des centaines.
+ */
+export function tableRows(tips: Tip[]): Tip[] {
+  const out: Tip[] = [];
+  for (let i = 0; i < tips.length; i++) {
+    let j = i;
+    if (empty(tips[i])) while (j + 1 < tips.length && empty(tips[j + 1])) j++;
+    out.push(j > i ? { title: `${tips[i].title} – ${tips[j].title}`, rows: tips[i].rows } : tips[i]);
+    i = j;
+  }
+  return out;
+}
+
 /** Texte d'une infobulle pour les lecteurs d'écran. */
 export const tipText = (t: Tip) => `${t.title}${NB}: ${t.rows.map((r) => (r.label ? `${r.label} ${r.value}` : r.value)).join(", ")}`;

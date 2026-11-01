@@ -9,7 +9,9 @@ import { weeklyReview, type IntakeDay, type Profile, type WeeklyReview } from ".
 export type Person = typeof people.$inferSelect;
 
 /** Date du jour à Paris, AAAA-MM-JJ. */
-export const todayParis = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(d);
+// Un seul formateur : en créer un par appel coûte ~30 µs, et les nuits en appellent un par phase (des dizaines de milliers).
+const PARIS_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" });
+export const todayParis = (d = new Date()) => PARIS_DAY.format(d);
 
 export const listPeople = (db: Db) => db.select().from(people).orderBy(asc(people.rank), asc(people.name)).all();
 export const getPerson = (db: Db, id: string) => db.select().from(people).where(eq(people.id, id)).get() ?? null;

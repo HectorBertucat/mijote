@@ -230,6 +230,22 @@ test("sommeil : nuits datées du réveil, union iPhone + montre, phases détaill
       ["2026-10-31", 405, 60, 90],
     ]
   );
+  // Une sieste qui finit après 20 h (heure de Paris) compte pour la nuit suivante, l'été comme l'hiver ;
+  // l'ordre d'arrivée des phases ne change rien.
+  const naps = nights([
+    seg("asleep", "2026-07-10T18:00:00Z", "2026-07-10T18:30:00Z"), // 20 h 30 l'été : nuit du 11
+    seg("asleep", "2026-07-10T17:00:00Z", "2026-07-10T17:30:00Z"), // 19 h 30 : le 10
+    seg("asleep", "2026-12-10T19:00:00Z", "2026-12-10T19:30:00Z"), // 20 h 30 l'hiver : nuit du 11
+    seg("asleep", "2026-12-10T18:00:00Z", "2026-12-10T18:30:00Z"), // 19 h 30 : le 10
+  ]);
+  assert.deepEqual(naps.map((x) => [x.date, x.asleepMin]), [
+    ["2026-07-10", 30],
+    ["2026-07-11", 30],
+    ["2026-12-10", 30],
+    ["2026-12-11", 30],
+  ]);
+  const late = [seg("core", "2026-10-31T03:30:00Z", "2026-10-31T06:00:00Z"), seg("rem", "2026-10-31T02:15:00Z", "2026-10-31T03:45:00Z")];
+  assert.deepEqual(nights(late).map((x) => x.asleepMin), [225]);
 });
 
 test("signaux du corps : sommeil des 7 dernières nuits, FC au repos sur 7 jours comparée au mois d'avant", () => {

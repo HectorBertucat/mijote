@@ -21,6 +21,7 @@
 import { estimateSession, estimateRecipe, type RecipeLike } from "@/lib/session/estimate";
 import { gapOf, meanGap, portionUnits, type Eater } from "@/lib/eaters/core";
 import { selectionWaste, wastePenalty, type PackProfiles, type WasteLine } from "./waste";
+import { dayString } from "@/lib/days";
 
 export type Meal = "lunch" | "dinner";
 export type Place = "home" | "office" | "away";
@@ -101,10 +102,13 @@ export function defaultWeek(now: Date): string {
   return dow >= 4 ? addDays(m, 7) : m;
 }
 
+/** Le jour `n` jours plus tard (ou plus tôt), en AAAA-MM-JJ, sans objet Date (src/lib/days.ts). */
 export function addDays(ymd: string, n: number): string {
-  const t = new Date(`${ymd}T00:00:00Z`);
-  t.setUTCDate(t.getUTCDate() + n);
-  return t.toISOString().slice(0, 10);
+  const ms = Date.parse(`${ymd}T00:00:00Z`);
+  if (Number.isNaN(ms)) throw new RangeError(`Date invalide : ${ymd}`);
+  // Comme setUTCDate(jour + n) : un `n` fractionnaire est tronqué avec le jour du mois.
+  const dom = Number(ymd.slice(8, 10));
+  return dayString(Math.floor(ms / 86_400_000) + Math.trunc(dom + n) - dom);
 }
 
 
