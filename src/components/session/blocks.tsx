@@ -6,15 +6,17 @@
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
+import { prepBowls } from "@/lib/session/flow";
 import { handoffLine } from "@/lib/session/people";
 import { batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus } from "@/lib/session/state";
 import { fmtMin, timedPhase } from "@/lib/session/guide";
-import { BackButton, BowlText, RecipeContext, RestartButtons, TakeBowls } from "./guide";
+import { BackButton, BowlText, ContainersNote, RecipeContext, RestartButtons, SharedSplit, TakeBowls } from "./guide";
+import { batchesLabel, isContainerWarning } from "@/lib/session/guide";
 import { applyScales } from "@/app/session/actions";
 import { Alert, Button, Icon, Induction } from "@/components/ui";
 import type { Controls, DayChoice } from "./SessionApp";
 import { DurationOrigin, DurationReport } from "./Durations";
-import { clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, usePeople, recipeOf, SessionTest, splitStep, StepCue, StepSpecs } from "./parts";
+import { clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, usePeople, recipeOf, SessionTest, stepHead, StepCue, StepSpecs } from "./parts";
 import { StepIllu } from "@/components/illus/Illu";
 import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
@@ -43,7 +45,9 @@ export function progressLine(plan: SessionPlan, c: Controls): string {
     end = c.mode === "veille" && !state.eveDone ? null : now + (left + plan.cookingMin) * 60000;
   }
   const n = focus ? focus.no : done;
-  const parts = [state.status === "cooking" ? `étape ${n} sur ${plan.steps.length}` : state.status === "prep" ? `${state.bowlsReady.size} bol${state.bowlsReady.size > 1 ? "s" : ""} prêt${state.bowlsReady.size > 1 ? "s" : ""} sur ${plan.bowls.filter((b) => !b.during?.length).length}` : null, end ? `fin prévue ${clock(end)}` : null];
+  const pb = prepBowls(plan, state);
+  const rb = pb.filter((b) => state.bowlsReady.has(b.letter)).length;
+  const parts = [state.status === "cooking" ? `étape ${n} sur ${plan.steps.length}` : state.status === "prep" ? `${rb} bol${rb > 1 ? "s" : ""} prêt${rb > 1 ? "s" : ""} sur ${pb.length}` : null, end ? `fin prévue ${clock(end)}` : null];
   return parts.filter(Boolean).join(" · ");
 }
 
@@ -58,7 +62,7 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
   const recipe = recipeOf(plan, step.recipeSlug);
   const startedAt = state.started.get(step.id);
   const late = st === "todo" ? Math.round((now - (cookingStart + step.startMin * 60000)) / 60000) : 0;
-  const { head, rest } = splitStep(step.text);
+  const { head, rest } = stepHead(step);
   const batch = st === "active" ? batchOf(state, step) : null;
   return (
     <article
@@ -68,7 +72,7 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       aria-live="polite"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <RecipeContext plan={plan} step={step} status={st} extra={batch ? `fournée ${batch.at} sur ${batch.of}` : null} />
+        <RecipeContext plan={plan} step={step} status={st} extra={batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? (batchesLabel(step)?.toLocaleLowerCase("fr") ?? null) : null} />
         <span className="num text-small font-semibold text-ink-2">
           {st === "todo" ? `prévue ${clock(cookingStart + step.startMin * 60000)}${late > 2 ? ` · ${late} min de retard` : ""}` : startedAt ? `commencée ${clock(startedAt)}` : ""}
         </span>
@@ -84,7 +88,8 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       <PhasePanel c={c} step={step} />
       {wantsDropGuide(step, currentPhase(state, step), st === "active") && <DropGuide />}
       <StepSpecs plan={plan} step={step} />
-      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} />
+      <SharedSplit plan={plan} step={step} now={st === "active" && currentPhase(state, step) === (step.phases?.length ?? 0) - 1} />
+      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} phase={st === "active" ? currentPhase(state, step) : null} />
       {step.cue && <StepCue cue={step.cue} />}
       {step.notes.map((n) => (isHandoff(n) ? <Alert key={n} tone="info" icon="swap">{n}</Alert> : <Alert key={n} tone="warn">{n}</Alert>))}
       {actions ?? <StepActions c={c} step={step} />}
@@ -303,8 +308,11 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
   const router = useRouter();
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
+  // Les bols manquants se disent en clair (ContainersNote) : pas une deuxième fois dans les remarques.
+  const warnings = plan.containers ? plan.warnings.filter((w) => !isContainerWarning(w)) : plan.warnings;
   return (
     <>
+      <ContainersNote plan={plan} />
       {plan.errors.length > 0 && (
         <Alert tone="ko" title="Le plan ne tient pas" role="alert">
           <ul className="mt-1 list-disc space-y-1 pl-6">
@@ -346,18 +354,18 @@ export function Issues({ plan, sessionId }: { plan: SessionPlan; sessionId: stri
           </span>
         </Alert>
       )}
-      {plan.warnings.length > 0 && (
+      {warnings.length > 0 && (
         <div className="rounded-[8px] border border-line bg-surface px-4 py-3 text-[14px]">
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center justify-between gap-2 text-left text-ink-2">
             <span className="flex items-center gap-2">
               <Icon name="info" size="s" />
-              {plan.warnings.length} remarque{plan.warnings.length > 1 ? "s" : ""} du planificateur
+              {warnings.length} remarque{warnings.length > 1 ? "s" : ""} du planificateur
             </span>
             <Icon name={open ? "minus" : "plus"} size="s" />
           </button>
           {open && (
             <ul className="mt-2 list-disc space-y-1 pl-6 animate-pop">
-              {plan.warnings.map((w, i) => (
+              {warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
             </ul>

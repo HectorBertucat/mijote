@@ -17,9 +17,10 @@ Le mot-symbole mène à l'accueil : la semaine en chiffres (plats, repas, temps 
   4. les poêles : matière (inox, fonte, antiadhésive) et diamètre ; la plus grande en inox ou en fonte sert à saisir ;
   5. les casseroles (diamètre, contenance) et le faitout ;
   6. la cocotte en fonte (contenance, passe au four ou non) et les plats à four ;
-  7. les appareils : air fryer (contenance du panier), mixeur plongeant, blender, petit hachoir, robot, et le reste ; si on cuisine parfois à deux (deuxième planche, deuxième grand couteau).
+  7. les appareils : air fryer (contenance du panier), mixeur plongeant, blender, petit hachoir, robot, et le reste ; si on cuisine parfois à deux (deuxième planche, deuxième grand couteau) ;
+  8. les bols et boîtes : petits, moyens et grands bols (combien, quelle contenance), boîtes de prep, boîtes de conservation du Frigo, plaques du four.
 
-  Chaque étape a un choix par défaut et un bouton **Je ne sais pas** : la valeur courante sert et la rubrique est marquée « à vérifier » au récapitulatif. Le planificateur de session n'utilise que ce qui est décrit : un récipient va sur les foyers de sa taille, la cocotte finit au four si elle y passe, et l'air fryer cuit à côté du four.
+  Chaque étape a un choix par défaut et un bouton **Je ne sais pas** : la valeur courante sert et la rubrique est marquée « à vérifier » au récapitulatif. Le planificateur de session n'utilise que ce qui est décrit : un récipient va sur les foyers de sa taille et reçoit ce qu'il peut contenir, la cocotte finit au four si elle y passe, l'air fryer cuit à côté du four, et la prep ne sort pas plus de bols qu'il n'y en a (docs/session.md).
 - **La maison et les courses** : un nom (facultatif) et le magasin (« le drive Leclerc de Rennes ») : l'IA s'en sert pour proposer des produits qu'on trouve vraiment.
 
 Tout se retrouve dans **Réglages** (icône curseurs, en haut).
@@ -75,6 +76,8 @@ Par défaut, la session se suit sur le téléphone, en trois temps plein écran,
 Un écran sobre annonce chaque temps. À deux, chacun ouvre son fil sur son téléphone ; sur grand écran, les deux fils sont côte à côte (touches A et B). Le menu (en haut à droite) ouvre la **vue détaillée** : le fil complet, tous les minuteurs, le schéma des foyers et du four, les QR codes pour les autres écrans.
 
 Les durées réelles sont mesurées et corrigent les estimations des sessions suivantes.
+
+Le plan tient compte de la cuisine : le riz de plusieurs recettes cuit une fois (puis « Partage le riz : … pour chacune »), un récipient ne reçoit jamais plus qu'il ne peut contenir, ce qui se verse au moment (une boîte de pulpe, la crème) ne prend pas de bol, et une personne n'a jamais deux choses à faire de ses mains en même temps : un mijoté se surveille (« remue la sauce » toutes les 5 min) pendant qu'on fait autre chose. Les règles : [session.md](session.md).
 
 **En boîtes** : à la fin, pèse chaque marmite cuite (récipient plein moins récipient vide), et le riz ou la semoule à part s'ils ont cuit séparément. L'appli dit combien de boîtes pour chacun et combien de grammes dans chacune (la taille de la boîte vise les calories de chacun, sans dépasser le haut de son repère ; le riz garde la proportion de la marmite, en moins pour qui manque de protéines ; un surplus fait une petite boîte de reste). « Ranger les boîtes » les met dans le **Frigo** : au frigo pour les repas des prochains jours, au congélo pour la fin de semaine et la marge. La fiche recette a la même calculette.
 

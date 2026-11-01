@@ -38,7 +38,7 @@ import { DoneView, Issues, PlanDetails, progressLine, recipesLine, ResumeChoice,
 import { PrepBowlRow, PrepPhase, Tomorrow } from "./Prep";
 import { CookPhase } from "./Cook";
 import { SimpleView } from "./Simple";
-import type { RecipeStorage } from "@/lib/session/flow";
+import { prepBowls, type RecipeStorage } from "@/lib/session/flow";
 import { DuoView } from "./DuoView";
 
 /** Prep la veille : durées du jour J selon qu’on le fait seul ou à deux (écran « au frigo »). */
@@ -283,8 +283,7 @@ export function SessionApp(props: SessionProps) {
     }
     if (state.status === "cooking") c.next();
     else if (state.status === "prep") {
-      const pool = c.mode === "veille" && !state.eveDone ? plan.bowls.filter((x) => x.fridge) : plan.bowls.filter((x) => !x.during?.length);
-      const b = pool.find((x) => !state.bowlsReady.has(x.letter));
+      const b = prepBowls(plan, state).find((x) => !state.bowlsReady.has(x.letter));
       if (b) c.toggleBowl(b.letter);
     }
   };

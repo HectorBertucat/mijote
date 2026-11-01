@@ -41,7 +41,7 @@ export const stepColor = (plan: SessionPlan, s: PlanStep) => recipeOf(plan, s.re
  * distingue rien : « One pot » saute (« Orzo »), et une viande ou un mot générique prend le mot suivant (« Poulet
  * basquaise », « Porc au caramel », « Pasta al forno ») plutôt que trois « Poulet » dans la même session.
  */
-const GENERIC = new Set(["poulet", "porc", "bœuf", "boeuf", "pasta", "sauté", "saute"]);
+const GENERIC = new Set(["poulet", "butter", "porc", "bœuf", "boeuf", "pasta", "sauté", "saute"]);
 const LINK = new Set(["de", "du", "des", "d’", "au", "aux", "à", "la", "le", "les", "al", "et"]);
 export const shortName = (name: string | undefined) => {
   const words = (name ?? "").split(",")[0].split(/\s+/).filter(Boolean);
@@ -58,7 +58,7 @@ export const shortName = (name: string | undefined) => {
 const rc = (color: string) => ({ "--rc": color }) as CSSProperties;
 
 // Découpage et titres des consignes : src/lib/session/text.ts (pur, testé).
-export { splitStep } from "@/lib/session/text";
+export { splitStep, stepHead } from "@/lib/session/text";
 /** Titre court d’une étape pour le fil : la consigne de tête, jamais coupée au milieu d’une parenthèse. */
 export const stepTitle = (_plan: SessionPlan, s: PlanStep): string => stepTitleOf(s);
 

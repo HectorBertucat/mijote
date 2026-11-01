@@ -109,6 +109,22 @@ const roundG = (g: number) => Math.max(0, Math.round(g / GRAM_STEP) * GRAM_STEP)
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
 /**
+ * Une base cuite pour plusieurs recettes (le riz de deux recettes dans le même faitout), pesée en une
+ * fois : la part de chacune au prorata de ce qu'elle a mis cru (`share`), à 5 g près, la somme juste.
+ */
+export function splitShared<K extends string>(totalG: number, shares: { key: K; share: number }[]): Record<K, number> {
+  const sum = shares.reduce((x, s) => x + Math.max(0, s.share), 0) || 1;
+  const steps = Math.round(Math.max(0, totalG) / GRAM_STEP);
+  const raw = shares.map((s) => (steps * Math.max(0, s.share)) / sum);
+  const out = raw.map(Math.floor);
+  // Le reste aux plus grandes parts décimales (la somme retombe sur le total pesé).
+  const order = raw.map((x, i) => ({ i, f: x - Math.floor(x) })).sort((a, b) => b.f - a.f);
+  const left = steps - out.reduce((x, y) => x + y, 0);
+  for (let k = 0; k < left; k++) out[order[k % order.length].i]++;
+  return Object.fromEntries(shares.map((s, i) => [s.key, out[i] * GRAM_STEP])) as Record<K, number>;
+}
+
+/**
  * Rapport garniture / plat (en grammes) d'une boîte qui vise `target.kcal` : celui de la marmite si les
  * protéines atteignent `proteinMin`, sinon moins de garniture pour viser `protein` (le milieu), borné.
  */

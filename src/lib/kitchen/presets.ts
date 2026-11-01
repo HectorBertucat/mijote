@@ -29,8 +29,24 @@ export interface Pot {
   ovenSafe: boolean;
 }
 
+/** Bols de prep d'une taille : combien, et leur contenance (en litres). */
+export interface BowlSize {
+  count: number;
+  liters: number;
+}
+/** Contenants : bols de prep (petits, moyens, grands), boîtes de prep, boîtes de conservation, plaques du four. */
+export interface Containers {
+  bowls: { petit: BowlSize; moyen: BowlSize; grand: BowlSize };
+  /** Boîtes à couvercle pour la prep (marinade, bol de la veille au frigo). */
+  prepBoxes: BowlSize;
+  /** Boîtes de conservation du Frigo. */
+  storageBoxes: BowlSize;
+  /** Plaques (ou lèchefrites) livrées avec le four : on y rôtit en une couche. */
+  ovenTrays: number;
+}
+
 /** Les questions du parcours guidé, pour noter celles restées sans réponse sûre. */
-export type KitchenQuestion = "hobType" | "hobSizes" | "levels" | "oven" | "pans" | "casseroles" | "pots" | "plats" | "airFryer" | "mixers" | "extras";
+export type KitchenQuestion = "hobType" | "hobSizes" | "levels" | "oven" | "pans" | "casseroles" | "pots" | "plats" | "airFryer" | "mixers" | "extras" | "containers";
 
 export interface KitchenConfig {
   hobType: HobType;
@@ -60,9 +76,19 @@ export interface KitchenConfig {
   extras: { microOndes: boolean; congelateur: boolean; autocuiseur: boolean; cuiseurRiz: boolean; robot: boolean; balance: boolean };
   /** Seconde planche et second grand couteau : pour cuisiner à deux. */
   duo: boolean;
+  /** Bols et boîtes : le planificateur n'en sort pas plus qu'il n'y en a. */
+  containers: Containers;
   /** Questions répondues « je ne sais pas » : la valeur par défaut sert, à vérifier un jour. */
   unsure: KitchenQuestion[];
 }
+
+/** Une cuisine ordinaire : quatre petits bols, trois moyens, deux saladiers, quatre boîtes de prep, dix boîtes au frigo, une plaque. */
+export const DEFAULT_CONTAINERS: Containers = {
+  bowls: { petit: { count: 4, liters: 0.5 }, moyen: { count: 3, liters: 1.5 }, grand: { count: 2, liters: 3 } },
+  prepBoxes: { count: 4, liters: 1 },
+  storageBoxes: { count: 10, liters: 1 },
+  ovenTrays: 1,
+};
 
 export const DEFAULT_KITCHEN: KitchenConfig = {
   hobType: "induction",
@@ -85,6 +111,7 @@ export const DEFAULT_KITCHEN: KitchenConfig = {
   mixers: { plongeant: false, blender: false, hachoir: false },
   extras: { microOndes: true, congelateur: true, autocuiseur: false, cuiseurRiz: false, robot: false, balance: true },
   duo: true,
+  containers: DEFAULT_CONTAINERS,
   unsure: [],
 };
 
@@ -293,6 +320,14 @@ export function kitchenEquipment(raw: KitchenConfig): { equipment: Eq[]; fits: F
   if (x.robot) eq.push({ id: "robot", kind: "appliance", name: "Robot multifonction" });
   if (x.balance) eq.push({ id: "balance", kind: "utensil", name: "Balance de cuisine" });
 
+  // Plaques du four : une surface pour rôtir en une couche (dims d'une lèchefrite courante).
+  if (c.oven && c.containers.ovenTrays > 0) {
+    eq.push({ id: "plaque-four", kind: "dish", name: c.containers.ovenTrays > 1 ? "Plaques du four" : "Plaque du four", dimsJson: { innerCm: "40x30", depthCm: 2 }, count: c.containers.ovenTrays });
+    fits.push({ equipmentId: "plaque-four", hobId: "oven", preferred: true });
+  }
+  // Contenants de prep et de conservation : le planificateur range les bols de la session dedans.
+  for (const r of containerRows(c.containers)) eq.push(r);
+
   // Ustensiles de prep : ressources du planificateur, à deux surtout.
   eq.push({ id: "grand-couteau", kind: "utensil", name: "Grand couteau", count: c.duo ? 2 : 1, notes: "Légumes et viande. Chaque geste de prep en prend un." });
   eq.push({ id: "petit-couteau", kind: "utensil", name: "Petit couteau", count: 2 });
@@ -301,7 +336,19 @@ export function kitchenEquipment(raw: KitchenConfig): { equipment: Eq[]; fits: F
   return { equipment: eq, fits };
 }
 
-const QUESTIONS: KitchenQuestion[] = ["hobType", "hobSizes", "levels", "oven", "pans", "casseroles", "pots", "plats", "airFryer", "mixers", "extras"];
+/** Les lignes d'équipement des contenants (ids stables : bol-petit, bol-moyen, bol-grand, boite-prep, boite-frigo). */
+export function containerRows(k: Containers): Eq[] {
+  const row = (id: string, name: string, label: string, role: string, b: BowlSize): Eq => ({ id, kind: "container", name, capacityL: b.liters, count: b.count, dimsJson: { role, label } });
+  return [
+    row("bol-petit", "Petits bols", "Petit bol", "bol", k.bowls.petit),
+    row("bol-moyen", "Bols moyens", "Bol moyen", "bol", k.bowls.moyen),
+    row("bol-grand", "Grands bols, saladiers", "Grand bol", "bol", k.bowls.grand),
+    row("boite-prep", "Boîtes de prep", "Boîte", "prep", k.prepBoxes),
+    row("boite-frigo", "Boîtes de conservation", "Boîte de conservation", "frigo", k.storageBoxes),
+  ].filter((r) => (r.count ?? 0) > 0);
+}
+
+const QUESTIONS: KitchenQuestion[] = ["hobType", "hobSizes", "levels", "oven", "pans", "casseroles", "pots", "plats", "airFryer", "mixers", "extras", "containers"];
 const HOB_TYPES = Object.keys(HOB_LABEL) as HobType[];
 const MATERIALS = Object.keys(PAN_LABEL) as PanMaterial[];
 const LEGACY_SIZES = [28, 21, 14.5, 18, 16];
@@ -351,6 +398,14 @@ export function normalizeKitchen(raw: unknown): KitchenConfig {
   const mixers = obj(x.mixers);
   const extras = obj(x.extras);
   const poeleMaxG = x.poeleMaxG ?? legacy.poeleMaxG;
+  const k = obj(x.containers);
+  const kb = obj(k.bowls);
+  const dc = DEFAULT_CONTAINERS;
+  const size = (v: unknown, dflt: BowlSize, maxL: number): BowlSize => {
+    const o = obj(v);
+    const l = typeof o.liters === "number" && Number.isFinite(o.liters) ? Math.max(0.1, Math.min(maxL, Math.round(o.liters * 10) / 10)) : dflt.liters;
+    return { count: clamp(o.count, 0, 30, dflt.count), liters: l };
+  };
 
   return {
     hobType,
@@ -381,6 +436,12 @@ export function normalizeKitchen(raw: unknown): KitchenConfig {
       balance: bool(extras.balance, isLegacy ? false : d.extras.balance),
     },
     duo: bool(x.duo, d.duo),
+    containers: {
+      bowls: { petit: size(kb.petit, dc.bowls.petit, 1), moyen: size(kb.moyen, dc.bowls.moyen, 3), grand: size(kb.grand, dc.bowls.grand, 8) },
+      prepBoxes: size(k.prepBoxes, dc.prepBoxes, 5),
+      storageBoxes: size(k.storageBoxes, dc.storageBoxes, 5),
+      ovenTrays: clamp(k.ovenTrays, 0, 4, dc.ovenTrays),
+    },
     unsure: Array.isArray(x.unsure) ? QUESTIONS.filter((q) => (x.unsure as unknown[]).includes(q)) : [],
   };
 }
@@ -431,5 +492,21 @@ export function kitchenSummary(raw: KitchenConfig): { label: string; text: strin
       ]),
       unsure: u("airFryer") || u("mixers") || u("extras"),
     },
+    { label: "Bols et boîtes", text: containersLine(c.containers, c.oven), unsure: u("containers") },
   ];
+}
+
+/** « 4 petits bols, 3 moyens, 2 grands · 4 boîtes de prep · 10 boîtes de conservation (1 L) · 1 plaque ». */
+export function containersLine(k: Containers, oven = true): string {
+  const b = k.bowls;
+  const bowls = [b.petit.count ? `${b.petit.count} petit${b.petit.count > 1 ? "s" : ""}` : null, b.moyen.count ? `${b.moyen.count} moyen${b.moyen.count > 1 ? "s" : ""}` : null, b.grand.count ? `${b.grand.count} grand${b.grand.count > 1 ? "s" : ""}` : null].filter(Boolean);
+  const n = b.petit.count + b.moyen.count + b.grand.count;
+  return [
+    n ? `${n} bol${n > 1 ? "s" : ""} (${bowls.join(", ")})` : "aucun bol",
+    k.prepBoxes.count ? `${k.prepBoxes.count} boîte${k.prepBoxes.count > 1 ? "s" : ""} de prep` : null,
+    k.storageBoxes.count ? `${k.storageBoxes.count} boîte${k.storageBoxes.count > 1 ? "s" : ""} de conservation (${fmtCm(k.storageBoxes.liters)} L)` : null,
+    oven && k.ovenTrays ? `${k.ovenTrays} plaque${k.ovenTrays > 1 ? "s" : ""} du four` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

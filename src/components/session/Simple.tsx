@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
 import { batchOf, currentPhase, liveTimer, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
-import { prepBowls, prepExtras, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
+import { atMoment, prepBowls, prepExtras, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
 import { Button, Check, Icon, type ButtonVariant, type IconName } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import { BoxGlyph } from "@/components/boxes/BoxGlyph";
@@ -24,10 +24,10 @@ import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
-import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, stepHead, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
-import { attentionOf, fmtMin, ringInfo, timedPhase } from "@/lib/session/guide";
-import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
+import { attentionHint, attentionOf, batchesLabel, containerLine, fmtMin, isContainerWarning, phaseText, remindersOf, ringInfo, timedPhase } from "@/lib/session/guide";
+import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, SharedSplit, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
 import { PhaseNext } from "./blocks";
 
 export interface SimpleProps {
@@ -86,7 +86,7 @@ export function SimpleView(p: SimpleProps) {
     const fresh = c.state.status !== "cooking" && c.state.prepDone.size === 0 && c.state.started.size === 0;
     if (fresh && !seen.has("duo")) {
       tone = "ink";
-      body = <Interlude n={null} title="À deux" lines={[`${plan.recipes.map((r) => r.name).join(", ")}.`, `Chacun son fil, une consigne à la fois. Environ ${dur(plan.totalMin)} en tout.`]} art={<DuoArt />} qr={p.person ? null : p.qr} />;
+      body = <Interlude n={null} title="À deux" lines={[`${plan.recipes.map((r) => r.name).join(", ")}.`, `Chacun son fil, une consigne à la fois. Environ ${dur(plan.totalMin)} en tout.`, containerLine(plan)].filter((x): x is string => Boolean(x))} art={<DuoArt />} qr={p.person ? null : p.qr} />;
       bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("duo")}>C’est parti</MainButton>;
     } else return <SimpleDuo plan={plan} c={c} person={p.person} overlay={p.overlay} dark={dark} wake={wake} detail={detail} onEnd={() => setConfirming(true)} ringing={ringing} />;
   } else if (stage === "prep") {
@@ -99,7 +99,7 @@ export function SimpleView(p: SimpleProps) {
         <Interlude
           n={1}
           title={evening ? "Prépare, ce soir" : "Prépare"}
-          lines={[`${bowls.length ? `${bowls.length} bol${bowls.length > 1 ? "s" : ""} à remplir` : "Pas de bol à remplir avant de commencer"}, environ ${dur(evening ? (plan.prep.eveMin ?? 0) : plan.prep.minutes)}.`, evening ? "Ce soir, ce qui se garde au frigo ; demain, le reste puis la cuisson." : "Sors tout, coupe, remplis. Ensuite, une consigne à la fois."]}
+          lines={[`${bowls.length ? `${bowls.length} bol${bowls.length > 1 ? "s" : ""} à remplir` : "Pas de bol à remplir avant de commencer"}, environ ${dur(evening ? (plan.prep.eveMin ?? 0) : plan.prep.minutes)}.`, evening ? "Ce soir, ce qui se garde au frigo ; demain, le reste puis la cuisson." : "Sors tout, coupe, remplis. Ensuite, une consigne à la fois.", containerLine(plan)].filter((x): x is string => Boolean(x))}
           art={<FoodsArt plan={plan} />}
           qr={p.qr}
         />
@@ -445,7 +445,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
         <h1 className="text-h1">Tout sur le plan de travail</h1>
         <p className="text-lead text-ink-2">{bowls.length ? "Remplis chaque bol, touche-le quand il est prêt. Les lettres reviennent dans les consignes." : "Sors ce qui attend sur le plateau. Les bols se remplissent plus tard, pendant la cuisson : l’écran le dira."}</p>
         <Issues plan={plan} sessionId={id} />
-        {!evening && plan.prep.notes.map((n) => (
+        {!evening && plan.prep.notes.filter((n) => !(plan.containers && isContainerWarning(n))).map((n) => (
           <p key={n} className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">
             <Icon name="flame" size="s" className="mt-1 shrink-0 text-ink-2" />
             {typo(n)}
@@ -469,7 +469,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
                   <Bowl bowl={b} size="lg" ready={ready} />
                   <span className="grid min-w-0 gap-2">
                     <span className="flex items-baseline justify-between gap-3">
-                      <span className="label truncate text-ink-2">{recipeOf(plan, b.recipeSlug)?.name}</span>
+                      <span className="label truncate text-ink-2">{[b.containerLabel, recipeOf(plan, b.recipeSlug)?.name].filter(Boolean).join(" · ")}</span>
                       <span className={`label shrink-0 ${now ? "text-accent" : "text-ink-2"}`}>{ready ? "Prêt" : now ? "Maintenant" : ""}</span>
                     </span>
                     <span className="grid">
@@ -478,7 +478,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
                           <FoodIllu food={i.food} item={i.item} size={40} live={now} label={i.item.split(/[,(]/)[0].trim()} />
                           <span className="min-w-0">
                             {typo(i.item)}
-                            {i.optional && <span className="text-ink-2"> (facultatif)</span>}
+                            {i.optional && !/facultatif/i.test(i.item) && <span className="text-ink-2"> (facultatif)</span>}
                           </span>
                           <b className="num-tight text-right text-[20px]">{i.qty}</b>
                         </span>
@@ -525,7 +525,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
             Plus tard, pendant la cuisson : {during.map((b) => `bol ${b.letter} (${bowlName(b)})`).join(", ")}. L’écran le dira.
           </p>
         )}
-        {evening && plan.bowls.some((b) => !b.fridge) && <p className="text-[17px] text-ink-2">Demain : {plan.bowls.filter((b) => !b.fridge).map((b) => `bol ${b.letter}`).join(", ")}.</p>}
+        {evening && plan.bowls.some((b) => !b.fridge && !atMoment(b)) && <p className="text-[17px] text-ink-2">Demain : {plan.bowls.filter((b) => !b.fridge && !atMoment(b)).map((b) => `bol ${b.letter}`).join(", ")}.</p>}
       </div>
     </div>
   );
@@ -585,15 +585,15 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
   const st = stepStatus(state, step.id);
   const n = st === "active" ? currentPhase(state, step) : null;
   const phase = n != null ? step.phases![n] : null;
-  const { head, rest } = splitStep(step.text);
+  const { head, rest } = stepHead(step);
   const batch = st === "active" ? batchOf(state, step) : null;
   const late = st === "todo" ? Math.round((now - (cookingStart + step.startMin * 60000)) / 60000) : 0;
-  const consigne = phase?.text ?? head;
+  const consigne = phase ? phaseText(step, n!) : head;
   return (
     <article key={`${step.id}:${n ?? "-"}`} className="sx-swap grid gap-6" aria-live="polite">
       <header className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={phase?.text ?? step.text} size={80} live={st === "active"} className="illu-tile shrink-0" style={{ "--tile": stepColor(plan, step) }} />
-        <RecipeContext plan={plan} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
+        <RecipeContext plan={plan} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? batchesLabel(step)?.toLocaleLowerCase("fr") : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
       </header>
       <div className="grid gap-3">
         {phase && <p className="text-[17px] leading-snug text-ink-2"><BowlText plan={plan} text={head} ready={state.bowlsReady} /></p>}
@@ -601,14 +601,15 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
         <h1 className="sx-consigne">
           <BowlText plan={plan} text={consigne} ready={state.bowlsReady} />
         </h1>
-        {phase?.wait && <p className="text-lead text-ink-2">Attente : fais autre chose, ça sonnera.</p>}
+        {phase && n != null && attentionOf(step, n) !== "mains" && <p className="text-lead text-ink-2">{attentionHint(attentionOf(step, n), remindersOf(step, n, phase.min))}</p>}
         {!phase && rest && !step.phases?.length && <p className="text-lead"><BowlText plan={plan} text={rest} ready={state.bowlsReady} /></p>}
         {step.phases && step.phases.length > 1 && st === "todo" && <p className="text-lead text-ink-2">{step.phases.length} sous-étapes, une à la fois. Aucun minuteur ne part tout seul.</p>}
       </div>
       {step.phases && step.phases.length > 1 && st === "active" && <PhaseTrack step={step} n={n} c={c} />}
       {n != null && <PhaseNext step={step} n={n} running={Boolean(phaseTimer(state, step.id, n))} />}
       <Dials plan={plan} c={c} step={step} level={phase?.hobLevel ?? null} />
-      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} />
+      <SharedSplit plan={plan} step={step} now={n != null && n === step.phases!.length - 1} />
+      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} phase={n} />
       {wantsDropGuide(step, n, st === "active") && <DropGuide onInk />}
       {step.notes.map((x) => (
         <p key={x} className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">

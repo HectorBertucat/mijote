@@ -35,7 +35,7 @@
     },
     {
       "kind": "braise",
-      "text": "Cocotte sur le foyer moyen à 5 : beurre, bol A 8 min, jusqu'à ce que ce soit fondant. Bol C, mijote à 3 pendant 15 min à demi couvert. Mixe lisse (blender ou mixeur plongeant), remets dans la cocotte.",
+      "text": "Cocotte sur le grand foyer à 5 : beurre, bol A 8 min, jusqu'à ce que ce soit fondant. Bol C, mijote à 3 pendant 15 min à demi couvert. Mixe lisse (blender ou mixeur plongeant), remets dans la cocotte.",
       "durationMin": 27,
       "activeMin": 12,
       "equipmentId": "cocotte",
@@ -52,7 +52,7 @@
     },
     {
       "kind": "sear",
-      "text": "Pendant que la sauce mijote : poêle vide sur le grand foyer, 2 à 3 min à 7, test de la goutte, huile. Poulet mariné (bol B) en trois fournées de 400 g : 3 min sans toucher, retourne, 2 min. Il noircit un peu par endroits : c'est le goût. Verse chaque fournée dans la sauce, déglace la poêle avec une louche de sauce à la fin.",
+      "text": "Pendant que la sauce mijote : poêle vide, 2 à 3 min à 7, test de la goutte, huile. Poulet mariné (bol B) en trois fournées de 400 g : 3 min sans toucher, retourne, 2 min. Il noircit un peu par endroits : c'est le goût. Verse chaque fournée dans la sauce, déglace la poêle avec une louche de sauce à la fin.",
       "durationMin": 18,
       "activeMin": 18,
       "equipmentId": "poele-28",

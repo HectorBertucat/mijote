@@ -51,7 +51,8 @@ export const preferences = sqliteTable("preferences", {
 
 export const equipment = sqliteTable("equipment", {
   id: text("id").primaryKey(),
-  kind: text("kind", { enum: ["hob", "oven", "pan", "pot", "dish", "appliance", "utensil"] }).notNull(),
+  // « container » (migration 0009) : bols, boîtes de prep et de conservation (src/lib/kitchen/presets.ts).
+  kind: text("kind", { enum: ["hob", "oven", "pan", "pot", "dish", "appliance", "utensil", "container"] }).notNull(),
   name: text("name").notNull(),
   dimsJson: json<Record<string, number | string>>("dims_json"),
   capacityL: real("capacity_l"),

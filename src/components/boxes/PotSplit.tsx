@@ -17,12 +17,14 @@ const num = (v: string) => {
 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n > 1 ? many : one}`;
 
-export function PotSplit({ model, color, session, stored, head = true, kitchen = false, art }: { model: PotModel; color: string; session?: string; stored?: StoredPot | null; head?: boolean; /** Fin de session : bouton de cuisine (64 px). */ kitchen?: boolean; /** La boîte du plat (DishBox) ; à défaut, BoxGlyph. */ art?: ReactNode }) {
+export function PotSplit({ model, color, session, stored, head = true, kitchen = false, art, sharedSide }: { model: PotModel; color: string; session?: string; stored?: StoredPot | null; head?: boolean; /** Fin de session : bouton de cuisine (64 px). */ kitchen?: boolean; /** La boîte du plat (DishBox) ; à défaut, BoxGlyph. */ art?: ReactNode; /** Garniture cuite pour plusieurs recettes : la part de celle-ci, tant qu’elle n’est pas pesée à part. */ sharedSide?: { grams: number | null; note: string } }) {
   const [dish, setDish] = useState(stored?.dishG ? String(Math.round(stored.dishG)) : "");
   const [side, setSide] = useState(stored?.sideG ? String(Math.round(stored.sideG)) : "");
   const [saved, setSaved] = useState<{ ok: boolean; message: string } | null>(stored?.count ? { ok: true, message: `${plural(stored.count, "boîte rangée", "boîtes rangées")}${stored.open < stored.count ? `, dont ${stored.count - stored.open} déjà sortie${stored.count - stored.open > 1 ? "s" : ""}` : ""}.` } : null);
   const [pending, start] = useTransition();
-  const weights: Weights = { dishG: num(dish), sideG: model.side ? num(side) : null };
+  // Rien de saisi pour la garniture : la part du riz commun pesé en tête (fin de session).
+  const sideValue = side.trim() === "" && sharedSide?.grams != null ? String(sharedSide.grams) : side;
+  const weights: Weights = { dishG: num(dish), sideG: model.side ? num(sideValue) : null };
   const split = splitPot(model, weights);
   const sideName = model.side?.label ?? "garniture";
   const sw = sideWords(sideName);
@@ -54,10 +56,11 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
           </Field>
           {model.side && (
             <Field label={`${sideName[0].toUpperCase()}${sideName.slice(1)} ${sw.cooked}`}>
-              {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={side} onChange={(e) => setSide(e.target.value)} data-field="garniture" />}
+              {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={sideValue} onChange={(e) => setSide(e.target.value)} data-field="garniture" />}
             </Field>
           )}
         </div>
+        {model.side && sharedSide && <p className="text-small text-ink-2">{sharedSide.note}{side.trim() !== "" ? " · pesé à part ici" : ""}</p>}
         <p className="text-small text-ink-2">Pèse le récipient plein, retire le poids du récipient vide.</p>
       </div>
 
@@ -90,7 +93,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
       {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids {sw.of}, {sw.it} à l’œil, dans la même proportion.</p>}
       {split.fill < 0.97 && (
         <Alert tone="warn" title="Moins que prévu">
-          La marmite ne couvre pas les {planned} repas prévus : chaque boîte est plus petite que la part visée.
+          La marmite ne couvre pas {planned ? `les ${planned} repas prévus` : "toutes les parts visées"} : chaque boîte est plus petite que la part visée.
         </Alert>
       )}
       {split.rest && (

@@ -9,14 +9,15 @@ import { createPortal } from "react-dom";
 import { restartSession } from "@/app/session/actions";
 import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
 import { stepStatus, type TimerState } from "@/lib/session/state";
-import { ATTENTION_LABELS, fmtMin, lanesOf, recipeStep, reminderAt, ringInfo, type LaneItem, type Undo } from "@/lib/session/guide";
+import { ATTENTION_LABELS, containerNote, fmtMin, lanesOf, missingText, recipeStep, reminderAt, ringInfo, shareOf, takeAt, takeOf, weighLine, type LaneItem, type Undo } from "@/lib/session/guide";
+import { atMoment } from "@/lib/session/flow";
 import { bowlParts, clip, stepTitleOf } from "@/lib/session/text";
 import { recipeVar } from "@/components/ui/recipe";
-import { Button, Icon, Tape } from "@/components/ui";
+import { Alert, Button, Icon, Tape } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import { typo } from "@/lib/typo";
 import type { Controls } from "./SessionApp";
-import { chime, clock, mmss, PauseAll, recipeOf } from "./parts";
+import { chime, clock, mmss, PauseAll, recipeOf, shortName } from "./parts";
 
 const rc = (color: string) => ({ "--rc": recipeVar(color) }) as CSSProperties;
 
@@ -112,16 +113,19 @@ export function Peek({ trigger, label, children, className = "", panelClassName 
 
 // ─── Les bols ───
 
+type ItemLike = { item: string; food?: string | null; qty: string | null; optional: boolean };
+
 /** Le contenu d’un bol : chaque ingrédient avec sa quantité (mise à l’échelle), en tableau. */
-export function BowlItems({ bowl, size = "md", className = "" }: { bowl: Pick<PlanBowl, "items">; size?: "md" | "lg"; className?: string }) {
+export function BowlItems({ bowl, items, size = "md", className = "" }: { bowl?: { items: ItemLike[] }; items?: ItemLike[]; size?: "md" | "lg"; className?: string }) {
+  const list = items ?? bowl?.items ?? [];
   return (
     <ul className={`grid ${className}`}>
-      {bowl.items.map((i, k) => (
+      {list.map((i, k) => (
         <li key={k} className={`grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 py-1 ${k ? "border-t border-line" : ""} ${size === "lg" ? "text-[19px]" : "text-[17px]"}`}>
-          <FoodIllu food={i.food} item={i.item} size={32} label={i.item.split(/[,(]/)[0].trim()} />
+          <FoodIllu food={i.food ?? null} item={i.item} size={32} label={i.item.split(/[,(]/)[0].trim()} />
           <span className="min-w-0">
             {typo(i.item)}
-            {i.optional && <span className="text-ink-2"> (facultatif)</span>}
+            {i.optional && !/facultatif/i.test(i.item) && <span className="text-ink-2"> (facultatif)</span>}
           </span>
           <b className="num-tight text-right">{i.qty ?? ""}</b>
         </li>
@@ -130,36 +134,48 @@ export function BowlItems({ bowl, size = "md", className = "" }: { bowl: Pick<Pl
   );
 }
 
-/** Ce que montre la bulle d’un bol : sa lettre, sa recette, son contenu, l’étape qu’il sert. */
+/** « Bol A · grand bol », « Boîte E », « Assiette », « G · au moment » : où attend le groupe. */
+export function bowlTitle(b: Pick<PlanBowl, "letter" | "holder" | "containerLabel">): string {
+  if (b.holder === "moment") return `${b.letter} · au moment, sans bol`;
+  if (b.holder === "assiette") return `${b.letter} · sur une assiette`;
+  const kind = b.holder === "boite" ? "Boîte" : "Bol";
+  const c = b.containerLabel && !new RegExp(`^${kind}$`, "i").test(b.containerLabel) ? ` · ${b.containerLabel.toLocaleLowerCase("fr")}` : "";
+  return `${kind} ${b.letter}${c}`;
+}
+
+/** Ce que montre la bulle d’un bol : sa lettre, sa recette, son contenant, son contenu, l’étape qu’il sert. */
 export function BowlCard({ plan, bowl, ready }: { plan: SessionPlan; bowl: PlanBowl; ready?: boolean }) {
   const recipe = recipeOf(plan, bowl.recipeSlug);
   const used = bowl.usedBy ? plan.steps.find((s) => s.id === bowl.usedBy!.stepId) : null;
+  const moment = atMoment(bowl);
   return (
     <div className="grid gap-3" style={rc(bowl.color)}>
       <div className="flex items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full border-[2.5px] border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_16%,var(--c-surface))] font-display text-[18px] font-extrabold text-[var(--rc)]">{bowl.letter}</span>
+        <span className={`grid size-10 shrink-0 place-items-center rounded-full border-[2.5px] border-[var(--rc)] font-display text-[18px] font-extrabold text-[var(--rc)] ${moment ? "border-dashed bg-surface" : "bg-[color-mix(in_srgb,var(--rc)_16%,var(--c-surface))]"}`}>{bowl.letter}</span>
         <span className="grid min-w-0">
-          <b className="text-[17px]">Bol {bowl.letter}{ready ? " · prêt" : ""}</b>
+          <b className="text-[17px]">{bowlTitle(bowl)}{ready ? " · prêt" : ""}</b>
           {recipe && <span className="text-[14px] text-ink-2">{recipe.name}</span>}
         </span>
       </div>
+      {moment && <span className="text-[14px] text-ink-2">Rien à préparer : pèse et verse au moment de l’étape.</span>}
       <BowlItems bowl={bowl} />
       {used && <span className="text-[14px] text-ink-2">Pour l’étape {used.no} · {stepTitleOf(used, 48)}</span>}
     </div>
   );
 }
 
-/** Une pastille de bol cliquable dans un texte ou une ligne : sa lettre à la couleur de la recette ; la bulle dit ce qu’il contient. */
+/** Une pastille de bol cliquable dans un texte ou une ligne : sa lettre à la couleur de la recette (en pointillé : au moment, sans bol) ; la bulle dit ce qu’il contient. */
 export function BowlChip({ plan, letter, ready, size = "text" }: { plan: SessionPlan; letter: string; ready?: boolean; size?: "text" | "sm" | "md" | "lg" }) {
   const bowl = plan.bowls.find((b) => b.letter === letter);
   if (!bowl) return <>{letter}</>;
+  const moment = atMoment(bowl);
   const dims = { text: "size-[1.2em] border-2 text-[0.72em] align-[0.05em] mx-[0.05em]", sm: "size-7 border-2 text-[13px]", md: "size-10 border-[2.5px] text-[18px]", lg: "size-16 border-[3px] text-[30px]" }[size];
   return (
     <Peek
-      label={`Bol ${letter} : ${bowl.items.map((i) => `${i.item.split(/[,(]/)[0].trim()}${i.qty ? ` ${i.qty}` : ""}`).join(", ")}`}
+      label={`${moment ? `${letter}, au moment, sans bol` : bowlTitle(bowl)} : ${bowl.items.map((i) => `${i.item.split(/[,(]/)[0].trim()}${i.qty ? ` ${i.qty}` : ""}`).join(", ")}`}
       className={size === "text" ? "inline-grid align-middle" : "inline-grid shrink-0"}
       trigger={
-        <span className={`relative inline-grid place-items-center rounded-full border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_16%,var(--c-surface))] font-display font-extrabold leading-none text-[var(--rc)] underline-offset-2 ${dims}`} style={rc(bowl.color)}>
+        <span className={`relative inline-grid place-items-center rounded-full border-[var(--rc)] font-display font-extrabold leading-none text-[var(--rc)] underline-offset-2 ${moment ? "border-dashed bg-surface" : "bg-[color-mix(in_srgb,var(--rc)_16%,var(--c-surface))]"} ${dims}`} style={rc(bowl.color)}>
           {letter}
           {ready && <span className="absolute -right-1 -bottom-1 size-[0.5em] min-h-2 min-w-2 rounded-full bg-accent ring-2 ring-bg" aria-hidden />}
         </span>
@@ -181,26 +197,151 @@ export function BowlText({ plan, text, ready }: { plan: SessionPlan; text: strin
   );
 }
 
-/** Les bols à prendre (ou remplir) pour une étape : chaque bol avec son contenu et ses quantités, en entier. */
-export function TakeBowls({ plan, step, ready, title, live }: { plan: SessionPlan; step: PlanStep; ready: Set<string>; title?: string; live?: boolean }) {
-  const bowls = step.bowls.map((l) => plan.bowls.find((b) => b.letter === l)).filter((b): b is PlanBowl => Boolean(b));
-  if (!bowls.length) return null;
+/**
+ * Ce que demande l’étape, quantités mises à l’échelle : les bols à prendre (ou à remplir, pour un geste
+ * glissé) avec leur contenant, ce qui se pèse et se verse au moment, et le placard. Pendant une
+ * sous-étape (`phase`), ce qui y entre est mis en avant.
+ */
+export function TakeBowls({ plan, step, ready, title, phase = null }: { plan: SessionPlan; step: PlanStep; ready: Set<string>; title?: string; phase?: number | null }) {
+  const take = takeOf(plan, step);
+  const now = takeAt(take, phase);
+  if (!take.bowls.length && !take.moment.length && !take.loose.length) return null;
+  const at = (p: number | null) => (p != null && step.phases && step.phases.length > 1 && phase == null ? <span className="text-[14px] font-normal text-ink-2"> · sous-étape {p + 1}</span> : null);
+  const hot = (on: boolean) => (on ? "rounded-[8px] bg-accent-soft px-3 -mx-3" : "");
   return (
-    <section className="grid gap-3" aria-label={step.tasks ? "Bols à remplir" : "Bols à prendre"}>
-      <h2 className="label text-ink-2">{title ?? (step.tasks ? "Remplis" : "Prends")}</h2>
-      <ul className="grid gap-4 sm:grid-cols-2">
-        {bowls.map((b) => (
-          <li key={b.letter} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3" style={rc(b.color)}>
-            <BowlChip plan={plan} letter={b.letter} ready={ready.has(b.letter)} size="md" />
-            <div className="grid min-w-0 gap-1">
-              <b className="text-[17px]">Bol {b.letter}{ready.has(b.letter) ? " · prêt" : ""}</b>
-              <BowlItems bowl={b} />
-              {live === false ? null : null}
-            </div>
+    <div className="grid gap-6">
+      {take.bowls.length > 0 && (
+        <section className="grid gap-3" aria-label={step.tasks ? "Bols à remplir" : "Bols à prendre"}>
+          <h2 className="label text-ink-2">{title ?? (step.tasks ? "Remplis" : "Prends")}</h2>
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {take.bowls.map((b) => (
+              <li key={b.letter} className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 py-1 ${hot(now.bowls.includes(b.letter))}`} style={rc(plan.bowls.find((x) => x.letter === b.letter)?.color ?? "var(--c-ink-3)")}>
+                <BowlChip plan={plan} letter={b.letter} ready={ready.has(b.letter)} size="md" />
+                <div className="grid min-w-0 gap-1">
+                  <b className="text-[17px]">
+                    {bowlTitle({ letter: b.letter, holder: b.holder, containerLabel: b.container })}
+                    {ready.has(b.letter) ? " · prêt" : ""}
+                    {at(b.phase)}
+                  </b>
+                  <BowlItems items={b.items} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {take.moment.length > 0 && (
+        <section className="grid gap-3" aria-label="À peser au moment">
+          <h2 className="label text-ink-2">Pèse et verse, au moment</h2>
+          <ul className="grid">
+            {take.moment.map((i, k) => (
+              <li key={k} className={`grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 py-2 text-[17px] ${k ? "border-t border-line" : ""} ${hot(now.moment.includes(i))}`}>
+                <FoodIllu food={i.food} item={i.item} size={32} label={i.name} />
+                <span className="grid min-w-0">
+                  <span>
+                    {typo(i.item)}
+                    {i.optional && !/facultatif/i.test(i.item) && <span className="text-ink-2"> (facultatif)</span>}
+                    {at(i.phase)}
+                  </span>
+                  {i.parts && (
+                    <span className="text-[14px] text-ink-2">
+                      {i.parts.map((p, j) => (
+                        <span key={j}>
+                          {j ? " · " : ""}
+                          {p.qty} pour {shortName(recipeOf(plan, p.recipeSlug)?.name) ?? p.recipeSlug}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </span>
+                <b className="num-tight text-right">{i.qty ?? ""}</b>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {take.loose.length > 0 && (
+        <p className="text-[17px] text-ink-2">
+          <span className="label">Du placard · </span>
+          {typo(weighLine(take.loose))}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Une cuisson commune : la part cuite de chaque recette, à sa couleur, et le bol (ou le plat) qui la reçoit. */
+export function SharedSplit({ plan, step, now = false }: { plan: SessionPlan; step: PlanStep; now?: boolean }) {
+  const sh = shareOf(plan, step);
+  if (!sh) return null;
+  return (
+    <section className={`grid gap-3 ${now ? "rounded-[14px] border-2 border-accent p-4" : ""}`} aria-label={`Partage : ${sh.the}`}>
+      <h2 className={`label ${now ? "text-accent" : "text-ink-2"}`}>
+        Une cuisson pour {sh.lines.length} recettes · {sh.total}
+      </h2>
+      <p className="text-[17px]">{now ? "Pèse chaque part :" : `Puis partage ${sh.the}, chaque part pesée :`}</p>
+      <ul className="grid border-b border-line">
+        {sh.lines.map((l) => (
+          <li key={l.recipeSlug} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-2" style={rc(l.color || "var(--c-ink-3)")}>
+            <span className="flex min-w-0 items-center gap-2 text-[17px]">
+              <span className="inline-block size-3 shrink-0 rounded-full bg-[var(--rc)]" aria-hidden />
+              <span className="min-w-0">{l.name}</span>
+              {l.bowl && <BowlChip plan={plan} letter={l.bowl} size="sm" />}
+            </span>
+            <b className="num-tight text-right text-[24px] leading-none">{l.qty}</b>
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Avant de commencer : les bols qui manquent, l’ordre de remplissage, et ce qui se pèse au moment (sans bol). */
+export function ContainersNote({ plan }: { plan: SessionPlan }) {
+  const note = containerNote(plan);
+  if (!note) return null;
+  const m = note.missing ? missingText(note.missing) : null;
+  return (
+    <div className="grid gap-3">
+      {m && (
+        <Alert tone="warn" title={m.title}>
+          {m.body}
+        </Alert>
+      )}
+      {note.order.length > 0 && (
+        <p className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">
+          <Icon name="info" size="s" className="mt-1 shrink-0 text-ink-2" />
+          <span>
+            Prépare dans cet ordre :{" "}
+            {note.order.map((o, k) => (
+              <span key={o.letter}>
+                {k ? ", " : ""}
+                <BowlChip plan={plan} letter={o.letter} /> quand <BowlChip plan={plan} letter={o.after} /> est vidé
+              </span>
+            ))}
+            .
+          </span>
+        </p>
+      )}
+      {note.moment.length > 0 && (
+        <p className="flex items-start gap-3 border-t border-line pt-3 text-[17px] text-ink-2">
+          <Icon name="scale" size="s" className="mt-1 shrink-0" />
+          <span>
+            Sans bol, au moment :{" "}
+            {note.moment.map((x, k) => (
+              <span key={x.letters[0]}>
+                {k ? " ; " : ""}
+                {x.names.join(", ")}{" "}
+                {x.letters.map((l) => (
+                  <BowlChip key={l} plan={plan} letter={l} />
+                ))}
+              </span>
+            ))}
+            . L’étape dira quoi peser.
+          </span>
+        </p>
+      )}
+    </div>
   );
 }
 

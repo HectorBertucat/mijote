@@ -10,6 +10,8 @@ import {
   DEFAULT_KITCHEN,
   HOB_PRESETS,
   casseroleSlots,
+  containerRows,
+  containersLine,
   hobPresets,
   kitchenEquipment,
   kitchenHobs,
@@ -23,6 +25,7 @@ import {
 } from "@/lib/kitchen/presets";
 import { applyKitchen } from "@/lib/kitchen/store";
 import { loadResources } from "@/lib/session/store";
+import { inventoryOf } from "@/lib/session/containers";
 import { convertForSwap, planSession, validatePlan, type PlannerRecipe, type PlannerResources } from "@/lib/session/planner";
 import { seedBase } from "@/seed/seed";
 import { load } from "./helpers";
@@ -31,7 +34,7 @@ const D = DEFAULT_KITCHEN;
 const resOf = (c: KitchenConfig): PlannerResources => {
   const k = kitchenEquipment(c);
   return {
-    equipment: k.equipment.map((e) => ({ id: e.id, kind: e.kind, name: e.name, maxBatchG: e.maxBatchG ?? null, dimsJson: e.dimsJson ?? null, count: e.count ?? 1 })),
+    equipment: k.equipment.map((e) => ({ id: e.id, kind: e.kind, name: e.name, maxBatchG: e.maxBatchG ?? null, dimsJson: e.dimsJson ?? null, count: e.count ?? 1, capacityL: e.capacityL ?? null })),
     fits: k.fits.map((f) => ({ equipmentId: f.equipmentId, hobId: f.hobId, preferred: f.preferred ?? true })),
   };
 };
@@ -160,7 +163,41 @@ test("cuisine relue : JSON cassé, types faux, « je ne sais pas » noté", () =
   assert.match(kitchenSummary({ ...D, airFryerL: 5 }).find((r) => r.label === "Appareils")!.text, /air fryer 5 L/);
 });
 
+test("bols et boîtes : inventaire par défaut, bornes, ancien réglage, lignes d'équipement, résumé", () => {
+  assert.deepEqual(D.containers.bowls, { petit: { count: 4, liters: 0.5 }, moyen: { count: 3, liters: 1.5 }, grand: { count: 2, liters: 3 } });
+  // Un réglage d'avant les contenants : l'inventaire par défaut.
+  const { containers: _c, ...old } = D;
+  assert.deepEqual(normalizeKitchen(old).containers, D.containers);
+  const c = normalizeKitchen({ ...D, containers: { bowls: { petit: { count: 99, liters: 0.333 }, grand: { count: -1 } }, storageBoxes: { count: 12, liters: 0.75 }, ovenTrays: 9 } });
+  assert.deepEqual(c.containers.bowls.petit, { count: 30, liters: 0.3 });
+  assert.deepEqual(c.containers.bowls.moyen, D.containers.bowls.moyen);
+  assert.equal(c.containers.bowls.grand.count, 0);
+  assert.deepEqual(c.containers.storageBoxes, { count: 12, liters: 0.8 });
+  assert.equal(c.containers.ovenTrays, 4);
+  // Lignes d'équipement : un contenant sans exemplaire n'existe pas ; la plaque du four va au four.
+  const rows = containerRows(c.containers);
+  assert.deepEqual(rows.map((r) => r.id), ["bol-petit", "bol-moyen", "boite-prep", "boite-frigo"]);
+  assert.ok(rows.every((r) => r.kind === "container" && r.capacityL! > 0 && r.dimsJson?.role));
+  const k = kitchenEquipment(D);
+  assert.equal(k.equipment.find((e) => e.id === "plaque-four")?.kind, "dish");
+  assert.ok(k.fits.some((f) => f.equipmentId === "plaque-four" && f.hobId === "oven"));
+  assert.ok(!kitchenEquipment({ ...D, oven: false }).equipment.some((e) => e.id === "plaque-four"));
+  assert.equal(containersLine(D.containers), "9 bols (4 petits, 3 moyens, 2 grands) · 4 boîtes de prep · 10 boîtes de conservation (1 L) · 1 plaque du four");
+  assert.equal(kitchenSummary(D).find((r) => r.label === "Bols et boîtes")!.text, containersLine(D.containers));
+});
+
 // ─── En base ───
+
+test("bols en base : la migration pose l'inventaire par défaut, la cuisine enregistrée le remplace", () => {
+  const { db } = openDb(":memory:");
+  const inv = () => inventoryOf(loadResources(db).equipment);
+  assert.deepEqual(inv().map((k) => [k.id, k.count, k.liters]), [["bol-petit", 4, 0.5], ["bol-moyen", 3, 1.5], ["bol-grand", 2, 3], ["boite-prep", 4, 1]]);
+  seedBase(db);
+  applyKitchen(db, { ...D, containers: { ...D.containers, bowls: { petit: { count: 6, liters: 0.3 }, moyen: { count: 2, liters: 2 }, grand: { count: 0, liters: 3 } } } });
+  assert.deepEqual(inv().map((k) => [k.id, k.count, k.liters]), [["bol-petit", 6, 0.3], ["bol-moyen", 2, 2], ["boite-prep", 4, 1]]);
+  assert.ok(loadResources(db).equipment.some((e) => e.id === "boite-frigo"), "les boîtes du frigo sont dans la cuisine, pas dans la prep");
+  assert.ok(loadResources(db).equipment.some((e) => e.id === "plaque-four" && e.kind === "dish"));
+});
 
 test("cuisine appliquée : un foyer retiré n'est plus possédé, un nom jamais retouché suit la description", () => {
   const { db } = openDb(":memory:");
@@ -223,14 +260,14 @@ test("sans air fryer : la recette passe au four (rechange), température et dur�
 });
 
 test("le four pris à une autre température : le planificateur passe une plaque à l'air fryer", () => {
-  const forno = load("pasta-al-forno.json"); // four à 200 °C
+  const forno = load("pasta-al-forno.json"); // four à 200 °C ; le grand plat sert aussi au forno
   const veg: PlannerRecipe = {
     slug: "legumes-rotis",
     name: "Légumes rôtis",
     ingredients: [{ id: "leg", item: "légumes", grams: 500, group: "A" }],
     steps: [
       { kind: "prep", text: "Bol A : légumes en morceaux, huile.", durationMin: 8, bowls: ["A"] },
-      { kind: "bake", text: "Enfourne le grand plat (bol A) : 30 min à 160 °C.", durationMin: 30, activeMin: 2, equipmentId: "plat-grand", equipmentAlt: ["air-fryer"], ovenTemp: 160, bowls: ["A"] },
+      { kind: "bake", text: "Enfourne le grand plat (bol A) : 60 min à 160 °C.", durationMin: 60, activeMin: 2, equipmentId: "plat-grand", equipmentAlt: ["air-fryer"], ovenTemp: 160, bowls: ["A"] },
     ],
   };
   const res = resOf({ ...D, airFryerL: 5 });
@@ -240,8 +277,9 @@ test("le four pris à une autre température : le planificateur passe une plaque
   const s = plan.steps.find((x) => x.recipeSlug === "legumes-rotis" && x.kind === "bake")!;
   assert.equal(s.equipmentId, "air-fryer");
   assert.equal(s.oven, null);
-  assert.equal(s.durationMin, 24);
-  assert.match(s.text, /^Mets le tout dans l'air fryer \(bol [A-Z]\) : 24 min à 140 °C\.$/);
+  assert.equal(s.durationMin, 48);
+  assert.match(s.text, /^Mets le tout dans l'air fryer \(bol [A-Z]\) : 48 min à 140 °C\.$/);
+  assert.ok(plan.decisions?.some((d) => /dans l'air fryer au lieu du grand plat/.test(d)), JSON.stringify(plan.decisions));
   // Trop pour le panier : pas de rechange vers l'air fryer.
   const big = { ...veg, ingredients: [{ id: "leg", item: "légumes", grams: 2000, group: "A" }] };
   const p2 = planSession([forno, big], res);

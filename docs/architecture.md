@@ -53,7 +53,7 @@ src/
     nutrition/         table nutritionnelle, calcul par part
     products/          produits du drive associés aux ingrédients
     recipes/           format des fiches, sous-étapes, variantes, saisons
-    session/           planificateur, état, durées réelles
+    session/           planificateur (capacités, bases communes, bols, attention : docs/session.md), état, durées réelles
     settings.ts        réglages de l'instance
     shopping/          liste de courses, panier, rayons
     training/          programmes, bibliothèque, générateur, IA, figures, séance partagée
