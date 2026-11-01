@@ -2,9 +2,9 @@
 
 // Bonhomme animé d’un exercice. L’horloge (`t`, en secondes) vient de l’appelant quand le geste doit
 // rester synchro avec le décompte et les bips (séance guidée) ; sinon useMotionClock la fait tourner.
-// Couleurs : jetons uniquement (encre, trait discret pour le côté éloigné, accent pour la kettlebell).
+// Dessin : src/lib/training/draw.ts (membres galbés, ombre, tapis, matériel) ; couleurs en jetons uniquement.
 import { createContext, useContext, useEffect, useState } from "react";
-import { figure, VIEWBOX } from "@/lib/training/draw";
+import { drawFigure, VIEWBOX, type Paint } from "@/lib/training/draw";
 import { MOTIONS } from "@/lib/training/figures";
 import { sample, type Frame, type Motion } from "@/lib/training/motion";
 
@@ -51,42 +51,35 @@ export function frameAt(m: Motion | null, t: number): Frame | null {
   return m ? sample(m, t) : null;
 }
 
+// Chaque « peinture » du dessin (draw.ts) en jetons du thème : le côté proche en encre, le côté éloigné
+// en retrait, le matériel tenu à l'accent, le matériel posé en surfaces.
+const PAINT: Record<Paint, string> = {
+  ground: "stroke-line-strong",
+  mat: "fill-accent-soft",
+  shadow: "fill-line",
+  prop: "fill-surface-2",
+  propEdge: "fill-line-strong",
+  far: "fill-faint",
+  near: "fill-ink",
+  tool: "fill-accent stroke-accent",
+  toolFar: "fill-accent stroke-accent opacity-60",
+};
+
 /** Image du mouvement à l’instant `t`. Avec « réduire les animations », la pose clé la plus parlante, fixe. */
 export function KbFigure({ ex, t, className = "", label }: { ex: string; t: number; className?: string; label?: string }) {
   const reduced = useReducedMotion();
   const m = useMotion(ex);
   if (!m) return null;
-  // Pose fixe : le milieu de la première étape qui va vers la pose 1 (bas du squat, bras tendu…).
+  // Pose fixe : la fin de la première étape, qui va vers la pose 1 (bas du squat, bras tendu…).
   const f = sample(m, reduced ? (m.steps[0]?.dur ?? 0) * 0.999 : t);
-  const g = figure(f);
-  const pt = (p: [number, number]) => p.map((v) => v.toFixed(1));
   return (
     <svg viewBox={VIEWBOX} role="img" aria-label={label ?? f.label} className={`block h-auto w-full ${className}`}>
-      <line x1="4" y1="187" x2="196" y2="187" className="stroke-line-strong" strokeWidth="3" strokeLinecap="round" />
-      {(m.props ?? []).map((p, i) => (
-        <rect key={i} x={p.x} y={p.y} width={p.w} height={p.h} rx="4" className="fill-surface-2 stroke-line" />
-      ))}
-      <g className="stroke-faint" strokeLinecap="round">
-        {g.back.map((s, i) => {
-          const [x1, y1] = pt(s.a);
-          const [x2, y2] = pt(s.b);
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={s.w} />;
-        })}
-      </g>
-      <g className="stroke-ink" strokeLinecap="round">
-        {g.front.map((s, i) => {
-          const [x1, y1] = pt(s.a);
-          const [x2, y2] = pt(s.b);
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={s.w} />;
-        })}
-      </g>
-      <circle cx={g.head[0].toFixed(1)} cy={g.head[1].toFixed(1)} r="11" className="fill-ink" />
-      {g.bell && (
-        <g className="stroke-accent" strokeWidth="3" fill="none" strokeLinecap="round">
-          <path d={`M${g.bell.handle[0] - 4} ${g.bell.handle[1]} Q${g.bell.handle[0]} ${g.bell.handle[1] - 6} ${g.bell.handle[0] + 4} ${g.bell.handle[1]}`} />
-          <line x1={g.bell.handle[0]} y1={g.bell.handle[1]} x2={g.bell.at[0]} y2={g.bell.at[1]} />
-          <circle cx={g.bell.at[0]} cy={g.bell.at[1]} r="8" className="fill-accent" stroke="none" />
-        </g>
+      {drawFigure(f, m).map((p, i) =>
+        p.stroke ? (
+          <path key={i} d={p.d} className={PAINT[p.paint]} style={{ fill: "none" }} strokeWidth={p.stroke} strokeLinecap="round" strokeLinejoin="round" />
+        ) : (
+          <path key={i} d={p.d} className={PAINT[p.paint]} style={{ stroke: "none" }} />
+        ),
       )}
     </svg>
   );

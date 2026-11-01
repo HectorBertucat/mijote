@@ -74,7 +74,7 @@ export const MOTIONS: Record<string, Motion> = {
       { a: stand({ ...GOBLET, torso: 12, thighN: 80, shinN: -8, upperN: 24, upperF: 20, footF: 176 }), c: { anchor: "ankleN", at: [122, G], ik: { ankleF: { at: [62, 146], bend: 1 } } }, bell: hornsBell },
     ],
     steps: tempo(2, 0, 1, 0.4, { down: "Descends droit", up: "Pousse dans le talon" }),
-    props: [{ kind: "bench", x: 14, y: 149, w: 50, h: 37 }],
+    props: [{ kind: "sofa", x: 8, y: 149, w: 56, h: 37 }],
   },
 
   floorpress: {
@@ -155,6 +155,7 @@ Object.assign(MOTIONS, {
       { a: { ...seated(), upperN: 62, foreN: 84, upperF: 60, foreF: 82 }, c: { anchor: "hip", at: [60, 177] } },
       { a: { ...seated(), upperN: -34, foreN: 86, upperF: -36, foreF: 84 }, c: { anchor: "hip", at: [60, 177] } },
     ],
+    gear: [{ kind: "band", from: "toeN", to: ["handN", "handF"] }],
     steps: [
       { to: 1, dur: 1, label: "Coudes vers l'arrière" },
       { to: 1, dur: 1, label: "Serre les omoplates", count: true },
@@ -165,11 +166,12 @@ Object.assign(MOTIONS, {
 
   jBoxSquat: {
     keys: [
-      { a: stand({ ...GOBLET }), c: feet(112), bell: hornsBell },
-      { a: stand({ torso: 30, thighN: 88, shinN: -30, thighF: 86, shinF: -28, upperN: 36, foreN: 178, upperF: 32, foreF: 176 }), c: feet(112), bell: hornsBell },
+      // Poids du corps : les bras partent devant pour équilibrer la descente.
+      { a: stand({ upperN: 30, foreN: 40, upperF: 26, foreF: 36 }), c: feet(112) },
+      { a: stand({ torso: 30, thighN: 88, shinN: -30, thighF: 86, shinF: -28, upperN: 96, foreN: 92, upperF: 92, foreF: 88 }), c: feet(112) },
     ],
     steps: tempo(3, 0.4, 1, 0.4, { down: "Fesses en arrière", bottom: "Effleure la chaise", up: "Remonte" }),
-    props: [{ kind: "bench", x: 66, y: 152, w: 36, h: 34 }],
+    props: [{ kind: "chair", x: 66, y: 152, w: 36, h: 34 }],
   },
 
   jInclinePush: {
@@ -180,7 +182,7 @@ Object.assign(MOTIONS, {
       { a: plank(60, 0), c: { anchor: "toeN", at: [40, 185], ik: { handN: { at: [172, 141], bend: -1 }, handF: { at: [170, 141], bend: -1 } } } },
     ],
     steps: tempo(2, 0, 1, 0.4, { down: "Approche la poitrine", up: "Pousse" }),
-    props: [{ kind: "bench", x: 160, y: 143, w: 38, h: 43 }],
+    props: [{ kind: "counter", x: 162, y: 143, w: 36, h: 43 }],
   },
 
   jLatWalk: {
@@ -196,6 +198,7 @@ Object.assign(MOTIONS, {
       { to: 1, dur: 0.8, label: "Et dans l'autre sens" },
       { to: 0, dur: 0.8, label: "Genoux écartés" },
     ],
+    gear: [{ kind: "miniband" }],
   },
 
   jRevLunge: {
@@ -216,7 +219,8 @@ Object.assign(MOTIONS, {
       { to: 0, dur: 2, label: "Redescends aux oreilles", count: true },
       { to: 0, dur: 0.4, label: "Côtes basses" },
     ],
-    props: [{ kind: "bench", x: 62, y: 148, w: 40, h: 38 }],
+    props: [{ kind: "chair", x: 62, y: 148, w: 40, h: 38 }],
+    gear: [{ kind: "dumbbell", hands: ["handN", "handF"] }],
   },
 
   jRdl: {
@@ -236,7 +240,7 @@ Object.assign(MOTIONS, {
     steps: tempo(1, 1, 2, 0.3, { down: "Monte la jambe", bottom: "Tiens", up: "Redescends lentement", top: "Effleure" }),
   },
 } satisfies Record<string, Motion>);
-MOTIONS.jRow = MOTIONS.row;
+MOTIONS.jRow = { ...MOTIONS.row, gear: [{ kind: "dumbbell", hands: ["handN"] }] };
 MOTIONS.jDeadbug = MOTIONS.deadbug;
 MOTIONS.jPlank = MOTIONS.plank;
 
@@ -255,9 +259,9 @@ function walkPose(hx: number, left: number, right: number): Key {
     c: { anchor: "hip", at: [hx, 110], ik: { ankleN: { at: [right, G], bend: 1 }, ankleF: { at: [left, G], bend: -1 } } },
   };
 }
-/** Allongée sur le côté, tête à droite posée sur le bras ; `thighF` lève la jambe du dessus. */
-function side(thighF: number): Angles {
-  return { torso: 90, neck: 0, thighN: -90, shinN: -90, thighF, shinF: thighF, upperN: 90, foreN: 90, upperF: -88, foreF: -88, footN: 90, footF: 90 - (thighF + 90) };
+/** Allongée sur le côté, tête à droite posée sur le bras ; `lift` lève la jambe du dessus (côté proche, bien visible). */
+function side(lift: number): Angles {
+  return { torso: 90, neck: 0, thighN: lift, shinN: lift, thighF: -90, shinF: -90, upperN: 90, foreN: 90, upperF: -88, foreF: -88, footN: 90 - (lift + 90), footF: 90 };
 }
 
 function plank(t: number, bend: number): Angles {
@@ -286,7 +290,7 @@ function rowMotion(pull: number, hold: number, lower: number): Motion {
       { to: 0, dur: lower, label: "Redescends lentement", count: true },
       { to: 0, dur: 0.3, label: "Bras tendu" },
     ],
-    props: [{ kind: "bench", x: 140, y: 146, w: 56, h: 40 }],
+    props: [{ kind: "sofa", x: 140, y: 146, w: 58, h: 40, back: "right" }],
   };
 }
 

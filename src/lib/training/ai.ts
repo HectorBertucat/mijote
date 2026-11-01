@@ -109,6 +109,17 @@ export function fromAiMotion(m: z.infer<typeof AiMotion>): Motion {
   };
 }
 
+/** Le matériel à dessiner d'après celui que demande l'exercice : la charge des poses devient des haltères
+ * s'il n'y a pas de kettlebell, une bande se voit tendue des pieds aux mains, une mini-bande aux genoux. */
+export function withGear(m: Motion, gear: Gear[]): Motion {
+  const out: NonNullable<Motion["gear"]> = [];
+  const hands = [...new Set(m.keys.map((k) => k.bell?.hand).filter((h): h is "handN" | "handF" => !!h))];
+  if (gear.includes("halteres") && !gear.includes("kettlebell") && hands.length) out.push({ kind: "dumbbell", hands });
+  if (gear.includes("bande")) out.push({ kind: "band", from: "toeN", to: ["handN", "handF"] });
+  if (gear.includes("miniBande")) out.push({ kind: "miniband" });
+  return out.length ? { ...m, gear: out } : m;
+}
+
 function toAiMotion(m: Motion): z.infer<typeof AiMotion> {
   return {
     keys: m.keys.map((k) => ({
@@ -227,7 +238,7 @@ export function verifyAiProgram(out: AiOut, req: ProgramRequest, id: string, fix
       rename.set(x.id, "");
       continue;
     }
-    const motion = fixed[nid] ?? fromAiMotion(x.motion);
+    const motion = withGear(fixed[nid] ?? fromAiMotion(x.motion), x.gear);
     const errors = checkMotion(motion);
     if (errors.length) badMotions.push({ id: nid, errors });
     exercises[nid] = toExercise(x);

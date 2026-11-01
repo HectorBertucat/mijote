@@ -71,6 +71,13 @@
       "when": 1793565768429,
       "tag": "0009_contenants",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793571016654,
+      "tag": "0010_rythme_guide",
+      "breakpoints": true
     }
   ]
 }

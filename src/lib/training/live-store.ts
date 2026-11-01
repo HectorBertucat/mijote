@@ -3,8 +3,8 @@
 import { randomUUID } from "crypto";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { trainingLive } from "@/lib/db/schema";
-import { entriesOf, startLive, type Live } from "./live";
+import { people, trainingLive } from "@/lib/db/schema";
+import { entriesOf, normOpts, startLive, type GuideOpts, type Live } from "./live";
 import { programById } from "./programs";
 import { saveWorkout } from "./store";
 
@@ -37,13 +37,25 @@ export function activeLive(db: Db, personId: string, now = Date.now()): LiveRow 
   return r ? toRow(r) : null;
 }
 
+/** Réglages du rythme guidé d'une personne (défauts s'il n'y en a pas). */
+export function guideOpts(db: Db, personId: string): GuideOpts {
+  const r = db.select({ g: people.trainingGuide }).from(people).where(eq(people.id, personId)).get();
+  return normOpts(r?.g);
+}
+
+export function setGuideOpts(db: Db, personId: string, opts: Partial<GuideOpts>): GuideOpts {
+  const next = normOpts({ ...guideOpts(db, personId), ...opts });
+  db.update(people).set({ trainingGuide: next }).where(eq(people.id, personId)).run();
+  return next;
+}
+
 /** Lance une séance ; une séance déjà en cours pour cette personne est abandonnée. */
 export function createLive(db: Db, personId: string, programId: string, type: string, now = Date.now()): LiveRow | null {
   const p = programById(db, programId);
   if (!p || !p.people.includes(personId) || !p.sessions[type]) return null;
   db.update(trainingLive).set({ endedAt: now }).where(and(eq(trainingLive.personId, personId), isNull(trainingLive.endedAt))).run();
   const id = randomUUID();
-  const live = startLive(p, type, now);
+  const live = startLive(p, type, now, guideOpts(db, personId));
   db.insert(trainingLive).values({ id, personId, state: live, version: 1, updatedAt: now }).run();
   return { id, personId, live, version: 1, ended: false };
 }
@@ -79,6 +91,8 @@ export function writeLive(db: Db, id: string, expect: number, live: Live, now = 
     .where(and(eq(trainingLive.id, id), eq(trainingLive.version, expect), isNull(trainingLive.endedAt)))
     .run();
   if (res.changes !== 1) return { ok: false, row: getLive(db, id) };
+  // Réglages du rythme changés pendant la séance : ils restent ceux de la personne pour les suivantes.
+  if (live.opts && JSON.stringify(normOpts(live.opts)) !== JSON.stringify(normOpts(cur.live.opts))) setGuideOpts(db, cur.personId, live.opts);
   return { ok: true, row: { ...cur, live, version: expect + 1 } };
 }
 

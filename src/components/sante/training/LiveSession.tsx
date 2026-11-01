@@ -7,15 +7,20 @@
 // Pendant l’effort, un chiffre héros (la répétition ou les secondes) et rien à saisir : « Série faite »
 // en un geste, ou toute seule à la fin du rythme guidé. Le compte se corrige pendant le repos, qui
 // montre aussi l’exercice suivant qui tourne. Le rythme guidé ne garde que son heure de départ : la
-// figure, la phase, les bips et le compte en découlent, à la même seconde sur chaque écran.
+// figure, la phase, les bips et le compte en découlent, à la même seconde sur chaque écran. Il part après
+// quelques secondes de mise en place ; « Pause » fige tout (rythme, repos, finisher) jusqu'à la reprise.
+// Le mode automatique (réglé par personne, bouton Auto) enchaîne seul : chaque série démarre après la
+// mise en place, se note à la fin, le repos défile, la suivante démarre.
 import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
 import { beep, Button, Check, Field, formatClock, Sheet, Stepper, Textarea } from "@/components/ui";
 import { de, Verdict } from "../carnet";
 import { MOTIONS, motionOf } from "@/lib/training/figures";
-import { AUTO_NEXT_MS, entriesOf, guideAt, suggestedReps, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
+import { AUTO_NEXT_MS, clockOf, entriesOf, guideAt, OPTS_BOUNDS, optsOf, suggestedReps, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
 import { cycleDuration, sample } from "@/lib/training/motion";
+import { heightAt } from "@/lib/training/rhythm";
 import { lastFor, levelFor, ready, type Exercise, type LiveStep, type Program, type Workout } from "@/lib/training/program";
 import { frameAt, KbFigure, LoopingFigure, useMotionClock } from "./KbFigure";
+import { MuscleMap } from "./MuscleMap";
 import { RhythmGuide } from "./RhythmGuide";
 import { useLiveSync, type LiveRowClient } from "./useLiveSync";
 
@@ -87,6 +92,7 @@ export function LiveSession({ program: p, initial, workouts, view, onEnd, pane }
   const { live, dispatch, now } = sync;
   const [details, setDetails] = useState<string | null>(null);
   const [phone, setPhone] = useState(false);
+  const [rhythm, setRhythm] = useState(false);
   const sound = useSound(view);
   const remote = view === "telecommande";
 
@@ -112,7 +118,10 @@ export function LiveSession({ program: p, initial, workouts, view, onEnd, pane }
     await fetch(`/api/sante/seance/${initial.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ abandon: true }) }).catch(() => null);
     onEnd();
   };
-  useKeys({ ArrowLeft: () => dispatch({ k: "go", at, n: -1 }) });
+  const opts = optsOf(live);
+  const paused = live.cur.paused != null;
+  const toggleAuto = () => dispatch({ k: "opts", opts: { auto: !opts.auto } });
+  useKeys({ ArrowLeft: () => dispatch({ k: "go", at, n: -1 }), KeyA: toggleAuto, KeyP: () => dispatch({ k: paused ? "resume" : "pause", at }) });
 
   const detailEx = details ? p.exercises[details] : null;
   const common = { p, live, workouts, dispatch, now, offset: sync.offset, sound: sound.beep, remote };
@@ -136,6 +145,10 @@ export function LiveSession({ program: p, initial, workouts, view, onEnd, pane }
                   Téléphone
                 </Button>
               )}
+              <Button size="sm" variant={opts.auto ? "primary" : "quiet"} icon="auto" onClick={toggleAuto} aria-pressed={opts.auto} title="Enchaîner seul : chaque série démarre après la mise en place (A)">
+                Auto
+              </Button>
+              <Button size="sm" variant="quiet" icon="sliders" iconOnly onClick={() => setRhythm(true)} aria-label="Réglages du rythme guidé" />
               <Button size="sm" variant="quiet" icon="bell" onClick={sound.toggle} aria-pressed={sound.on}>
                 {sound.on ? "Bips" : "Muet"}
               </Button>
@@ -158,11 +171,38 @@ export function LiveSession({ program: p, initial, workouts, view, onEnd, pane }
       <Sheet open={!!detailEx} onClose={() => setDetails(null)} title={detailEx?.name ?? ""} width={520}>
         {details && detailEx && <ExerciseDetails ex={detailEx} id={details} level={levelOf(details)} onLevel={(l) => dispatch({ k: "level", ex: details, level: l })} />}
       </Sheet>
+      <Sheet open={rhythm} onClose={() => setRhythm(false)} title={pane ? `Le rythme ${de(pane.name)}` : "Rythme guidé"} width={420}>
+        {rhythm && <RhythmSettings opts={opts} onChange={(o) => dispatch({ k: "opts", opts: o })} />}
+      </Sheet>
       <Sheet open={phone} onClose={() => setPhone(false)} title={pane ? `Le téléphone ${de(pane.name)}` : "Piloter depuis le téléphone"} width={420}>
         {phone && <PhoneQr id={initial.id} />}
       </Sheet>
     </div>
     </PaneCtx.Provider>
+  );
+}
+
+/** Réglages du rythme guidé de la personne : gardés pour ses prochaines séances. */
+function RhythmSettings({ opts, onChange }: { opts: ReturnType<typeof optsOf>; onChange: (o: Partial<ReturnType<typeof optsOf>>) => void }) {
+  return (
+    <div className="grid gap-5">
+      <Check checked={opts.auto} onChange={(e) => onChange({ auto: e.target.checked })} strike={false}>
+        <span className="grid">
+          <b>Enchaîner automatiquement</b>
+          <span className="text-small text-ink-2">Chaque série démarre seule après la mise en place et se note à la fin ; le repos défile, la suivante démarre. Pause et reprise à tout moment.</span>
+        </span>
+      </Check>
+      <div className="grid gap-2">
+        <span className="label text-ink-2">Mise en place avant une série</span>
+        <Stepper value={opts.lead} onChange={(n) => onChange({ lead: n })} min={OPTS_BOUNDS.lead[0]} max={OPTS_BOUNDS.lead[1]} unit="s" />
+      </div>
+      <div className="grid gap-2">
+        <span className="label text-ink-2">Pour passer d’un exercice à l’autre</span>
+        <Stepper value={opts.change} onChange={(n) => onChange({ change: n })} min={OPTS_BOUNDS.change[0]} max={OPTS_BOUNDS.change[1]} step={5} unit="s" />
+        <span className="text-small text-ink-2">Dans un superset, sans repos entre les deux : le temps de changer de matériel ou de position.</span>
+      </div>
+      <p className="text-small text-ink-2">Gardés pour tes prochaines séances. Clavier : A pour l’automatique, P pour la pause.</p>
+    </div>
   );
 }
 
@@ -316,59 +356,76 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
   const seconds = ex.unit === "s";
   const reps = live.cur.reps ?? suggestedReps(live, workouts, step.ex, step.set, ex.reps[0]);
   const since = live.cur.guide;
+  const pausedAt = live.cur.paused;
+  const paused = pausedAt != null;
 
-  // Une seule horloge : celle du guidage (heure du serveur ramenée à celle de cet écran), sinon une boucle de démonstration.
-  const demo = useMotionClock(since == null);
-  const elapsed = useMotionClock(since != null, since != null ? since - offset : undefined);
+  // Une seule horloge : celle du guidage (heure du serveur ramenée à celle de cet écran, figée en pause), sinon une boucle de démonstration.
+  const demo = useMotionClock(since == null && !paused);
+  const ticking = useMotionClock(since != null && !paused, since != null ? since - offset : undefined);
+  const elapsed = since != null && pausedAt != null ? (pausedAt - since) / 1000 : ticking;
   const dur = seconds ? reps : reps * cycleDuration(motion);
   const g = since != null ? guideAt(elapsed, dur, ex.uni) : null;
   const t = g ? (g.phase === "run" ? g.t : 0) : demo;
   const frame = sample(motion, t);
   const count = g?.phase === "run" ? (seconds ? Math.floor(g.t) : frame.rep) : g?.phase === "done" ? reps : 0;
   const switchLeft = g?.phase === "switch" ? Math.max(0, SWITCH_SEC - g.t) : 0;
+  const readyLeft = g?.phase === "ready" ? Math.ceil(-g.t) : 0;
+  const changing = g?.phase === "ready" && live.steps[at - 1]?.k === "ex" && (live.steps[at - 1] as ExStep).ex !== step.ex;
 
-  // Bips : une note à chaque changement de phase, plus aiguë au début de chaque répétition ; changement de côté et fin.
+  // Bips : le décompte de mise en place (3, 2, 1), une note à chaque changement de phase, plus aiguë au début de chaque répétition ; changement de côté et fin.
   const lastKey = useRef("");
   useEffect(() => {
-    if (!g) return;
-    const key = g.phase !== "run" ? g.phase : seconds ? `s${g.side}-${Math.ceil(reps - g.t)}` : `r${g.side}-${frame.rep}-${frame.step}`;
+    if (!g || paused) return;
+    const key = g.phase === "ready" ? `ready-${readyLeft}` : g.phase !== "run" ? g.phase : seconds ? `s${g.side}-${Math.ceil(reps - g.t)}` : `r${g.side}-${frame.rep}-${frame.step}`;
     if (key === lastKey.current) return;
     const first = lastKey.current === "";
     lastKey.current = key;
     if (first && elapsed > 1) return; // écran qui arrive en cours de route : pas de rafale
-    if (g.phase === "switch" || g.phase === "done") sound(990, 0.4);
+    if (g.phase === "ready") {
+      if (readyLeft <= 3) sound(660, 0.1);
+    } else if (g.phase === "switch" || g.phase === "done") sound(990, 0.4);
     else if (!seconds && frame.rep < reps) sound(frame.step === 0 ? 990 : 660, frame.step === 0 ? 0.14 : 0.08);
     else if (seconds && Math.ceil(reps - g.t) <= 3) sound(660, 0.08);
   });
 
   // Rythme guidé terminé : la série est notée toute seule (correction possible pendant le repos).
-  useOnce(g?.phase === "done" && elapsed >= (ex.uni ? 2 * dur + SWITCH_SEC : dur) + AUTO_NEXT_MS / 1000, () => dispatch({ k: "record", at, ex: step.ex, set: step.set, value: reps, level }));
+  useOnce(!paused && g?.phase === "done" && elapsed >= (ex.uni ? 2 * dur + SWITCH_SEC : dur) + AUTO_NEXT_MS / 1000, () => dispatch({ k: "record", at, ex: step.ex, set: step.set, value: reps, level }));
 
   const running = g != null && g.phase !== "done";
   const partial = g?.phase === "run" && g.side === 1 && count > 0 ? count : reps;
   const startGuide = () => dispatch({ k: "guide", at, on: true, reps });
   const stopGuide = () => dispatch({ k: "guide", at, on: false, reps: partial });
   const finish = () => dispatch({ k: "record", at, ex: step.ex, set: step.set, value: partial, level });
-  useKeys({ Space: finish, KeyG: () => (running ? stopGuide() : startGuide()), KeyD: onDetails });
+  const pause = () => dispatch({ k: "pause", at });
+  const resume = () => dispatch({ k: "resume", at });
+  const goNow = () => dispatch({ k: "lead+", at, sec: -3600 });
+  const more = () => dispatch({ k: "lead+", at, sec: 5 });
+  useKeys({ Space: paused ? resume : g?.phase === "ready" ? goNow : finish, KeyG: () => (running ? stopGuide() : startGuide()), KeyD: onDetails, Equal: more, NumpadAdd: more });
 
-  // Le chiffre héros : la répétition en cours, les secondes restantes, ou l’objectif avant de commencer.
-  const hero = g?.phase === "switch" ? String(Math.ceil(switchLeft)) : g?.phase === "done" ? "✓" : g ? (seconds ? String(Math.max(0, Math.ceil(reps - g.t))) : String(Math.min(reps, count + 1))) : String(reps);
-  const heroSub = g?.phase === "switch" ? "Change de côté" : g?.phase === "done" ? "Série terminée" : g ? (seconds ? `secondes${ex.uni ? ` · côté ${g.side}` : ""}` : `sur ${reps}${ex.uni ? ` · côté ${g.side}` : ""}`) : `${seconds ? "secondes" : "répétitions"}${ex.uni ? " par côté" : ""}`;
-  const phase = g?.phase === "switch" ? "Autre côté" : g?.phase === "done" ? "Bien" : frame.label;
-  const phaseTone = g?.phase === "switch" ? "text-hot" : g?.phase === "run" ? "text-accent" : "text-ink-2";
+  // Le chiffre héros : le décompte de mise en place, la répétition en cours, les secondes restantes, ou l’objectif avant de commencer.
+  const hero = g?.phase === "ready" ? String(readyLeft) : g?.phase === "switch" ? String(Math.ceil(switchLeft)) : g?.phase === "done" ? "✓" : g ? (seconds ? String(Math.max(0, Math.ceil(reps - g.t))) : String(Math.min(reps, count + 1))) : String(reps);
+  const target = `${reps} ${seconds ? "secondes" : "répétitions"}${ex.uni ? " par côté" : ""}`;
+  const heroSub = g?.phase === "ready" ? target : g?.phase === "switch" ? "Change de côté" : g?.phase === "done" ? "Série terminée" : g ? (seconds ? `secondes${ex.uni ? ` · côté ${g.side}` : ""}` : `sur ${reps}${ex.uni ? ` · côté ${g.side}` : ""}`) : target;
+  const phase = paused ? "En pause" : g?.phase === "ready" ? (changing ? "Change d’exercice" : "En place") : g?.phase === "switch" ? "Autre côté" : g?.phase === "done" ? "Bien" : frame.label;
+  const phaseTone = paused ? "text-ink-2" : g?.phase === "switch" || g?.phase === "ready" ? "text-hot" : g?.phase === "run" ? "text-accent" : "text-ink-2";
+  // Effort de l'instant (0 en haut, 1 dans la position la plus dure) : les muscles s'allument au rythme du geste.
+  const effort = g?.phase === "run" ? 1 - heightAt(motion, g.t, seconds ? null : dur) : g ? 0 : 1 - heightAt(motion, demo);
 
   return (
     <section className={`grid grid-cols-[minmax(0,1fr)] items-center gap-4 @2xl:gap-10 ${remote ? "mx-auto w-full max-w-[640px]" : "@2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"}`}>
-      {!remote && (
-        <div className="grid gap-2">
-          <KbFigure ex={step.ex} t={t} label={`${ex.name} : ${phase}`} className="mx-auto max-h-[28vh] w-auto max-w-full @2xl:max-h-[64vh]" />
-          <p className="label text-center text-ink-2 @2xl:text-[15px]">Tempo {ex.tempo}</p>
+      {/* La figure ; à côté (colonne du duo) ou dessous (grand écran seul), les muscles qui travaillent. */}
+      <div className={`grid items-center gap-x-6 gap-y-3 ${remote ? "" : "@xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] @2xl:grid-cols-[minmax(0,1fr)]"}`}>
+        <div className={`grid gap-2 transition-opacity duration-[var(--dur-2)] ${paused ? "opacity-50" : ""}`}>
+          <KbFigure ex={step.ex} t={t} label={`${ex.name} : ${phase}`} className={`mx-auto w-auto max-w-full ${remote ? "max-h-[24vh]" : "max-h-[28vh] @2xl:max-h-[46vh]"}`} />
+          {!remote && <p className="label text-center text-ink-2 @2xl:text-[15px]">Tempo {ex.tempo}</p>}
         </div>
-      )}
+        {!remote && <MuscleMap ex={step.ex} exercise={ex} effort={effort} active={g?.phase === "run" && !paused} className="mx-auto hidden w-full max-w-[440px] @xl:grid" />}
+      </div>
 
       <div className="grid content-center gap-3 @2xl:gap-4">
         <Eyebrow>
           {step.block} · tour {step.set}/{step.sets}
+          {optsOf(live).auto && " · auto"}
         </Eyebrow>
         <h2 className="text-[30px] leading-[0.96] @2xl:text-[clamp(36px,4cqw,56px)]">{ex.name}</h2>
         <div className="flex flex-wrap items-center gap-2">
@@ -377,7 +434,7 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
         </div>
 
         <div className="flex items-end gap-6" aria-live="polite">
-          <span className={`${HERO} text-[clamp(112px,min(26vh,34cqw),300px)] ${g?.phase === "switch" ? "text-hot" : ""}`}>{hero}</span>
+          <span className={`${HERO} text-[clamp(112px,min(26vh,34cqw),300px)] ${g?.phase === "switch" || g?.phase === "ready" ? "text-hot" : ""} ${paused ? "text-ink-2" : ""}`}>{hero}</span>
           <span className="grid gap-2 pb-3">
             <span className={`font-display text-[26px] font-extrabold leading-none tracking-[-0.02em] [font-stretch:115%] @2xl:text-[40px] ${phaseTone}`}>{phase}</span>
             <span className="text-body text-ink-2 @2xl:text-[21px]">{heroSub}</span>
@@ -385,7 +442,7 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
         </div>
 
         {/* La bille qui suit le tempo : on voit venir chaque phase, au même instant que la figure et les bips. */}
-        {!seconds && <RhythmGuide motion={motion} t={t} end={g ? dur : null} active={g?.phase === "run"} className="max-w-[560px]" />}
+        {!seconds && <RhythmGuide motion={motion} t={g?.phase === "ready" ? g.t : t} end={g ? dur : null} active={g?.phase === "run" && !paused} className="max-w-[560px]" />}
 
         {!remote && <p className="max-w-[40ch] text-lead @2xl:text-[24px]">{ex.cues[0]}</p>}
 
@@ -402,27 +459,59 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
         )}
 
         <div className="sticky bottom-0 z-10 -mx-4 grid grid-cols-2 gap-2 border-t border-line bg-bg px-4 py-3 @2xl:static @2xl:border-0 @2xl:m-0 @2xl:flex @2xl:flex-wrap @2xl:items-center @2xl:bg-transparent @2xl:p-0">
-          <Button variant="primary" size="kitchen" onClick={finish}>
-            Série faite
-          </Button>
-          {running ? (
-            <Button size="kitchen" icon="pause" onClick={stopGuide}>
-              Arrêter<span className="hidden @2xl:inline"> le rythme</span>
-            </Button>
+          {paused ? (
+            <>
+              <Button variant="primary" size="kitchen" icon="play" onClick={resume}>
+                Reprendre
+              </Button>
+              <Button size="kitchen" onClick={finish}>
+                Série faite
+              </Button>
+            </>
+          ) : g?.phase === "ready" ? (
+            <>
+              <Button variant="primary" size="kitchen" icon="play" onClick={goNow}>
+                Go
+              </Button>
+              <Button size="kitchen" icon="plus" onClick={more}>
+                5 s
+              </Button>
+            </>
           ) : (
-            <Button size="kitchen" icon="play" onClick={startGuide}>
-              {g ? "Relancer" : "Rythme guidé"}
-            </Button>
+            <>
+              <Button variant="primary" size="kitchen" onClick={finish}>
+                Série faite
+              </Button>
+              {running ? (
+                <Button size="kitchen" icon="pause" onClick={pause}>
+                  Pause
+                </Button>
+              ) : (
+                <Button size="kitchen" icon="play" onClick={startGuide}>
+                  {g ? "Relancer" : "Rythme guidé"}
+                </Button>
+              )}
+            </>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {g?.phase === "ready" && !paused && (
+            <Button size="sm" variant="quiet" icon="pause" onClick={pause}>
+              Pause
+            </Button>
+          )}
+          {running && (
+            <Button size="sm" variant="quiet" onClick={stopGuide}>
+              Arrêter le rythme
+            </Button>
+          )}
           <Button size="sm" variant="quiet" onClick={onDetails}>
             Consignes et variante
           </Button>
           <Button size="sm" variant="quiet" onClick={() => dispatch({ k: "go", at, n: -1 })}>
             Retour
           </Button>
-          <KeyHint>Espace : série faite · G : rythme · D : consignes · ← : retour</KeyHint>
+          <KeyHint>{paused ? "Espace : reprendre" : g?.phase === "ready" ? "Espace : go · + : 5 s de plus · P : pause" : "Espace : série faite · G : rythme · P : pause · D : consignes · ← : retour"}</KeyHint>
         </div>
       </div>
     </section>
@@ -441,9 +530,8 @@ function ExerciseDetails({ ex, id, level, onLevel }: { ex: Exercise; id: string;
   return (
     <div className="grid gap-4">
       <LoopingFigure ex={id} className="mx-auto w-full max-w-[280px]" />
-      <p className="text-small text-ink-2">
-        {ex.muscles} · tempo {ex.tempo}
-      </p>
+      <MuscleMap ex={id} exercise={ex} />
+      <p className="text-small text-ink-2">Tempo {ex.tempo}</p>
       <Field label="Variante">
         {(fid) => (
           <select id={fid} value={level} onChange={(e) => onLevel(Number(e.target.value))} className="min-h-12 w-full rounded-[8px] border border-line-strong bg-surface px-4 text-[17px]">
@@ -495,8 +583,9 @@ function Rest({ p, live, workouts, dispatch, now, sound, remote, levelOf, onDeta
   const sec = step.k === "rest" ? step.sec : 60;
   const [fallback] = useState(() => now() + sec * 1000);
   const end = live.cur.restEnd ?? fallback;
-  useMotionClock(true); // un rendu par image
-  const left = Math.max(0, (end - now()) / 1000);
+  const paused = live.cur.paused != null;
+  useMotionClock(!paused); // un rendu par image, figé en pause
+  const left = Math.max(0, (end - clockOf(live, now())) / 1000);
   const shown = Math.ceil(left);
   const lastSec = useRef(shown);
   useEffect(() => {
@@ -505,10 +594,11 @@ function Rest({ p, live, workouts, dispatch, now, sound, remote, levelOf, onDeta
     if (shown > 0 && shown <= 3) sound(660, 0.1);
     if (shown === 0) sound(990, 0.4);
   }, [shown, sound]);
-  useOnce(left <= 0, () => dispatch({ k: "go", at, n: 1 }));
+  useOnce(left <= 0 && !paused, () => dispatch({ k: "go", at, n: 1 }));
   const skip = () => dispatch({ k: "go", at, n: 1 });
   const plus = () => dispatch({ k: "rest+", at, sec: 15 });
-  useKeys({ Space: skip, Equal: plus, NumpadAdd: plus });
+  const pause = () => dispatch({ k: paused ? "resume" : "pause", at });
+  useKeys({ Space: paused ? pause : skip, Equal: plus, NumpadAdd: plus });
 
   const justDone = doneSinceRest(live.steps, at);
   const next = nextWork(live.steps, at + 1);
@@ -517,8 +607,8 @@ function Rest({ p, live, workouts, dispatch, now, sound, remote, levelOf, onDeta
   return (
     <section className={`grid grid-cols-[minmax(0,1fr)] items-center gap-6 @2xl:gap-10 ${remote ? "mx-auto w-full max-w-[640px]" : "@2xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]"}`}>
       <div className="grid min-w-0 content-center gap-4">
-        <Eyebrow>Repos</Eyebrow>
-        <span className={`${HERO} text-[clamp(96px,min(28vh,26cqw),280px)] @2xl:text-[clamp(96px,min(28vh,19cqw),280px)]`} role="timer" aria-live="off">
+        <Eyebrow>{paused ? "Repos · en pause" : "Repos"}</Eyebrow>
+        <span className={`${paused ? "text-ink-2" : ""} ${HERO} text-[clamp(96px,min(28vh,26cqw),280px)] @2xl:text-[clamp(96px,min(28vh,19cqw),280px)]`} role="timer" aria-live="off">
           {formatClock(left)}
         </span>
         <span className="h-1 overflow-hidden bg-line" aria-hidden>
@@ -531,7 +621,10 @@ function Rest({ p, live, workouts, dispatch, now, sound, remote, levelOf, onDeta
           <Button size="kitchen" onClick={plus}>
             +15 s
           </Button>
-          <KeyHint>Espace : passer · + : 15 s de plus</KeyHint>
+          <Button size="kitchen" variant={paused ? "secondary" : "quiet"} icon={paused ? "play" : "pause"} onClick={pause}>
+            {paused ? "Reprendre" : "Pause"}
+          </Button>
+          <KeyHint>Espace : passer · + : 15 s de plus · P : pause</KeyHint>
         </div>
 
         {justDone.length > 0 && (
@@ -556,8 +649,8 @@ function Rest({ p, live, workouts, dispatch, now, sound, remote, levelOf, onDeta
       {next && nx && (
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 border-t-2 border-ink pt-4 @2xl:border-t-0 @2xl:border-l @2xl:border-line @2xl:pt-0 @2xl:pl-8">
           <Eyebrow>Ensuite</Eyebrow>
-          <div className={`grid items-center gap-4 ${remote ? "" : "sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"}`}>
-            {!remote && <LoopingFigure ex={next.ex} className="mx-auto w-full max-w-[220px] @2xl:max-w-[300px]" />}
+          <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            <LoopingFigure ex={next.ex} className={`mx-auto w-full ${remote ? "max-w-[160px]" : "max-w-[220px] @2xl:max-w-[300px]"}`} />
             <div className="grid content-start gap-2">
               <h3 className="font-display text-[28px] leading-[0.96] tracking-[-0.03em] [font-stretch:125%] [font-weight:800] @2xl:text-[44px]">{nx.name}</h3>
               <span className="num text-body text-ink-2">
@@ -597,48 +690,62 @@ function Emom({ p, live, dispatch, offset, sound, remote, step }: Common & { ste
   const at = live.i;
   const ex = p.exercises[step.ex];
   const since = live.cur.emom;
-  const t = useMotionClock(since != null, since != null ? since - offset : undefined);
+  const pausedAt = live.cur.paused;
+  const paused = pausedAt != null;
+  const ticking = useMotionClock(since != null && !paused, since != null ? since - offset : undefined);
   const demo = useMotionClock(since == null);
   const cycle = motionOf(p, step.ex) ? cycleDuration(motionOf(p, step.ex)!) : 1;
-  const elapsed = since == null ? 0 : t;
-  const round = Math.min(step.rounds, Math.floor(elapsed / step.every) + 1);
-  const inRound = elapsed - (round - 1) * step.every;
-  const working = since != null && inRound < step.reps * cycle;
-  const swings = since == null ? 0 : Math.min(step.reps, Math.floor(inRound / cycle));
-  const finished = since != null && elapsed >= step.rounds * step.every;
+  const elapsed = since == null ? 0 : pausedAt != null ? (pausedAt - since) / 1000 : ticking;
+  const readying = since != null && elapsed < 0; // mise en place avant le premier bip
+  const clock = Math.max(0, elapsed);
+  const round = Math.min(step.rounds, Math.floor(clock / step.every) + 1);
+  const inRound = clock - (round - 1) * step.every;
+  const started = since != null && !readying;
+  const working = started && inRound < step.reps * cycle;
+  const swings = !started ? 0 : Math.min(step.reps, Math.floor(inRound / cycle));
+  const finished = started && clock >= step.rounds * step.every;
 
-  // Un bip à chaque tour (pas de rafale pour un écran qui arrive en cours de tour).
+  // Un bip à chaque tour, et le décompte de mise en place (pas de rafale pour un écran qui arrive en cours de tour).
   const lastRound = useRef(0);
+  const lastLead = useRef(0);
+  const leadLeft = readying ? Math.ceil(-elapsed) : 0;
   useEffect(() => {
-    if (since == null || finished || round === lastRound.current) return;
+    if (paused || !readying || leadLeft === lastLead.current) return;
+    lastLead.current = leadLeft;
+    if (leadLeft <= 3) sound(660, 0.1);
+  }, [paused, readying, leadLeft, sound]);
+  useEffect(() => {
+    if (!started || paused || finished || round === lastRound.current) return;
     const late = lastRound.current === 0 && inRound > 1;
     lastRound.current = round;
     if (!late) sound(990, 0.25);
-  }, [since, round, finished, inRound, sound]);
-  useOnce(finished, () => {
+  }, [started, paused, round, finished, inRound, sound]);
+  useOnce(finished && !paused, () => {
     sound(990, 0.5);
     dispatch({ k: "record", at, ex: step.ex, set: 1, value: step.rounds * step.reps });
   });
 
   const begin = () => dispatch({ k: "emom", at });
-  const stop = () => dispatch({ k: "record", at, ex: step.ex, set: 1, value: (since == null ? 0 : round) * step.reps });
-  useKeys({ Space: since == null ? begin : undefined }); // pas d’arrêt au clavier : un appui de trop couperait le finisher
+  const stop = () => dispatch({ k: "record", at, ex: step.ex, set: 1, value: (started ? round : 0) * step.reps });
+  const pause = () => dispatch({ k: paused ? "resume" : "pause", at });
+  useKeys({ Space: since == null ? begin : paused ? pause : readying ? () => dispatch({ k: "lead+", at, sec: -3600 }) : undefined }); // pas d’arrêt au clavier : un appui de trop couperait le finisher
 
   const f = working ? frameAt(motionOf(p, step.ex), inRound) : null;
-  const hero = since == null ? String(step.rounds) : working ? String(Math.min(step.reps, swings + 1)) : String(Math.ceil(step.every - inRound));
-  const sub = since == null ? `tours de ${step.reps} swings` : working ? `sur ${step.reps} · tour ${round}/${step.rounds}` : `s avant le bip · tour ${Math.min(step.rounds, round + 1)}/${step.rounds}`;
+  const hero = since == null ? String(step.rounds) : readying ? String(leadLeft) : working ? String(Math.min(step.reps, swings + 1)) : String(Math.ceil(step.every - inRound));
+  const sub = since == null ? `tours de ${step.reps} swings` : readying ? `${step.rounds} tours de ${step.reps}` : working ? `sur ${step.reps} · tour ${round}/${step.rounds}` : `s avant le bip · tour ${Math.min(step.rounds, round + 1)}/${step.rounds}`;
+  const word = paused ? "En pause" : since == null ? "Prêt\u00a0?" : readying ? "En place" : working ? (f?.label ?? "Swing") : "Récupère";
   return (
     <section className={`grid grid-cols-[minmax(0,1fr)] items-center gap-4 @2xl:gap-10 ${remote ? "mx-auto w-full max-w-[640px]" : "@2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"}`}>
-      {!remote && <KbFigure ex={step.ex} t={since == null ? demo : working ? inRound : 0} className="mx-auto max-h-[28vh] w-auto max-w-full @2xl:max-h-[64vh]" />}
+      <KbFigure ex={step.ex} t={since == null ? demo : working ? inRound : 0} className={`mx-auto w-auto max-w-full ${remote ? "max-h-[24vh]" : "max-h-[28vh] @2xl:max-h-[64vh]"} ${paused ? "opacity-50" : ""}`} />
       <div className="grid content-center gap-3 @2xl:gap-4">
         <Eyebrow>{step.block}</Eyebrow>
         <h2 className="text-[30px] leading-[0.96] @2xl:text-[clamp(36px,4cqw,56px)]">
           {step.reps} swings toutes les {step.every}{"\u00a0"}s
         </h2>
         <div className="flex items-end gap-6" aria-live="polite">
-          <span className={`${HERO} text-[clamp(112px,min(26vh,34cqw),300px)] ${since != null && !working ? "text-ink-2" : ""}`}>{hero}</span>
+          <span className={`${HERO} text-[clamp(112px,min(26vh,34cqw),300px)] ${readying ? "text-hot" : started && !working ? "text-ink-2" : ""}`}>{hero}</span>
           <span className="grid gap-2 pb-3">
-            <span className={`font-display text-[26px] font-extrabold leading-none tracking-[-0.02em] [font-stretch:115%] @2xl:text-[40px] ${working ? "text-accent" : "text-ink-2"}`}>{since == null ? "Prêt\u00a0?" : working ? (f?.label ?? "Swing") : "Récupère"}</span>
+            <span className={`font-display text-[26px] font-extrabold leading-none tracking-[-0.02em] [font-stretch:115%] @2xl:text-[40px] ${readying ? "text-hot" : working && !paused ? "text-accent" : "text-ink-2"}`}>{word}</span>
             <span className="text-body text-ink-2 @2xl:text-[21px]">{sub}</span>
           </span>
         </div>
@@ -649,9 +756,14 @@ function Emom({ p, live, dispatch, offset, sound, remote, step }: Common & { ste
               Démarrer
             </Button>
           ) : (
-            <Button size="kitchen" onClick={stop}>
-              Terminer le finisher
-            </Button>
+            <>
+              <Button size="kitchen" variant={paused ? "primary" : "secondary"} icon={paused ? "play" : "pause"} onClick={pause}>
+                {paused ? "Reprendre" : "Pause"}
+              </Button>
+              <Button size="kitchen" variant="quiet" onClick={stop}>
+                Terminer le finisher
+              </Button>
+            </>
           )}
           {since == null && <KeyHint>Espace</KeyHint>}
         </div>

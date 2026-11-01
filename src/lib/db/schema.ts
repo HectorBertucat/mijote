@@ -39,6 +39,9 @@ export const people = sqliteTable("people", {
   // Repère fixe d'un repas (kcal et protéines), choisi par la personne : il sert tant que la dépense
   // n'est pas mesurée par Santé (plus juste qu'une formule quand on connaît déjà ses chiffres).
   fixedMealRef: json<{ kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number }>("fixed_meal_ref"),
+  // Rythme guidé des séances de sport (src/lib/training/live.ts, GuideOpts) : mode automatique, secondes de
+  // mise en place et de changement d'exercice. Null : les réglages par défaut.
+  trainingGuide: json<{ auto: boolean; lead: number; change: number }>("training_guide"),
 });
 
 export const preferences = sqliteTable("preferences", {
