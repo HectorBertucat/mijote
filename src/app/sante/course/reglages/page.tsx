@@ -143,7 +143,7 @@ export default async function CourseSettings({ searchParams }: { searchParams: P
           <Button type="submit" variant="primary" icon="check">
             Enregistrer
           </Button>
-          <Link href="/sante/course" className="font-bold text-ink-2 hover:text-ink">
+          <Link href="/sante/course" className="inline-flex min-h-tap items-center font-bold text-ink-2 hover:text-ink">
             Annuler
           </Link>
         </div>

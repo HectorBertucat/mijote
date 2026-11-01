@@ -104,7 +104,7 @@ export function TodayLog(p: TodayProps) {
           id="acocher"
           aside={
             p.hasHabits && (
-              <Link href="/sante/habitudes" className="text-small font-bold text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
+              <Link href="/sante/habitudes" className="inline-flex min-h-tap items-center text-small font-bold text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
                 Mes habitudes
               </Link>
             )

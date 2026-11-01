@@ -20,7 +20,7 @@ export function PeriodScope<T extends string>({ options, value, param = "periode
     <div className={`grid min-w-0 content-start gap-6 ${className}`}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         {head}
-        <div role="group" aria-label="Période" className="flex gap-4">
+        <div role="group" aria-label="Période" className="flex gap-1">
           {options.map((o) => {
             const on = o.value === value;
             return (
@@ -30,7 +30,7 @@ export function PeriodScope<T extends string>({ options, value, param = "periode
                 aria-pressed={on}
                 disabled={o.disabled}
                 onClick={() => !on && pick(o.value)}
-                className={`label -mb-px min-h-tap border-b-2 whitespace-nowrap transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] disabled:cursor-not-allowed disabled:opacity-40 ${on ? "border-ink text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
+                className={`label -mb-px min-h-tap min-w-tap border-b-2 px-1 whitespace-nowrap transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)] disabled:cursor-not-allowed disabled:opacity-40 ${on ? "border-ink text-ink" : "border-transparent text-ink-2 hover:text-ink"}`}
               >
                 {o.label}
               </button>
