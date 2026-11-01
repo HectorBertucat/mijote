@@ -12,6 +12,7 @@ import { listDislikes, listHabits, removeHabit, saveHabit } from "@/lib/eaters/s
 import { batchMealOf, loadEaters } from "@/lib/eaters/store";
 import { GOAL_LABEL } from "@/lib/health/core";
 import { listPeople, todayParis } from "@/lib/health/store";
+import { editSession, getRunProfile, runContext, saveRunSettings, settingsOf, setWeekOverride } from "@/lib/running/store";
 import { startShoppingList } from "@/lib/shopping/build";
 import { defaultPeriod, isDay, periodLabel } from "@/lib/week/period";
 import { addRecipe, library, loadSelection, loadTastes, loadWeek, periodPlans, removeRecipe, weekList } from "@/lib/week/store";
@@ -60,6 +61,7 @@ export function loadSnapshot(db: Db, speakerId: string, weekStart: string, now =
       .filter((r) => r.status !== "archived")
       .map((r) => ({ slug: r.slug, name: r.name, kcalUnit: r.kcalUnit, proteinUnit: r.proteinUnit, status: r.status ?? "to_try", excludedFor: [...(tastes.excluded.get(r.slug) ?? [])] })),
     boxes: listStock(db, todayParis(now)).map((b) => ({ id: b.id, name: b.name, personId: b.personId, kcal: b.kcal, proteinG: b.proteinG, place: b.place, limit: b.limit, freshness: b.freshness })),
+    running: runContext(db, speakerId, now),
   };
 }
 
@@ -93,7 +95,7 @@ export const SYSTEM = `Tu es l'assistant de Mijote, une appli de batch cooking e
 
 Tu conseilles chaque personne du foyer selon ses objectifs, avec les données de l'appli données plus bas (cibles, repères par repas, repas du batch, habitudes hors batch, semaine, frigo, recettes et part de chacun). Tu ne calcules rien toi-même et tu n'inventes aucun chiffre : tu reprends ceux des données, et tu dis quand une donnée manque (profil, pesée, cible). Ce n'est pas un avis médical ; un risque se dit une fois, factuellement.
 
-Tu peux proposer des actions avec les outils : ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch (shaker, petit-déjeuner, en-cas), marquer une boîte mangée, lancer la liste de courses. Un outil ne fait rien tout de suite : l'appli vérifie ta proposition et la montre en carte, la personne l'applique ou l'annule d'un geste. Propose une action seulement quand elle répond à la demande, trois au plus, avec les identifiants exacts des données (slug, personId, habitId, boxId, ids d'aliments de la liste). Écris d'abord ta réponse, puis appelle les outils.
+Tu peux proposer des actions avec les outils : ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch (shaker, petit-déjeuner, en-cas), marquer une boîte mangée, lancer la liste de courses ; et, si la personne qui te parle a un plan de course, déplacer, raccourcir ou alléger une séance, changer le nombre de sorties, poser une semaine de décharge ou enregistrer une FC qu'elle t'a donnée. Pour la course, tu expliques les analyses en mots simples et tu traduis ses contraintes de vie en déplacements ; jamais de diagnostic ni de conseil médical : une douleur qui dure, c'est l'avis d'un professionnel de santé. Un outil ne fait rien tout de suite : l'appli vérifie ta proposition et la montre en carte, la personne l'applique ou l'annule d'un geste. Propose une action seulement quand elle répond à la demande, trois au plus, avec les identifiants exacts des données (slug, personId, habitId, boxId, ids d'aliments de la liste). Écris d'abord ta réponse, puis appelle les outils.
 
 Repères : deux repas du batch par jour ; le hors batch complète la journée. Pour choisir des recettes, appuie-toi sur l'adéquation de chaque recette au repère de chacun (bien, juste, loin) et sur les écarts et suggestions de la semaine, calculés par l'appli. Un manque de moins de 15 g de protéines ou 250 kcal par jour ne vaut pas un complément. Ne parle que du foyer, de la cuisine, des courses, de la nutrition et du sport ; pour le reste, dis que ce n'est pas ton rôle ici.`;
 
@@ -116,7 +118,7 @@ export async function askAssistant(db: Db, personId: string, text: string, page:
     maxTokens: 3000,
     system: [SYSTEM, `Données du foyer, calculées par l'appli :\n${buildContext(snap)}`],
     messages: [...history, { role: "user", content: `${pageLine(page, snap)}\n\n${msg}` }],
-    tools: toolDefinitions(),
+    tools: toolDefinitions(!!snap.running),
     onText,
     devMock: () => {
       const free = snap.recipes.find((r) => !snap.week.selected.includes(r.slug));
@@ -204,6 +206,36 @@ export function applyAssistantAction(db: Db, personId: string, id: string, index
         href = "/frigo";
         break;
       }
+      case "course_decaler":
+        editSession(db, personId, x.sessionId, { date: x.date }, now);
+        message = "Séance déplacée : la montre suit à la prochaine synchro.";
+        href = "/sante/course";
+        break;
+      case "course_raccourcir":
+        editSession(db, personId, x.sessionId, { minutes: Math.round(x.minutes) }, now);
+        message = "Séance raccourcie.";
+        href = "/sante/course";
+        break;
+      case "course_remplacer":
+        editSession(db, personId, x.sessionId, { kind: x.type, minutes: Math.round(x.minutes) }, now);
+        message = "Séance remplacée.";
+        href = "/sante/course";
+        break;
+      case "course_sorties":
+      case "course_fc": {
+        const p = getRunProfile(db, personId);
+        if (!p) throw new Error("Le module Course n'est pas activé.");
+        const patch = x.kind === "course_sorties" ? { perWeek: Math.round(x.perWeek) } : { hrMax: x.hrMax != null ? Math.round(x.hrMax) : p.hrMax, hrRest: x.hrRest != null ? Math.round(x.hrRest) : p.hrRest, hrThreshold: x.hrThreshold != null ? Math.round(x.hrThreshold) : p.hrThreshold, thresholdSource: x.hrThreshold != null ? ("saisie" as const) : p.thresholdSource };
+        saveRunSettings(db, personId, { ...settingsOf(p), ...patch }, todayParis(now));
+        message = x.kind === "course_sorties" ? "Nombre de sorties changé : le plan est recalculé." : "Fréquences enregistrées : zones et alertes recalculées.";
+        href = "/sante/course";
+        break;
+      }
+      case "course_decharge":
+        setWeekOverride(db, personId, { weekStart: x.weekStart, deload: true });
+        message = "Semaine de décharge posée.";
+        href = "/sante/course";
+        break;
       case "faire_courses": {
         const w = loadWeek(db, weekStart);
         const sel = loadSelection(db, w.planId);

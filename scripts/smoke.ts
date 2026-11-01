@@ -20,6 +20,7 @@ import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
 import { generateProgram } from "@/lib/training/generate";
 import { ensureLink } from "@/lib/health/link";
+import { saveRunSettings } from "@/lib/running/store";
 
 const ROOT = process.cwd();
 const STANDALONE = path.join(ROOT, ".next/standalone");
@@ -154,6 +155,16 @@ async function main() {
     check(sent.status === 200 && sentBody.accepted?.samples === 1 && sentBody.accepted?.daily === 1, `import Apple Santé v2 → ${sent.status}`);
     const state = (await (await fetch(`${BASE}/api/sante/import`, { headers: santeKey })).json()) as { v2?: boolean; history?: string; lastSyncAt?: string };
     check(state.v2 === true && state.history == null && !!state.lastSyncAt, "import Apple Santé : GET v2, historique complet reçu");
+    // Course : la page avant et après activation, les séances vers la montre et leur accusé (contrat v2.1).
+    await page("/sante/course", "mijote.profil=lea", /Activer la course/);
+    check(((await (await fetch(`${BASE}/api/sante/import`, { headers: santeKey })).json()) as { features?: string[] }).features?.includes("plans") === true, "import Apple Santé : GET annonce les séances planifiées");
+    saveRunSettings(db, lea, { enabled: true, days: [1, 3, 5, 6].map((weekday) => ({ weekday, time: "18:30" })), perWeek: 3, goal: "plus_longtemps" }, new Date().toISOString().slice(0, 10));
+    await page("/sante/course", "mijote.profil=lea", /Marche-course niveau 1/);
+    check((await get("/api/sante/import/plans", undefined)).status === 401, "séances de la montre sans clé → 401");
+    const plans = (await (await fetch(`${BASE}/api/sante/import/plans`, { headers: santeKey })).json()) as { ok?: boolean; plans?: { id: string; version: number; workout?: { activity?: string } }[] };
+    check(plans.ok === true && (plans.plans?.length ?? 0) > 0 && plans.plans![0].workout?.activity === "running", "séances de la montre : GET → WorkoutSpec");
+    const ack = await fetch(`${BASE}/api/sante/import/plans`, { method: "POST", headers: santeKey, body: JSON.stringify({ scheduled: [{ id: plans.plans![0].id, version: plans.plans![0].version, at: new Date().toISOString() }], failed: [], removed: [], scheduler: { supported: true, authorized: true } }) });
+    check(ack.status === 200, `séances de la montre : accusé → ${ack.status}`);
     // Sans ANTHROPIC_API_KEY : pas d'assistant (ni bouton, ni route), tout le reste marche.
     const ask = await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) });
     check(ask.status === 404, "assistant sans clé → 404");
@@ -212,6 +223,8 @@ async function demo() {
     await page("/sante/apple", cookieA, /Apple Santé reste chez toi/);
     check((await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) })).status === 404, "démo : pas d'assistant, même avec une clé");
     check((await get("/api/sante/import", cookieA)).status === 404, "démo : pas d'import Apple Santé");
+    await page("/sante/course", cookieA, /Sortie longue|Footing/);
+    check((await get("/api/sante/import/plans", cookieA)).status === 404, "démo : pas de séances vers la montre");
     check((await get("/bienvenue", cookieA)).status === 307, "démo : pas de mise en route");
 
     // Deux visiteurs, deux bases : ce que l'un change, l'autre ne le voit pas.

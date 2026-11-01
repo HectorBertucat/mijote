@@ -9,6 +9,9 @@ import type { Program, WorkoutEntry } from "@/lib/training/program";
 import { DEFAULT_KITCHEN, type KitchenConfig } from "@/lib/kitchen/presets";
 import { addDays } from "@/lib/week/propose";
 import { weekdayOf } from "@/lib/week/period";
+import { buildPlan, type DoneRun, type PlanSettings } from "@/lib/running/plan";
+import type { Alert, RunSession } from "@/lib/running/workout";
+import { zonesOf } from "@/lib/running/zones";
 
 // ─── Le calendrier : tout est daté par rapport à aujourd'hui ───
 
@@ -421,4 +424,162 @@ export function demoHealth(personId: "alex" | "sam", today: string, seed: number
     }
   }
   return out;
+}
+
+// ─── La course d'Alex : six semaines de plan, avec le détail que la montre envoie (contrat v2.1) ───
+
+/** Alex a activé le module Course il y a six semaines, un lundi ; avant, une sortie le samedi (Apple Santé ci-dessus). */
+export const runStart = (today: string) => addDays(today, -weekdayOf(today) - 42);
+/** Ses réglages : mardi, jeudi et dimanche (sortie longue), trois sorties, « courir plus longtemps ». */
+export const DEMO_RUN_SETTINGS = {
+  enabled: true,
+  days: [
+    { weekday: 1, time: "18:30" },
+    { weekday: 3, time: "18:30" },
+    { weekday: 6, time: "09:30" },
+  ],
+  perWeek: 3,
+  goal: "plus_longtemps" as const,
+  goalNote: "Tenir une heure sans m'arrêter, et un 10 km au printemps.",
+  longRunDay: 6,
+  time: "18:30",
+};
+
+export interface DemoRun {
+  uuid: string;
+  activity: "running";
+  start: string;
+  end: string;
+  durationMin: number;
+  kcal: number;
+  distanceM: number;
+  hrAvg: number;
+  hrMax: number;
+  sourceName: string;
+  details: {
+    hr: [number, number][];
+    splits: { km: number; sec: number; hrAvg: number; elevGainM: number; elevLossM: number }[];
+    cadenceAvg: number;
+    strideM: number;
+    elevGainM: number;
+    elevLossM: number;
+    indoor: false;
+    pausesSec: number;
+    source: { name: string; model: string };
+    effort: number;
+    weather: { tempC: number; humidityPct: number };
+  };
+}
+
+/** Allure et FC d'un morceau de séance, d'après son libellé et son alerte. */
+function effortOf(label: string, purpose: string, alert: Alert): "walk" | "trot" | "easy" | "stride" | "steady" {
+  if (/marche/i.test(label) && !/trot/i.test(label)) return "walk";
+  if (/ligne droite|montée/i.test(label)) return "stride";
+  if (alert && "hr" in alert && purpose === "work" && /soutenu|tempo/i.test(label)) return "steady";
+  if (/trot|lent/i.test(label)) return "trot";
+  return "easy";
+}
+
+/** Une séance faite comme prévue : FC seconde par seconde (avec retard et dérive), temps au kilomètre. */
+function recordRun(date: string, s: RunSession, week: number, long: boolean, rnd: () => number, effort: number): DemoRun {
+  const parts: { sec: number; kind: ReturnType<typeof effortOf> }[] = [];
+  const edge = (st: RunSession["warmup"], first: boolean) => {
+    const sec = typeof st.goal === "object" && "time" in st.goal ? st.goal.time : 0;
+    if (/puis trot/i.test(st.label)) parts.push({ sec: sec / 2, kind: "walk" }, { sec: sec / 2, kind: "trot" });
+    else parts.push({ sec, kind: first ? "walk" : effortOf(st.label, "edge", null) });
+  };
+  edge(s.warmup, true);
+  for (const b of s.blocks) for (let i = 0; i < b.iterations; i++) for (const st of b.steps) parts.push({ sec: typeof st.goal === "object" && "time" in st.goal ? st.goal.time : 0, kind: effortOf(st.label, st.purpose, st.alert) });
+  edge(s.cooldown, false);
+
+  const easyPace = (long ? 392 : 380) - week * 2.2 + rnd() * 8; // s/km, un peu plus vite au fil des semaines
+  const speed = { walk: 1.55, trot: 1000 / (easyPace + 45), easy: 1000 / easyPace, stride: 4.2, steady: 1000 / (easyPace - 55) };
+  const target = { walk: 104, trot: 124, easy: (long ? 137 : 135) - week * 0.4, stride: 150, steady: 158 };
+  const total = Math.round(parts.reduce((t, x) => t + x.sec, 0));
+  const hr: [number, number][] = [];
+  const perSec: { v: number; bpm: number }[] = [];
+  let bpm = 92;
+  let t = 0;
+  for (const part of parts)
+    for (let k = 0; k < part.sec; k++, t++) {
+      const drift = part.kind === "easy" ? ((long ? 6 : 3.5) * t) / total : 0;
+      bpm += (target[part.kind] + drift - bpm) / 30; // la FC suit l'effort avec ~30 s de retard
+      perSec.push({ v: speed[part.kind] * (1 + rnd() * 0.06), bpm });
+      if (t % 5 === 0) hr.push([t, Math.round(bpm + rnd() * 3)]);
+    }
+  const splits: DemoRun["details"]["splits"] = [];
+  let dist = 0;
+  let from = 0;
+  let gain = 0;
+  let loss = 0;
+  const cut = (end: number, km: number) => {
+    const xs = perSec.slice(from, end);
+    const g = Math.max(0, Math.round((6 + rnd() * 9) * (km - (splits.at(-1)?.km ?? 0))));
+    const l = Math.max(0, Math.round((6 + rnd() * 9) * (km - (splits.at(-1)?.km ?? 0))));
+    gain += g;
+    loss += l;
+    splits.push({ km: Math.round(km * 100) / 100, sec: end - from, hrAvg: Math.round(xs.reduce((a, x) => a + x.bpm, 0) / Math.max(1, xs.length)), elevGainM: g, elevLossM: l });
+    from = end;
+  };
+  for (let i = 0; i < perSec.length; i++) {
+    dist += perSec[i].v;
+    if (dist >= (splits.length + 1) * 1000) cut(i + 1, splits.length + 1);
+  }
+  if (perSec.length - from >= 30) cut(perSec.length, dist / 1000);
+  const start = iso(date, long ? 8.5 : 17.5);
+  const bpms = hr.map(([, v]) => v);
+  return {
+    uuid: `demo-alex-run-${date}`,
+    activity: "running",
+    start,
+    end: iso(date, (long ? 8.5 : 17.5) + total / 3600),
+    durationMin: Math.round((total / 60) * 10) / 10,
+    kcal: Math.round((dist / 1000) * 74),
+    distanceM: Math.round(dist),
+    hrAvg: Math.round(bpms.reduce((a, v) => a + v, 0) / bpms.length),
+    hrMax: Math.max(...bpms),
+    sourceName: "Apple Watch",
+    details: {
+      hr,
+      splits,
+      cadenceAvg: Math.round(163 + rnd() * 4),
+      strideM: Math.round((1000 / easyPace / (164 / 60)) * 100) / 100,
+      elevGainM: gain,
+      elevLossM: loss,
+      indoor: false,
+      pausesSec: 0,
+      source: { name: "Apple Watch", model: "Watch7,1" },
+      effort,
+      weather: { tempC: Math.round((12 - week * 0.7 + rnd() * 4) * 10) / 10, humidityPct: Math.round(80 + rnd() * 14) },
+    },
+  };
+}
+
+/**
+ * Les courses d'Alex depuis la mise en route : chaque jour, le plan (src/lib/running/plan.ts, pur) donne la
+ * séance, et Alex la fait comme prévue, à peu de chose près ; un footing sauté la 5e semaine. `before` : ses
+ * sorties d'avant (celles d'Apple Santé), pour le point de départ du plan. Pur : même graine, mêmes courses.
+ */
+export function demoRuns(today: string, seed: number, before: { date: string; minutes: number; km: number | null }[]): { runs: DemoRun[]; efforts: { date: string; effort: number }[] } {
+  const rnd = noise(seed);
+  const from = runStart(today);
+  const zones = zonesOf({ max: 183, maxSource: "age", rest: 59, restSource: "mesuree", threshold: 159, thresholdSource: "estimee" });
+  const settings: PlanSettings = { ...DEMO_RUN_SETTINGS, fixed: [{ weekday: 0, kind: "kettlebell" }, { weekday: 3, kind: "kettlebell" }] };
+  const done: DoneRun[] = before.map((b) => ({ date: b.date, minutes: b.minutes, km: b.km, continuousMin: b.minutes, effort: null, pain: null, completed: null, hrHighShare: 0.05, decoupling: null, heat: false }));
+  const runs: DemoRun[] = [];
+  const efforts: { date: string; effort: number }[] = [];
+  for (let d = from; d < today; d = addDays(d, 1)) {
+    const plan = buildPlan({ today: d, startedOn: from, settings, zones, runs: done, feedback: [], pauses: [], overrides: [], morning: null, intensityOk: null });
+    const s = plan.sessions.find((x) => x.date === d && !x.cancelled);
+    if (!s) continue;
+    const week = Math.floor((Date.parse(`${d}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (7 * 86_400_000));
+    if (week === 4 && weekdayOf(d) === 3) continue; // un jeudi de pluie : footing sauté
+    const long = s.kind === "sortie_longue";
+    const effort = long ? 4 : s.kind === "footing_lignes" ? 4 : 3;
+    const r = recordRun(d, s.session, week, long, rnd, effort);
+    runs.push(r);
+    efforts.push({ date: d, effort });
+    done.push({ date: d, minutes: r.durationMin, km: r.distanceM / 1000, continuousMin: s.minutes - 10, effort, pain: 0, completed: true, hrHighShare: 0.05, decoupling: 3, heat: false, planned: { kind: s.kind, minutes: s.minutes, level: s.session.level ?? null } });
+  }
+  return { runs, efforts };
 }

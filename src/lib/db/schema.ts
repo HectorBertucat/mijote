@@ -3,7 +3,7 @@
 import { sql } from "drizzle-orm";
 import type { IngredientYield } from "@/lib/nutrition/compute";
 import type { Program } from "@/lib/training/program";
-import { sqliteTable, text, integer, real, primaryKey, index, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, blob, primaryKey, index, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`;
 const json = <T>(name: string) => text(name, { mode: "json" }).$type<T>();
@@ -735,4 +735,104 @@ export const assistantMessages = sqliteTable(
     createdAt: text("created_at").notNull().default(now),
   },
   (t) => [index("idx_assistant_person").on(t.personId, t.createdAt)]
+);
+
+// ─── 9. Course (migration 0007_course, docs/course.md) ───
+// Réglages du module Course, par personne (activable comme l'Entraînement). Les FC saisies priment sur
+// celles que le code calcule (src/lib/running/zones.ts). `pauses` : suspensions (douleur, maladie, à la
+// demande) ; `overrides` : semaines réglées à la main ou par une action confirmée (volume, décharge).
+// `watch` : le dernier accusé de l'app (autorisation de WorkoutScheduler).
+export const runProfiles = sqliteTable("run_profiles", {
+  personId: text("person_id").primaryKey().references(() => people.id, { onDelete: "cascade" }),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  startedOn: text("started_on"), // AAAA-MM-JJ : mise en route du plan
+  days: json<{ weekday: number; time?: string | null }[]>("days").notNull(),
+  perWeek: integer("per_week").notNull().default(3),
+  goal: text("goal", { enum: ["reprendre", "plus_longtemps", "sortie_longue", "semi"] }).notNull().default("plus_longtemps"),
+  goalNote: text("goal_note"), // l'objectif en mots de la personne
+  longRunDay: integer("long_run_day"), // 0 = lundi … 6 = dimanche
+  time: text("time"), // HH:MM, heure préférée
+  hrMax: integer("hr_max"),
+  hrRest: integer("hr_rest"),
+  hrThreshold: integer("hr_threshold"),
+  thresholdSource: text("threshold_source", { enum: ["saisie", "test"] }),
+  fixed: json<{ weekday: number; kind: "natation" | "kettlebell" | "renfo" }[]>("fixed"), // null : tiré de l'historique
+  pauses: json<{ from: string; to: string | null; reason: "douleur" | "malade" | "personne" }[]>("pauses").notNull(),
+  overrides: json<{ weekStart: string; volume?: number | null; deload?: boolean }[]>("overrides").notNull(),
+  watch: json<{ supported: boolean; authorized: boolean; at: string }>("watch"),
+  createdAt: text("created_at").notNull().default(now),
+  updatedAt: text("updated_at").notNull().default(now),
+});
+
+// Détail d'une séance de l'app (v2.1, `workouts[].details`), à côté de sa ligne de health_samples : la série
+// de FC est rangée en binaire (3 octets par point : écart en secondes sur 2 octets, bpm sur 1 ; 2 000 points
+// = 6 Ko contre ~24 Ko en JSON), hors de health_samples pour que les agrégations de Santé restent légères.
+// `peak` et `doubtful` ne dépendent pas des zones (series.ts) ; `analysis` est l'analyse gardée, refaite si
+// RUNNING_VERSION ou les zones changent (src/lib/running/analysis.ts).
+export const workoutDetails = sqliteTable(
+  "workout_details",
+  {
+    sampleId: text("sample_id").primaryKey().references(() => healthSamples.id, { onDelete: "cascade" }),
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // jour civil (Paris) du début
+    hr: blob("hr", { mode: "buffer" }),
+    hrPoints: integer("hr_points").notNull().default(0),
+    data: json<Record<string, unknown>>("data").notNull(), // splits, cadence, foulée, dénivelés, puissance, pauses, événements, source
+    effort: real("effort"),
+    tempC: real("temp_c"),
+    humidityPct: real("humidity_pct"),
+    indoor: integer("indoor", { mode: "boolean" }),
+    plannedId: text("planned_id"),
+    peak: integer("peak"),
+    doubtful: integer("doubtful", { mode: "boolean" }).notNull().default(false),
+    analysis: json<Record<string, unknown>>("analysis"),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_workout_details_person").on(t.personId, t.date)]
+);
+
+// Séances planifiées par le générateur (src/lib/running/plan.ts). L'id est stable (personne, semaine, rôle) :
+// l'app en dérive l'UUID du plan programmé sur la montre ; `version` monte quand le contenu change.
+// `edit` : ce que la personne (ou une action confirmée) a changé, rejoué à chaque calcul.
+export const runSessions = sqliteTable(
+  "run_sessions",
+  {
+    id: text("id").primaryKey(),
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    weekStart: text("week_start").notNull(),
+    role: text("role").notNull(),
+    date: text("date").notNull(),
+    time: text("time"),
+    kind: text("kind").notNull(),
+    minutes: integer("minutes").notNull(),
+    session: json<Record<string, unknown>>("session").notNull(), // RunSession
+    hash: text("hash").notNull(),
+    version: integer("version").notNull().default(1),
+    status: text("status", { enum: ["prevue", "programmee", "faite", "manquee", "annulee"] }).notNull().default("prevue"),
+    edit: json<{ date?: string; minutes?: number; kind?: string }>("edit"),
+    sampleId: text("sample_id"), // la séance faite (health_samples) qui l'a remplie
+    watchVersion: integer("watch_version"), // version programmée sur la montre
+    watchAt: text("watch_at"),
+    watchError: text("watch_error"),
+    createdAt: text("created_at").notNull().default(now),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_run_sessions_person").on(t.personId, t.date)]
+);
+
+// Ressenti après une course (docs/course.md § 4.8) : effort 1–10, douleur 0–10 et où, malade.
+export const runFeedback = sqliteTable(
+  "run_feedback",
+  {
+    id: text("id").primaryKey(),
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    effort: integer("effort"),
+    pain: integer("pain"),
+    painWhere: text("pain_where"),
+    sick: integer("sick", { mode: "boolean" }).notNull().default(false),
+    note: text("note"),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [uniqueIndex("uq_run_feedback_day").on(t.personId, t.date)]
 );

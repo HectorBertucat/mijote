@@ -7,7 +7,8 @@ import os from "os";
 import path from "path";
 import { and, eq, sql } from "drizzle-orm";
 import { openDb } from "@/lib/db/open";
-import { appSettings, cookSessions, foodLog, healthSamples, mealBoxes, mealSlots, people, shoppingLists, weekPlans, weekRecipes, weighIns, workouts } from "@/lib/db/schema";
+import { appSettings, cookSessions, foodLog, healthSamples, mealBoxes, mealSlots, people, shoppingLists, weekPlans, weekRecipes, weighIns, workoutDetails, workouts } from "@/lib/db/schema";
+import { syncPlan } from "@/lib/running/store";
 import { overview } from "@/lib/health/overview";
 import { basesToPurge, canCreate, demoEnabled, demoLimits, isVisitorId, maxPageCount, newVisitorId, visitorFile, visitorOfFile } from "@/lib/demo/core";
 import { demoCalendar, demoHealth, demoHousehold, demoWorkouts, HEALTH_DAYS, sessionDays, SLEEP_NIGHTS, weightSeries } from "@/lib/demo/household";
@@ -158,6 +159,15 @@ test("la base modèle : foyer prêt, semaine répartie, courses, session finie, 
     assert.equal(db.select().from(people).all().length, 2);
     assert.ok(db.select().from(weighIns).all().length > 60);
     assert.ok(db.select().from(workouts).all().length >= 20);
+    // Course : Alex suit un plan depuis six semaines, ses courses ont leur détail, le plan est rangé.
+    assert.ok(db.select().from(workoutDetails).all().length >= 14);
+    const run = syncPlan(db, "alex", new Date(`${today}T08:00:00Z`))!;
+    assert.ok(run.plan.phase >= 1, `phase ${run.plan.phase}`);
+    assert.ok(run.data.runs.some((r) => r.analysis.decoupling.ok), "un découplage calculable (sortie longue)");
+    assert.ok(run.data.runs.filter((r) => r.analysis.loadSource === "serie").length >= 14, "charge tirée de la série de FC");
+    assert.ok(run.data.runs.every((r) => r.date < today));
+    assert.ok(run.sessions.some((s) => s.date >= today && s.status === "prevue"));
+    assert.equal(run.plan.paused, null);
     assert.equal(db.select().from(weekRecipes).all().length, 9);
     const done = db.select().from(cookSessions).where(eq(cookSessions.status, "done")).all();
     assert.equal(done.length, 2);

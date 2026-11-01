@@ -12,6 +12,7 @@ import { z } from "zod";
 import { portionOf, type DayTarget, type MealRef, type Outside } from "@/lib/eaters/core";
 import { adviceOf, checkHabit, daysLabel, HABIT_FOODS, habitMacros, isShaker, macrosOf, outsideMean, outsideWeek, type HabitLike } from "@/lib/eaters/habits";
 import { FOODS } from "@/lib/nutrition/foods";
+import { checkRunningAction, isRunAction, RUN_ACTION_LABEL, RUN_ACTIONS, runContextText, type RunActionInput, type RunContext } from "@/lib/running/actions";
 import { recipeFit, weekFit, type FitEater } from "@/lib/week/fit";
 
 // ─── Instantané des données ───
@@ -80,6 +81,8 @@ export interface Snapshot {
   };
   recipes: SnapRecipe[];
   boxes: SnapBox[];
+  /** La course de la personne qui parle, si elle a activé le module (src/lib/running/). */
+  running?: RunContext | null;
 }
 
 /** La page d'où la question est posée : son chemin et ce qu'on y regarde. */
@@ -131,6 +134,8 @@ export const ACTION_TOOLS = {
     description: "Proposer de lancer la liste de courses des recettes retenues pour la semaine en cours.",
     schema: z.object({ why }),
   },
+  // Course (docs/course.md § 6) : seulement pour la personne qui parle, si elle a activé le module.
+  ...RUN_ACTIONS,
 } as const;
 
 export type ActionKind = keyof typeof ACTION_TOOLS;
@@ -143,13 +148,14 @@ export const KIND_LABEL: Record<ActionKind, string> = {
   retirer_habitude: "Retirer une habitude",
   manger_boite: "Manger une boîte",
   faire_courses: "Faire les courses",
+  ...RUN_ACTION_LABEL,
 };
 export const ACTION_KINDS = Object.keys(ACTION_TOOLS) as ActionKind[];
 export type ActionInput<K extends ActionKind = ActionKind> = { [P in K]: { kind: P } & z.infer<(typeof ACTION_TOOLS)[P]["schema"]> }[K];
 
-/** Les outils tels qu'envoyés à l'API (schéma JSON strict, sans bornes : le code borne). */
-export function toolDefinitions() {
-  return ACTION_KINDS.map((name) => {
+/** Les outils tels qu'envoyés à l'API (schéma JSON strict, sans bornes : le code borne). Ceux de la course seulement si le module est activé. */
+export function toolDefinitions(running = false) {
+  return ACTION_KINDS.filter((name) => running || !isRunAction(name)).map((name) => {
     const { $schema: _s, ...input_schema } = z.toJSONSchema(ACTION_TOOLS[name].schema) as Record<string, unknown>;
     return { name, description: ACTION_TOOLS[name].description, input_schema };
   });
@@ -221,6 +227,7 @@ function gapLines(p: SnapPerson, before: Outside, after: Outside): ActionCard["l
 /** Vérifie une action proposée sur l'instantané : refus motivé, ou carte chiffrée. */
 export function checkAction(a: ActionInput, s: Snapshot): Checked {
   const person = (id: string) => s.people.find((p) => p.id === id);
+  if (isRunAction(a.kind)) return checkRunningAction(a as RunActionInput, s.running ?? null);
   switch (a.kind) {
     case "ajouter_recette": {
       const r = s.recipes.find((x) => x.slug === a.slug);
@@ -315,6 +322,8 @@ export function checkAction(a: ActionInput, s: Snapshot): Checked {
         notes: s.week.list?.ordered ? ["Une commande est déjà passée pour cette semaine : la nouvelle liste s'y ajoute."] : [],
       };
     }
+    default:
+      return { ok: false, reason: "Action inconnue." };
   }
 }
 
@@ -409,6 +418,7 @@ export function buildContext(s: Snapshot): string {
 
   L.push("", "## Aliments pour une habitude (id : nom, pour 100 g)");
   L.push(HABIT_FOODS.map((id) => `${id} : ${FOODS[id].name} (${kcal(FOODS[id].kcal)}, ${g(FOODS[id].protein)} prot.)`).join(" ; "));
+  if (s.running) L.push("", runContextText(s.running));
   return L.join("\n");
 }
 
@@ -424,6 +434,7 @@ export function pageLine(page: PageContext, s: Snapshot): string {
     [/^\/frigo/, "le frigo"],
     [/^\/sante\/objectifs/, "ses objectifs de Santé"],
     [/^\/sante\/habitudes/, "ses habitudes hors batch"],
+    [/^\/sante\/course/, "sa page Course (plan de course à pied)"],
     [/^\/sante/, "sa page Santé"],
     [/^\/recettes/, "la bibliothèque de recettes"],
     [/^\/session/, "une session de cuisine"],

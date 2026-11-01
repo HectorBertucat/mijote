@@ -76,7 +76,7 @@ test("app v2 : chaque liste rangée à sa place, réponse accepted/skipped, renv
   };
   const r = post(body);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { ok: true, accepted: { samples: 6, daily: 4, workouts: 1, sleep: 1, deleted: 0 }, skipped: 0 });
+  assert.deepEqual(r.body, { ok: true, accepted: { samples: 6, daily: 4, workouts: 1, sleep: 1, deleted: 0, details: 0 }, skipped: 0 });
   const w = db.select().from(weighIns).where(eq(weighIns.personId, "alex")).all();
   assert.equal(w.length, 1);
   assert.deepEqual([w[0].kg, w[0].date, w[0].source, w[0].externalId], [73.4, "2026-10-31", "health", "hk:w1"]);
@@ -130,7 +130,7 @@ test("app v2 : hors bornes, type inconnu, date illisible ou future → skipped, 
     ],
   });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { ok: true, accepted: { samples: 2, daily: 1, workouts: 0, sleep: 0, deleted: 0 }, skipped: 14 });
+  assert.deepEqual(r.body, { ok: true, accepted: { samples: 2, daily: 1, workouts: 0, sleep: 0, deleted: 0, details: 0 }, skipped: 14 });
   assert.equal(db.select().from(weighIns).all().length, 1);
   assert.equal(rows(db, "vo2max")[0].value, 41);
   assert.equal(rows(db, "steps")[0].value, 6000);
@@ -140,7 +140,7 @@ test("app v2 : suppressions par uuid, dans les pesées comme dans les échantill
   const { db, post } = setup();
   post({ version: 2, samples: [sample("w1", "body_mass", 73), sample("f1", "body_fat", 25)], sleep: [{ uuid: "z", stage: "core", start: "2026-10-31T01:00:00Z", end: "2026-10-31T03:00:00Z" }] });
   const r = post({ version: 2, deleted: [{ uuid: "w1", type: "body_mass" }, { uuid: "z" }, { uuid: "inconnu" }, { type: "body_fat" }] });
-  assert.deepEqual(r.body, { ok: true, accepted: { samples: 0, daily: 0, workouts: 0, sleep: 0, deleted: 3 }, skipped: 1 });
+  assert.deepEqual(r.body, { ok: true, accepted: { samples: 0, daily: 0, workouts: 0, sleep: 0, deleted: 3, details: 0 }, skipped: 1 });
   assert.equal(db.select().from(weighIns).all().length, 0);
   assert.equal(rows(db, "sleep").length, 0);
   assert.equal(rows(db, "body_fat").length, 1);

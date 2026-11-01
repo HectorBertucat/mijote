@@ -1,6 +1,6 @@
 # Course : fondations
 
-Le module Course n'existe pas encore. Ce document fixe ce qu'il calculera et comment, pour que le code puisse être écrit sans rien réinventer : zones cardiaques, charge et forme, analyse d'une sortie, plan de reprise, nutrition, ce que l'IA peut proposer, graphiques. Les choix sont ceux des outils de référence (TrainingPeaks, intervals.icu, Runalyze, Garmin/Firstbeat, Polar, Apple Forme) quand ils sont publiés et solides, et la littérature quand elle tranche. Chaque constante a sa source (§ 9) ; ce qui est un choix de Mijote est dit comme tel.
+Ce document fixe ce que le module Course calcule et comment : zones cardiaques, charge et forme, analyse d'une sortie, plan de reprise, nutrition, ce que l'IA peut proposer, graphiques. Les choix sont ceux des outils de référence (TrainingPeaks, intervals.icu, Runalyze, Garmin/Firstbeat, Polar, Apple Forme) quand ils sont publiés et solides, et la littérature quand elle tranche. Chaque constante a sa source (§ 9) ; ce qui est un choix de Mijote est dit comme tel.
 
 Principes, ceux du reste de l'appli :
 - **Tout se calcule en code pur et testé** (règle 2) : zones, charge, analyses, plan, séances. Même entrée, même sortie ; pas de hasard, pas de date courante cachée.
@@ -9,7 +9,24 @@ Principes, ceux du reste de l'appli :
 - **Pas de prétention médicale.** Douleur qui dure, malaise, essoufflement anormal : le module s'arrête et renvoie vers un professionnel de santé.
 - **Prudent par défaut.** Le public visé est le débutant ou le coureur qui reprend. Les règles sont écrites pour lui ; un coureur confirmé peut desserrer les réglages, jamais l'inverse sans le savoir.
 
-Rangement suggéré : `src/lib/running/` (`zones.ts`, `load.ts`, `analysis.ts`, `plan.ts`, `workout.ts` purs ; `store.ts` pour la base), tests `tests/running-*.test.ts`, une constante `RUNNING_VERSION` à incrémenter quand un calcul change (comme `NUTRITION_VERSION`) pour recalculer l'historique.
+Rangement : `src/lib/running/` — purs : `constants.ts` (toutes les constantes, avec leur paragraphe), `zones.ts`, `series.ts` (FC à 1 Hz, nettoyage, pic de 30 s, vitesse et pente tirées des temps au kilomètre), `load.ts`, `analysis.ts`, `signals.ts`, `trends.ts`, `workout.ts` (séances en blocs, `WorkoutSpec` de la montre), `plan.ts`, `actions.ts` (§ 6), `details.ts` (détail envoyé par l'app) ; `store.ts` pour la base, `watch-api.ts` pour la montre. Tests `tests/running-formulas.test.ts`, `running-plan.test.ts`, `running-store.test.ts`. `RUNNING_VERSION` (dans `constants.ts`) à incrémenter quand un calcul change (comme `NUTRITION_VERSION`) : les analyses gardées sont refaites.
+
+### Ce qui est en place, et les écarts
+
+En place : réglages par personne et page minimale `/sante/course` ; détail des séances reçu de l'app (contrat v2.1, docs/sante.md) ; zones, charge, forme, analyse d'une sortie, signaux du matin, tendances ; plan rangé dans `run_sessions` et servi à la montre (`/api/sante/import/plans`) ; six actions proposables par l'assistant ; démo. À venir : les graphiques du § 7 (kit `src/components/ui/charts/`), la nutrition du § 5, la VO2max en tendance, la question du ressenti « en un geste » après chaque course.
+
+Écarts et précisions, choix de Mijote :
+- **Volumes en minutes de course** : une course réalisée compte sa durée en mouvement moins 10 min (échauffement et retour au calme), comme les séances prévues (le pas principal).
+- **Sortie longue** : `L_{s−1}` est la plus longue *réellement* courue la semaine d'avant (sinon la prévue), comme le volume se calcule sur le réalisé ; une première semaine commencée en cours de route ne compte pas dans `V_réf`.
+- **Marche-course** : la règle des 30 jours ne s'y applique pas ; les niveaux du § 4.3 (déjà plus rapides que × 1,10 sur le temps de course) et le ressenti la remplacent.
+- **Sans trace GPS** (choix de vie privée de l'app) : vitesse et pente par kilomètre, d'après les temps au kilomètre et leurs dénivelés ; le verrouillage sur la cadence se repère avec la cadence moyenne et un saut de FC de plus de 20 bpm au-dessus de la médiane de la sortie.
+- **Objectifs** : *reprendre* (phase 1, sortie longue 60 min), *courir plus longtemps* (phase 2, 90 min), *une vraie sortie longue* (phase 2, 120 min), *semi* (phase 3) ; le 10 km et la date d'une course ne sont pas encore proposés. Un objectif en mots est gardé tel quel.
+- **Activités fixes** : réglées, sinon tirées de l'historique (un jour de la semaine avec natation ou renforcement au moins 2 fois sur les 4 dernières semaines, carnet guidé compris).
+- **Recalcul** : le plan se recalcule à chaque lecture (page, assistant, montre), de façon déterministe ; ce qui est passé reste écrit en base, une séance qui change prend une nouvelle version.
+- **Tests de terrain** : test aérobie la 2e semaine de phase 2 puis toutes les 5 ; test de Friel la 2e semaine de phase 3 puis tous les 3 mois, si la FCseuil n'est pas saisie.
+- **Sans date de naissance** : FC max de Tanaka sur 35 ans, dit sur la page.
+- **Actions de l'IA** (§ 6) : `course_decaler`, `course_raccourcir`, `course_remplacer` (seulement plus facile), `course_sorties` (2 à 4, à la place de `run.week.adjust`), `course_decharge`, `course_fc`. La création du plan, la pause et la reprise, le ressenti restent des gestes de la personne sur la page.
+- **Douleur** : une note par jour ; « plus forte le lendemain matin » se lit en notant de nouveau le lendemain.
 
 ## 0. Les données
 
