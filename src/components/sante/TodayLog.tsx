@@ -356,7 +356,7 @@ function Eaten({ label, value, unit, target, tone, word, sub, className = "" }: 
       <span className="label text-ink-2">{label}</span>
       <b className="num-tight text-num-xl whitespace-nowrap">
         {bigNum(Math.round(value))}
-        <span className="ml-2 text-[0.3em] font-[650] text-ink-2 [font-stretch:100%]">{target ? `/ ${target.toLocaleString("fr-FR")}${NB}${unit}` : unit}</span>
+        <span className="ml-2 text-[0.3em] font-[650] text-ink-2 [font-stretch:100%]">{target ? `/${NB}${bigNum(target)}${NB}${unit}` : unit}</span>
       </b>
       {target != null && (
         <span className="relative block h-1 bg-surface-2" aria-hidden>

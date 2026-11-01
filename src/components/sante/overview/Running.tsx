@@ -7,7 +7,7 @@ import { Sparkline } from "@/components/ui/charts";
 import { hourText, whenText } from "@/components/sante/course/Today";
 import { STATUS_TEXT } from "@/components/sante/course/Week";
 import type { CourseView } from "@/lib/running/page";
-import { durText, FORM_LABEL } from "@/lib/running/view";
+import { durText } from "@/lib/running/view";
 import { KIND_LABEL, type SessionKind } from "@/lib/running/workout";
 import { NB, Section, Verdict } from "../carnet";
 
@@ -71,7 +71,7 @@ export function RunningSection({ v }: { v: CourseView }) {
                 {f.delta28 ? <span className="ml-1.5 text-[0.36em] font-[650] tracking-normal text-ink-2 [font-stretch:100%]">{`${f.delta28 > 0 ? "+" : "−"}${Math.abs(f.delta28)} en 4${NB}sem.`}</span> : null}
               </b>
               <Sparkline values={v.fitness.map((d) => Math.round(d.ctl))} label="Forme, trois mois" className="mt-1" />
-              <span className="text-small text-ink-2">{f.band ? `${FORM_LABEL[f.band]}, fraîcheur ${f.fraicheur! > 0 ? "+" : f.fraicheur! < 0 ? "−" : ""}${Math.abs(f.fraicheur!)}${NB}%` : `fatigue ${f.fatigue}`}</span>
+              <span className="text-small text-ink-2">{f.words ? `${f.words[0].toUpperCase()}${f.words.slice(1)}.` : "Encore trop peu de séances pour dire ta fraîcheur."}</span>
             </>
           ) : (
             <span className="text-small text-ink-2">Elle se lit après quelques séances.</span>

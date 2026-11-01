@@ -20,6 +20,7 @@ test("pas ronds et domaines : zéro en bas pour des barres, une série plate s'o
 test("textes : chiffres français, « 12 k », heures et minutes", () => {
   assert.equal(fmt(8412), "8 412");
   assert.equal(fmt(81.24, 1), "81,2");
+  assert.equal(tickText(-50), "−50", "un vrai moins sur les repères");
   assert.equal(tickText(15_000), "15 k");
   assert.equal(tickText(5000), "5 000");
   assert.equal(tickText(2.5, 1), "2,5");

@@ -23,11 +23,11 @@ export const VIZ_ZONE: VizColor[] = ["var(--c-viz-zone-1)", "var(--c-viz-zone-2)
 const numFmts = new Map<number, Intl.NumberFormat>();
 const dayFmts = new Map<string, Intl.DateTimeFormat>();
 
-/** « 8 400 », « 81,2 » : chiffres à la française (espace fine insécable pour les milliers). */
+/** « 8 400 », « 81,2 », « −50 » : chiffres à la française (espace fine insécable pour les milliers, vrai moins). */
 export function fmt(v: number, digits = 0) {
   let f = numFmts.get(digits);
   if (!f) numFmts.set(digits, (f = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits })));
-  return f.format(v);
+  return f.format(v).replace(/^-/, "−");
 }
 /**
  * Gros chiffre (Archivo serrée, `.num-tight`) : l'espace fine des milliers s'y réduit à presque rien (« 9472 »),
