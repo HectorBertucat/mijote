@@ -3,7 +3,7 @@
 // hook : utilisable dans une page serveur (ModePicker) comme dans les vues de session.
 import type { SessionPlan } from "@/lib/session/planner";
 import type { SessionEvent } from "@/lib/session/state";
-import { durationsOrigin, measureSession, sessionReport, type ReportRow } from "@/lib/session/durations";
+import { cookedEnough, durationsOrigin, measureSession, sessionReport, type ReportRow } from "@/lib/session/durations";
 
 const fmt = (m: number) => {
   if (m >= 60) {
@@ -107,7 +107,9 @@ export function DurationReport({ plan, events, startedAt }: { plan: SessionPlan;
         </section>
       )}
       <p className="text-xs text-muted">
-        Ces durées corrigent les prochaines sessions : moyenne prudente avec la référence, sur tes 5 dernières sessions terminées ; une mesure trop loin (pause, oubli de toucher) est écartée.
+        {cookedEnough(plan, events)
+          ? "Ces durées corrigent les prochaines sessions : moyenne prudente avec la référence, sur tes 5 dernières sessions cuisinées ; une mesure trop loin (pause, oubli de toucher, coché en passant) est écartée."
+          : "Session terminée avant d’avoir cuisiné une étape : ces durées ne corrigent pas les prochaines sessions."}
       </p>
     </div>
   );

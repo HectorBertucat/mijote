@@ -8,7 +8,7 @@ import { cookEvents, cookSessions, durationSamples } from "@/lib/db/schema";
 import { bootstrap } from "@/seed/bootstrap";
 import { planSession, type SessionPlan } from "@/lib/session/planner";
 import type { SessionEvent } from "@/lib/session/state";
-import { durationsOrigin, learn, measureSession, plannerInput, sessionReport, type StoredSample } from "@/lib/session/durations";
+import { cookedEnough, durationsOrigin, implausible, learn, measureSession, plannerInput, sessionReport, type StoredSample } from "@/lib/session/durations";
 import { addEvent, buildPlan, createSession, getSession, learnedDurations } from "@/lib/session/store";
 import { load, RES } from "./helpers";
 
@@ -255,6 +255,82 @@ test("en base : une session terminée enregistre ses mesures, la suivante est co
   addEvent(db, s1, { kind: "note", payload: { status: "cooking" } });
   assert.equal(db.select().from(durationSamples).where(eq(durationSamples.sessionId, s1)).all().length, 0);
   assert.equal(learnedDurations(db).sessions.length, 1);
+});
+
+/** Terminée dès la prep : des gestes cochés à la file pour passer, puis « Terminer ». */
+function earlyJournal(plan: SessionPlan, t0 = "2026-10-20T08:00:00Z") {
+  const j = journal(t0);
+  j.add(0, "note", null, { status: "prep" });
+  j.add(1, "step_done", "prep:cut-champignon");
+  j.add(0.6, "step_done", "prep:cut-persil"); // dans les bornes, mais rien ne dit que c'est une durée
+  j.add(0.1, "bowl_ready", "B", { ready: true });
+  j.add(0.05, "bowl_ready", "E", { ready: true });
+  j.add(0.5, "note", null, { status: "done" });
+  return j.evs;
+}
+
+test("fin anticipée : terminée dès la prep, la session n'apprend rien ; réouverte ou abandonnée non plus", () => {
+  const plan = planSession([chasseur], RES, { interleave: false });
+  assert.equal(cookedEnough(plan, soloJournal(plan)), true);
+  assert.equal(cookedEnough(plan, earlyJournal(plan)), false);
+  // Une étape « faite » sans avoir été lancée (cochée pour finir) ne compte pas comme cuisinée.
+  const j = journal("2026-10-20T08:00:00Z");
+  j.add(0, "note", null, { status: "cooking" });
+  j.add(1, "step_done", `${chasseur.slug}#3`);
+  j.add(1, "note", null, { status: "done" });
+  assert.equal(cookedEnough(plan, j.evs), false);
+  // Réouverte après « terminée » : pas encore finie.
+  const reopened = [...soloJournal(plan), { id: "x1", seq: 999, at: "2026-10-18T12:00:00Z", kind: "note" as const, ref: null, payload: { status: "cooking" } }];
+  assert.equal(cookedEnough(plan, reopened), false);
+  const abandoned = soloJournal(plan).map((e) => (e.payload?.status === "done" ? { ...e, payload: { status: "abandoned" } } : e));
+  assert.equal(cookedEnough(plan, abandoned), false);
+});
+
+test("mesures invraisemblables : cochée en passant, trop longue, part d'un bol jugée sur le bol entier", () => {
+  assert.equal(implausible({ estMin: 0.5, realMin: 0.2, weight: 1 }), "coché en passant");
+  assert.equal(implausible({ estMin: 0.5, realMin: 0.3, weight: 1 }), null);
+  // Part d'un bol coché en 1 min : 0,2 min pour cette part, mais l'intervalle (1 min) est une vraie mesure.
+  assert.equal(implausible({ estMin: 0.6, realMin: 0.2, weight: 0.2 }), null);
+  assert.equal(implausible({ estMin: 0.04, realMin: 0.02, weight: 0.2 }), "coché en passant");
+  assert.equal(implausible({ estMin: 90, realMin: 300, weight: 1 }), "trop long (oubli de toucher ?)");
+  assert.match(implausible({ estMin: 6, realMin: 30, weight: 1 })!, /hors bornes/);
+  assert.equal(implausible({ estMin: 0, realMin: 3, weight: 1 }), "mesure invalide");
+  // Des pesées cochées à la file (session après session) ne font plus baisser la référence.
+  const c = learn([1, 2, 3].map((i) => sample(`s${i}`, "weigh", 0.5, 0.2, 1, "weigh"))).get("weigh")!;
+  assert.equal(c.factor, 1);
+  assert.equal(c.n, 0);
+  assert.ok(c.ignored.every((x) => x.why === "coché en passant"));
+});
+
+test("en base : une session terminée dès la prep n'enregistre rien, et d'anciennes mesures faussées sont ignorées", () => {
+  const { db } = openDb(":memory:");
+  bootstrap(db);
+  const insert = (id: string, evs: SessionEvent[]) => {
+    for (const e of evs) db.insert(cookEvents).values({ id: `${id}-${e.id}`, sessionId: id, at: e.at, kind: e.kind, ref: e.ref, payloadJson: e.payload }).run();
+  };
+  // Une vraie session, il y a une semaine.
+  const real = createSession(db, { slugs: [chasseur.slug], mode: "solo", durations: false, interleave: false });
+  db.update(cookSessions).set({ startedAt: "2026-10-11T08:00:00Z" }).where(eq(cookSessions.id, real)).run();
+  insert(real, soloJournal(getSession(db, real)!.plan, "2026-10-11T08:00:00Z").slice(0, -1));
+  addEvent(db, real, { kind: "note", payload: { status: "done" } });
+  const before = learnedDurations(db).input;
+  // Terminée dès la prep : rien d'enregistré, elle ne prend pas de place dans la fenêtre.
+  const early = createSession(db, { slugs: [chasseur.slug], mode: "solo", durations: false, interleave: false });
+  insert(early, earlyJournal(getSession(db, early)!.plan).slice(0, -1));
+  addEvent(db, early, { kind: "note", payload: { status: "done" } });
+  assert.equal(db.select().from(durationSamples).where(eq(durationSamples.sessionId, early)).all().length, 0);
+  let learned = learnedDurations(db);
+  assert.deepEqual(learned.sessions, [real]);
+  assert.deepEqual(learned.input, before);
+  // Des mesures faussées enregistrées avant la règle (pesées et persil à toute vitesse) : en base, mais ignorées.
+  for (const [key, kind, est, realMin] of [["weigh", "weigh", 2, 0.6], ["cut:persil", "gesture", 2, 0.6]] as const)
+    db.insert(durationSamples)
+      .values({ id: `${early}-${key}`, sessionId: early, at: new Date().toISOString(), kind, key, ref: key, label: key, grams: null, units: null, estMin: est, plannedMin: est, realMin, weight: 1, via: null })
+      .run();
+  learned = learnedDurations(db);
+  assert.deepEqual(learned.sessions, [real]);
+  assert.deepEqual(learned.input, before);
+  assert.equal(db.select().from(durationSamples).where(eq(durationSamples.sessionId, early)).all().length, 2, "les données ne sont pas modifiées");
 });
 
 test("fiche réimportée en pleine session : le plan est refait, le journal gardé", async () => {

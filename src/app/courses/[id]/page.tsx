@@ -16,11 +16,12 @@ import { CartList, type RowData } from "@/components/cart/CartList";
 import { acceptedForItems } from "@/lib/products/list";
 import { orderedIngredientsFor } from "@/lib/shopping/ordered";
 import { db } from "@/lib/db/client";
-import { recipeIngredients, recipes, shoppingItems, shoppingLists, weekPlans } from "@/lib/db/schema";
+import { recipeIngredients, recipes, shoppingItems, shoppingItemSources, shoppingLists, weekPlans } from "@/lib/db/schema";
 import { periodHeading } from "@/lib/week/period";
 import { factorLabel } from "@/lib/week/selection";
 import { AISLES } from "@/lib/shopping/rules";
 import { buyName } from "@/lib/shopping/label";
+import { clusterRows, nameKey, perRecipe, qtyLabel, sourceQty, total as qtyTotal } from "@/lib/shopping/merge";
 import { accountEnabled, catalogEnabled, type ResolvedProduct } from "@/lib/chronocatalog";
 import { storeLabel } from "@/lib/settings";
 import { DrivePanel } from "@/components/cart/DrivePanel";
@@ -92,7 +93,24 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
     return i.state === "ko" ? { tone: "ko", text: w ?? "rupture" } : { tone: "warn", text: w ?? "à vérifier" };
   };
   const acceptedOf = acceptedForItems(db, items);
-  const toRow = (i: (typeof items)[number]): RowData => {
+  // Quantité lisible (« 7 gousses ») et détail par recette, depuis les lignes de recette de chaque article.
+  const srcRows = items.length
+    ? db
+        .select({ itemId: shoppingItemSources.itemId, recipeId: shoppingItemSources.recipeId, lineRaw: shoppingItemSources.lineRaw, grams: shoppingItemSources.grams, units: shoppingItemSources.units, foodId: recipeIngredients.foodId })
+        .from(shoppingItemSources)
+        .leftJoin(recipeIngredients, eq(recipeIngredients.id, shoppingItemSources.recipeIngredientId))
+        .where(inArray(shoppingItemSources.itemId, items.map((i) => i.id)))
+        .all()
+    : [];
+  const srcOf = new Map<string, typeof srcRows>();
+  for (const r of srcRows) srcOf.set(r.itemId, [...(srcOf.get(r.itemId) ?? []), r]);
+  const qtyOf = (i: (typeof items)[number]) => {
+    const src = srcOf.get(i.id) ?? [];
+    const lines = src.map((r) => ({ recipe: recipeNames.get(r.recipeId) ?? "", qty: sourceQty(r, r.foodId) }));
+    const label = src.length ? qtyLabel(qtyTotal(lines.map((l) => l.qty))) : null;
+    return { qty: label ?? grams(i.needG), parts: src.length ? perRecipe(lines) : null };
+  };
+  const toRow = (i: (typeof items)[number], cont = false, joined = false): RowData => {
     const p = i.productJson as ResolvedProduct | null;
     return {
       id: i.id,
@@ -112,20 +130,24 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
       accepted: acceptedOf.get(i.id) ?? [],
       canRefuse: !!(p && i.assocKey),
       drive: i.driveOutcome ? { outcome: i.driveOutcome, qty: i.driveQty } : null,
+      ...qtyOf(i),
+      cont,
+      joined,
     };
   };
-  const byAisle = AISLES.map((a) => ({ aisle: a, rows: items.filter((i) => (i.pantry ? "Placard" : i.aisle) === a) })).filter((g) => g.rows.length);
+  // Le même aliment côte à côte : deux unités qui ne s'additionnent pas, ou une liste faite avant le regroupement.
+  const byAisle = AISLES.map((a) => ({ aisle: a, rows: clusterRows(items.filter((i) => (i.pantry ? "Placard" : i.aisle) === a), (i) => nameKey(i.item) || i.id) })).filter((g) => g.rows.length);
 
-  const groups = byAisle.map((g) => ({ aisle: g.aisle, rows: g.rows.map(toRow) }));
+  const groups = byAisle.map((g) => ({ aisle: g.aisle, rows: g.rows.map((x, k) => toRow(x.row, x.cont, g.rows[k + 1]?.cont ?? false)) }));
   const copy = [
     `Courses : ${list.title} (≈ ${eur(total)})`,
     ...byAisle.flatMap(({ aisle, rows }) => [
       "",
       aisle.toUpperCase(),
-      ...rows.map((i) => {
+      ...rows.map(({ row: i }) => {
         if (i.pantry) return `- ${i.item} (placard, à vérifier)`;
         const p = i.productJson as ResolvedProduct | null;
-        return p ? `- ${i.packs} × ${p.name} ${p.quantityLabel ?? ""} · ${eur(i.totalPrice)} · ${p.productUrl}` : catalogEnabled() ? `- ${buyName(i.item)} : introuvable, à chercher` : `- ${buyName(i.item)}${i.needG ? ` (${Math.round(i.needG)} g)` : ""}`;
+        return p ? `- ${i.packs} × ${p.name} ${p.quantityLabel ?? ""} · ${eur(i.totalPrice)} · ${p.productUrl}` : catalogEnabled() ? `- ${buyName(i.item)} : introuvable, à chercher` : `- ${buyName(i.item)}${qtyOf(i).qty ? ` (${qtyOf(i).qty!.replace(/\u00a0/g, " ")})` : ""}`;
       }),
     ]),
   ].join("\n");

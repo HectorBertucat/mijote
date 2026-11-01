@@ -19,9 +19,13 @@
 //   poids égal à sa part).
 //
 // Corriger (learn) — prudent :
-// - fenêtre : les WINDOW dernières sessions terminées ; une mesure par session et par clé
-//   (gestes au même aliment additionnés) ;
-// - une mesure hors de [¼, 4] fois la référence est écartée (oubli de toucher, pause) ;
+// - seule une session vraiment cuisinée apprend (cookedEnough : au moins une étape de cuisson
+//   lancée puis faite) ; terminée dès la prep ou abandonnée, elle n'apprend rien, et ses
+//   mesures déjà enregistrées sont ignorées à la lecture ;
+// - fenêtre : les WINDOW dernières sessions terminées qui apprennent ; une mesure par session
+//   et par clé (gestes au même aliment additionnés) ;
+// - une mesure invraisemblable est écartée (implausible) : hors de [¼, 4] fois la référence
+//   (oubli de toucher, pause), cochée en passant (moins de 15 s), ou plus de 4 h ;
 //   à partir de 3 mesures, celles à plus d'un facteur 2 de la médiane aussi ; une mesure
 //   seule à plus de 75 % de la référence, que rien ne confirme, ne change rien ;
 // - facteur = moyenne géométrique pondérée des rapports réel / référence, avec la
@@ -58,7 +62,41 @@ const LONE = Math.log(1.75);
 const NEAR = Math.log(1.5);
 const FAR = Math.log(2);
 
-export const inBounds = (s: Pick<DurationSample, "estMin" | "realMin">) => s.estMin > 0 && s.realMin / s.estMin >= BOUNDS[0] && s.realMin / s.estMin <= BOUNDS[1];
+/** En dessous, l'intervalle ne mesure rien : on a coché en passant (pour sauter, pour finir). */
+export const MIN_REAL_MIN = 0.25;
+/** Au-delà, l'écran est resté ouvert sur un geste ou une étape oubliés. */
+export const MAX_REAL_MIN = 240;
+
+/** Pourquoi une mesure n'est pas vraisemblable, ou null. Pur : sert à la mesure, au bilan et à la lecture des mesures enregistrées. */
+export function implausible(s: Pick<DurationSample, "estMin" | "realMin" | "weight">): string | null {
+  if (!(s.estMin > 0) || !Number.isFinite(s.realMin) || !(s.realMin > 0)) return "mesure invalide";
+  const r = s.realMin / s.estMin;
+  if (r < BOUNDS[0] || r > BOUNDS[1]) return "hors bornes (oubli de toucher, pause ?)";
+  // Part d'un bol coché : c'est l'intervalle entier (réel / part) qui dit si on a coché en passant.
+  const span = s.weight > 0 && s.weight < 1 ? s.realMin / s.weight : s.realMin;
+  if (span < MIN_REAL_MIN) return "coché en passant";
+  if (s.realMin > MAX_REAL_MIN) return "trop long (oubli de toucher ?)";
+  return null;
+}
+
+export const inBounds = (s: Pick<DurationSample, "estMin" | "realMin" | "weight">) => implausible(s) == null;
+
+/**
+ * La session a-t-elle été cuisinée ? Terminée (pas abandonnée, pas rouverte) avec au moins une étape
+ * de cuisson lancée puis faite. Terminer dès la prep, c'est une fin anticipée : rien à apprendre,
+ * les gestes cochés pour passer ne sont pas des durées.
+ */
+export function cookedEnough(plan: Pick<SessionPlan, "steps">, events: SessionEvent[]): boolean {
+  const evs = [...events].sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || (a.seq ?? 0) - (b.seq ?? 0));
+  const s = reduce("prep", evs);
+  if (s.status !== "done") return false;
+  return plan.steps.some((st) => {
+    if (st.kind === "preheat" || !st.recipeSlug) return false;
+    const t0 = s.started.get(st.id);
+    const t1 = s.done.get(st.id);
+    return t0 != null && t1 != null && t1 > t0;
+  });
+}
 
 
 export function taskLabel(t: PrepTask): string {
@@ -282,8 +320,9 @@ export function learn(samples: StoredSample[]): Map<string, Correction> {
     const perSession = new Map<string, { real: number; est: number; w: number }>();
     for (const s of list) {
       const m: Measure = { sessionId: s.sessionId, ratio: s.realMin / s.estMin, weight: s.weight, realMin: s.realMin, estMin: s.estMin };
-      if (!inBounds(s)) {
-        ignored.push({ ...m, why: "hors bornes (oubli de toucher, pause ?)" });
+      const why = implausible(s);
+      if (why) {
+        ignored.push({ ...m, why });
         continue;
       }
       const a = perSession.get(s.sessionId) ?? { real: 0, est: 0, w: 0 };
