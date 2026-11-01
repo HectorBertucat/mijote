@@ -10,7 +10,7 @@
 // Sur téléphone (ou ?vue=telephone), la vue couvre la navigation ; sombre pendant la cuisson.
 // Barre espace : le bouton principal de l’écran ([data-main]) ; flèche gauche : retour.
 import Link from "next/link";
-import { useContext, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
 import { batchOf, currentPhase, liveTimer, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
 import { prepBowls, prepExtras, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
@@ -27,9 +27,8 @@ import { SimpleDuo } from "./SimpleDuo";
 import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
 import { attentionOf, fmtMin, ringInfo, timedPhase } from "@/lib/session/guide";
-import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, TakeBowls, TimerBar } from "./guide";
+import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
 import { PhaseNext } from "./blocks";
-import { restartSession } from "@/app/session/actions";
 
 export interface SimpleProps {
   id: string;
@@ -252,7 +251,7 @@ function Head({ plan, c, stage, wake, detail, overlay, onEnd, lead, title, tone 
           </Link>
           {lead}
           <div className="min-w-0 flex-1">
-            <b className="block truncate text-[17px] leading-tight">{title ?? headTitle(plan, c, stage)}</b>
+            <b className="line-clamp-2 block text-[17px] leading-tight">{title ?? headTitle(plan, c, stage)}</b>
             <span className="flex items-center gap-2 text-[14px] opacity-75">
               <span className={`size-2 shrink-0 rounded-full bg-current ${c.online ? "k-live" : "opacity-40"}`} aria-hidden />
               <span className="num truncate">{c.online ? headSub(plan, c, stage) : "reconnexion…"}</span>
@@ -314,16 +313,6 @@ function headSub(plan: SessionPlan, c: Controls, stage: Stage): string {
 }
 
 /** Le menu : vue détaillée, écran allumé, passer à la cuisine, terminer. Un <details> : clavier et lecteur d’écran sans script. */
-/** Relancer la session (plan refait, mêmes plats), pour de vrai ou en test ; l’ancienne s’arrête sur tous les écrans. */
-export function useRestart(id: string) {
-  const [pending, start] = useTransition();
-  const run = (test: boolean) => {
-    const ask = test ? "Recommencer en session test ? Celle-ci s’arrête ; rien n’est compté (durées, frigo)." : "Recommencer la session de zéro ? Celle-ci s’arrête sur tous les écrans.";
-    if (window.confirm(ask)) start(() => restartSession(id, test));
-  };
-  return { run, pending };
-}
-
 function Menu({ wake, detail, onEnd, toCook, evening, restart }: { wake: Wake; detail: string; onEnd?: () => void; toCook?: () => void; evening: boolean; restart?: ReturnType<typeof useRestart> }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const close = () => ref.current?.removeAttribute("open");
@@ -829,10 +818,22 @@ export function Ringing({ plan, c, timers }: { plan: SessionPlan; c: Controls; t
 }
 
 export function RingBar({ plan, c, t, who }: { plan: SessionPlan; c: Controls; t: TimerState; who?: Person }) {
+  const info = ringInfo(plan, c.state, t);
+  if (!info.chain)
+    return (
+      <MainButton icon="check" who={who} onClick={() => c.stopTimer(t)} className="!whitespace-normal leading-tight">
+        {info.stop}
+      </MainButton>
+    );
   return (
-    <MainButton icon="check" who={who} onClick={() => c.stopTimer(t)} className="!whitespace-normal leading-tight">
-      {ringInfo(plan, c.state, t).stop}
-    </MainButton>
+    <div className="grid gap-2">
+      <MainButton icon="clock" who={who} onClick={() => c.stopTimer(t, true)} className="!whitespace-normal leading-tight">
+        {info.chain.label}
+      </MainButton>
+      <button type="button" onClick={() => c.stopTimer(t)} className="min-h-11 rounded-[8px] px-2 text-[15px] font-bold opacity-90 hover:opacity-100">
+        {info.stop}
+      </button>
+    </div>
   );
 }
 
@@ -912,6 +913,7 @@ function Done({ plan, c, detail }: { plan: SessionPlan; c: Controls; detail: str
         <Button variant="quiet" icon="refresh" onClick={() => c.setStatus("cooking")}>
           Rouvrir la session
         </Button>
+        <RestartButtons id={c.id} />
       </div>
     </div>
   );

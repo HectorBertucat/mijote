@@ -29,7 +29,7 @@ import {
   type SessionState,
   type TimerState,
 } from "@/lib/session/state";
-import { fillBowls, mainAction, mainEvents, stopEvents, undoFor } from "@/lib/session/guide";
+import { fillBowls, mainAction, mainEvents, ringInfo, stopEvents, undoFor } from "@/lib/session/guide";
 import { resumeSession } from "@/app/session/actions";
 import { buttonClass, Icon } from "@/components/ui";
 import { useNow, useSession } from "./useSession";
@@ -109,7 +109,7 @@ function useControls(p: SessionProps) {
   }, [focus, act]);
 
   const auto = useCallback((t: TimerState) => s.events.some((e) => e.kind === "timer_start" && e.ref === t.id && e.payload?.auto === true), [s.events]);
-  const stopTimer = useCallback((t: TimerState) => send(stopEvents(plan, state, t, now, { ...opts(), auto: auto(t) })), [plan, state, now, send, opts, auto]);
+  const stopTimer = useCallback((t: TimerState, chain = false) => send(stopEvents(plan, state, t, now, { ...opts(), auto: auto(t), chain })), [plan, state, now, send, opts, auto]);
   /** Régler un minuteur (+1, glisser sur l’ordinateur) : nouvelle fin, lancement et durée d’origine gardés ; en pause, il y reste. */
   const setTimerEnd = useCallback(
     (t: TimerState, liveEnd: number) => {
@@ -273,7 +273,7 @@ export function SessionApp(props: SessionProps) {
     }
     // Ce qui sonne passe avant : l’espace l’arrête (le bouton de l’alerte dit ce qui suit).
     if (c.ringing.length) {
-      c.stopTimer(c.ringing[0]);
+      c.stopTimer(c.ringing[0], Boolean(ringInfo(plan, state, c.ringing[0]).chain));
       return;
     }
     if (c.mode === "duo") {

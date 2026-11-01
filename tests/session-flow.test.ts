@@ -10,6 +10,7 @@ import { mealsOf, prepBowls, prepExtras, soonTimers, stageOf, storageLine, temps
 import { Ringing, StepNow } from "@/components/session/Simple";
 import type { Controls } from "@/components/session/SessionApp";
 import { load, RES } from "./helpers";
+import { typo } from "@/lib/typo";
 
 const chasseur = load("chasseur-porc.json");
 const forno = load("pasta-al-forno.json");
@@ -96,7 +97,7 @@ test("rendu : chaque étape, à lancer puis à chaque sous-étape, en grand et s
   const at = (min: number) => new Date(Date.parse("2026-10-21T18:00:00Z") + min * 60000).toISOString();
   for (const step of plan.steps) {
     const todo = renderToStaticMarkup(createElement(StepNow, { plan, c: controls(plan, [], Date.parse(at(0))), step }));
-    assert.match(todo, /À lancer · étape/, step.id);
+    assert.match(todo, step.recipeSlug ? /À commencer · étape \d+ sur \d+ de la recette/ : /À commencer/, step.id);
     assert.match(todo, /<h1/, step.id);
     assert.ok(!/NaN|undefined/.test(todo), `${step.id} : ${todo.match(/.{40}(NaN|undefined).{40}/)?.[0]}`);
     const events = [ev("step_start", step.id, null, at(0))];
@@ -105,7 +106,7 @@ test("rendu : chaque étape, à lancer puis à chaque sous-étape, en grand et s
       events.push(ev("timer_start", ids.timer, { label: ph.text, minutes: ph.min, stepId: step.id, phase: i, endsAt: at(i + ph.min) }, at(i)));
       const html = renderToStaticMarkup(createElement(StepNow, { plan, c: controls(plan, events, Date.parse(at(i)) + 1000), step }));
       assert.equal(currentPhase(reduce("prep", events), step), i);
-      assert.ok(html.includes(escaped(ph.text)), `${step.id} : sous-étape ${i} en titre`);
+      assert.ok(html.replace(/<[^>]+>/g, "").includes(escaped(typo(ph.text))), `${step.id} : sous-étape ${i} en titre`);
       assert.match(html, /role="timer"/, `${step.id} : pastille du minuteur`);
       assert.ok(!/NaN/.test(html), `${step.id} : pas de NaN`);
       events.push(ev("step_done", `phase:${i}:${step.id}`, null, at(i + ph.min)));
@@ -117,5 +118,6 @@ test("rendu : chaque étape, à lancer puis à chaque sous-étape, en grand et s
   const timer: TimerState = { id: "t", label: st.phases![w].text, stepId: st.id, endsAt: 1000, minutes: 5, doneAt: null, phase: w, startedAt: 0, refMinutes: 5, pausedAt: null, pausedMs: 0 };
   const ring = renderToStaticMarkup(createElement(Ringing, { plan, c: controls(plan, [], 5000), timers: [timer] }));
   assert.match(ring, /role="alert"/);
-  assert.ok(ring.includes(`Fini : `), "fin d'une attente");
+  assert.ok(ring.replace(/<[^>]+>/g, "").includes("Fini : "), "fin d'une attente");
+  assert.ok(ring.replace(/<[^>]+>/g, "").includes("Maintenant"), "l’action à faire");
 });

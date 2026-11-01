@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { startSession } from "@/app/session/actions";
+import { restartFromForm, startSession } from "@/app/session/actions";
 import { restoreListForm } from "@/app/courses/actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ModePicker } from "@/components/session/ModePicker";
-import { buildPlan } from "@/lib/session/store";
+import { buildPlan, sessionsOfList } from "@/lib/session/store";
+import { MODE_LABELS } from "@/lib/session/planner";
 import type { SessionMode, SessionPlan } from "@/lib/session/planner";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { BuildProgress, CopyButton, LiveVerify } from "@/components/ListActions";
@@ -266,6 +267,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
 
       <section aria-labelledby="session-titre" className="grid gap-6">
         <SectionHead id="session-titre" title="Cuisiner" />
+        <ListSessions listId={id} />
         <form action={startSession} className="grid gap-4">
           <input type="hidden" name="slugs" value={list.recipeSlugs.join(",")} />
           <input type="hidden" name="listId" value={id} />
@@ -274,11 +276,59 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
             <SubmitButton pendingText="Je planifie la session…" variant={ordered ? undefined : "soft"}>
               {ordered ? "Lancer la session avec ma commande" : "Lancer la session avec cette liste"}
             </SubmitButton>
+            {/* Pour essayer ou montrer l’appli : même plan, rien n’est compté (durées, frigo). */}
+            <button type="submit" name="test" value="1" className="min-h-tap text-small text-ink-2 underline-offset-4 hover:text-ink hover:underline">
+              ou une session test, rien n’est compté
+            </button>
             {ordered && <CopyButton text={copy} links={catalogEnabled()} />}
           </div>
         </form>
       </section>
     </div>
+  );
+}
+
+const SESSION_STATUS: Record<string, string> = { planned: "à commencer", prep: "en prep", fridge: "bols au frigo", cooking: "en cuisine", done: "finie", abandoned: "arrêtée" };
+const sessionDay = (iso: string | null) => (iso ? new Date(iso).toLocaleString("fr-FR", { weekday: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "");
+
+/** Les sessions déjà lancées depuis cette liste : reprendre celle en cours, relancer une finie pour de vrai ou en test. */
+function ListSessions({ listId }: { listId: string }) {
+  const list = sessionsOfList(db, listId).slice(0, 4);
+  if (!list.length) return null;
+  return (
+    <ul className="grid border-b border-line" aria-label="Sessions lancées depuis cette liste">
+      {list.map((s) => {
+        const open = s.status !== "done" && s.status !== "abandoned";
+        return (
+          <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-3">
+            <span className="grid min-w-0 flex-1 basis-[14rem]">
+              <b className="text-[17px]">
+                {MODE_LABELS[s.mode === "duo" || s.mode === "veille" ? s.mode : "solo"]} · {SESSION_STATUS[s.status] ?? s.status}
+                {s.test ? <span className="label ml-2 text-ink-2">test</span> : null}
+              </b>
+              <span className="text-small text-ink-2">{sessionDay(s.startedAt)}</span>
+            </span>
+            {open && (
+              <Link href={`/session/${s.id}`} className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink">
+                Reprendre
+              </Link>
+            )}
+            {/* Une session en cours se recommence depuis son menu (avec confirmation) ; ici, on ne l’arrête pas sans le voir. */}
+            {!open && (
+              <form action={restartFromForm} className="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="sessionId" value={s.id} />
+                <SubmitButton size="sm" variant="soft" icon="refresh" pendingText="Je refais le plan…">
+                  Relancer
+                </SubmitButton>
+                <button type="submit" name="test" value="1" className="min-h-tap text-small text-ink-2 underline-offset-4 hover:text-ink hover:underline">
+                  en test
+                </button>
+              </form>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

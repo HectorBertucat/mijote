@@ -9,7 +9,7 @@ import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/sess
 import { handoffLine } from "@/lib/session/people";
 import { batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus } from "@/lib/session/state";
 import { fmtMin, timedPhase } from "@/lib/session/guide";
-import { BackButton, BowlText, RecipeContext, TakeBowls } from "./guide";
+import { BackButton, BowlText, RecipeContext, RestartButtons, TakeBowls } from "./guide";
 import { applyScales } from "@/app/session/actions";
 import { Alert, Button, Icon, Induction } from "@/components/ui";
 import type { Controls, DayChoice } from "./SessionApp";
@@ -452,6 +452,7 @@ export function DoneView({ plan, c, startedAt }: { plan: SessionPlan; c: Control
         <Button variant="quiet" icon="refresh" onClick={() => c.setStatus("cooking")}>
           Rouvrir la session
         </Button>
+        <RestartButtons id={c.id} />
       </div>
       <DurationReport plan={plan} events={c.events} startedAt={startedAt} />
       <PlanDetails plan={plan} />

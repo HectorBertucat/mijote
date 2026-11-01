@@ -417,7 +417,7 @@ export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset,
             className="animate-pop"
             size={big ? "big" : "md"}
             title={t.label}
-            detail={`${step ? `${shortName(recipeOf(plan!, step.recipeSlug)?.name) || "étape"} · ` : ""}${paused ? "en pause" : `fin ${clock(t.endsAt)}`}`}
+            detail={`${step ? `${shortName(recipeOf(plan!, step.recipeSlug)?.name) || "Four"} · ` : ""}${paused ? "en pause" : `fin ${clock(t.endsAt)}`}`}
             remaining={left}
             paused={paused}
             total={Math.max(60, t.minutes * 60)}
@@ -533,9 +533,20 @@ export function TimerAlert({ plan, c, kitchen = false }: { plan: SessionPlan; c:
                 <span className="shrink-0 text-[14px] opacity-75">arrêter</span>
               </button>
             ))}
-            <Button variant="ink" size="kitchen" block icon="check" onClick={() => c.stopTimer(t)} className="!min-h-24 !whitespace-normal text-[22px] leading-tight">
-              {info.stop}
-            </Button>
+            {info.chain ? (
+              <>
+                <Button variant="ink" size="kitchen" block icon="clock" onClick={() => c.stopTimer(t, true)} className="!min-h-24 !whitespace-normal text-[22px] leading-tight">
+                  {info.chain.label}
+                </Button>
+                <Button variant="inverse" size="kitchen" block onClick={() => c.stopTimer(t)} className="!whitespace-normal">
+                  {info.stop}
+                </Button>
+              </>
+            ) : (
+              <Button variant="ink" size="kitchen" block icon="check" onClick={() => c.stopTimer(t)} className="!min-h-24 !whitespace-normal text-[22px] leading-tight">
+                {info.stop}
+              </Button>
+            )}
             <span className="text-center text-[14px] opacity-80">Sur tous les écrans · espace</span>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import type { SessionPlan } from "@/lib/session/planner";
 import { batchOf, stepStatus } from "@/lib/session/state";
 import { Button } from "@/components/ui";
-import { Lanes } from "./guide";
+import { Lanes, RestartButtons } from "./guide";
 import type { Controls } from "./SessionApp";
 import { AllDone, NowCard, PlanDetails } from "./blocks";
 import { clock, dur, Eyebrow, PauseAll, RecipeMark, Resources, stepTitle, TimerList } from "./parts";
@@ -35,6 +35,7 @@ export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; s
         <Button variant="quiet" icon="check" onClick={() => c.setStatus("done")} block>
           Terminer la session
         </Button>
+        <RestartButtons id={c.id} />
       </aside>
 
       <Feed plan={plan} c={c} />

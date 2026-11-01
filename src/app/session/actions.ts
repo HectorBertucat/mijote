@@ -36,3 +36,8 @@ export async function restartSession(sessionId: string, test: boolean) {
   const id = restart(db, sessionId, { test });
   if (id) redirect(`/session/${id}`);
 }
+
+/** Même chose depuis un formulaire (liste de courses) : `sessionId`, et `test=1` pour une session test. */
+export async function restartFromForm(formData: FormData) {
+  await restartSession(String(formData.get("sessionId") ?? ""), formData.get("test") === "1");
+}

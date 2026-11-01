@@ -113,7 +113,7 @@ function PrepNow({ plan, task }: { plan: SessionPlan; task: PrepTask }) {
         {task.kind === "cut" && task.items[0] ? <FoodIllu food={task.items[0].food} item={task.title} size={80} live className="shrink-0" /> : <StepIllu kind="prep" text={task.text ?? task.title} size={80} live className="shrink-0" />}
         <div className="grid min-w-0 justify-items-start gap-2">
           {recipe && (
-            <Tape tint={recipe.color} seed={recipe.slug}>
+            <Tape tint={recipe.color} seed={recipe.slug} wrap>
               {recipe.name}
             </Tape>
           )}

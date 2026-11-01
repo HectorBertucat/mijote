@@ -4,11 +4,13 @@
 // pastille qui montre son contenu au survol (ordinateur) ou au toucher (téléphone) ; le fil « en cours
 // (mains) / en fond / ensuite » ; la barre des minuteurs (vue simple) ; ce que dit un minuteur qui
 // sonne ; les rappels d’une attente (« remue ») ; le bouton de retour qui dit ce qu’il défait.
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { restartSession } from "@/app/session/actions";
 import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
 import { stepStatus, type TimerState } from "@/lib/session/state";
 import { ATTENTION_LABELS, fmtMin, lanesOf, recipeStep, reminderAt, ringInfo, type LaneItem, type Undo } from "@/lib/session/guide";
-import { bowlParts, stepTitleOf } from "@/lib/session/text";
+import { bowlParts, clip, stepTitleOf } from "@/lib/session/text";
 import { recipeVar } from "@/components/ui/recipe";
 import { Button, Icon, Tape } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
@@ -87,7 +89,8 @@ export function Peek({ trigger, label, children, className = "", panelClassName 
       >
         {trigger}
       </button>
-      {open && (
+      {open &&
+        createPortal(
         <div
           ref={panel}
           id={id}
@@ -99,7 +102,9 @@ export function Peek({ trigger, label, children, className = "", panelClassName 
           style={pos ? { left: pos.left, top: pos.top, width: pos.width, transform: pos.up ? "translateY(-100%)" : undefined } : { left: 0, top: 0 }}
         >
           {children}
-        </div>
+        </div>,
+        // Hors du texte (un parent estompé ou animé la rendrait transparente ou décalée), dans la coquille de la session (ses couleurs, sombre à côté du feu).
+        btn.current?.closest("[data-simple]") ?? document.body
       )}
     </>
   );
@@ -118,7 +123,7 @@ export function BowlItems({ bowl, size = "md", className = "" }: { bowl: Pick<Pl
             {typo(i.item)}
             {i.optional && <span className="text-ink-2"> (facultatif)</span>}
           </span>
-          <b className="num-tight text-right">{i.qty ?? "à ton goût"}</b>
+          <b className="num-tight text-right">{i.qty ?? ""}</b>
         </li>
       ))}
     </ul>
@@ -209,7 +214,7 @@ export function RecipeContext({ plan, step, status, extra }: { plan: SessionPlan
   return (
     <div className="grid min-w-0 justify-items-start gap-2">
       {recipe ? (
-        <Tape tint={recipe.color} seed={recipe.slug} className="max-w-full whitespace-normal">
+        <Tape tint={recipe.color} seed={recipe.slug} wrap>
           {recipe.name}
         </Tape>
       ) : (
@@ -218,10 +223,8 @@ export function RecipeContext({ plan, step, status, extra }: { plan: SessionPlan
       <p className={`label num ${status === "todo" ? "text-ink-2" : "text-accent"}`}>
         {status === "todo" ? "À commencer" : status === "active" ? "En cours" : "Fait"}
         {rs ? ` · étape ${rs.n} sur ${rs.of} de la recette` : ""}
-        <span className="text-ink-2"> · {step.no} sur {plan.steps.length} de la session</span>
-        {where ? <span className="text-ink-2"> · {where}</span> : null}
-        {extra ? <span className="text-ink-2"> · {extra}</span> : null}
       </p>
+      <p className="num text-[14px] leading-snug text-ink-2">{[`Étape ${step.no} sur ${plan.steps.length} de la session`, where, extra].filter(Boolean).join(" · ")}</p>
     </div>
   );
 }
@@ -372,7 +375,7 @@ function TimerChip({ plan, c, t }: { plan: SessionPlan; c: Controls; t: TimerSta
       trigger={
         <span className={`flex h-11 items-center gap-2 rounded-[8px] border border-[color-mix(in_srgb,currentColor_25%,transparent)] px-3 ${left <= 60000 && !paused ? "border-current" : ""}`} style={rc(color)}>
           <span className="size-2.5 shrink-0 rounded-full bg-[var(--rc)]" aria-hidden />
-          <span className="max-w-[9rem] truncate text-[14px]">{info.step ? (info.step.phases?.[t.phase ?? -1]?.text ?? stepTitleOf(info.step, 24)) : t.label}</span>
+          <span className="max-w-[10rem] text-[14px] leading-tight">{clip(info.step ? (info.step.phases?.[t.phase ?? -1]?.text ?? stepTitleOf(info.step, 40)) : t.label, 22)}</span>
           <span className={`num-tight text-[20px] leading-none ${paused ? "opacity-60" : ""}`}>
             {paused && <Icon name="pause" size={12} className="mr-1 inline" />}
             {mmss(Math.max(0, left))}
@@ -443,11 +446,11 @@ export function RingDetails({ plan, c, t }: { plan: SessionPlan; c: Controls; t:
     <div className="grid content-start gap-6">
       <div className="grid gap-2">
         {info.recipe && (
-          <span className="flex items-center gap-2 text-[17px] font-bold">
-            <span className="size-3 shrink-0 rounded-full border-2 border-current bg-[var(--rc)]" style={rc(info.recipe.color)} aria-hidden />
+          <p className="text-[17px] font-bold">
+            <span className="mr-2 inline-block size-3 rounded-full border-2 border-current bg-[var(--rc)] align-[-1px]" style={rc(info.recipe.color)} aria-hidden />
             {info.recipe.name}
             {info.step ? <span className="font-normal opacity-80"> · étape {info.step.no}</span> : null}
-          </span>
+          </p>
         )}
         <p className="text-lead opacity-90">
           Fini : <BowlText plan={plan} text={info.finished} />
@@ -501,6 +504,33 @@ export function BackButton({ undo, onBack, compact = false, className = "", onIn
       <Icon name="chev" size={compact ? "l" : "m"} className="shrink-0 rotate-180" />
       {!compact && <span className="min-w-0 text-[15px] leading-tight">{undo ? undo.label : "Rien à défaire"}</span>}
     </Button>
+  );
+}
+
+// ─── Recommencer ───
+
+/** Relancer la session (plan refait, mêmes plats), pour de vrai ou en test ; l’ancienne s’arrête sur tous les écrans. */
+export function useRestart(id: string) {
+  const [pending, start] = useTransition();
+  const run = (test: boolean) => {
+    const ask = test ? "Recommencer en session test ? Celle-ci s’arrête ; rien n’est compté (durées, frigo)." : "Recommencer la session de zéro ? Celle-ci s’arrête sur tous les écrans.";
+    if (window.confirm(ask)) start(() => restartSession(id, test));
+  };
+  return { run, pending };
+}
+
+/** Recommencer, en deux boutons discrets (vue détaillée, fin de session). */
+export function RestartButtons({ id }: { id: string }) {
+  const r = useRestart(id);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button size="sm" variant="quiet" icon="refresh" disabled={r.pending} onClick={() => r.run(false)}>
+        {r.pending ? "Je refais le plan…" : "Recommencer de zéro"}
+      </Button>
+      <Button size="sm" variant="quiet" disabled={r.pending} onClick={() => r.run(true)} title="Rien n’est compté : ni les durées, ni le frigo">
+        en test
+      </Button>
+    </div>
   );
 }
 

@@ -321,9 +321,16 @@ export function mainEvents(plan: SessionPlan, state: SessionState, step: PlanSte
 }
 
 /** Arrêter un minuteur : celui d'une sous-étape la finit (la suivante attend son geste) ; une attente finie finit l'étape. */
-export function stopEvents(plan: SessionPlan, state: SessionState, t: TimerState, now: number, o: EvOpts & { auto: boolean }): Ev[] {
+export function stopEvents(plan: SessionPlan, state: SessionState, t: TimerState, now: number, o: EvOpts & { auto: boolean; chain?: boolean }): Ev[] {
   const step = t.stepId ? plan.steps.find((x) => x.id === t.stepId) : undefined;
-  if (step && t.phase != null && currentPhase(state, step) === t.phase) return phaseDoneEvents(plan, state, step, t.phase, o);
+  if (step && t.phase != null && currentPhase(state, step) === t.phase) {
+    const out = phaseDoneEvents(plan, state, step, t.phase, o);
+    // « Arrêter · lancer 13 min » : la suite chronométrée part sur ce geste-là, nommé sur le bouton.
+    const nxt = step.phases![t.phase + 1];
+    if (o.chain && nxt && timedPhase(nxt))
+      out.push({ id: o.id(), kind: "timer_start", ref: phaseIds(o.sessionId, step.id, t.phase + 1).timer, payload: { label: nxt.text, minutes: nxt.min, stepId: step.id, phase: t.phase + 1, endsAt: new Date(now + nxt.min * 60000).toISOString(), ...who(o) } });
+    return out;
+  }
   const out: Ev[] = [{ kind: "timer_done", ref: t.id }];
   if (step && o.auto && t.endsAt <= now && stepStatus(state, step.id) === "active") out.push({ kind: "step_done", ref: step.id, payload: o.person ? { person: o.person } : null }, ...fillBowls(plan, state, step));
   return out;
@@ -378,7 +385,7 @@ export function undoFor(plan: SessionPlan, state: SessionState, events: SessionE
       const task = plan.prep.tasks.find((t) => t.id === id);
       const bowls = plan.bowls.filter((b) => b.tasks?.includes(id) && state.bowlsReady.has(b.letter));
       return {
-        label: `Revenir à : ${task ? clip(task.kind === "weigh" ? `pesée ${task.title.toLowerCase()}` : task.title, 34) : "ce geste"}`,
+        label: `Revenir à : ${task ? clip(task.kind === "weigh" ? `pesée du ${task.title.replace(/^Bol/, "bol")}` : task.title, 34) : "ce geste"}`,
         detail: "Le geste redevient à faire.",
         events: [{ kind: "step_done", ref: e.ref, payload: pay() }, ...bowls.map((b) => ({ kind: "bowl_ready" as const, ref: b.letter, payload: { ready: false, ...(person ? { person } : {}) } }))],
       };
@@ -432,6 +439,8 @@ export interface RingInfo {
   after: string | null;
   /** Le libellé du bouton qui arrête. */
   stop: string;
+  /** La suite est chronométrée : arrêter et lancer son minuteur, d’un seul geste nommé. */
+  chain: { label: string; minutes: number } | null;
 }
 
 const KIND_ACTION: Partial<Record<PlanStep["kind"], string>> = {
@@ -447,14 +456,14 @@ const KIND_ACTION: Partial<Record<PlanStep["kind"], string>> = {
 export function ringInfo(plan: SessionPlan, state: SessionState, t: TimerState): RingInfo {
   const step = t.stepId ? (plan.steps.find((x) => x.id === t.stepId) ?? null) : null;
   const recipe = step ? (plan.recipes.find((r) => r.slug === step.recipeSlug) ?? null) : null;
-  if (!step) return { recipe: null, step: null, finished: t.label, where: [], bowls: [], action: "Le minuteur est fini", cue: null, after: null, stop: "Arrêter le minuteur" };
+  if (!step) return { recipe: null, step: null, finished: t.label, where: [], bowls: [], action: "Le minuteur est fini", cue: null, after: null, stop: "Arrêter le minuteur", chain: null };
   const n = t.phase;
   const ph = n != null ? step.phases?.[n] : undefined;
   const nxt = n != null ? step.phases?.[n + 1] : undefined;
   const sameRecipe = plan.steps.find((s) => s.id !== step.id && s.recipeSlug && s.recipeSlug === step.recipeSlug && stepStatus(state, s.id) === "todo");
   const level = nxt?.hobLevel ?? ph?.hobLevel ?? null;
   const where = [
-    step.kind !== "preheat" ? step.equipmentName : null,
+    step.kind !== "preheat" && step.equipmentName && !/^four$/i.test(step.equipmentName) ? step.equipmentName : null,
     step.hobId ? `${hobName(plan, step.hobId)}${level != null ? ` · niveau ${level}` : step.hobLevelLabel ? ` · niveau ${step.hobLevelLabel}` : step.hobLevel != null ? ` · niveau ${step.hobLevel}` : ""}` : null,
     step.oven ? `four ${step.oven.temp} °C${step.oven.levels.length ? ` · gradin${step.oven.levels.length > 1 ? "s" : ""} ${step.oven.levels.join(" et ")}` : ""}` : step.kind === "preheat" ? `four ${step.text.match(/(\d+)\s*°C/)?.[1] ?? ""} °C`.replace(/\s+°C$/, "") : null,
   ].filter((x): x is string => Boolean(x));
@@ -470,7 +479,8 @@ export function ringInfo(plan: SessionPlan, state: SessionState, t: TimerState):
       action: nxt ? nxt.text : `L’étape ${step.no} est finie : ${KIND_ACTION[step.kind]?.toLowerCase() ?? "vérifie et passe à la suite"}`,
       cue: !nxt ? step.cue : null,
       after: step.phases?.[n! + 2]?.text ?? thenStep,
-      stop: nxt ? `Arrêter · passer à : ${clip(nxt.text, 26)}` : lastNoWait ? `Arrêter · étape ${step.no} finie` : "Arrêter la sonnerie",
+      stop: nxt ? (timedPhase(nxt) ? "Arrêter seulement" : `Arrêter · passer à : ${clip(nxt.text, 26)}`) : lastNoWait ? `Arrêter · étape ${step.no} finie` : "Arrêter la sonnerie",
+      chain: nxt && timedPhase(nxt) ? { label: `Arrêter · lancer ${fmtMin(nxt.min)} : ${clip(nxt.text, 24)}`, minutes: nxt.min } : null,
     };
   }
   return {
@@ -483,5 +493,6 @@ export function ringInfo(plan: SessionPlan, state: SessionState, t: TimerState):
     cue: step.cue,
     after: thenStep,
     stop: `Arrêter · étape ${step.no} finie`,
+    chain: null,
   };
 }

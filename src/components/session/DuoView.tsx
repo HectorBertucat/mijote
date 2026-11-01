@@ -11,7 +11,7 @@ import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
 import { ofName } from "@/lib/session/people";
 import { itemStatus, personFocus, personNext, threadOf, type ThreadItem } from "@/lib/session/state";
 import { weighItems } from "@/lib/session/guide";
-import { BackButton, BowlChip, BowlItems, BowlText } from "./guide";
+import { BackButton, BowlChip, BowlItems, BowlText, RestartButtons } from "./guide";
 import { Alert, Button, Icon } from "@/components/ui";
 import type { Controls, SessionProps } from "./SessionApp";
 import { Bleed, SimpleLink } from "./SessionApp";
@@ -97,6 +97,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                 <Button variant="quiet" icon="check" block onClick={() => c.setStatus("done")}>
                   Terminer la session
                 </Button>
+                <RestartButtons id={c.id} />
               </div>
             </aside>
           </div>
