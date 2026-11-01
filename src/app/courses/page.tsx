@@ -9,6 +9,7 @@ import { periodLabel } from "@/lib/week/period";
 import { pantryTotals, spendingTotals } from "@/lib/costs";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { storeLabel } from "@/lib/settings";
+import { plural } from "@/components/semaine/format";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +49,13 @@ export default function Listes() {
           </Link>
         }
       >
-        <Figures className="mt-6">
-          <Figure href="/placard" value={num(pantry.okValue)} unit="€" label={`au placard, ${pantry.okCount ?? 0} restes`} />
-          <Figure href="/couts" value={num(spent.spent)} unit="€" label={`dépensés, ${spent.purchases} achats`} />
-        </Figures>
+        {/* Sans aucun prix (pas de catalogue, rien d’acheté encore) : pas de rangée de « 0,00 € ». */}
+        {(pantry.okValue > 0 || spent.spent > 0 || (pantry.okCount ?? 0) > 0) && (
+          <Figures className="mt-6">
+            <Figure href="/placard" value={num(pantry.okValue)} unit="€" label={`au placard, ${plural(pantry.okCount ?? 0, "reste")}`} />
+            <Figure href="/couts" value={num(spent.spent)} unit="€" label={`dépensés, ${plural(spent.purchases, "achat")}`} />
+          </Figures>
+        )}
       </PageHead>
 
       {lists.length === 0 ? (

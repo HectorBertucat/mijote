@@ -66,8 +66,9 @@ export function Dock({ title, sub, children, wide = true }: { title: ReactNode; 
     <div className={`sticky bottom-[calc(72px+env(safe-area-inset-bottom))] z-10 mt-12 sm:bottom-6 ${wide ? "lg:ml-[calc(33.333%+8px)]" : ""}`}>
       <div className="flex items-center gap-4 rounded-[14px] border border-line bg-surface py-3 pl-4 pr-3 shadow-float sm:pl-6">
         <div className="min-w-0 flex-1" aria-live="polite">
-          <p className="num-tight truncate text-h3 leading-[1.2] text-ink">{title}</p>
-          {sub && <p className="truncate text-small text-ink-2">{sub}</p>}
+          {/* Au téléphone, le bouton prend la moitié de la barre : le texte passe à la ligne plutôt que d’être coupé. */}
+          <p className="num-tight text-body leading-[1.2] text-ink sm:truncate sm:text-h3">{title}</p>
+          {sub && <p className="line-clamp-2 text-small leading-[1.3] text-ink-2 sm:truncate">{sub}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">{children}</div>
       </div>

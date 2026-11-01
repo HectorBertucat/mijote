@@ -299,7 +299,7 @@ function Coverage({ listId, ordered }: { listId: string; ordered: boolean }) {
                 </table>
                 {r.suggestedUnits < r.servingsUnits && (
                   <p className="text-small text-ink">
-                    Fais <b className="num">{r.suggestedUnits}</b> unités au lieu de <span className="num">{r.servingsUnits}</span>, ou ajoute un paquet.
+                    Fais <b className="num">{r.suggestedUnits}</b> {r.suggestedUnits > 1 ? "unités" : "unité"} au lieu de <span className="num">{r.servingsUnits}</span>, ou ajoute un paquet.
                   </p>
                 )}
               </>

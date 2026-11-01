@@ -177,11 +177,24 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
         <div className="sticky bottom-[calc(4.9rem+env(safe-area-inset-bottom))] z-20 sm:bottom-4">
           <div className="flex items-center justify-between gap-4 rounded-[14px] border border-line bg-raised px-4 py-3 shadow-float">
             <div className="grid min-w-0">
-              <span className="num-tight text-h2">
-                {total.toFixed(2).replace(".", ",")}
-                <span className="ml-1 text-small font-semibold">€</span>
-              </span>
-              <span className="truncate text-small text-ink-2">{inCart.length ? `${inCart.length} sur ${buyable.length} au panier` : `${buyable.length} article${buyable.length > 1 ? "s" : ""}, rien de coché`}</span>
+              {/* Sans aucun prix (ni catalogue ni prix saisi) : le compte du panier plutôt qu’un « 0,00 € ». */}
+              {catalog || total > 0 ? (
+                <>
+                  <span className="num-tight text-h2">
+                    {total.toFixed(2).replace(".", ",")}
+                    <span className="ml-1 text-small font-semibold">€</span>
+                  </span>
+                  <span className="truncate text-small text-ink-2">{inCart.length ? `${inCart.length} sur ${buyable.length} au panier` : `${buyable.length} article${buyable.length > 1 ? "s" : ""}, rien de coché`}</span>
+                </>
+              ) : (
+                <>
+                  <span className="num-tight text-h2">
+                    {inCart.length}
+                    <span className="ml-1 text-small font-semibold">sur {buyable.length}</span>
+                  </span>
+                  <span className="truncate text-small text-ink-2">{inCart.length ? "au panier" : "rien de coché"}</span>
+                </>
+              )}
             </div>
             <div className="flex shrink-0 gap-2">
               {copy && <span className="max-sm:hidden">{copy}</span>}

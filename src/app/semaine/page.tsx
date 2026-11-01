@@ -342,7 +342,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                 <li key={r.slug} className="min-w-0">
                   <form action={on ? removeAction : addAction} className="h-full">
                     {keep({ slug: r.slug })}
-                    <PickButton on={on} disabled={!on && full} name={r.name} visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")} facts={facts} label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
+                    <PickButton on={on} disabled={!on && full} name={r.name} visual={box(r.slug, "md", "max-sm:!h-[72px] max-sm:!w-24 max-sm:[&>svg]:!w-[84px] sm:!h-32 sm:!w-full sm:!rounded-none")} facts={facts} label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
                   </form>
                 </li>
               );
