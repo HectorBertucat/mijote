@@ -129,7 +129,7 @@ export function analyzeRun(run: RunInput, zones: Zones, refs: LoadRefs, pace: Pa
   // § 3.1 4 : course, marche, arrêt, seconde par seconde (vitesse par kilomètre faute de trace ; sans temps au
   // kilomètre, la vitesse moyenne de la sortie ou la cadence).
   const fallback: Class = run.kind === "marche" ? "walk" : avgSpeed != null ? (avgSpeed >= RUN_SPEED_MS ? "run" : "walk") : (d.cadenceAvg ?? 160) >= 140 ? "run" : "walk";
-  const cls: Class[] = new Array(n);
+  const cls: Class[] = Array.from({ length: n }, () => "stop");
   for (let s = 0; s < n; s++) {
     const v = motion?.speed[s];
     cls[s] = v == null ? (motion ? "stop" : fallback) : v < STOP_SPEED_MS ? "stop" : v >= RUN_SPEED_MS ? "run" : "walk";

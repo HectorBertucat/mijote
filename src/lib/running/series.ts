@@ -41,7 +41,7 @@ export function resample(points: HrPoint[], durationS?: number): Hz {
   const pts = [...points].filter(([t, v]) => Number.isFinite(t) && Number.isFinite(v) && t >= 0).sort((a, b) => a[0] - b[0]);
   if (!pts.length) return [];
   const end = Math.max(Math.round(pts[pts.length - 1][0]), durationS != null ? Math.round(durationS) : 0);
-  const out: Hz = new Array(end + 1).fill(null);
+  const out: Hz = Array.from({ length: end + 1 }, () => null);
   let i = 0;
   for (let s = 0; s <= end; s++) {
     while (i < pts.length - 1 && pts[i + 1][0] <= s) i++;

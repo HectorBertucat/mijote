@@ -89,7 +89,7 @@ test("FC au repos : médiane des 30 jours (7 mesures au moins), sinon la derniè
 
 test("charge : TRIMP de Banister normalisé (40 min à 140 bpm → 39 points), table effort → charge d'une heure", () => {
   near(thresholdHour(LR), 142.7, 0.05, "TRIMP seuil 1 h");
-  const hr = new Array(40 * 60).fill(140);
+  const hr = Array.from({ length: 40 * 60 }, () => 140);
   const t = trimpOf(hr, LR);
   near(t.trimp, 56.1, 0.05, "TRIMP");
   assert.equal(Math.round(loadOfTrimp(t.trimp, LR)), 39);
@@ -113,7 +113,7 @@ test("charge sans série : FC moyenne > effort > allure > défaut ; natation et 
   assert.equal(sessionLoad({ kind: "footing", minutes: 40, speed: 2.8 }, LR, fit).source, "allure");
   assert.equal(sessionLoad({ kind: "natation", minutes: 40, speed: 2.8 }, LR, fit).source, "defaut");
   // Une série qui ne couvre pas 80 % de la durée ne sert pas.
-  assert.equal(sessionLoad({ kind: "footing", minutes: 40, hr: new Array(600).fill(140), hrAvg: 140 }, LR).source, "fc_moyenne");
+  assert.equal(sessionLoad({ kind: "footing", minutes: 40, hr: Array.from({ length: 600 }, () => 140), hrAvg: 140 }, LR).source, "fc_moyenne");
   near(sessionLoad({ kind: "marche", minutes: 60 }, LR).load, loadOfX(0.35, 60, LR), 1e-9);
 });
 
@@ -218,7 +218,7 @@ test("séries : 1 Hz par interpolation (trou au-delà de 10 s), pics retirés, v
   assert.ok(l.hr.slice(300, 360).every((v) => v == null));
   assert.equal(clean(resample(lock)).hr[330], 165); // sans cadence : gardée
   assert.equal(peak30(resample(Array.from({ length: 100 }, (_, t) => [t, t < 50 ? 150 : 170] as HrPoint))), 170);
-  assert.equal(peak30(new Array(20).fill(170)), null); // moins de 25 s
+  assert.equal(peak30(Array.from({ length: 20 }, () => 170)), null); // moins de 25 s
   // Plus de 20 % retiré : FC douteuse.
   assert.equal(clean(resample(Array.from({ length: 100 }, (_, t) => [t, t % 3 ? 140 : 20] as HrPoint))).doubtful, true);
 });

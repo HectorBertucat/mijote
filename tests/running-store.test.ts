@@ -14,7 +14,7 @@ import { ensureLink } from "@/lib/health/link";
 import { checkRunningAction, RUN_ACTIONS } from "@/lib/running/actions";
 import { addDays } from "@/lib/running/dates";
 import { decodeHr, encodeHr, MAX_HR_POINTS, parseDetails } from "@/lib/running/details";
-import { editSession, getRunProfile, noteFeedback, resumePlan, runContext, saveRunSettings, sessionIdOf, setWeekOverride, syncPlan, watchPlans } from "@/lib/running/store";
+import { editSession, getRunProfile, noteFeedback, resumePlan, runContext, saveRunSettings, sessionIdOf, setWeekOverride, syncPlan } from "@/lib/running/store";
 import { plansGet, plansPost } from "@/lib/running/watch-api";
 import { seedTest } from "./helpers";
 
