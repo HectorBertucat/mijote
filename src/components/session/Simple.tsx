@@ -27,7 +27,7 @@ import { SimpleDuo } from "./SimpleDuo";
 import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, stepHead, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
 import { attentionHint, attentionOf, batchesLabel, containerLine, fmtMin, isContainerWarning, phaseText, remindersOf, ringInfo, timedPhase } from "@/lib/session/guide";
-import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, SharedSplit, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
+import { AttentionTag, BowlText, Lanes, NeedsNote, RecipeContext, RingDetails, SharedSplit, TakeBowls, TimerActions, TimerBar, RestartButtons, UsesBlock, useRestart } from "./guide";
 import { PhaseNext } from "./blocks";
 
 export interface SimpleProps {
@@ -593,13 +593,13 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
     <article key={`${step.id}:${n ?? "-"}`} className="sx-swap grid gap-6" aria-live="polite">
       <header className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={phase?.text ?? step.text} size={80} live={st === "active"} className="illu-tile shrink-0" style={{ "--tile": stepColor(plan, step) }} />
-        <RecipeContext plan={plan} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? batchesLabel(step)?.toLocaleLowerCase("fr") : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
+        <RecipeContext plan={plan} c={c} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? batchesLabel(step)?.toLocaleLowerCase("fr") : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
       </header>
       <div className="grid gap-3">
-        {phase && <p className="text-[17px] leading-snug text-ink-2"><BowlText plan={plan} text={head} ready={state.bowlsReady} /></p>}
+        {phase && <p className="text-[17px] leading-snug text-ink-2"><BowlText plan={plan} text={head} ready={state.bowlsReady} uses={step.uses} /></p>}
         {n != null && <p className="label text-accent">Sous-étape {n + 1} sur {step.phases!.length} · <AttentionTag a={attentionOf(step, n)} className="!text-current" /></p>}
         <h1 className="sx-consigne">
-          <BowlText plan={plan} text={consigne} ready={state.bowlsReady} />
+          <BowlText plan={plan} text={consigne} ready={state.bowlsReady} uses={step.uses} />
         </h1>
         {phase && n != null && attentionOf(step, n) !== "mains" && <p className="text-lead text-ink-2">{attentionHint(attentionOf(step, n), remindersOf(step, n, phase.min))}</p>}
         {!phase && rest && !step.phases?.length && <p className="text-lead"><BowlText plan={plan} text={rest} ready={state.bowlsReady} /></p>}
@@ -608,7 +608,9 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
       {step.phases && step.phases.length > 1 && st === "active" && <PhaseTrack step={step} n={n} c={c} />}
       {n != null && <PhaseNext step={step} n={n} running={Boolean(phaseTimer(state, step.id, n))} />}
       <Dials plan={plan} c={c} step={step} level={phase?.hobLevel ?? null} />
+      <NeedsNote plan={plan} state={state} step={step} now={now} />
       <SharedSplit plan={plan} step={step} now={n != null && n === step.phases!.length - 1} />
+      <UsesBlock plan={plan} state={state} step={step} />
       <TakeBowls plan={plan} step={step} ready={state.bowlsReady} phase={n} />
       {wantsDropGuide(step, n, st === "active") && <DropGuide onInk />}
       {step.notes.map((x) => (
@@ -680,12 +682,7 @@ function Dials({ plan, c, step, level }: { plan: SessionPlan; c: Controls; step:
   } else if (t) {
     const left = Math.max(0, t.endsAt - now);
     const paused = t.pausedAt != null;
-    const foot = (
-      <span className="flex flex-wrap gap-3">
-        <Button size="kitchen" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)} aria-label="Une minute de plus" className="w-fit">1 min</Button>
-        <Button size="kitchen" variant={paused ? "primary" : "quiet"} icon={paused ? "play" : "pause"} onClick={() => c.pauseTimer(t)} aria-pressed={paused} data-action={paused ? "reprendre-minuteur" : "pause-minuteur"} className="w-fit">{paused ? "Reprendre" : "Pause"}</Button>
-      </span>
-    );
+    const foot = <TimerActions c={c} t={t} size="kitchen" />;
     dials.push(
       <Dial key="t" label={<><Icon name="clock" size="s" />{phase(step, n)?.wait ? "Attente" : "Minuteur"} · {paused ? "en pause" : `fin ${clock(t.endsAt)}`}</>} foot={foot}>
         <span className={`sx-giant ${paused ? "text-ink-2" : ""}`} role="timer" aria-label={`Minuteur${paused ? " en pause" : ""} : ${mmss(left)}`}>

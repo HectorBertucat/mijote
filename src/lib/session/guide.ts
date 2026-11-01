@@ -12,7 +12,7 @@
 // rappels se déduisent alors du texte, et les bols de l'étape tiennent lieu d'ingrédients.
 import type { EventKind, SessionEvent, SessionState, TimerState } from "./state";
 import { article, formatQty, type Person, type PlanBowl, type PlanBowlItem, type PlanStep, type PrepTask, type SessionPlan, type StepIngredient } from "./planner";
-import { currentPhase, liveTimer, passiveMin, phaseIds, phaseTimer, stepStatus, stepTimer } from "./state";
+import { currentPhase, isReady, liveTimer, needsLeft, nextTodo, passiveMin, phaseIds, phaseTimer, stepStatus, stepTimer, withDone, type NeedLeft } from "./state";
 import { waitAttention, type Attention } from "./attention";
 import type { Holder } from "./containers";
 import { parseGesture } from "./gestures";
@@ -471,7 +471,9 @@ export function lanesOf(plan: SessionPlan, state: SessionState, now: number, foc
     .filter((s) => s.id !== focus?.id && ownStep(s, person) && stepStatus(state, s.id) === "active")
     .map((s) => laneItem(plan, state, s, now))
     .sort((a, b) => (a.timer?.endsAt ?? Infinity) - (b.timer?.endsAt ?? Infinity));
-  const next = plan.steps.filter((s) => s.id !== focus?.id && ownStep(s, person) && stepStatus(state, s.id) === "todo").slice(0, 2);
+  // Ce qui est prêt d'abord (ce qu'il reprend existe), dans l'ordre du plan ; puis ce qui attend encore.
+  const todo = plan.steps.filter((s) => s.id !== focus?.id && ownStep(s, person) && stepStatus(state, s.id) === "todo");
+  const next = [...todo.filter((s) => isReady(plan, state, s)), ...todo.filter((s) => !isReady(plan, state, s))].slice(0, 2);
   return { now: nowItem, background, next, freeHands: !nowItem || nowItem.attention !== "mains" };
 }
 
@@ -480,6 +482,9 @@ export function lanesOf(plan: SessionPlan, state: SessionState, now: number, foc
 export type MainKind = "start" | "phase-timer" | "phase" | "passive" | "finish";
 export interface MainAction {
   kind: MainKind;
+  /** Commencer clôt ces prérequis encore ouverts (le préchauffage) ; ou ils ne sont pas prêts (`blocked`). */
+  closes?: string[];
+  blocked?: string[];
   /** Le libellé du bouton : ce qu'il fait. */
   label: string;
   /** Ce qui se passe ensuite, en une phrase (sous le bouton, et en infobulle). */
@@ -489,12 +494,58 @@ export interface MainAction {
   alt?: { kind: "phase" | "finish"; label: string };
 }
 
+/** La question qu'on se pose avant de clore un prérequis (« Le four est chaud ? »). */
+function closeQuestion(n: PlanStep): string {
+  if (n.kind === "preheat") return "Le four est chaud ?";
+  if (n.kind === "bake") return "C’est cuit ?";
+  if (n.kind === "rest") return "C’est reposé ?";
+  if (n.kind === "cool") return "C’est refroidi ?";
+  return "C’est prêt ?";
+}
+
+/** Ce que fait le geste de clore (« Arrêter le préchauffage », « Finir l’étape 2 »). */
+function closeVerb(n: PlanStep): string {
+  if (n.kind === "preheat") return "arrêter le préchauffage";
+  return `finir l’étape ${n.no}${n.kind === "bake" ? " (sors du four)" : ""}`;
+}
+
+/** Ce qu'une étape attend encore, en clair : « l’étape 8 (Saisis le poulet) n’est pas finie ». */
+export function needsText(left: NeedLeft[]): string {
+  const list = left.map((n) => `l’étape ${n.step.no} (${stepTitleOf(n.step, 40)})`);
+  return `${cap(list.length > 1 ? `${list.slice(0, -1).join(", ")} et ${list[list.length - 1]}` : list[0])} ${list.length > 1 ? "ne sont pas finies" : "n’est pas finie"}`;
+}
+
+/**
+ * La vraie suite d'une étape : celle que l'écran montrera une fois l'étape finie (la première prête du
+ * plan, de la même personne à deux), jamais une étape qui attend encore ce qu'elle reprend.
+ */
+export function upNext(plan: SessionPlan, state: SessionState, step: PlanStep): PlanStep | null {
+  return nextTodo(plan, withDone(state, step.id), step, plan.mode === "duo" ? (step.person ?? "A") : null);
+}
+
 /** Ce que fait le bouton principal sur l'étape `step`. */
 export function mainAction(plan: SessionPlan, state: SessionState, step: PlanStep, _now?: number): MainAction {
   const st = stepStatus(state, step.id);
   const title = stepTitleOf(step, 34);
-  const after = plan.steps.find((s) => s.id !== step.id && stepStatus(state, s.id) === "todo" && (s.person ?? "A") === (step.person ?? "A"));
-  if (st !== "active") return { kind: "start", label: `Commencer : ${title}`, hint: step.phases?.length ? `${step.phases.length} sous-étapes, une à la fois. Aucun minuteur ne part tout seul.` : "L’étape passe en cours. Aucun minuteur ne part tout seul." };
+  const after = upNext(plan, state, step);
+  if (st !== "active") {
+    const left = needsLeft(plan, state, step);
+    const hint = step.phases?.length ? `${step.phases.length} sous-étapes, une à la fois. Aucun minuteur ne part tout seul.` : "L’étape passe en cours. Aucun minuteur ne part tout seul.";
+    const blocked = left.filter((n) => !n.closable);
+    if (blocked.length) return { kind: "start", label: `Commencer quand même : ${title}`, hint: `${needsText(blocked)} : ce qu’elle reprend n’est pas prêt.`, blocked: blocked.map((n) => n.step.id) };
+    if (left.length) {
+      const verb = left.length === 1 ? closeVerb(left[0].step) : `finir ${left.map((n) => `l’étape ${n.step.no}`).join(" et ")}`;
+      const go = step.oven || /enfourne/i.test(step.text) ? "enfourner" : "commencer";
+      const timers = left.some((n) => [...state.timers.values()].some((t) => t.stepId === n.step.id && t.doneAt == null));
+      return {
+        kind: "start",
+        label: `${closeQuestion(left[0].step)} ${cap(verb)} et ${go}`,
+        hint: `${timers ? "Son minuteur s’arrête, " : ""}l’étape ${left.map((n) => n.step.no).join(" et ")} est close${left.length > 1 ? "s" : ""} ; le retour la rouvre. ${hint}`,
+        closes: left.map((n) => n.step.id),
+      };
+    }
+    return { kind: "start", label: `Commencer : ${title}`, hint };
+  }
   const n = currentPhase(state, step);
   if (n != null) {
     const ph = step.phases![n];
@@ -524,7 +575,7 @@ export function fillBowls(plan: SessionPlan, state: SessionState, step: PlanStep
     .map((l) => ({ kind: "bowl_ready" as const, ref: l, payload: { ready: true } }));
 }
 
-interface EvOpts {
+export interface EvOpts {
   sessionId: string;
   person?: Person | null;
   /** Ids d'événements (aléatoires dans l'appli, prévisibles dans les tests). */
@@ -557,6 +608,42 @@ function phaseDoneEvents(plan: SessionPlan, state: SessionState, step: PlanStep,
   return out;
 }
 
+/**
+ * Clore d'avance un prérequis (le four est chaud, l'étape suivante commence) : ses minuteurs s'arrêtent, ses
+ * sous-étapes et l'étape sont faites, marquées `early` (leur durée ne s'apprend pas) et `by` (le retour de
+ * l'étape qui les a closes les rouvre).
+ */
+export function closeEvents(plan: SessionPlan, state: SessionState, need: PlanStep, by: PlanStep, o: EvOpts): Ev[] {
+  const pay = { early: true, by: by.id, ...who(o) };
+  const out: Ev[] = [];
+  const n = currentPhase(state, need);
+  if (n != null)
+    for (let i = n; i < need.phases!.length; i++) {
+      const t = phaseTimer(state, need.id, i);
+      if (t) out.push({ kind: "timer_done", ref: t.id, payload: pay });
+      out.push({ id: o.id(), kind: "step_done", ref: `phase:${i}:${need.id}`, payload: pay });
+    }
+  for (const t of state.timers.values()) if (t.stepId === need.id && t.phase == null && t.doneAt == null) out.push({ kind: "timer_done", ref: t.id, payload: pay });
+  return [...out, { id: o.id(), kind: "step_done", ref: need.id, payload: pay }];
+}
+
+/** Commencer une étape : ses prérequis encore ouverts qu'il suffit de clore le sont d'abord (« Arrêter le préchauffage et enfourner »). */
+export function startEvents(plan: SessionPlan, state: SessionState, step: PlanStep, o: EvOpts): Ev[] {
+  const closes = needsLeft(plan, state, step).filter((n) => n.closable);
+  return [...closes.flatMap((n) => closeEvents(plan, state, n.step, step, o)), { id: o.id(), kind: "step_start", ref: step.id, payload: o.person ? { person: o.person } : null }];
+}
+
+/**
+ * Terminer maintenant (un minuteur qu'on n'attend plus : l'eau bout déjà, c'est doré) : celui d'une
+ * sous-étape la finit, celui d'une attente d'étape finit l'étape. Un minuteur sans étape s'arrête.
+ */
+export function finishNowEvents(plan: SessionPlan, state: SessionState, t: TimerState, o: EvOpts): Ev[] {
+  const step = t.stepId ? plan.steps.find((x) => x.id === t.stepId) : undefined;
+  if (!step || stepStatus(state, step.id) !== "active") return [{ kind: "timer_done", ref: t.id }];
+  if (t.phase != null) return currentPhase(state, step) === t.phase ? phaseDoneEvents(plan, state, step, t.phase, o) : [{ kind: "timer_done", ref: t.id }];
+  return finishEvents(plan, state, step, o);
+}
+
 /** Les événements du bouton principal (ou de son geste de rechange, `alt`). Jamais l'étape suivante, jamais un minuteur non nommé. */
 export function mainEvents(plan: SessionPlan, state: SessionState, step: PlanStep, now: number, o: EvOpts, alt = false): Ev[] {
   const a = mainAction(plan, state, step, now);
@@ -564,7 +651,7 @@ export function mainEvents(plan: SessionPlan, state: SessionState, step: PlanSte
   const n = currentPhase(state, step);
   switch (kind) {
     case "start":
-      return [{ id: o.id(), kind: "step_start", ref: step.id, payload: o.person ? { person: o.person } : null }];
+      return startEvents(plan, state, step, o);
     case "phase-timer": {
       const ph = step.phases![n!];
       return [{ id: o.id(), kind: "timer_start", ref: phaseIds(o.sessionId, step.id, n!).timer, payload: { label: ph.text, minutes: ph.min, stepId: step.id, phase: n, endsAt: new Date(now + ph.min * 60000).toISOString(), ...who(o) } }];
@@ -628,7 +715,7 @@ export interface Undo {
  * Le retour : défait la dernière action (de cette personne, à deux) dont l'effet se voit encore :
  * un « Commencer », une sous-étape ou une étape faite, un geste de prep, un minuteur lancé.
  */
-export function undoFor(plan: SessionPlan, state: SessionState, events: SessionEvent[], person: Person | null): Undo | null {
+export function undoFor(plan: SessionPlan, state: SessionState, events: SessionEvent[], person: Person | null, now = Date.now()): Undo | null {
   const pay = (extra: Record<string, unknown> = {}) => ({ undo: true, ...extra, ...(person ? { person } : {}) });
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
@@ -673,10 +760,27 @@ export function undoFor(plan: SessionPlan, state: SessionState, events: SessionE
     }
     if (state.started.get(step.id) !== at || state.done.has(step.id)) continue;
     const timers = [...state.timers.values()].filter((t) => t.stepId === step.id && t.doneAt == null);
+    // Ce que son lancement avait clos (le préchauffage) se rouvre, son minuteur repart s'il n'avait pas fini.
+    const closed = events.filter((x) => x.payload?.by === step.id && x.payload?.early === true && x.payload?.undo !== true);
+    const reopen: Ev[] = [];
+    const reopened = new Set<string>();
+    for (const x of closed) {
+      if (!x.ref) continue;
+      if (x.kind === "step_done") {
+        const on = x.ref.startsWith("phase:") ? state.phasesDone.has(x.ref.slice(6)) : state.done.has(x.ref);
+        if (!on) continue;
+        reopen.push({ kind: "step_done", ref: x.ref, payload: pay() });
+        if (!x.ref.startsWith("phase:")) reopened.add(x.ref);
+      } else if (x.kind === "timer_done") {
+        const t = state.timers.get(x.ref);
+        if (t && t.doneAt != null && t.endsAt > now) reopen.push({ kind: "timer_start", ref: t.id, payload: { label: t.label, minutes: t.minutes, stepId: t.stepId, ...(t.phase != null ? { phase: t.phase } : {}), endsAt: new Date(t.endsAt).toISOString(), ...(person ? { person } : {}) } });
+      }
+    }
+    const names = [...reopened].map((id) => plan.steps.find((x) => x.id === id)).filter((x): x is PlanStep => Boolean(x));
     return {
       label: `Pas encore commencé : ${stepTitleOf(step, 26)}`,
-      detail: `L’étape ${step.no} redevient à commencer${timers.length ? ", son minuteur s’arrête" : ""}.`,
-      events: [...timers.map((t) => ({ kind: "timer_done" as const, ref: t.id })), { kind: "step_start", ref: step.id, payload: pay() }],
+      detail: `L’étape ${step.no} redevient à commencer${timers.length ? ", son minuteur s’arrête" : ""}${names.length ? ` ; ${names.map((n) => (n.kind === "preheat" ? "le préchauffage reprend" : `l’étape ${n.no} se rouvre`)).join(", ")}` : ""}.`,
+      events: [...timers.map((t) => ({ kind: "timer_done" as const, ref: t.id })), { kind: "step_start", ref: step.id, payload: pay() }, ...reopen],
     };
   }
   return null;

@@ -29,7 +29,7 @@ import {
   type SessionState,
   type TimerState,
 } from "@/lib/session/state";
-import { fillBowls, mainAction, mainEvents, ringInfo, stopEvents, undoFor } from "@/lib/session/guide";
+import { fillBowls, finishNowEvents, mainAction, mainEvents, ringInfo, startEvents, stopEvents, undoFor } from "@/lib/session/guide";
 import { resumeSession } from "@/app/session/actions";
 import { buttonClass, Icon } from "@/components/ui";
 import { useNow, useSession } from "./useSession";
@@ -110,6 +110,10 @@ function useControls(p: SessionProps) {
 
   const auto = useCallback((t: TimerState) => s.events.some((e) => e.kind === "timer_start" && e.ref === t.id && e.payload?.auto === true), [s.events]);
   const stopTimer = useCallback((t: TimerState, chain = false) => send(stopEvents(plan, state, t, now, { ...opts(), auto: auto(t), chain })), [plan, state, now, send, opts, auto]);
+  /** Terminer maintenant : la sous-étape (ou l'étape en attente) du minuteur est faite, sans attendre la sonnerie. */
+  const finishTimer = useCallback((t: TimerState) => send(finishNowEvents(plan, state, t, opts())), [plan, state, send, opts]);
+  /** Arrêter : le minuteur s'arrête, rien n'est marqué fait. */
+  const cancelTimer = useCallback((t: TimerState) => send([{ kind: "timer_done", ref: t.id }]), [send]);
   /** Régler un minuteur (+1, glisser sur l’ordinateur) : nouvelle fin, lancement et durée d’origine gardés ; en pause, il y reste. */
   const setTimerEnd = useCallback(
     (t: TimerState, liveEnd: number) => {
@@ -136,7 +140,7 @@ function useControls(p: SessionProps) {
   const toggleStep = useCallback(
     (st: PlanStep) => {
       const status = stepStatus(state, st.id);
-      if (status === "todo") send([{ kind: "step_start", ref: st.id }]);
+      if (status === "todo") send(startEvents(plan, state, st, opts()));
       else if (status === "active") send(finishAll(st));
       else send([{ kind: "step_start", ref: st.id, payload: { undo: true } }]);
     },
@@ -226,7 +230,7 @@ function useControls(p: SessionProps) {
     [state, send, p.id, now]
   );
   /** Le retour : défait la dernière action encore visible (à deux : celle de cette personne). */
-  const undo = useCallback((person?: Person | null) => undoFor(plan, state, s.events, mode === "duo" ? (person ?? null) : null), [plan, state, s.events, mode]);
+  const undo = useCallback((person?: Person | null) => undoFor(plan, state, s.events, mode === "duo" ? (person ?? null) : null, now), [plan, state, s.events, mode, now]);
   const back = useCallback(
     (person?: Person | null) => {
       const u = undo(person);
@@ -244,7 +248,7 @@ function useControls(p: SessionProps) {
   );
   /** Ce que fait le bouton principal sur une étape (libellé, conséquence). */
   const actionOf = useCallback((st: PlanStep) => mainAction(plan, state, st, now), [plan, state, now]);
-  return { ...s, id: p.id, plan, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, act, actionOf, undo, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer, pauseTimer, pauseAll, allPaused };
+  return { ...s, id: p.id, plan, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, act, actionOf, undo, stopTimer, finishTimer, cancelTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer, pauseTimer, pauseAll, allPaused };
 }
 
 export function SessionApp(props: SessionProps) {
@@ -295,6 +299,8 @@ export function SessionApp(props: SessionProps) {
       if ((e.code !== "Space" && !duoKey && !backKey) || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      // Une fenêtre ouverte (la recette, une bulle) : l’espace et la flèche restent à elle.
+      if (t?.closest('[role="dialog"]') || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       // Vue simple : l’espace sur un bouton, un lien ou un menu qui a le focus garde son effet (clavier).
       if (simpleRef.current && e.code === "Space" && t?.closest("button:not([data-main]), a, summary, select")) return;
       if (backKey) {

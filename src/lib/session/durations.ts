@@ -245,7 +245,8 @@ export function measureSession(plan: SessionPlan, events: SessionEvent[], starte
   const name = (slug: string | null) => plan.recipes.find((r) => r.slug === slug)?.name ?? "";
   const steps: DurationSample[] = [];
   for (const st of plan.steps) {
-    if (st.kind === "preheat" || !st.recipeSlug) continue;
+    // Close d'avance par l'étape suivante (« le four est chaud ? enfourne ») : on n'a pas attendu sa fin, rien à apprendre.
+    if (st.kind === "preheat" || !st.recipeSlug || state.early.has(st.id)) continue;
     const s0 = state.started.get(st.id);
     const s1 = state.done.get(st.id);
     // Seul, gestes glissés dans la cuisson : un geste par sous-étape, mesuré de la fin de la

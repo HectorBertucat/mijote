@@ -51,6 +51,14 @@ Le temps « mains » d'une sous-étape longue sans attente est borné par le tem
 
 Une étape principale qui suit un à-côté (« Pendant que la sauce mijote : saisis le poulet ») l'attend : « Poulet dans la sauce » ne part qu'une fois le poulet saisi.
 
+## Produits intermédiaires et prérequis
+
+`products.ts` (pur, `tests/session-produits.test.ts`) dit ce que fait chaque étape et ce qu'elle reprend, sans rien de plus dans les fiches :
+- **ce qu'elle fait** : une préparation que son texte nomme (« La sauce mijote », la béchamel, la bolognaise ; « la sauce au bœuf » si elle cuit une viande), sinon ce qu'elle saisit, rôtit ou cuit, la viande d'abord (« le poulet saisi », « les patates douces et le poulet rôtis », « le riz ») ; un mijoté qui continue, une poêle qui chauffe ou un assemblage au four ne font rien de nommable ; plusieurs étapes de suite dans le même récipient qui font la même chose (chauffer la poêle, saisir, déglacer) : le produit est celui de la dernière ;
+- **ce qu'elle reprend** : le produit de la dernière étape d'avant que sa consigne nomme (« Poulet dans la sauce », « la viande » pour la dernière viande cuite), hors des incises de moment (« pendant que la sauce mijote », « dès que le riz est égoutté ») et hors de ses propres bols, sauf un bol déjà cuit plus tôt (« ajoute les champignons » du bol A) ; à la sous-étape qui le nomme.
+
+Le planificateur en fait des dépendances : une étape attend la fin de ce qu'elle reprend ; reprise à une sous-étape, elle peut partir avant, du temps des sous-étapes d'avant. Il en tire les **prérequis** de chaque étape (`needs`) : ses dépendances de fin (produit repris, même récipient, même bol, toute la recette pour le rangement), le préchauffage pour l'étape qui enfourne d'emblée (pas pour un braisage qui commence sur le foyer), le geste glissé qui remplit un de ses bols. Les titres qui ne disent que le récipient disent d'abord l'action, d'après le produit (`actionTitle` : « Prépare la sauce : cocotte sur le grand foyer à 5 », « Saisis le poulet, pendant que la sauce mijote ») ; l'incise « pendant que… » tombe quand le plan ne la tient pas.
+
 ## Ce que le plan donne à l'interface
 
 Champs ajoutés le 01/11/2026 (tous facultatifs : un plan enregistré avant reste lisible) :
@@ -69,9 +77,10 @@ Champs ajoutés le 01/11/2026 (tous facultatifs : un plan enregistré avant rest
 | `StepPhase` | `attention`, `reminder` | par sous-étape |
 | `PlanBowl` | `holder`, `container`, `containerLabel`, `with`, `fillAfter`, `liters` | où attend le groupe (`moment`, `bol`, `boite`, `assiette`), quel contenant, partagé avec qui, rempli quand quel bol se vide |
 | `PlanBowlItem` | `grams`, `units` | quantités en nombres |
+| | `makes`, `uses`, `needs` | ce que fait l'étape ; ce qu'elle reprend `{ stepId, name, word, where, phase, inPlace }` ; les étapes à finir avant (ajoutés le 01/11/2026, `PLAN_VERSION` 6) |
 | `SessionPlan` | `containers` | `{ used, peak, owned, moment, plates, missing, storage }` : bols sortis, au plus fort, de la cuisine, au moment, sur assiette, manquants, boîtes de conservation |
 
-Les gestes de pesée (« Pèse et verse : … ») donnent maintenant les quantités. `PLAN_VERSION` passe à 5 : les sessions ouvertes refont leur plan au réimport.
+Les gestes de pesée (« Pèse et verse : … ») donnent maintenant les quantités. `PLAN_VERSION` passe à 5, puis à 6 avec les produits et les prérequis : les sessions ouvertes refont leur plan au réimport.
 
 ## Ce que l'écran en fait
 
@@ -82,7 +91,11 @@ Les gestes de pesée (« Pèse et verse : … ») donnent maintenant les quantit
 - `attentionOf`, `remindersOf`, `attentionHint` : l'attention et les rappels de la sous-étape, ou de l'attente qui finit l'étape (la même règle que le planificateur, `waitAttention`) ;
 - `shareOf`, `sharedBases` : la part cuite de chaque recette d'une cuisson commune ; en fin de session, la base commune se pèse une fois et `splitShared` (`src/lib/boxes/core.ts`) donne à chaque recette sa part, à 5 g près ;
 - `batchesLabel`, `containerNote`, `missingText` : fournées, bols qui manquent, ordre de remplissage, groupes du moment.
+- `needsLeft`, `isReady`, `nextTodo` (`state.ts`) : les prérequis pas finis d'une étape, et s'il suffit de les clore (lancés, il ne reste qu'à attendre) ; la prochaine étape est la première prête du plan. `upNext` : la vraie suite d'une étape, celle que l'écran montrera une fois finie ;
+- `mainAction`, `startEvents`, `closeEvents` : commencer clôt les prérequis qui tournent encore (« Le four est chaud ? Arrêter le préchauffage et enfourner ») avec `early` et `by` dans le journal ; le retour (`undoFor`) les rouvre et relance leur minuteur ; `measureSession` n'apprend rien d'une étape close d'avance ; « Commencer quand même » si ce qu'elle reprend n'existe pas ;
+- `finishNowEvents` : terminer un minuteur maintenant (sa sous-étape, ou l'étape en attente) ; arrêter n'écrit que `timer_done` ;
+- `sheet.ts` : `productLines` (ce qu'une étape reprend, d'où, prêt ou non), `richParts` (le mot d'un produit en pastille), `recipeSheet` (la fenêtre d'une recette : ses ingrédients de la session, sa part d'une cuisson commune, ses étapes adaptées et leur état).
 
 ## Audit
 
-`pnpm plan:audit` planifie toutes les paires dans trois cuisines fictives (standard, petite, grande) et tous les triplets dans la cuisine standard (`--tout` : dans chaque cuisine), seul et à deux, et vérifie avec `auditPlan` : aucun récipient trop petit en silence, pas plus de bols que l'inventaire (ou le plan le dit), bases regroupées, quantités sur chaque étape qui prend des bols, jamais deux tâches « mains » à la fois, aucune erreur. `--paires` affiche l'ancien tableau (durée face à la borne basse). Les tests de paires (`tests/planner-pairs.ts`) passent chaque paire à `auditPlan`.
+`pnpm plan:audit` planifie toutes les paires dans trois cuisines fictives (standard, petite, grande) et tous les triplets dans la cuisine standard (`--tout` : dans chaque cuisine), seul et à deux, et vérifie avec `auditPlan` : aucune étape avant ses prérequis ni avant ce qu'elle reprend, aucun récipient trop petit en silence, pas plus de bols que l'inventaire (ou le plan le dit), bases regroupées, quantités sur chaque étape qui prend des bols, jamais deux tâches « mains » à la fois, aucune erreur. `--paires` affiche l'ancien tableau (durée face à la borne basse). Les tests de paires (`tests/planner-pairs.ts`) passent chaque paire à `auditPlan`.

@@ -52,7 +52,7 @@
     },
     {
       "kind": "sear",
-      "text": "Pendant que la sauce mijote : poêle vide, 2 à 3 min à 7, test de la goutte, huile. Poulet mariné (bol B) en trois fournées de 400 g : 3 min sans toucher, retourne, 2 min. Il noircit un peu par endroits : c'est le goût. Verse chaque fournée dans la sauce, déglace la poêle avec une louche de sauce à la fin.",
+      "text": "Pendant que la sauce mijote : poêle vide, 2 à 3 min à 7, test de la goutte, huile. Poulet mariné (bol B) en trois fournées de 400 g : 3 min sans toucher, retourne, 2 min. Il noircit un peu par endroits : c'est le goût. Réserve chaque fournée dans un plat ; à la fin, déglace la poêle avec un fond d'eau et verse ce jus sur le poulet.",
       "durationMin": 18,
       "activeMin": 18,
       "equipmentId": "poele-28",
@@ -62,16 +62,16 @@
       "phases": [
         { "text": "Poêle vide, préchauffe, test de la goutte", "min": 2.5, "hobLevel": 7 },
         { "text": "Huile + un tiers du poulet (bol B), ne touche pas", "min": 3, "batch": 1 },
-        { "text": "Retourne, 2 min, dans la sauce", "min": 2, "batch": 1 },
+        { "text": "Retourne, 2 min, réserve dans un plat", "min": 2, "batch": 1 },
         { "text": "Deuxième tiers, ne touche pas", "min": 3, "batch": 2 },
-        { "text": "Retourne, 2 min, dans la sauce", "min": 2, "batch": 2 },
+        { "text": "Retourne, 2 min, réserve", "min": 2, "batch": 2 },
         { "text": "Dernier tiers, ne touche pas", "min": 3, "batch": 3 },
-        { "text": "Retourne, 2 min, dans la sauce ; déglace la poêle", "min": 2.5, "batch": 3 }
+        { "text": "Retourne, 2 min, réserve ; déglace la poêle, le jus sur le poulet", "min": 2.5, "batch": 3 }
       ]
     },
     {
       "kind": "braise",
-      "text": "Poulet dans la sauce, 8 min à 3. Hors du feu, la crème (bol D), goûte et sale.",
+      "text": "Le poulet saisi et son jus dans la sauce mixée, 8 min à 3. Hors du feu, la crème (bol D), goûte et sale.",
       "durationMin": 10,
       "activeMin": 2,
       "equipmentId": "cocotte",
@@ -79,7 +79,7 @@
       "hobLevel": 3,
       "bowls": ["D"],
       "phases": [
-        { "text": "Le poulet finit de cuire dans la sauce", "min": 8, "hobLevel": 3, "wait": true },
+        { "text": "Le poulet et son jus dans la sauce, il finit de cuire", "min": 8, "hobLevel": 3, "wait": true },
         { "text": "Hors du feu : crème (bol D), goûte", "min": 1 }
       ]
     },

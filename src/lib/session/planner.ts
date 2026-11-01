@@ -32,7 +32,8 @@ import { STEP_LABELS } from "@/lib/recipes/format";
 import { intervalsOverlap, stepTimeline, type Attention, type Reminder, type Timeline } from "./attention";
 import { allocateBowls, classifyBowl, inventoryOf, type BowlNeed, type Holder } from "./containers";
 import { baseLiters, baseOfStep, bowlLiquids, bowlLiters, dishArea, fmtL, gramsOfIngredient, holds, ROAST_G_PER_CM2, stepLoads, usableLiters, vesselLiters, vesselNeeds, type BaseFood, type BaseMethod, type StepLoad } from "./capacity";
-import { rewriteHob, splitTitle } from "./text";
+import { actionTitle, rewriteHob, splitTitle } from "./text";
+import { namesFood, recipeFlow, type Product } from "./products";
 
 export type StepKind = "prep" | "sear" | "braise" | "boil" | "bake" | "rest" | "cool";
 export type SessionMode = "solo" | "duo" | "veille";
@@ -67,7 +68,7 @@ export interface PlannerIngredient {
 }
 
 /** À incrémenter quand un changement du planificateur doit refaire le plan des sessions ouvertes (réimport des fiches au démarrage). */
-export const PLAN_VERSION = 5;
+export const PLAN_VERSION = 6;
 
 export interface PlannerStep {
   kind: StepKind;
@@ -281,6 +282,28 @@ export interface PlanStep {
   load?: { liters: number; usableL: number | null; mode: "boil" | "stew" };
   /** Four : plats et plaques où étaler, et la surface demandée (cm²). */
   dishes?: { ids: string[]; needCm2: number; haveCm2: number };
+  /** Ce que fait l'étape et qu'une étape d'après reprend (« le poulet saisi », « la sauce »). */
+  makes?: string;
+  /** Ce qu'elle reprend d'une étape d'avant (src/lib/session/products.ts) : quoi, d'où, à quelle sous-étape. */
+  uses?: StepUse[];
+  /** Les étapes à finir avant de la commencer : le four chaud, ce qu'elle reprend, son récipient libéré, ses bols remplis. */
+  needs?: string[];
+}
+
+/** Un produit d'une étape d'avant que l'étape reprend : « le poulet saisi » de la poêle (étape 8). */
+export interface StepUse {
+  /** L'étape qui le fait. */
+  stepId: string;
+  /** « le poulet saisi », « la sauce ». */
+  name: string;
+  /** Le mot de la consigne qui le désigne (« poulet ») : il devient une pastille. */
+  word: string;
+  /** Le récipient où il a été fait (« Poêle », « Cocotte », « Four »), null s'il n'en a pas. */
+  where: string | null;
+  /** Sous-étape où il entre (null : dès le début). */
+  phase: number | null;
+  /** Il est déjà là, dans le récipient de l'étape (« la sauce de la cocotte »). */
+  inPlace?: boolean;
 }
 
 /** Un ingrédient d'une étape : de quoi afficher « Pèse et verse : pulpe de tomate 800 g, concentré 30 g ». */
@@ -478,7 +501,8 @@ interface Work {
   usesOven: boolean;
   ovenTemp: number | null;
   ovenLevels: number[];
-  deps: { w: Work; type: "end" | "active" }[];
+  /** `lead` : l'étape peut partir autant de minutes avant la fin de celle qu'elle attend (elle ne reprend son produit qu'à une sous-étape). */
+  deps: { w: Work; type: "end" | "active"; lead?: number }[];
   tail: number;
   prio: number;
   side: boolean; // « pendant le braisage » : à côté du fil principal de la recette
@@ -507,7 +531,13 @@ interface Work {
   lock?: number;
   /** Intervalles « mains » retenus (minutes absolues), gestes courts glissés compris. */
   placed?: [number, number][];
+  /** Ce que fait l'étape (« le poulet saisi ») et ce qu'elle reprend d'une étape d'avant (src/lib/session/products.ts). */
+  makes?: Product;
+  uses?: { w: Work; word: string; phase: number | null }[];
 }
+
+/** Le délai d'une dépendance : la fin (moins son avance) ou la fin de la partie active. */
+const lagOf = (d: Work["deps"][number]) => (d.type === "end" ? Math.max(0, d.w.dur - (d.lead ?? 0)) : d.w.act);
 
 /** Un essai du planificateur : choix du foyer, priorités légèrement perturbées (graine fixe, donc reproductible). */
 interface Try {
@@ -637,7 +667,8 @@ function applySwaps(input: PlannerRecipe[], swaps: Swap[]): PlannerRecipe[] {
         const sw = mine.find((x) => x.from === s.equipmentId);
         if (!sw) return s;
         const c = convertForSwap(s, sw.from, sw.to);
-        return { ...c, equipmentId: sw.to, text: swapVesselText(c.text, sw.from, sw.to), equipmentAlt: null };
+        // Les sous-étapes aussi (« Mixe lisse, remets dans la cocotte » quand la sauce se fait au faitout).
+        return { ...c, equipmentId: sw.to, text: swapVesselText(c.text, sw.from, sw.to), equipmentAlt: null, ...(c.phases ? { phases: c.phases.map((ph) => ({ ...ph, text: swapVesselText(ph.text, sw.from, sw.to) })) } : {}) };
       }),
     };
   });
@@ -1066,6 +1097,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
   input.forEach((r, ri) => {
     const mine: Work[] = [];
     const braiseHere = hobBraise.has(r.slug);
+    const flow = recipeFlow(r);
     r.steps.forEach((s, si) => {
       if (s.kind === "prep") return;
       const id = `${r.slug}#${si + 1}`;
@@ -1190,6 +1222,17 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
           w.contOf = { w: lastOven, type: "oven" };
           lastOven.cont = { w, type: "oven" };
         }
+      }
+      // Ce qu'elle reprend (« Poulet dans la sauce » : le poulet saisi, la sauce) : elle attend que ce soit fait ;
+      // repris à une sous-étape (« Retourne, dans la sauce »), elle peut partir avant, du temps des sous-étapes d'avant.
+      const made = flow.makes.get(si + 1);
+      if (made) w.makes = made;
+      for (const u of flow.uses.get(si + 1) ?? []) {
+        const p = mine.find((x) => x.order === u.from);
+        if (!p) continue;
+        const lead = u.phase != null ? Math.min(p.dur, (s.phases ?? []).slice(0, u.phase).reduce((x, ph) => x + ph.min, 0)) : 0;
+        w.deps.push({ w: p, type: "end", ...(lead > EPS ? { lead } : {}) });
+        (w.uses ??= []).push({ w: p, word: u.word, phase: u.phase });
       }
       mine.push(w);
       works.push(w);
@@ -1371,7 +1414,8 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       const seen = new Set<string>();
       w.deps = w.deps
         .map((d) => ({ ...d, w: merged.get(d.w) ?? d.w }))
-        .filter((d) => d.w !== w && !seen.has(`${d.w.id}|${d.type}`) && Boolean(seen.add(`${d.w.id}|${d.type}`)));
+        .filter((d) => d.w !== w && !seen.has(`${d.w.id}|${d.type}|${d.lead ?? 0}`) && Boolean(seen.add(`${d.w.id}|${d.type}|${d.lead ?? 0}`)));
+      for (const u of w.uses ?? []) u.w = merged.get(u.w) ?? u.w;
     }
     // Ordre du tableau : chaque étape après celles qu'elle attend (une cuisson partagée attend aussi les autres recettes).
     const sorted: Work[] = [];
@@ -1462,14 +1506,14 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
   if (thread) {
     // Plus long chemin jusqu'à la fin (les dépendances pointent toujours vers l'amont du tableau).
     const succ = new Map<Work, { w: Work; lag: number }[]>();
-    for (const w of all) for (const d of w.deps) succ.set(d.w, [...(succ.get(d.w) ?? []), { w, lag: d.type === "end" ? d.w.dur : d.w.act }]);
+    for (const w of all) for (const d of w.deps) succ.set(d.w, [...(succ.get(d.w) ?? []), { w, lag: lagOf(d) }]);
     for (let i = all.length - 1; i >= 0; i--) {
       const w = all[i];
       w.tail = Math.max(w.dur, ...(succ.get(w) ?? []).map((x) => x.lag + x.w.tail));
     }
   } else {
     const est = new Map<Work, number>();
-    for (const w of works) est.set(w, Math.max(0, ...w.deps.map((d) => est.get(d.w)! + (d.type === "end" ? d.w.dur : d.w.act))));
+    for (const w of works) est.set(w, Math.max(0, ...w.deps.map((d) => est.get(d.w)! + lagOf(d))));
     const recipeEnd = new Map<number, number>();
     for (const w of works) recipeEnd.set(w.r, Math.max(recipeEnd.get(w.r) ?? 0, est.get(w)! + w.dur));
     for (const w of works) w.tail = recipeEnd.get(w.r)! - est.get(w)!;
@@ -1531,7 +1575,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     let t = 0;
     for (const d of w.deps) {
       if (d.w.start == null) return null;
-      t = Math.max(t, d.w.start + (d.type === "end" ? d.w.dur : d.w.act));
+      t = Math.max(t, d.w.start + lagOf(d));
     }
     return t;
   };
@@ -1830,6 +1874,9 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
         hobLevelLabel = src.hobLevel != null ? `${src.hobLevel} puis ${HOB_BRAISE_LEVEL}` : HOB_BRAISE_LEVEL;
         hobLevel = src.hobLevel ?? 2;
       }
+      // « Pendant que la sauce mijote : » ne se dit que si une étape de la recette tourne encore quand celle-ci commence.
+      if (/^pendant\b/i.test(text) && !works.some((x) => x !== w && x.r === w.r && x.start != null && x.start < w.start! - EPS && x.start + x.dur > w.start! + 1))
+        text = text.replace(/^pendant\b[^:,]*[:,]\s*/i, "").replace(/^./, (c) => c.toUpperCase());
       // Le foyer du texte suit le foyer choisi (« sur le foyer moyen » quand la cocotte n'entre que sur le grand).
       text = rewriteHob(text, w.hobId ? eq.get(w.hobId)?.name : null);
       const srcPhases = w.out ? w.out.phases : (src.phases ?? []).map((p) => ({ ...p, text: relabelBowls(p.text, letterMaps[w.r]) }));
@@ -1867,7 +1914,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
         bowls: w.letters,
         batches,
         notes: w.notes,
-        ...(full ? splitTitle(text) : {}),
+        ...(full ? actionTitle(splitTitle(text), src.kind, w.makes, namesFood) : {}),
         attention: w.tl?.attention ?? "libre",
         hands: w.placed ?? w.hands.map(([a, b]) => [w.start! + a, w.start! + b] as [number, number]),
         reminders: w.tl?.reminders ?? [],
@@ -1895,6 +1942,14 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       }
       if (w.refDur != null) step.refDurationMin = w.refDur;
       if (duo) step.person = w.person ?? null;
+      if (w.makes) step.makes = w.makes.name;
+      if (w.uses?.length)
+        step.uses = w.uses.map((u) => {
+          const at = u.w.vessel ?? u.w.src?.equipmentId ?? null;
+          return { stepId: u.w.id, name: u.w.makes?.name ?? u.word, word: u.word, where: shortName(at, at ? eq.get(at)?.name : null), phase: u.phase, ...(u.w.vessel && u.w.vessel === w.vessel ? { inPlace: true } : {}) };
+        });
+      const needs = [...new Set(w.deps.filter((d) => d.w.src && d.w !== w && d.type === "end" && !((d.lead ?? 0) > EPS)).map((d) => d.w.id))];
+      if (needs.length) step.needs = needs;
       return step;
     });
   if (shift) {
@@ -1978,7 +2033,13 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     };
     if (duo) step.person = p.before.person ?? "A";
     steps.push(step);
+    // L'étape qui enfourne d'emblée attend le four chaud (celle qui commence sur le foyer l'attend plus tard, pour enfourner).
+    const bake = steps.find((x) => x.id === p.before.id);
+    if (bake && (!bake.oven || bake.oven.fromMin <= bake.startMin + EPS)) bake.needs = [...(bake.needs ?? []), step.id];
   });
+  // Seul : une étape dont un bol se remplit pendant la cuisson attend ce geste.
+  for (const g of steps.filter((x) => x.tasks))
+    for (const x of steps) if (!x.tasks && x.bowls.some((l) => g.bowls.includes(l)) && x.startMin >= g.startMin - EPS) x.needs = [...new Set([...(x.needs ?? []), g.id])];
   steps.sort((a, b) => a.startMin - b.startMin || (a.kind === "preheat" ? -1 : 0) - (b.kind === "preheat" ? -1 : 0) || a.order - b.order);
   steps.forEach((s, i) => (s.no = i + 1));
 
