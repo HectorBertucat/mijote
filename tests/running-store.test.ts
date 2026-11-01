@@ -4,6 +4,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { and, eq } from "drizzle-orm";
+import { setAiClient, type AiClient, type AiFinalMessage } from "@/lib/ai";
+import { toolDefinitions } from "@/lib/assistant/core";
+import { applyAssistantAction, askAssistant, loadSnapshot, toView } from "@/lib/assistant/store";
 import { openDb } from "@/lib/db/open";
 import { healthSamples, runProfiles, runSessions, workoutDetails } from "@/lib/db/schema";
 import { importGet, importPost } from "@/lib/health/import-api";
@@ -278,7 +281,7 @@ test("propositions de l'IA : schémas stricts, et chaque invariant du § 6 véri
   assert.equal(checkRunningAction({ kind: "course_fc", hrMax: 190, why: "" }, null).ok, false);
 
   // Une action confirmée passe par les mêmes fonctions que la page : la séance raccourcie le reste.
-  editSession(db, "alex", easy.id, { minutes: easy.minutes - 10 });
+  editSession(db, "alex", easy.id, { minutes: easy.minutes - 10 }, NOW);
   setWeekOverride(db, "alex", { weekStart: addDays(MON, 7), deload: true });
   const after = syncPlan(db, "alex", NOW)!;
   const e2 = after.sessions.find((s) => s.id === easy.id)!;
@@ -286,4 +289,61 @@ test("propositions de l'IA : schémas stricts, et chaque invariant du § 6 véri
   assert.equal(e2.version, 2);
   assert.equal(after.plan.weeks[after.plan.weeks.length - 1].deload, true);
   assert.ok(db.select().from(runProfiles).get()!.overrides.length === 1);
+});
+
+/** Un modèle simulé : un texte et des appels d'outils. */
+function fakeClient(text: string, tools: { name: string; input: unknown }[], seen: Record<string, unknown>[]): AiClient {
+  return {
+    messages: {
+      parse: async () => {
+        throw new Error("non utilisé");
+      },
+      stream: (params) => {
+        seen.push(params);
+        const final: AiFinalMessage = { usage: { input_tokens: 2000, output_tokens: 150 }, stop_reason: "tool_use", content: [{ type: "text", text }, ...tools.map((t) => ({ type: "tool_use", name: t.name, input: t.input }))] };
+        return {
+          async *[Symbol.asyncIterator]() {
+            yield { type: "content_block_delta", delta: { type: "text_delta", text } };
+          },
+          finalMessage: async () => final,
+        };
+      },
+    },
+  };
+}
+
+test("assistant : outils de course seulement si le module est activé, contexte Course compact, action vérifiée puis appliquée", async () => {
+  const { db } = setup();
+  const names = (on: boolean) => toolDefinitions(on).map((t) => t.name);
+  assert.ok(!names(false).some((n) => n.startsWith("course_")));
+  assert.ok(names(true).includes("course_raccourcir"));
+  assert.equal(loadSnapshot(db, "alex", MON, NOW).running, null);
+
+  enable(db, MON);
+  const snap = loadSnapshot(db, "alex", MON, NOW);
+  assert.ok(snap.running);
+  const s = snap.running!.sessions.find((x) => x.date > TODAY && x.status === "prevue")!;
+  const seen: Record<string, unknown>[] = [];
+  setAiClient(
+    fakeClient("Je raccourcis la prochaine séance.", [
+      { name: "course_raccourcir", input: { sessionId: s.id, minutes: s.minutes - 10, why: "fatigue" } },
+      { name: "course_sorties", input: { perWeek: 9, why: "plus" } },
+    ], seen)
+  );
+  try {
+    const row = await askAssistant(db, "alex", "Je suis fatigué, on allège ?", { path: "/sante/course" }, undefined, NOW);
+    const v = toView(row);
+    assert.deepEqual(v.actions.map((a) => a.status), ["proposed", "refused"]);
+    const p = seen[0] as { system: { text: string }[]; tools: { name: string }[]; messages: { content: string }[] };
+    assert.match(p.system[1].text, /## Course : Alex \(personId alex\)/);
+    assert.match(p.system[1].text, new RegExp(s.id));
+    assert.ok(p.tools.some((t) => t.name === "course_decaler"));
+    assert.match(p.messages.at(-1)!.content, /sa page Course/);
+    const r = applyAssistantAction(db, "alex", row.id, 0, NOW);
+    assert.ok(r.ok, r.message);
+    const after = db.select().from(runSessions).where(eq(runSessions.id, s.id)).get()!;
+    assert.ok(after.minutes < s.minutes, `${s.minutes} → ${after.minutes}`);
+  } finally {
+    setAiClient(null);
+  }
 });

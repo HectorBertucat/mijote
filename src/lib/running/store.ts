@@ -126,11 +126,12 @@ export function setWeekOverride(db: Db, personId: string, o: WeekOverride) {
   patchProfile(db, personId, { overrides: [...p.overrides.filter((x) => x.weekStart !== o.weekStart), o].sort((a, b) => a.weekStart.localeCompare(b.weekStart)) });
 }
 
-/** Change une séance prévue (jour, durée, type), rejoué à chaque calcul. */
-export function editSession(db: Db, personId: string, sessionId: string, edit: SessionEdit) {
+/** Change une séance prévue (jour, durée, type), rejoué à chaque calcul ; le plan rangé suit tout de suite. */
+export function editSession(db: Db, personId: string, sessionId: string, edit: SessionEdit, now = new Date()) {
   const row = db.select().from(runSessions).where(and(eq(runSessions.id, sessionId), eq(runSessions.personId, personId))).get();
   if (!row) throw new Error("Séance introuvable.");
   db.update(runSessions).set({ edit: { ...row.edit, ...edit } }).where(eq(runSessions.id, sessionId)).run();
+  syncPlan(db, personId, now);
 }
 
 // ─── Ressenti ───

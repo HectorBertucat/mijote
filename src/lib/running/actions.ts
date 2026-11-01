@@ -253,12 +253,14 @@ export function applyEdit<T extends { date: string; kind: SessionKind; minutes: 
 
 const fmtPace = (secPerKm: number) => `${Math.floor(secPerKm / 60)}:${String(Math.round(secPerKm % 60)).padStart(2, "0")}/km`;
 
+const SOURCE = { saisie: "saisie", observee: "d'après ses courses", age: "d'après l'âge", mesuree: "mesurée", defaut: "par défaut", test: "test", estimee: "estimée" } as const;
+
 /** L'instantané en texte compact (pas de calcul côté IA : tout vient d'ici). */
 export function runContextText(c: RunContext): string {
-  const L: string[] = [`## Course de ${c.name} (personId ${c.personId})`];
+  const L: string[] = [`## Course : ${c.name} (personId ${c.personId}), plan de course à pied calculé par l'appli`];
   L.push(`Phase ${c.phase} (${PHASE_LABEL[c.phase]})${c.level ? `, niveau ${c.level} de marche-course` : ""}, semaine ${c.weekInPhase} de la phase ; ${c.perWeek} sorties visées ; jours disponibles : ${c.days.map((d) => WEEKDAY_LABEL[d]).join(", ") || "aucun"}.`);
   const z = c.zones;
-  L.push(`Zones (${z.method === "friel" ? "seuil mesuré" : "réserve cardiaque"}) : FC max ${z.max} (${z.maxSource}), repos ${z.rest} (${z.restSource}), seuil ${z.threshold} (${z.thresholdSource}) ; Z2 ${zoneRange(z, 2).join("–")} bpm.`);
+  L.push(`Zones (${z.method === "friel" ? "seuil mesuré" : "réserve cardiaque"}) : FC max ${z.max} (${SOURCE[z.maxSource]}), repos ${z.rest} (${SOURCE[z.restSource]}), seuil ${z.threshold} (${SOURCE[z.thresholdSource]}) ; Z2 ${zoneRange(z, 2).join("–")} bpm.`);
   if (c.paused) L.push(`PLAN EN PAUSE (${c.paused.reason}) : aucune séance, ne propose rien qui la lève.`);
   if (c.signals.length) L.push(`Signaux actifs : ${c.signals.join(" ; ")}. Rien ne doit augmenter.`);
   if (c.painRecent) L.push("Douleur ≥ 3 dans les 7 derniers jours : rien ne doit augmenter.");
@@ -270,7 +272,7 @@ export function runContextText(c: RunContext): string {
   }
   L.push("Séances prévues (id, jour, séance, statut) :");
   for (const s of c.sessions.filter((x) => x.date >= c.today)) L.push(`- ${s.id} : ${dayLabel(s.date)}${s.time ? ` ${s.time}` : ""}, ${s.title} (${s.kind}, ${s.minutes} min), ${s.status}`);
-  for (const w of c.weeks) L.push(`Semaine du ${dayLabel(w.weekStart)} : ${w.volume} min de course prévues, sortie longue ${w.long} min${w.deload ? ", décharge" : ""}.`);
+  if (c.phase > 0) for (const w of c.weeks) L.push(`Semaine du ${dayLabel(w.weekStart)} : ${w.volume} min de course prévues, sortie longue ${w.long} min${w.deload ? ", décharge" : ""}.`);
   for (const m of c.messages) L.push(`Message de l'appli : ${m}`);
   return L.join("\n");
 }
