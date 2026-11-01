@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { Db } from "@/lib/db/open";
 import { byKey, type ApiReply } from "@/lib/health/import-api";
 import { overview } from "@/lib/health/overview";
-import { DEFAULT_PERIOD, isPeriod } from "@/lib/health/series";
+import { DEFAULT_PERIOD, isPeriod, lineGrainOf } from "@/lib/health/series";
 import { addWeighIn, currentReview, getPerson, listPeople, listWaist, listWeighIns, todayParis, type Person } from "@/lib/health/store";
 import { goalSummary } from "@/lib/health/objectives";
 import { addEntry, addRecipeEntry, deleteEntry, isComplete, listEntries, listTemplates, MEALS, pending, plannedMeals, setComplete, setEntryUnits, totals, type LogMeal } from "@/lib/health/log";
@@ -23,10 +23,13 @@ import { lastFor, levelFor, nextType, ready, type Program, type Workout } from "
 import { programById, programFor } from "@/lib/training/programs";
 import { listWorkouts } from "@/lib/training/store";
 import { DRAWING, figureData, musclesData } from "./figures";
+import { ACTIONS, actionOf, clean, phaseOf } from "./state";
+import { healthSamples } from "@/lib/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 export const API_VERSION = 1;
 /** Ce que sait faire ce Mijote : l'app n'affiche que ce qui est annoncé. */
-export const FEATURES = ["sante", "jour", "pesee", "course", "sport", "seance", "figures", "muscles", "rythme"] as const;
+export const FEATURES = ["sante", "series", "jour", "pesee", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme"] as const;
 
 export interface AppRequest {
   method: "GET" | "POST";
@@ -46,7 +49,30 @@ const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.t
 function sante(db: Db, p: Person, q: URLSearchParams, today: string) {
   const periode = q.get("periode");
   const o = overview(db, p, isPeriod(periode) ? periode : DEFAULT_PERIOD, today);
-  return ok({ overview: o, goals: goalSummary(db, p), review: currentReview(db, p), waist: listWaist(db, p.id).slice(-30) });
+  return ok({ overview: o, series: seriesOf(o), goals: goalSummary(db, p), review: currentReview(db, p), waist: listWaist(db, p.id).slice(-30) });
+}
+
+/** Les courbes de la vue d'ensemble, à plat pour les graphiques de l'app : un point par paquet mesuré. */
+function seriesOf(o: ReturnType<typeof overview>) {
+  const grain = o.period.grain;
+  const pts = (b: { start: string; value: number | null }[] | null) => (b ?? []).filter((x) => x.value != null).map((x) => ({ date: x.start, value: Math.round(x.value! * 10) / 10 }));
+  const out: Record<string, { unit: string; grain: string; points: { date: string; value: number }[]; mode: "mean" | "sum"; extra?: unknown }> = {
+    steps: { unit: "pas/jour", grain, mode: "mean", points: pts(o.bars.steps) },
+    activeKcal: { unit: "kcal/jour", grain, mode: "mean", points: pts(o.bars.activeKcal) },
+    exercise: { unit: "min", grain, mode: "sum", points: pts(o.bars.exercise) },
+    restingHr: { unit: "bpm", grain: lineGrainOf(grain), mode: "mean", points: pts(o.lines.restingHr) },
+    hrv: { unit: "ms", grain: lineGrainOf(grain), mode: "mean", points: pts(o.lines.hrv) },
+    sleep: { unit: "min/nuit", grain, mode: "mean", points: pts(o.sleep) },
+    weight: {
+      unit: "kg",
+      grain,
+      mode: "mean",
+      points: o.weight.filter((x) => x.kg != null).map((x) => ({ date: x.date, value: x.kg! })),
+      // La tendance lissée et sa fourchette, un point par paquet.
+      extra: { trend: o.weight.map((x) => ({ date: x.date, value: Math.round(x.trend * 100) / 100, ...(x.lo != null && x.hi != null ? { range: [x.lo, x.hi] } : {}) })) },
+    },
+  };
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => v.points.length || (v.extra as { trend?: unknown[] })?.trend?.length));
 }
 
 function jour(db: Db, p: Person, date: string) {
@@ -174,6 +200,8 @@ function sport(db: Db, p: Person, today: string) {
       weekNote: program.weekNote,
       next: nextType(program, workouts),
       exercises: Object.keys(program.exercises).map((id) => exerciseView(program, workouts, id)),
+      // Les figures dont chaque séance a besoin, à télécharger avant de partir.
+      figureIds: Object.fromEntries(Object.entries(program.sessions).map(([k, def]) => [k, [...new Set([...def.blocks.flatMap((b) => b.items), ...(program.bonus?.items ?? [])])].filter((id) => motionOf(program, id))])),
     },
     workouts,
     apple: recentWorkouts(db, p.id, 20).map((w) => ({ start: w.start, type: String(w.meta?.type ?? "Séance"), minutes: w.value, distanceM: typeof w.meta?.distanceM === "number" ? w.meta.distanceM : null })),
@@ -181,6 +209,13 @@ function sport(db: Db, p: Person, today: string) {
     live: live ? { id: live.id, type: live.live.type, pair: live.live.pair ?? null } : null,
     partner: partner ? { id: partner.id, name: partner.name, programId: partner.program!.id } : null,
   });
+}
+
+function figure(db: Db, p: Person, id: string, q: URLSearchParams): ApiReply {
+  const program = (q.get("programme") ? programById(db, q.get("programme")!) : null) ?? programFor(db, p.id);
+  const m = motionOf(program, id);
+  if (!m) return fail("figure inconnue", 404);
+  return ok({ id, ...figureData(m), muscles: musclesData(id, program?.exercises[id]) });
 }
 
 function figures(db: Db, p: Person, q: URLSearchParams): ApiReply {
@@ -205,15 +240,18 @@ export function liveView(db: Db, row: LiveRow, now: number) {
   const next = work(l.steps.slice(l.i + 1).find((s) => s.k === "ex" || s.k === "emom"));
   const cur = work(step);
   const ex = cur && p ? p.exercises[cur.ex] : null;
+  const reps = step?.k === "ex" && ex ? (l.cur.reps ?? suggestedReps(l, workouts, step.ex, step.set, ex.reps[0])) : null;
   return {
     ...row,
     now,
     opts: optsOf(l),
+    state: phaseOf(l, row.ended, row.version, now, cur && ex && reps != null ? { ex, motion: motionOf(p, cur.ex), reps } : null),
+    figureIds: [...new Set(l.steps.flatMap((s) => (s.k === "ex" || s.k === "emom" ? [s.ex] : [])))].filter((id) => motionOf(p, id)),
     view: {
       step,
       exercise: cur && p ? exerciseView(p, workouts, cur.ex) : null,
       // Objectif de la série en cours : choisi sur un écran, sinon proposé comme sur le web.
-      reps: step?.k === "ex" && ex ? (l.cur.reps ?? suggestedReps(l, workouts, step.ex, step.set, ex.reps[0])) : null,
+      reps,
       restLeft: step?.k === "rest" && l.cur.restEnd != null ? Math.max(0, (l.cur.restEnd - clockOf(l, now)) / 1000) : null,
       next: next && p ? { step: next, exercise: exerciseView(p, workouts, next.ex) } : null,
       paused: l.cur.paused != null,
@@ -285,6 +323,20 @@ function seance(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
     const next = applyGeste(db, row, parsed.data as LiveAction, now);
     return next ? ok({ live: liveView(db, next, now) }) : fail("geste impossible");
   }
+  if (req.method === "POST" && verb === "action") {
+    const parsed = z.object({ action: z.enum(ACTIONS), revision: z.number().int().optional(), reps: z.number().min(0).max(1000).optional(), sec: z.number().min(-600).max(600).optional() }).passthrough().safeParse(req.body);
+    if (!parsed.success) return fail(`action inconnue : ${ACTIONS.join(", ")}`);
+    if (row.ended) return fail("séance terminée", 409);
+    // Révision périmée : l'app recharge l'état (renvoyé avec le 409).
+    if (parsed.data.revision != null && parsed.data.revision !== row.version) return { status: 409, body: { ok: false, error: "la séance a changé entre-temps : état rechargé", live: liveView(db, row, now) } };
+    const step = row.live.steps[row.live.i];
+    const v = liveView(db, row, now);
+    const cur = step?.k === "ex" ? { ex: step.ex, set: step.set, reps: v.view.reps ?? 0, level: row.live.levels[step.ex] ?? levelFor(listWorkouts(db, row.personId), step.ex) } : null;
+    const a = actionOf(row.live, parsed.data, cur);
+    if (!a) return fail("rien à faire à cette étape");
+    const next = applyGeste(db, row, a, now);
+    return next ? ok({ live: liveView(db, next, now) }) : fail("geste impossible");
+  }
   if (req.method === "POST" && verb === "fin") {
     const parsed = z.union([z.object({ note: z.string().max(2000) }), z.object({ abandon: z.literal(true) })]).safeParse(req.body);
     if (!parsed.success) return fail("{ note } ou { abandon: true } attendu");
@@ -292,6 +344,29 @@ function seance(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
     return r.ok ? ok({ message: r.message, workoutId: r.workoutId ?? null }) : fail(r.message);
   }
   return fail("chemin inconnu", 404);
+}
+
+/** Les sorties de course, de la plus récente à la plus ancienne, par pages ; avec l'uuid HealthKit de la séance. */
+function sorties(db: Db, p: Person, q: URLSearchParams, now: number): ApiReply {
+  const v = getRunProfile(db, p.id)?.enabled ? courseView(db, p.id, new Date(now)) : null;
+  if (!v) return ok({ runs: [], more: false });
+  const before = q.get("before");
+  const limit = Math.max(1, Math.min(100, Number(q.get("limit")) || 20));
+  const all = v.runs.filter((r) => !isDate(before) || r.date < before);
+  const page = all.slice(0, limit);
+  const ids = page.map((r) => r.sampleId);
+  const ext = new Map(
+    ids.length
+      ? db
+          .select({ id: healthSamples.id, ext: healthSamples.externalId })
+          .from(healthSamples)
+          .where(and(eq(healthSamples.personId, p.id), inArray(healthSamples.id, ids)))
+          .all()
+          .map((r) => [r.id, r.ext])
+      : [],
+  );
+  const uuid = (id: string) => ext.get(id)?.replace(/^hk:/, "");
+  return ok({ runs: page.map((r) => ({ ...r, ...(uuid(r.sampleId) ? { uuid: uuid(r.sampleId) } : {}) })), more: all.length > page.length });
 }
 
 function reglages(db: Db, p: Person, body: unknown): ApiReply {
@@ -306,12 +381,29 @@ function reglages(db: Db, p: Person, body: unknown): ApiReply {
 
 // ─── Routeur ───
 
+/** Réponses des derniers gestes par `actionId` (un renvoi après une coupure ne refait pas le geste). */
+const done = new Map<string, ApiReply>();
+const DONE_MAX = 500;
+
 export function appApi(db: Db, req: AppRequest): ApiReply {
+  const now = req.now ?? Date.now();
+  const actionId = req.method === "POST" && req.body && typeof req.body === "object" ? (req.body as { actionId?: unknown }).actionId : undefined;
+  const key = typeof actionId === "string" && actionId.length <= 80 ? `${req.headers.get("x-mijote-key") ?? ""}:${actionId}` : null;
+  if (key && done.has(key)) return done.get(key)!;
+  const r = route(db, req, now);
+  const out: ApiReply = { status: r.status, body: { ...(clean(r.body) as Record<string, unknown>), generatedAt: new Date(now).toISOString() } };
+  if (key && r.status === 200) {
+    done.set(key, out);
+    if (done.size > DONE_MAX) done.delete(done.keys().next().value!);
+  }
+  return out;
+}
+
+function route(db: Db, req: AppRequest, now: number): ApiReply {
   const k = byKey(db, req.headers);
   if (!k.link) return k.error;
   const p = getPerson(db, k.link.personId);
   if (!p) return fail("personne inconnue", 404);
-  const now = req.now ?? Date.now();
   const today = todayParis(new Date(now));
   const [a, b] = req.path;
   const route = `${req.method} ${a ?? ""}${b ? `/${b}` : ""}`;
@@ -332,10 +424,12 @@ export function appApi(db: Db, req: AppRequest): ApiReply {
       const enabled = !!getRunProfile(db, p.id)?.enabled;
       return ok({ enabled, view: enabled ? courseView(db, p.id, new Date(now)) : null });
     }
+    case "GET course/sorties":
+      return sorties(db, p, req.query, now);
     case "GET sport":
       return sport(db, p, today);
     case "GET sport/figures":
-      return figures(db, p, req.query);
+      return req.path[2] ? figure(db, p, req.path[2], req.query) : figures(db, p, req.query);
     case "POST sport/reglages":
       return reglages(db, p, req.body);
     case "GET sport/seance":
