@@ -258,6 +258,8 @@ export interface RunningData {
   feedback: Feedback[];
   fixed: PlanSettings["fixed"];
   rows: RunSessionRow[];
+  /** Les autres séances (natation, renforcement, carnet guidé…), sans doublon avec le carnet. */
+  others: { date: string; kind: LoadKind; minutes: number }[];
 }
 
 /** Rapproche les courses des séances prévues : `plannedId` de la montre, sinon le même jour (une séance par jour). */
@@ -362,6 +364,10 @@ export function runningData(db: Db, personId: string, today: string): RunningDat
     daily.push({ date: w.date, load: sessionLoad({ kind: w.kind, minutes: w.minutes, hrAvg: w.hrAvg, effort: w.details?.effort ?? null }, loadRefs).load });
   }
   for (const w of carnet) if (w.minutes) daily.push({ date: w.date, load: sessionLoad({ kind: "kettlebell", minutes: w.minutes }, loadRefs).load });
+  const others: RunningData["others"] = [
+    ...all.filter((w) => w.kind !== "course" && !((w.kind === "renfo" || w.kind === "kettlebell" || w.kind === "autre") && kbDays.has(w.date))).map((w) => ({ date: w.date, kind: w.kind, minutes: w.minutes })),
+    ...carnet.filter((w) => w.date <= today).map((w) => ({ date: w.date, kind: "kettlebell" as const, minutes: w.minutes ?? 0 })),
+  ];
   const from = daily.length ? daily.map((d) => d.date).sort()[0] : today;
   const fit365 = fitness(daily, from < addDays(today, -365) ? addDays(today, -365) : from, today);
   const tsbPct = fit365[fit365.length - 1]?.tsbPct ?? null;
@@ -396,6 +402,7 @@ export function runningData(db: Db, personId: string, today: string): RunningDat
     feedback: fb.map((f) => ({ date: f.date, effort: f.effort, pain: f.pain, where: f.painWhere, sick: f.sick })),
     fixed,
     rows,
+    others,
   };
 }
 
