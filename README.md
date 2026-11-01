@@ -90,6 +90,7 @@ Mieux vaut les connaître avant d'installer :
 - [Architecture](docs/architecture.md) : les modules et ce qui est vérifié en code
 - [Recettes](docs/recettes.md) : le format des fiches
 - [Sport](docs/sport.md) : programmes, générateur, figures animées
+- [Course](docs/course.md) : fondations du futur module de course à pied (zones, charge, plan de reprise)
 - [IA](docs/ia.md) : fonctions, vérifications, coûts mesurés
 - [Catalogue](docs/catalogue.md) : brancher un magasin
 - [Modèle de données](docs/schema.md)
