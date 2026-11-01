@@ -228,13 +228,15 @@ function RunToday({ run }: { run: NonNullable<HomeView["run"]> }) {
       <h2 id="course-titre" className="text-h2">
         Course
       </h2>
-      <Link href="/sante/course" className="group -mx-3 mt-6 flex items-center gap-4 rounded-[8px] border-t border-line-strong px-3 py-4 hover:bg-surface-2">
-        <span className="grid min-w-0 flex-1 gap-1">
-          <span className="font-semibold text-pretty">{run.title}</span>
-          <span className="text-small text-ink-2">{run.done ? "Faite aujourd’hui" : `Aujourd’hui, ${minutesText(run.minutes)}`}</span>
-        </span>
-        <Icon name="chev" className="text-ink-3" />
-      </Link>
+      <div className="mt-6 border-t border-line-strong">
+        <Link href="/sante/course" className="group -mx-3 flex items-center gap-4 rounded-[8px] border-b border-line px-3 py-4 hover:bg-surface-2">
+          <span className="grid min-w-0 flex-1 gap-1">
+            <span className="font-semibold text-pretty">{run.title}</span>
+            <span className="text-small text-ink-2">{run.done ? "Faite aujourd’hui" : `Aujourd’hui, ${run.minutes}${NBSP}min en tout`}</span>
+          </span>
+          <Icon name="chev" className="text-ink-3" />
+        </Link>
+      </div>
     </section>
   );
 }
