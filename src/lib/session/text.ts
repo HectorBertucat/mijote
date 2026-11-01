@@ -74,6 +74,34 @@ export function splitTitle(text: string): { title: string; detail: string } {
   return { title, detail };
 }
 
+const VERB: Partial<Record<PlanStep["kind"], string>> = { sear: "Saisis", bake: "Rôtis", boil: "Cuis", braise: "Prépare", rest: "Prépare" };
+
+/**
+ * Un titre qui ne dit que le récipient (« Cocotte sur le grand foyer à 5 », « Faitout d'eau salée à 9 »,
+ * « Pendant que la sauce mijote : poêle vide ») dit d'abord ce qu'on fait, d'après le produit de l'étape :
+ * « Prépare la sauce : cocotte sur le grand foyer à 5 », « Saisis le poulet, pendant que la sauce mijote ».
+ * Trop long, le reste passe en tête du détail. Un titre qui nomme déjà un aliment ou un bol ne change pas.
+ */
+export function actionTitle(t: { title: string; detail: string }, kind: PlanStep["kind"], product: { object: string; dish: boolean } | null | undefined, namesFood: (text: string) => boolean): { title: string; detail: string } {
+  if (!product || !t.title) return t;
+  const aside = t.title.match(/^((?:pendant|dès|quand|une fois|après|avant)\b[^:]*?)\s*:\s*(.*)$/i);
+  const rest = aside ? aside[2] : t.title;
+  if (namesFood(rest) || /\b[Bb]ols? [A-Z]\b/.test(rest)) return t;
+  const verb = product.dish ? "Prépare" : VERB[kind];
+  if (!verb) return t;
+  const head = `${verb} ${product.object}`;
+  if (aside) return { title: `${head}, ${aside[1].charAt(0).toLocaleLowerCase("fr")}${aside[1].slice(1)}`, detail: [`${rest.charAt(0).toUpperCase()}${rest.slice(1)}.`, t.detail].filter((x) => x && x !== ".").join(" ") };
+  let title = `${head} : ${rest.charAt(0).toLocaleLowerCase("fr")}${rest.slice(1)}`;
+  let detail = t.detail;
+  const comma = title.indexOf(", ", head.length);
+  if (title.length > TITLE_MAX && comma > 0) {
+    const more = title.slice(comma + 2);
+    detail = [`${more.charAt(0).toUpperCase()}${more.slice(1)}.`, detail].filter(Boolean).join(" ");
+    title = title.slice(0, comma);
+  }
+  return { title, detail };
+}
+
 const HOB_WORDS = /\b(?:le |du |au )?(grand foyer|foyer moyen|petit foyer|foyer \d)\b/gi;
 
 /**
