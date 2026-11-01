@@ -9,8 +9,9 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { addDays } from "@/lib/week/propose";
 import { endOf, isDay, MAX_DAYS, PERIOD_PRESETS, spanDays } from "@/lib/week/period";
 import { periodAction } from "@/app/semaine/actions";
+import { firstOfMonth } from "@/lib/typo";
 
-const longDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+const longDate = (ymd: string) => firstOfMonth(new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }));
 
 export function PeriodPicker({ start, days }: { start: string; days: number }) {
   const [open, setOpen] = useState(false);

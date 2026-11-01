@@ -9,12 +9,13 @@ import { listStock } from "@/lib/boxes/store";
 import { activePerson } from "@/lib/health/active";
 import { todayParis } from "@/lib/health/store";
 import { recipeColor } from "@/lib/ui";
+import { firstOfMonth } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
 
 const n = (k: number, one: string, many = `${one}s`) => `${k} ${k > 1 ? many : one}`;
 const when = (b: { limit: string; freshness: string }, today: string) =>
-  b.freshness === "past" ? "à jeter" : b.limit === today ? "à manger aujourd’hui" : b.freshness === "soon" ? "à manger demain" : `jusqu’au ${new Date(`${b.limit}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })}`;
+  b.freshness === "past" ? "à jeter" : b.limit === today ? "à manger aujourd’hui" : b.freshness === "soon" ? "à manger demain" : `jusqu’au ${firstOfMonth(new Date(`${b.limit}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }))}`;
 
 export default async function Frigo() {
   const today = todayParis();

@@ -9,6 +9,7 @@ import { StampFaitMaison, Tape } from "@/components/ui";
 import type { SessionPlan } from "@/lib/session/planner";
 import type { SessionEvent } from "@/lib/session/state";
 import { dur } from "./parts";
+import { firstOfMonth } from "@/lib/typo";
 
 const DAY = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris" });
 
@@ -64,7 +65,7 @@ export function FridgeDone({ plan, events, test = false }: { plan: SessionPlan; 
         </span>
       </div>
       <div className="grid min-w-0 content-center gap-6 md:col-span-8">
-        <p className="label text-ink-2">{test ? "Session test" : "Session finie"} · {DAY.format(endAt)}</p>
+        <p className="label text-ink-2">{test ? "Session test" : "Session finie"} · {firstOfMonth(DAY.format(endAt))}</p>
         <h1 id="fin-titre" className="text-display">
           {test ? "Test terminé." : "Le frigo est plein."}
         </h1>

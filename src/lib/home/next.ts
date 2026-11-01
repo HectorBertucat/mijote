@@ -2,6 +2,7 @@
 // de l'état de la période (plats, repas couverts, liste de courses, session). Module pur.
 import { addDays, COOK_DAY } from "@/lib/week/propose";
 import { spanDays } from "@/lib/week/period";
+import { firstOfMonth } from "@/lib/typo";
 
 /** Espace insécable (avant « : », dans « 2 h 40 », avant « kcal »). */
 export const NBSP = " ";
@@ -61,7 +62,7 @@ export function dayWord(ymd: string, today: string): string {
   if (d === -1) return "hier";
   if (d > 1 && d < 7) return weekday(ymd);
   if (d < 0 && d > -7) return `${weekday(ymd)} dernier`;
-  return new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  return firstOfMonth(new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }));
 }
 
 /** Durée arrondie à 5 min : « 2 h 40 », « 45 min ». */

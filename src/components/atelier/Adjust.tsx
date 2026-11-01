@@ -16,6 +16,7 @@ import { verdictFor, type Macros } from "@/lib/nutrition/compute";
 import type { MealRef } from "@/lib/eaters/core";
 import type { RecipeInput } from "@/lib/recipes/format";
 import { Checks, fmtUsd, IngredientsDiff, Leftovers, NutritionCompare, StepsList } from "./RecipeDiff";
+import { firstOfMonth } from "@/lib/typo";
 
 interface Budget {
   spentUsd: number;
@@ -146,7 +147,7 @@ function Deltas({ p, small = false }: { p: AdjustProposal; small?: boolean }) {
 function when(iso: string) {
   const d = new Date(iso);
   const hm = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  return new Date().toDateString() === d.toDateString() ? `aujourd’hui à ${hm}` : `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} à ${hm}`;
+  return new Date().toDateString() === d.toDateString() ? `aujourd’hui à ${hm}` : `le ${firstOfMonth(d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }))} à ${hm}`;
 }
 
 /** Sous l’en-tête de la fiche, panneau fermé : la proposition gardée, à reprendre ou à effacer. */

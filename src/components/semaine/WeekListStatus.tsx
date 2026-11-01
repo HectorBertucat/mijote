@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui";
 import { PendingMark } from "@/components/PendingMark";
+import { firstOfMonth } from "@/lib/typo";
 
 export interface WeekListInfo {
   id: string;
@@ -14,7 +15,7 @@ export interface WeekListInfo {
   building: boolean;
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+const when = (iso: string) => firstOfMonth(new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }));
 
 export function WeekListStatus({ list }: { list: WeekListInfo }) {
   const state = list.building ? "en préparation" : list.ordered ? "commandée" : "brouillon";

@@ -8,6 +8,7 @@ import { FoodIllu } from "@/components/illus/Illu";
 import { markLot, undoLot } from "@/app/placard/actions";
 import { useToast } from "./Toast";
 import { eur, grams } from "./format";
+import { firstOfMonth } from "@/lib/typo";
 
 export interface LotData {
   id: string;
@@ -32,7 +33,7 @@ export function LotList({ lots, closed = false }: { lots: LotData[]; closed?: bo
       show(r.message, r.ok);
     });
 
-  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }) : null);
+  const when = (iso: string | null) => (iso ? firstOfMonth(new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })) : null);
   return (
     <>
       <ul>

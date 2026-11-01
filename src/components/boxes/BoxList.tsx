@@ -11,8 +11,9 @@ import { useToast } from "@/components/cart/Toast";
 import { daysBetween, gramsLabel } from "@/lib/boxes/core";
 import type { StockBox } from "@/lib/boxes/store";
 import { BoxGlyph } from "./BoxGlyph";
+import { firstOfMonth } from "@/lib/typo";
 
-const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { ...o, timeZone: "UTC" });
+const fmt = (d: string, o: Intl.DateTimeFormatOptions) => firstOfMonth(new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { ...o, timeZone: "UTC" }));
 const day = (d: string) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
 const MEAL = { lunch: "midi", dinner: "soir" } as const;
 
