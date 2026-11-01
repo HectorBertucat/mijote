@@ -327,7 +327,7 @@ function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; cat
             <PriceInput value={r.totalPrice} label={name} onSave={onPrice} />
           ) : (
             <>
-              <span className={`num text-body font-semibold ${done ? "text-ink-3" : ""}`}>{eur(r.totalPrice)}</span>
+              {(p || r.totalPrice != null) && <span className={`num text-body font-semibold ${done ? "text-ink-3" : ""}`}>{eur(r.totalPrice)}</span>}
               {p && r.unitPrice != null && r.packs > 1 && <span className="num text-small text-ink-3 max-sm:hidden">{eur(r.unitPrice)} le paquet</span>}
             </>
           )}
@@ -542,15 +542,21 @@ function OrderedBanner({ listId, title, orderedAt, catalog, lines, total, onMsg 
         </h2>
         <p className="text-ink-2">
           {priced ? "Prix figés" : "Validée"}
-          {orderedAt ? ` le ${new Date(orderedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}` : ""}. Ce qui reste des paquets est au placard.
+          {orderedAt ? ` le ${new Date(orderedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}` : ""}.
+          {/* Sans prix, rien n’entre au placard ni dans les coûts : pas de lien vers deux pages vides. */}
+          {priced ? " Ce qui reste des paquets est au placard." : " Sans prix, elle ne compte pas dans les coûts."}
         </p>
         <span className="flex flex-wrap gap-2">
-          <Link href="/placard" className={buttonClass({ variant: "primary", size: "sm" })}>
-            Voir le placard
-          </Link>
-          <Link href="/couts" className={buttonClass({ size: "sm" })}>
-            Coûts
-          </Link>
+          {priced && (
+            <>
+              <Link href="/placard" className={buttonClass({ variant: "primary", size: "sm" })}>
+                Voir le placard
+              </Link>
+              <Link href="/couts" className={buttonClass({ size: "sm" })}>
+                Coûts
+              </Link>
+            </>
+          )}
           <Button
             size="sm"
             variant="quiet"

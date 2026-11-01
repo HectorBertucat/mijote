@@ -146,9 +146,9 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
         size="display"
         aside={
           total > 0 ? (
-            <Figure big value={total.toFixed(2).replace(".", ",")} unit="€" label={`${buy.length} articles${ordered ? ", commandés" : catalogEnabled() ? ", estimé" : ", prix saisis"}`} />
+            <Figure big value={total.toFixed(2).replace(".", ",")} unit="€" label={`${buy.length} articles${ordered ? (catalogEnabled() ? ", commandés" : ", achetés") : catalogEnabled() ? ", estimé" : ", prix saisis"}`} />
           ) : (
-            <Figure big value={buy.length} label={`articles${ordered ? " commandés" : " à prendre"}`} />
+            <Figure big value={buy.length} label={`articles${ordered ? (catalogEnabled() ? " commandés" : " achetés") : " à prendre"}`} />
           )
         }
       >

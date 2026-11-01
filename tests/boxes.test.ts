@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import { and, eq } from "drizzle-orm";
-import { freshness, limitOf, mealAt, placeFor, sideRatio, splitPot, type PotModel, type PotPerson } from "@/lib/boxes/core";
+import { freshness, limitOf, mealAt, placeFor, sideRatio, sideWords, splitPot, type PotModel, type PotPerson } from "@/lib/boxes/core";
 import { eatBox, freezeBox, listStock, potModel, sessionPots, storeBoxes, thawBox, throwBox } from "@/lib/boxes/store";
 import { openDb } from "@/lib/db/open";
 import { cookSessions, foodLog, mealBoxes, mealSlots, recipeIngredients, recipes, weekPlans } from "@/lib/db/schema";
@@ -197,4 +197,12 @@ test("une session test ne range rien", () => {
   const { db, r } = setup();
   db.update(cookSessions).set({ test: true }).where(eq(cookSessions.id, "S")).run();
   assert.throws(() => storeBoxes(db, "S", r.id, { dishG: 3000 }), /test/);
+});
+
+test("accompagnement accordé : le riz cuit, la semoule cuite, les pâtes cuites", () => {
+  assert.deepEqual([sideWords("riz").the, sideWords("riz").cooked], ["le riz", "cuit"]);
+  assert.deepEqual([sideWords("semoule").the, sideWords("semoule").cooked, sideWords("semoule").of], ["la semoule", "cuite", "de la semoule"]);
+  assert.deepEqual([sideWords("pâtes").the, sideWords("pâtes").cooked, sideWords("pâtes").stays], ["les pâtes", "cuites", "restent"]);
+  assert.equal(sideWords("quinoa").the, "le quinoa");
+  assert.equal(sideWords("riz et lentilles").cooked, "cuits");
 });
