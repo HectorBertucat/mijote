@@ -191,7 +191,7 @@ export function courseView(db: Db, personId: string, now = new Date()) {
     cancelledToday: pick.cancelledToday,
     week,
     weekText: weekSentence(week),
-    nextWeek: rows.filter((r) => r.date >= addDays(monday, 7)),
+    upcoming: rows.filter((r) => r.date >= today && (r.status === "prevue" || r.status === "programmee") && r.id !== head?.row.id).slice(0, 3),
     form: formWords(data.fitness),
     fitness,
     volume,

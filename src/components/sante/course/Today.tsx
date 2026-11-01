@@ -102,6 +102,22 @@ export function TodayHero({ v, aside }: { v: CourseView; aside?: ReactNode }) {
       <aside aria-label="Autour de la séance" className="grid min-w-0 content-start gap-8 border-t border-line pt-6 lg:col-span-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
         {h?.fuel && <Fuel f={h.fuel} />}
         {aside}
+        {v.upcoming.length > 0 && (
+          <div className="grid content-start gap-3">
+            <span className="label text-ink-2">À suivre</span>
+            <ul className="grid border-t border-line">
+              {v.upcoming.map((r) => (
+                <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-line py-3">
+                  <span className="grid min-w-0 gap-0.5">
+                    <span className="text-small text-ink-2">{`${whenText(r.date, v.today)}${hourText(r.time) ? ` · ${hourText(r.time)}` : ""}`}</span>
+                    <b className="truncate">{KIND_LABEL[r.kind as SessionKind] ?? r.session.title}</b>
+                  </span>
+                  <span className="num text-small font-bold">{durText(r.minutes * 60)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </aside>
     </section>
   );

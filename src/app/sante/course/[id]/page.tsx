@@ -212,7 +212,9 @@ function Splits({ r }: { r: RunView }) {
                   </th>
                   <td className="num py-2 pr-4 font-bold whitespace-nowrap">{paceText(x.pace)}</td>
                   <td aria-hidden className="py-2 pr-4">
-                    <span className={`block h-2 rounded-r-[4px] ${x.pace === fast ? "bg-ink" : "bg-[var(--c-viz-mark)]"}`} style={{ width: `${width(x.pace)}%` }} />
+                    <span className="block max-w-80">
+                      <span className={`block h-2 rounded-r-[4px] ${x.pace === fast ? "bg-ink" : "bg-[var(--c-viz-mark)]"}`} style={{ width: `${width(x.pace)}%` }} />
+                    </span>
                   </td>
                   {showGap && <td className="num hidden py-2 pr-4 text-right whitespace-nowrap text-ink-2 sm:table-cell">{paceText(x.gap)}</td>}
                   <td className="num py-2 pr-4 text-right whitespace-nowrap">{x.hrAvg ? Math.round(x.hrAvg) : "—"}</td>

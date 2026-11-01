@@ -19,6 +19,8 @@ function starters(path: string): string[] {
   if (/^\/recettes\/[^/]+/.test(path)) return ["Cette recette convient-elle à nos objectifs ?", "Je l’ajoute à la semaine ?"];
   if (path.startsWith("/semaine")) return ["Quelle recette cette semaine pour plus de protéines ?", "On lance les courses ?"];
   if (path.startsWith("/frigo")) return ["Quelle boîte manger ce soir ?"];
+  if (/^\/sante\/course\/[^/]+$/.test(path) && !/\/(reglages|sorties)$/.test(path)) return ["Explique-moi cette sortie.", "Qu’est-ce que je change pour la prochaine ?"];
+  if (path.startsWith("/sante/course")) return ["Pourquoi cette séance ?", "Je ne peux pas courir demain : on décale ?", "Je me sens fatigué : on allège la semaine ?"];
   if (path.startsWith("/sante")) return ["Dois-je prendre un shaker ?", "L’autre personne devrait-elle prendre une collation le matin ?"];
   return ["Dois-je prendre un shaker ?", "Quelle recette cette semaine pour plus de protéines ?", "Quelle boîte manger ce soir ?"];
 }
@@ -35,6 +37,7 @@ function ActionCard({ messageId, a, onDone }: { messageId: string; a: AssistantA
       if (r.ok) router.refresh();
     });
   const dismiss = () => start(async () => onDone(await dismissAction(messageId, a.index)));
+  const run = a.kind.startsWith("course_");
 
   if (a.status === "refused")
     return (
@@ -45,6 +48,12 @@ function ActionCard({ messageId, a, onDone }: { messageId: string; a: AssistantA
     );
   return (
     <div className="grid gap-3 border-t-2 border-ink pt-3">
+      {run && (
+        <span className="label inline-flex items-center gap-1.5 text-ink-2">
+          <Icon name="pulse" size="s" />
+          Course
+        </span>
+      )}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-bold">{a.title}</span>
         {a.status === "applied" && <Verdict tone="ok">appliquée</Verdict>}
@@ -80,11 +89,12 @@ function ActionCard({ messageId, a, onDone }: { messageId: string; a: AssistantA
       {a.status === "applied" && a.result && (
         <p className="text-small text-ink-2">
           {a.result}
+          {run && " La montre suit à la prochaine ouverture de l’app Mijote Santé."}
           {a.href && (
             <>
               {" "}
               <Link href={a.href} className="font-bold text-accent underline underline-offset-2">
-                Voir
+                {run ? "Voir le plan" : "Voir"}
               </Link>
             </>
           )}

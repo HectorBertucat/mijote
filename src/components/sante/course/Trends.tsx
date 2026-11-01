@@ -141,6 +141,7 @@ export function Regularity({ v }: { v: CourseView }) {
         </>
       }
     >
+      <div className="max-w-[440px]">
       <CalendarHeat
         values={v.activity}
         to={v.today}
@@ -151,6 +152,7 @@ export function Regularity({ v }: { v: CourseView }) {
         legend="minutes de séance par jour, course, natation et renforcement"
         tip={(d, val) => ({ title: fmtDay(d, "full"), rows: val ? [...(labels.get(d) ?? []), ...(v.otherByDay.get(d) ?? [])].map((t) => ({ value: t })) : [{ value: "repos" }] })}
       />
+      </div>
     </ChartFigure>
   );
 }
