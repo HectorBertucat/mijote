@@ -96,7 +96,7 @@ test("mesure seul : geste coché, bol au prorata, pesées, étapes, minuteur arr
 });
 
 test("mesure seul : les gestes glissés dans la cuisson se mesurent un par sous-étape", () => {
-  const plan = planSession([chasseur, load("colombo-porc.json")], RES);
+  const plan = planSession([chasseur, load("dahl-pois-casses-poulet.json")], RES);
   const g = plan.steps.find((s) => s.tasks && s.tasks.length >= 2)!;
   assert.ok(g, "un moment de plusieurs gestes dans le fil");
   const j = journal("2026-10-18T08:00:00Z");

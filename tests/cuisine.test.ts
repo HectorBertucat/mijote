@@ -223,14 +223,14 @@ test("sans air fryer : la recette passe au four (rechange), température et dur�
 });
 
 test("le four pris à une autre température : le planificateur passe une plaque à l'air fryer", () => {
-  const forno = load("pasta-al-forno.json"); // four à 200 °C
+  const forno = load("pasta-al-forno.json"); // four à 200 °C ; le grand plat sert aussi au forno
   const veg: PlannerRecipe = {
     slug: "legumes-rotis",
     name: "Légumes rôtis",
     ingredients: [{ id: "leg", item: "légumes", grams: 500, group: "A" }],
     steps: [
       { kind: "prep", text: "Bol A : légumes en morceaux, huile.", durationMin: 8, bowls: ["A"] },
-      { kind: "bake", text: "Enfourne le grand plat (bol A) : 30 min à 160 °C.", durationMin: 30, activeMin: 2, equipmentId: "plat-grand", equipmentAlt: ["air-fryer"], ovenTemp: 160, bowls: ["A"] },
+      { kind: "bake", text: "Enfourne le grand plat (bol A) : 60 min à 160 °C.", durationMin: 60, activeMin: 2, equipmentId: "plat-grand", equipmentAlt: ["air-fryer"], ovenTemp: 160, bowls: ["A"] },
     ],
   };
   const res = resOf({ ...D, airFryerL: 5 });
@@ -240,8 +240,9 @@ test("le four pris à une autre température : le planificateur passe une plaque
   const s = plan.steps.find((x) => x.recipeSlug === "legumes-rotis" && x.kind === "bake")!;
   assert.equal(s.equipmentId, "air-fryer");
   assert.equal(s.oven, null);
-  assert.equal(s.durationMin, 24);
-  assert.match(s.text, /^Mets le tout dans l'air fryer \(bol [A-Z]\) : 24 min à 140 °C\.$/);
+  assert.equal(s.durationMin, 48);
+  assert.match(s.text, /^Mets le tout dans l'air fryer \(bol [A-Z]\) : 48 min à 140 °C\.$/);
+  assert.ok(plan.decisions?.some((d) => /dans l'air fryer au lieu du grand plat/.test(d)), JSON.stringify(plan.decisions));
   // Trop pour le panier : pas de rechange vers l'air fryer.
   const big = { ...veg, ingredients: [{ id: "leg", item: "légumes", grams: 2000, group: "A" }] };
   const p2 = planSession([forno, big], res);

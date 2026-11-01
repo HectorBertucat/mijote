@@ -150,10 +150,10 @@ export function stepTimeline(step: StepLike, dur: number, act: number, onHob: bo
     const before = phases[i - 1];
     const after = phases[i + 1];
     const waits = (x: TimedPhase | undefined) => Boolean(x && x.attention !== "mains" && !(x as { handsMin?: number }).handsMin && x.toMin - x.fromMin >= 4);
-    const flex = p.attention === "mains" && to - p.fromMin <= 2 + 1e-6 && waits(before) && waits(after);
+    const flex = to - p.fromMin <= 2 + 1e-6 && waits(before) && waits(after);
     // Le dernier geste après une attente (sortir le plat, égrener le riz, la crème hors du feu) peut attendre
     // 2 min : l'étape finit d'autant plus tard. Jamais pour égoutter (ça cuirait trop).
-    const end = i === phases.length - 1 && p.attention === "mains" && to - p.fromMin <= 1 + 1e-6 && waits(before) && !/égoutt/i.test(raw[i]?.text ?? "") && (step.kind !== "boil" || /égrèn|repos|hors du feu/i.test(`${raw[i]?.text ?? ""} ${raw[i - 1]?.text ?? ""}`));
+    const end = i === phases.length - 1 && to - p.fromMin <= 1 + 1e-6 && waits(before) && !/égoutt/i.test(raw[i]?.text ?? "") && (step.kind !== "boil" || /égrèn|repos|hors du feu/i.test(`${raw[i]?.text ?? ""} ${raw[i - 1]?.text ?? ""}`));
     slack.push(flex ? { lo: -Math.min(2, before!.toMin - before!.fromMin - 2), hi: Math.min(2, after!.toMin - after!.fromMin - 2), phase: i } : end ? { lo: 0, hi: 2, phase: i } : { lo: 0, hi: 0, phase: i });
   });
   const reminders: Reminder[] = phases

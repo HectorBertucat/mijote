@@ -694,7 +694,7 @@ export function planSession(input: PlannerRecipe[], res: PlannerResources, opts:
   const decisions: string[] = [];
   for (const sw of swaps) {
     const others = input.filter((_, i) => i !== sw.r && input[i].steps.some((s) => s.equipmentId === sw.from)).map((r) => r.name);
-    decisions.push(`${input[sw.r].name} se fait dans ${article(shortName(sw.to)!).toLowerCase()} au lieu de ${article(shortName(sw.from)!).toLowerCase()}${others.length ? ` (${article(shortName(sw.from)!).toLowerCase()} sert à : ${others.join(", ")})` : ""}.`);
+    decisions.push(`${input[sw.r].name} se fait dans ${article(shortName(sw.to)!).toLowerCase()} au lieu ${ofArticle(shortName(sw.from)!)}${others.length ? ` (${article(shortName(sw.from)!).toLowerCase()} sert à : ${others.join(", ")})` : ""}.`);
   }
   if (braise != null) {
     const r = input[braise];
@@ -2238,6 +2238,12 @@ function gestureText(t: PrepTask): string {
   }
   if (t.kind === "weigh" && t.bowls?.length) return `Bol ${t.bowls[0]} : ${(t.text ?? "").replace(/^Pèse et verse : /, "pèse et verse ").replace(/\.$/, "")}`;
   return (t.text ?? t.title).replace(/\.$/, "");
+}
+
+/** « du grand plat », « de la cocotte », « de l'air fryer ». */
+function ofArticle(name: string) {
+  const a = article(name).toLowerCase();
+  return a.startsWith("le ") ? `du ${a.slice(3)}` : `de ${a}`;
 }
 
 function article(name: string) {
