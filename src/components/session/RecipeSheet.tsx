@@ -87,7 +87,7 @@ export function RecipeSheetBody({ plan, c, slug }: { plan: SessionPlan; c: Contr
         {sh.done} étape{sh.done > 1 ? "s" : ""} faite{sh.done > 1 ? "s" : ""} sur {sh.steps.length}
         {sh.scale !== 1 ? ` · quantités ×${String(Math.round(sh.scale * 100) / 100).replace(".", ",")}` : ""} · pour cette session, dans ta cuisine.
       </p>
-      <Ingredients sh={sh} plan={plan} />
+      <Ingredients sh={sh} />
       <section className="grid gap-2" aria-label="Étapes de la recette">
         <h3 className="label text-ink-2">Étapes, adaptées à ta cuisine</h3>
         <ol className="grid border-b border-line">
@@ -100,7 +100,7 @@ export function RecipeSheetBody({ plan, c, slug }: { plan: SessionPlan; c: Contr
   );
 }
 
-function Ingredients({ sh, plan }: { sh: Sheet_; plan: SessionPlan }) {
+function Ingredients({ sh }: { sh: Sheet_ }) {
   return (
     <section className="grid gap-3" aria-label="Ingrédients pour cette session">
       <h3 className="label text-ink-2">Ingrédients pour cette session</h3>
@@ -127,7 +127,6 @@ function Ingredients({ sh, plan }: { sh: Sheet_; plan: SessionPlan }) {
       {sh.shares.map((x) => (
         <p key={x.stepNo} className="rounded-[12px] border border-line px-3 py-2 text-[15px]">
           <b>Cuisson commune · étape {x.stepNo}</b> : {x.the} cuit avec {x.with.join(", ")} ({x.total} en tout). Pour cette recette : <b>{x.mine}</b>, soit {pct(x.share)}.
-          <span className="sr-only"> {plan.recipes.length} recettes dans la session.</span>
         </p>
       ))}
     </section>
@@ -140,7 +139,7 @@ function StepRow({ plan, c, s }: { plan: SessionPlan; c: Controls; s: SheetStep 
   return (
     <li className={`grid gap-1 border-t border-line py-3 ${s.current ? "-mx-3 rounded-[8px] border-l-4 border-l-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_10%,var(--c-raised))] px-3" : ""}`} aria-current={s.current ? "step" : undefined}>
       <p className="label flex flex-wrap items-center gap-x-2 text-ink-2">
-        <span className="num">{s.n != null ? `Étape ${s.n}` : s.shared ? "Pour la session" : "Avant"}</span>
+        <span className="num">{s.n != null ? `Étape ${s.n}` : step.kind === "preheat" ? "Le four" : "Cuisson commune"}</span>
         <span className="num">· {s.no} de la session</span>
         {s.status === "active" && <span className="text-accent">· en cours</span>}
         {done && (

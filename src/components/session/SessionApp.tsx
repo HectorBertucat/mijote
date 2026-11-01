@@ -299,6 +299,8 @@ export function SessionApp(props: SessionProps) {
       if ((e.code !== "Space" && !duoKey && !backKey) || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      // Une fenêtre ouverte (la recette, une bulle) : l’espace et la flèche restent à elle.
+      if (t?.closest('[role="dialog"]') || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       // Vue simple : l’espace sur un bouton, un lien ou un menu qui a le focus garde son effet (clavier).
       if (simpleRef.current && e.code === "Space" && t?.closest("button:not([data-main]), a, summary, select")) return;
       if (backKey) {
