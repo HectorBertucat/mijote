@@ -143,7 +143,11 @@ function matOf(m: Motion): [number, number] | null {
     const s = solve(k.a, k.c);
     // Au sol : le bassin bas (allongé, assis par terre) ou les deux mains posées (pompes, planche).
     if (s.hip[1] > 140 || (s.handN[1] > 176 && s.handF[1] > 176)) floor = true;
-    for (const p of Object.values(s)) if (p[1] > 160) (lo = Math.min(lo, p[0])), (hi = Math.max(hi, p[0]));
+    for (const p of Object.values(s)) {
+      if (p[1] <= 160) continue;
+      lo = Math.min(lo, p[0]);
+      hi = Math.max(hi, p[0]);
+    }
   }
   const out: [number, number] | null = floor && Number.isFinite(lo) ? [Math.max(2, lo - 12), Math.min(198, hi + 12)] : null;
   matCache.set(m, out);
