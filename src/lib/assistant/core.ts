@@ -12,6 +12,7 @@ import { z } from "zod";
 import { portionOf, type DayTarget, type MealRef, type Outside } from "@/lib/eaters/core";
 import { adviceOf, checkHabit, daysLabel, HABIT_FOODS, habitMacros, isShaker, macrosOf, outsideMean, outsideWeek, type HabitLike } from "@/lib/eaters/habits";
 import { FOODS } from "@/lib/nutrition/foods";
+import { recipeFit, weekFit, type FitEater } from "@/lib/week/fit";
 
 // ─── Instantané des données ───
 
@@ -350,6 +351,7 @@ export const pickModel = (text: string): "small" | "plan" => (PLANNING.test(text
 /** Ce que l'assistant sait du foyer, en texte compact. Tous les chiffres viennent de l'appli. */
 export function buildContext(s: Snapshot): string {
   const L: string[] = [`Aujourd'hui : ${s.today}.`];
+  const fitters: FitEater[] = s.people.map((p) => ({ id: p.id, name: p.name, baseUnits: p.baseUnits, ref: p.ref, dayTarget: p.dayTarget, outside: outsideWith(p, p.habits.map(habitLike)), hasShaker: p.habits.some(isShaker) }));
   L.push("", "## Foyer");
   for (const p of s.people) {
     const head = `- ${p.name} (personId ${p.id})${p.id === s.speakerId ? " — c'est la personne qui te parle" : ""}`;
@@ -375,16 +377,24 @@ export function buildContext(s: Snapshot): string {
   L.push("", `## Semaine en cours (${s.week.label})`);
   if (s.week.selected.length) {
     L.push(`Recettes retenues (${s.week.selected.length}/${MAX_WEEK_RECIPES}) : ${s.week.selected.map((slug) => s.recipes.find((r) => r.slug === slug)?.name ?? slug).join(", ")}.`);
+    // Adéquation aux repères (src/lib/week/fit.ts), recettes à parts égales : le constat et la suggestion de l'appli.
+    const live = s.recipes.filter((r) => r.status !== "archived");
+    const fit = weekFit(fitters, s.week.selected.map((slug) => live.find((r) => r.slug === slug)).filter((r) => !!r), { library: live, excluded: new Map(live.map((r) => [r.slug, new Set(r.excludedFor)])) });
+    for (const p of fit.people) if (p.perMeal && p.ref) L.push(`- ${p.name} : un repas moyen de la sélection fait ${kcal(p.perMeal.kcal)}, ${g(p.perMeal.protein)} de protéines (${p.level === "loin" ? "loin du repère" : p.level === "juste" ? "juste" : "dans le repère"})`);
+    for (const w of fit.warnings) L.push(`  Écart pour ${w.name} : ${w.text}. Suggestion de l'appli : ${w.suggestion.text}`);
   } else L.push("Aucune recette retenue.");
   L.push(s.week.list ? `Liste de courses : ${s.week.list.ordered ? "commandée" : "faite"}${s.week.list.changed ? ", mais la sélection a changé depuis" : ", à jour"}.` : "Pas encore de liste de courses.");
 
-  L.push("", "## Bibliothèque (slug — nom : part de chacun, calculée par l'appli)");
+  L.push("", "## Bibliothèque (slug — nom : part de chacun et adéquation à son repère, calculées par l'appli)");
   for (const r of s.recipes) {
     if (r.status === "archived") continue;
     const parts = s.people.map((p) => {
       if (r.excludedFor.includes(p.id)) return `${p.name} pas servie`;
       const x = portionOf({ baseUnits: p.baseUnits, ref: p.ref }, r);
-      return x.kcal == null ? `${p.name} ?` : `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.`;
+      if (x.kcal == null) return `${p.name} ?`;
+      const f = recipeFit(fitters.find((e) => e.id === p.id)!, r);
+      const why = f.issue === "proteines" ? `protéines ${g(f.proteinBest!)} au mieux` : f.issue ? FIT_ISSUE[f.issue] : "";
+      return `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.${f.level ? ` (${f.level}${f.level !== "bien" ? ` : ${why}` : ""})` : ""}`;
     });
     L.push(`- ${r.slug} — ${r.name}${s.week.selected.includes(r.slug) ? " [retenue]" : ""}${r.status === "liked" ? " [aimée]" : ""} : ${parts.join(", ")}`);
   }
@@ -401,6 +411,8 @@ export function buildContext(s: Snapshot): string {
   L.push(HABIT_FOODS.map((id) => `${id} : ${FOODS[id].name} (${kcal(FOODS[id].kcal)}, ${g(FOODS[id].protein)} prot.)`).join(" ; "));
   return L.join("\n");
 }
+
+const FIT_ISSUE = { proteines: "peu protéiné", "trop-riche": "trop riche", "trop-leger": "trop léger" } as const;
 
 /** Ce qu'on regarde : « fiche de … », « la semaine », etc. (ajouté au message, pas au contexte en cache). */
 export function pageLine(page: PageContext, s: Snapshot): string {

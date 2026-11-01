@@ -46,7 +46,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Mangeurs et parts | `src/lib/eaters/` (`core.ts` et `habits.ts` purs : part, habitudes hors batch, conseil ; `store.ts` : `loadEaters`, `householdMembers`, `leadOf`, `adviceFor`) |
 | Nutrition | `src/lib/nutrition/` (incrémenter `NUTRITION_VERSION` si le calcul change) |
 | Fiche recette, bibliothèque | `src/app/recettes/`, `src/components/fiche/` (bloc à filet, chiffres de tête, tableau d'ingrédients), `src/components/RecipeParts.tsx` (`StepItem`) |
-| Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus) |
+| Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus ; `fit.ts` pur : adéquation des recettes et de la sélection aux repères, pastilles, suggestion), `src/components/semaine/` (`Fit.tsx`) |
 | Courses | `src/lib/shopping/`, catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
 | Session | `src/lib/session/` (`planner.ts`, `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`) |
 | Boîtes, frigo | `src/lib/boxes/` (`core.ts` pur : grammes par boîte, rangement ; `store.ts`), `src/app/frigo/`, `src/components/boxes/` |

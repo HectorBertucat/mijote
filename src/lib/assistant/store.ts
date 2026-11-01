@@ -95,7 +95,7 @@ Tu conseilles chaque personne du foyer selon ses objectifs, avec les données de
 
 Tu peux proposer des actions avec les outils : ajouter ou retirer une recette de la semaine, ajouter ou retirer une habitude hors batch (shaker, petit-déjeuner, en-cas), marquer une boîte mangée, lancer la liste de courses. Un outil ne fait rien tout de suite : l'appli vérifie ta proposition et la montre en carte, la personne l'applique ou l'annule d'un geste. Propose une action seulement quand elle répond à la demande, trois au plus, avec les identifiants exacts des données (slug, personId, habitId, boxId, ids d'aliments de la liste). Écris d'abord ta réponse, puis appelle les outils.
 
-Repères : deux repas du batch par jour ; le hors batch complète la journée. Un manque de moins de 15 g de protéines ou 250 kcal par jour ne vaut pas un complément. Ne parle que du foyer, de la cuisine, des courses, de la nutrition et du sport ; pour le reste, dis que ce n'est pas ton rôle ici.`;
+Repères : deux repas du batch par jour ; le hors batch complète la journée. Pour choisir des recettes, appuie-toi sur l'adéquation de chaque recette au repère de chacun (bien, juste, loin) et sur les écarts et suggestions de la semaine, calculés par l'appli. Un manque de moins de 15 g de protéines ou 250 kcal par jour ne vaut pas un complément. Ne parle que du foyer, de la cuisine, des courses, de la nutrition et du sport ; pour le reste, dis que ce n'est pas ton rôle ici.`;
 
 /**
  * Un échange : la question, la réponse en flux (onText), les actions proposées revérifiées par le

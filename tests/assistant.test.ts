@@ -117,6 +117,16 @@ test("contexte : un résumé chiffré par le code, la personne qui parle, les id
   assert.match(ctx, /whey : /);
 });
 
+test("contexte : l'adéquation aux repères (fit.ts), l'écart de la semaine et la suggestion de l'appli", () => {
+  const ctx = buildContext(snap());
+  // Curry : 44 g pour Alex (55 visés), même la plus grande part sous 950 kcal n'y arrive pas.
+  assert.match(ctx, /curry — Curry de pois chiches \[retenue\] \[aimée\] : Alex [^(]+\(loin : protéines 44\sg au mieux\)/);
+  assert.match(ctx, /poulet — Poulet rôti : Alex [^(]+\(bien\)/);
+  assert.match(ctx, /- Alex : un repas moyen de la sélection fait 880\skcal, 44\sg de protéines \(loin du repère\)/);
+  assert.match(ctx, /Écart pour Alex : ~44 g de protéines par repas pour 55 visés\. Suggestion de l'appli : Ajoute un plat plus protéiné, par ex\. Poulet rôti/);
+  assert.doesNotMatch(ctx, /Écart pour Sam/);
+});
+
 test("contexte de la page : la fiche ouverte, sinon la rubrique", () => {
   const s = snap();
   assert.match(pageLine({ path: "/recettes/poulet", recipeSlug: "poulet" }, s), /fiche de la recette Poulet rôti/);
