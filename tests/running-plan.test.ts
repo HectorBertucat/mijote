@@ -318,3 +318,10 @@ test("un seul jour disponible : une sortie par semaine, et le message d'entretie
   assert.equal(q.phase, 1);
   assert.ok(q.weeks.some((w) => w.notes.some((n) => /entretien/.test(n))));
 });
+
+test("première semaine commencée un dimanche : aucune séance avant le jour de mise en route", () => {
+  const sunday = addDays(MON, 6);
+  const p = buildPlan(input(sunday, [], { startedOn: sunday }));
+  const first = p.sessions.filter((s) => s.weekStart === MON);
+  assert.ok(first.every((s) => s.date >= sunday), `séances avant la mise en route : ${first.map((s) => s.date).join(", ")}`);
+});

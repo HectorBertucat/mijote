@@ -681,6 +681,8 @@ function sessionsFor(t: Targets, x: PlanInput, prevRun: number | null, level: Le
   const ordered = roles.filter((r) => placed.days.has(r.role)).sort((a, b) => placed.days.get(a.role)! - placed.days.get(b.role)!);
   for (const r of ordered) {
     const wd = placed.days.get(r.role)!;
+    // Première semaine commencée en cours de route : rien avant le jour de mise en route (pas de « manquée » fictive).
+    if (addDays(t.weekStart, wd) < x.startedOn) continue;
     let s: RunSession;
     if (r.kind === "marche_course") s = walkRun(level?.level ?? t.level ?? 1, x.zones, !!level?.level8Done);
     else if (r.kind === "sortie_longue") s = longRun(r.minutes, x.zones);
