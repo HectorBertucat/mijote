@@ -79,7 +79,7 @@ Les durées réelles sont mesurées et corrigent les estimations des sessions su
 
 Le plan tient compte de la cuisine : le riz de plusieurs recettes cuit une fois (puis « Partage le riz : … pour chacune »), un récipient ne reçoit jamais plus qu'il ne peut contenir, ce qui se verse au moment (une boîte de pulpe, la crème) ne prend pas de bol, et une personne n'a jamais deux choses à faire de ses mains en même temps : un mijoté se surveille (« remue la sauce » toutes les 5 min) pendant qu'on fait autre chose. Les règles : [session.md](session.md).
 
-**En boîtes** : à la fin, pèse chaque marmite cuite (récipient plein moins récipient vide), et le riz ou la semoule à part s'ils ont cuit séparément. L'appli dit combien de boîtes pour chacun et combien de grammes dans chacune (plat et riz réglés pour viser les calories et les protéines de chacun). « Ranger les boîtes » les met dans le **Frigo** : au frigo pour les repas des prochains jours, au congélo pour la fin de semaine et la marge. La fiche recette a la même calculette.
+**En boîtes** : à la fin, pèse chaque marmite cuite (récipient plein moins récipient vide), et le riz ou la semoule à part s'ils ont cuit séparément. L'appli dit combien de boîtes pour chacun et combien de grammes dans chacune (la taille de la boîte vise les calories de chacun, sans dépasser le haut de son repère ; le riz garde la proportion de la marmite, en moins pour qui manque de protéines ; un surplus fait une petite boîte de reste). « Ranger les boîtes » les met dans le **Frigo** : au frigo pour les repas des prochains jours, au congélo pour la fin de semaine et la marge. La fiche recette a la même calculette.
 
 ## 6 bis. Frigo
 

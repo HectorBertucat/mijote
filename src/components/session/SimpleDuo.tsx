@@ -5,15 +5,17 @@
 // « Suivant » en bas. Grand écran sans personne : les deux fils côte à côte, touches A et B.
 // Les relais (qui libère quoi) et ce qui sonne bientôt restent ; le reste est dans la vue détaillée.
 import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
-import { currentPhase, itemStatus, passiveMin, personFocus, personNext, stepTimer, threadOf, type ThreadItem, type TimerState } from "@/lib/session/state";
+import { itemStatus, personFocus, personNext, threadOf, type ThreadItem, type TimerState } from "@/lib/session/state";
+import { weighItems } from "@/lib/session/guide";
+import { BowlChip, BowlItems, BowlText, Lanes } from "./guide";
 import { Icon, Tape } from "@/components/ui";
 import { handoffLine, ofName } from "@/lib/session/people";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import type { Controls } from "./SessionApp";
-import { handoffsFor, timerMinutes } from "./blocks";
+import { handoffsFor } from "./blocks";
 import { prepTitle } from "./Prep";
 import { Bowl, bowlOf, clock, HandoffRow, PersonMono, recipeOf, usePeople, stepTitle } from "./parts";
-import { COLUMN, MainButton, personOf, RingBar, Ringing, Shell, SimpleHead, Soon, StepNow } from "./Simple";
+import { ActionBar, COLUMN, MainButton, personOf, RingBar, Ringing, Shell, SimpleHead, StepNow } from "./Simple";
 
 type Wake = { on: boolean; request: () => Promise<void> };
 
@@ -25,7 +27,7 @@ export function SimpleDuo({ plan, c, person, overlay, dark, wake, detail, onEnd,
     const done = thread.filter((it) => itemStatus(c.state, it) === "done").length;
     return (
       <Shell overlay={overlay} dark={dark} tone={mine.length ? "hot" : "paper"} wakeOn={wake.on} onWake={() => void wake.request()} bar={<PersonBar plan={plan} c={c} person={person} ringing={mine} />}>
-        <SimpleHead plan={plan} c={c} stage="cook" wake={wake} detail={detail} overlay={overlay} onEnd={onEnd} tone={mine.length ? "hot" : "paper"} lead={<PersonMono person={person} size={32} />} title={`Fil ${ofName(n[person].name)} · ${done} sur ${thread.length}`} />
+        <SimpleHead plan={plan} c={c} stage="cook" wake={wake} detail={detail} overlay={overlay} onEnd={onEnd} tone={mine.length ? "hot" : "paper"} lead={<PersonMono person={person} size={32} />} title={`Fil ${ofName(n[person].name)} · ${done} sur ${thread.length}`} person={person} />
         {mine.length ? <Ringing plan={plan} c={c} timers={mine} /> : <div className={COLUMN}><PersonNow plan={plan} c={c} person={person} ringing={mine} /></div>}
       </Shell>
     );
@@ -67,23 +69,33 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
         <p className="text-[17px] text-ink-2">L’autre termine son fil ; ensuite, on range.</p>
       </div>
     );
+  const other: Person = person === "A" ? "B" : "A";
+  const theirs = personFocus(plan, c.state, other, c.now);
   return (
     <div className="grid gap-8 pt-6">
-      <Soon plan={plan} c={c} exclude={focus.type === "step" ? focus.id : null} person={person} />
       {focus.type === "step" ? <StepNow plan={plan} c={c} step={focus.step} /> : <PrepNow plan={plan} task={focus.task} />}
+      {theirs && (
+        <p className="flex items-center gap-3 border-y border-line py-3 text-[17px] text-ink-2">
+          <PersonMono person={other} size={28} />
+          <span className="min-w-0">
+            <b className="text-ink">{n[other].name}</b> {itemStatus(c.state, theirs) === "active" ? "fait" : "va faire"} : {theirs.type === "step" ? stepTitle(plan, theirs.step) : prepTitle(theirs.task)}
+          </span>
+        </p>
+      )}
+      <Lanes plan={plan} c={c} focus={focus.type === "step" ? focus.step : null} person={person} />
       {relay && (
         <HandoffRow from={relay.from} at={clock(c.cookingStart + relay.atMin * 60000)}>
           {handoffLine(relay, n)}
         </HandoffRow>
       )}
-      {next && (
+      {next?.type === "prep" && (
         <section className="grid gap-3">
           <h2 className="label text-ink-2">
-            Ensuite · <span className="num">{clock(c.cookingStart + next.startMin * 60000)}</span>
+            Ensuite, un geste de prep · <span className="num">{clock(c.cookingStart + next.startMin * 60000)}</span>
           </h2>
           <p className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 border-y border-line py-3 text-[17px] text-ink-2">
-            {next.type === "step" ? <StepIllu kind={next.step.kind} text={next.step.text} size={40} /> : <StepIllu kind="prep" text={next.task.title} size={40} />}
-            <span className="min-w-0">{next.type === "step" ? stepTitle(plan, next.step) : prepTitle(next.task)}</span>
+            <StepIllu kind="prep" text={next.task.title} size={40} />
+            <span className="min-w-0">{prepTitle(next.task)}</span>
           </p>
         </section>
       )}
@@ -101,7 +113,7 @@ function PrepNow({ plan, task }: { plan: SessionPlan; task: PrepTask }) {
         {task.kind === "cut" && task.items[0] ? <FoodIllu food={task.items[0].food} item={task.title} size={80} live className="shrink-0" /> : <StepIllu kind="prep" text={task.text ?? task.title} size={80} live className="shrink-0" />}
         <div className="grid min-w-0 justify-items-start gap-2">
           {recipe && (
-            <Tape tint={recipe.color} seed={recipe.slug}>
+            <Tape tint={recipe.color} seed={recipe.slug} wrap>
               {recipe.name}
             </Tape>
           )}
@@ -130,13 +142,18 @@ function PrepNow({ plan, task }: { plan: SessionPlan; task: PrepTask }) {
             );
           })}
         </ul>
+      ) : task.kind === "weigh" ? (
+        <div className="grid gap-3">
+          <p className="flex flex-wrap items-center gap-3 text-lead">
+            Pèse et verse dans
+            {task.bowls?.map((l) => <BowlChip key={l} plan={plan} letter={l} size="md" />)}
+          </p>
+          <BowlItems bowl={{ items: weighItems(plan, task) }} size="lg" />
+        </div>
       ) : (
         <div className="flex items-start gap-3">
-          {task.bowls?.map((l) => {
-            const b = bowlOf(plan, l);
-            return b ? <Bowl key={l} bowl={b} size="lg" /> : null;
-          })}
-          <p className="text-lead">{task.text}</p>
+          {task.bowls?.map((l) => <BowlChip key={l} plan={plan} letter={l} size="lg" />)}
+          <p className="text-lead"><BowlText plan={plan} text={task.text ?? ""} /></p>
         </div>
       )}
       {task.tools?.length ? <p className="text-[17px] text-ink-2">Avec : {task.tools.join(" · ")}</p> : null}
@@ -154,15 +171,17 @@ function PersonBar({ plan, c, person, ringing, who }: { plan: SessionPlan; c: Co
   if (ringing.length) return <RingBar plan={plan} c={c} t={ringing[0]} who={who ?? person} />;
   const item: ThreadItem | null = personFocus(plan, c.state, person, c.now);
   if (!item) return null;
-  const st = itemStatus(c.state, item);
-  const step = item.type === "step" ? item.step : null;
-  const auto = step && st === "active" && !stepTimer(c.state, step.id) && passiveMin(step) >= 3;
-  const ph = step && st === "active" ? currentPhase(c.state, step) : null;
-  const label = item.type === "prep" ? "Fait" : st === "todo" ? "Commencer" : ph != null && ph < step!.phases!.length - 1 ? "Suivant" : auto ? `Suivant · minuteur ${timerMinutes(step!)} min` : "Suivant";
+  if (item.type === "step") return <ActionBar plan={plan} c={c} step={item.step} person={person} who={who ?? person} />;
+  const u = c.undo(person);
   return (
-    <MainButton icon={st === "todo" && step ? "play" : "check"} who={who ?? person} onClick={() => c.nextFor(person)}>
-      {label}
-    </MainButton>
+    <div className="grid gap-2">
+      <MainButton icon="check" who={who ?? person} onClick={() => c.nextFor(person)} className="!whitespace-normal leading-tight">
+        Fait : {item.task.kind === "weigh" ? `bol${(item.task.bowls?.length ?? 0) > 1 ? "s" : ""} ${(item.task.bowls ?? []).join(", ")} pesé${(item.task.bowls?.length ?? 0) > 1 ? "s" : ""}` : item.task.title.toLowerCase()}
+      </MainButton>
+      <button type="button" onClick={() => c.back(person)} disabled={!u} title={u?.detail ?? "Rien à défaire"} className="flex min-h-11 items-center gap-2 rounded-[8px] px-2 text-left text-[15px] leading-tight opacity-85 hover:opacity-100 disabled:opacity-35">
+        <Icon name="chev" size="s" className="shrink-0 rotate-180" />
+        {u ? u.label : "Rien à défaire"}
+      </button>
+    </div>
   );
 }
-

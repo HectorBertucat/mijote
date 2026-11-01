@@ -8,6 +8,8 @@ import { Alert, Button, Check, Icon, Progress } from "@/components/ui";
 import type { Controls } from "./SessionApp";
 import { Bowl, BowlFoods, bowlName, bowlOf, bowlOrdered, bowlQty, dur, Eyebrow, recipeOf, shortName } from "./parts";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
+import { weighItems } from "@/lib/session/guide";
+import { BowlItems } from "./guide";
 
 export const prepTitle = (t: PrepTask) => (t.kind === "cut" ? t.title : t.kind === "weigh" ? `Pesée · ${t.title}` : `Avant de cuire · ${t.title}`);
 
@@ -205,6 +207,11 @@ export function PrepGesture({ plan, c, t, big }: { plan: SessionPlan; c: Control
                 </span>
               );
             })}
+          </span>
+        ) : t.kind === "weigh" ? (
+          <span className="grid gap-1 text-ink-2">
+            <span className="text-[17px]">Pèse et verse dans le bol {(t.bowls ?? []).join(", ")}</span>
+            <BowlItems bowl={{ items: weighItems(plan, t) }} />
           </span>
         ) : (
           <span className="flex items-start gap-3 text-[17px] text-ink-2">
