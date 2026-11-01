@@ -54,6 +54,8 @@ export interface BowlPlace {
   fillAfter?: string;
   /** Plus plein que le remplissage conseillé (le plus grand contenant ne suffit pas). */
   tight?: boolean;
+  /** Partagé en deux contenants (`container` : « bol-moyen#1+bol-moyen#2 »). */
+  split?: boolean;
 }
 
 export interface Allocation {
@@ -104,7 +106,7 @@ export function allocateBowls(needs: BowlNeed[], kinds: ContainerKind[]): Alloca
 
   // Groupes qui entrent ensemble : un seul contenant s'ils y tiennent (jamais avec de la viande crue).
   const units = unitsOf(kinds);
-  const biggest = units.length ? units[units.length - 1].liters : 0;
+  const biggest = units.length ? Math.max(...units.map((u) => u.liters)) : 0;
   const lots: BowlNeed[][] = [];
   const byKey = new Map<string, BowlNeed[]>();
   for (const n of needs) {
@@ -138,15 +140,29 @@ export function allocateBowls(needs: BowlNeed[], kinds: ContainerKind[]): Alloca
     const letters = lot.map((m) => m.letter);
     for (const m of lot) places.set(m.letter, { holder: u.kind, container: u.id, label: u.label, ...(letters.length > 1 ? { with: letters.filter((l) => l !== m.letter) } : {}), ...extra });
   };
+  /** En deux contenants libres (la moitié du poulet dans chacun), les plus petits qui suffisent ensemble. */
+  const putPair = (o: (typeof order)[number]) => {
+    const free = units.filter((x) => x.freeAt + RINSE_MIN <= o.fillAt + 1e-6);
+    let pair: [(typeof units)[number], (typeof units)[number]] | null = null;
+    for (let i = 0; i < free.length; i++)
+      for (let j = i + 1; j < free.length; j++)
+        if ((free[i].liters + free[j].liters) * BOWL_FILL + 1e-6 >= o.liters && (!pair || free[i].liters + free[j].liters < pair[0].liters + pair[1].liters)) pair = [free[i], free[j]];
+    if (!pair) return false;
+    for (const x of pair) {
+      x.freeAt = o.releaseAt;
+      spans.push([o.fillAt, o.releaseAt]);
+    }
+    const label = pair[0].label === pair[1].label ? `2 × ${pair[0].label.toLowerCase()}` : `${pair[0].label} + ${pair[1].label.toLowerCase()}`;
+    for (const m of o.lot) places.set(m.letter, { holder: pair[0].kind, container: `${pair[0].id}+${pair[1].id}`, label, split: true });
+    return true;
+  };
   const late: typeof order = [];
   for (const o of order) {
     const free = units.filter((u) => u.freeAt + RINSE_MIN <= o.fillAt + 1e-6);
     const pref = (u: (typeof units)[number]) => (o.fridge ? (u.kind === "boite" ? 0 : 1) : u.kind === "bol" ? 0 : 1);
     const fit = free.filter((u) => u.liters * BOWL_FILL + 1e-6 >= o.liters).sort((a, b) => pref(a) - pref(b) || a.liters - b.liters)[0];
-    // Plus gros que le plus grand contenant : le plus grand libre, bien plein.
-    const big = !fit && o.liters > biggest * BOWL_FILL ? free.find((u) => u.liters === biggest) : undefined;
-    if (fit || big) put(o.lot, (fit ?? big)!, o.fillAt, o.releaseAt, big ? { tight: true } : {});
-    else late.push(o);
+    if (fit) put(o.lot, fit, o.fillAt, o.releaseAt, {});
+    else if (!putPair(o)) late.push(o);
   }
   // Pas de contenant libre : peser au moment, une assiette pour des légumes coupés, ou remplir plus tard.
   for (const o of late) {
@@ -168,6 +184,12 @@ export function allocateBowls(needs: BowlNeed[], kinds: ContainerKind[]): Alloca
       put(o.lot, u, u.freeAt, o.releaseAt, after ? { fillAfter: after } : {});
       continue;
     }
+    // Le plus grand contenant libre, bien plein, plutôt que rien.
+    const big = units.filter((x) => x.freeAt + RINSE_MIN <= o.fillAt + 1e-6).pop();
+    if (big && o.liters <= big.liters * 1.05) {
+      put(o.lot, big, o.fillAt, o.releaseAt, { tight: true });
+      continue;
+    }
     for (const m of o.lot) {
       places.set(m.letter, { holder: "bol", container: null, label: null });
       missing.push(m.letter);
@@ -175,7 +197,7 @@ export function allocateBowls(needs: BowlNeed[], kinds: ContainerKind[]): Alloca
   }
   let peak = 0;
   for (const [a] of spans) peak = Math.max(peak, spans.filter(([x, y]) => x <= a + 1e-6 && y > a + 1e-6).length);
-  return { places, peak: peak + missing.length, used: units.filter((u) => Number.isFinite(u.freeAt)).length + missing.length, missing };
+  return { places, peak: peak + missing.length, used: units.filter((u) => u.freeAt !== -Infinity).length + missing.length, missing };
 }
 
 /** L'inventaire de prep d'une cuisine : ses bols et boîtes de prep (lignes « container »), sinon celui par défaut. */

@@ -45,7 +45,10 @@ export function splitTitle(text: string): { title: string; detail: string } {
     return null;
   };
   if (title.length > TITLE_MAX) {
-    const c = cutAt(/ : /g, 8) ?? cutAt(/, /g, 12) ?? cutAt(/ ; /g, 12);
+    // « Pendant que la sauce mijote : poêle vide… » : le moment seul ne dit pas quoi faire, on garde le geste.
+    const ctx = /^(?:pendant|dès|quand|une fois|à \d|après|avant)\b/i.test(title) ? cutAt(/ : /g, 8) : null;
+    const after = ctx ? cutAt(/, /g, ctx.at + 3) : null;
+    const c = after ?? cutAt(/ : /g, 8) ?? cutAt(/, /g, 12) ?? cutAt(/ ; /g, 12);
     if (c) {
       const rest = title.slice(c.at + c.len).trim();
       detail = [rest.charAt(0).toUpperCase() + rest.slice(1), detail].filter(Boolean).join(rest.endsWith(".") ? " " : ". ");

@@ -32,7 +32,7 @@
     },
     {
       "kind": "bake",
-      "text": "Patates douces (bol A) étalées dans les deux grands plats, niveaux 2 et 4 : 15 min. Ajoute le poulet (bol B) par-dessus, inverse les plats, encore 18 min.",
+      "text": "Patates douces (bol A) étalées en une couche, niveaux 2 et 4 : 15 min. Ajoute le poulet (bol B) par-dessus, inverse les plats, encore 18 min.",
       "durationMin": 35,
       "activeMin": 4,
       "equipmentId": "oven",

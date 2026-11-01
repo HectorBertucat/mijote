@@ -494,8 +494,8 @@ interface Work {
   refDur?: number;
   /** Lettres de session de ses bols (une cuisson partagée en a de plusieurs recettes). */
   letters: string[];
-  /** Cuisson de base (riz, pâtes, légumes à l'eau) : se partage entre recettes. */
-  base?: { key: string; info: BaseFood; method: BaseMethod; grams: number; food: string };
+  /** Cuisson de base (riz, pâtes, légumes à l'eau) : se partage entre recettes ; `batches` : fournées dans la même eau. */
+  base?: { key: string; info: BaseFood; method: BaseMethod; grams: number; food: string; batches?: number };
   /** Cuisson partagée : texte, sous-étapes et parts déjà écrits (lettres de session). */
   out?: { text: string; phases: StepPhase[]; shared: SharedPortion[] };
   /** Intervalles « mains » depuis le début de l'étape, et la chronologie d'attention. */
@@ -1036,6 +1036,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
 
   // ─── Étapes de cuisson ───
   const works: Work[] = [];
+  const needsOf = input.map((r) => vesselNeeds(r, (id) => kindOf(id) === "pot", (id) => kindOf(id) === "pan"));
   const hobFitsOf = (vessel: string) => res.fits.filter((f) => f.equipmentId === vessel && hobs.some((h) => h.id === f.hobId));
   /** Les foyers d'un récipient, le plus adapté d'abord ; celui que cite le texte en tête s'il y va. */
   const hobsFor = (vessel: string, text: string): string[] => {
@@ -1066,8 +1067,16 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       const act = refAct >= refDur - EPS ? dur : Math.min(dur, refAct);
       if (sf && dur !== refDur) sf.note(refDur, dur);
       const e = s.equipmentId ? eq.get(s.equipmentId) : undefined;
-      if (s.equipmentId && !e) {
-        errors.push({ kind: "unknown_equipment", message: `${r.name}, étape ${si + 1} : équipement inconnu « ${s.equipmentId} ».`, stepIds: [id] });
+      // Une cuisson de base dont la casserole manque trouvera un autre récipient (plus bas) ; sinon, le dire.
+      if (s.equipmentId && !e && !(baseOfStep(r, s) && kindOf(s.equipmentId) === "pot")) {
+        const need = kindOf(s.equipmentId) === "pot" ? needsOf[ri].get(s.equipmentId) : undefined;
+        errors.push({
+          kind: "unknown_equipment",
+          message: need
+            ? `${r.name}, étape ${si + 1} : la fiche prend ${article(shortName(s.equipmentId)!).toLowerCase()} (environ ${fmtL(need.liters)}) et la cuisine n'a pas de récipient assez grand qui le remplace.`
+            : `${r.name}, étape ${si + 1} : équipement inconnu « ${s.equipmentId} ».`,
+          stepIds: [id],
+        });
       }
       const vessel = e && isVessel(e) ? e.id : null;
       const vesselHobs = vessel ? hobFitsOf(vessel) : [];
@@ -1150,6 +1159,9 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
           const overlap = w.side || ((["boil", "rest"].includes(main.src!.kind) || /\bpendant (?:le|la|les|l'|que|ce)\b/i.test(s.text)) && main.vessel !== vessel);
           w.deps.push({ w: main, type: overlap ? "active" : "end" });
         }
+        // L'étape principale qui suit un à-côté l'attend : « Poulet dans la sauce » après « pendant que la sauce
+        // mijote, saisis le poulet », le montage après la sauce faite « pendant ce temps ». Pas une cuisson de base.
+        if (!w.side && s.kind !== "cool") for (const p of mine.slice(main ? mine.indexOf(main) + 1 : 0)) if (p.side && !p.base) w.deps.push({ w: p, type: "end" });
         for (const p of mine) {
           if (vessel && p.vessel === vessel) w.deps.push({ w: p, type: "end" });
           if ((s.bowls ?? []).some((b) => (p.src!.bowls ?? []).includes(b))) w.deps.push({ w: p, type: "end" });
@@ -1201,14 +1213,51 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     w.hobDur = w.dur;
   };
   const merged = new Map<Work, Work>(); // membre fondu → la cuisson qui le porte
+  const mergeNotes: string[] = [];
   const groups = new Map<string, Work[]>();
-  for (const w of works) if (w.base && !w.cont && !w.contOf && w.vessel) groups.set(w.base.key, [...(groups.get(w.base.key) ?? []), w]);
+  // Une cuisson de base dont la casserole manque à la cuisine entre aussi : elle prendra un récipient qui la tient.
+  for (const w of works) if (w.base && !w.cont && !w.contOf && (w.vessel || (w.src?.equipmentId && kindOf(w.src.equipmentId) === "pot"))) groups.set(w.base.key, [...(groups.get(w.base.key) ?? []), w]);
+  /**
+   * Trop pour le plus grand récipient, à l'eau : en fournées dans la même eau (la moitié, sortie à l'écumoire,
+   * puis l'autre moitié). Le temps de cuisson se répète.
+   */
+  const inBatches = (m: Work): boolean => {
+    if (m.base!.method !== "bath") return false;
+    const big = [...pots].sort((a, b) => (usableLiters(b, "boil") ?? 0) - (usableLiters(a, "boil") ?? 0))[0];
+    const u = big ? usableLiters(big, "boil") : null;
+    if (!big || u == null) return false;
+    const k = [2, 3, 4].find((n) => baseLiters(m.base!.info, "bath", m.base!.grams / n / 1000) <= u + 1e-6);
+    if (!k) return false;
+    moveTo(m, big.id);
+    m.base!.batches = k;
+    const src = m.src!;
+    const phases = [...(src.phases ?? [])];
+    const addAt = phases.findIndex((p) => mentionsBowl(relabelBowls(p.text, letterMaps[m.r]), m.letters[0] ?? "?"));
+    const cook = phases.slice(addAt + 1).find((p) => p.wait);
+    const extra = (k - 1) * ((cook?.min ?? 6) + 0.5);
+    if (addAt >= 0 && cook) {
+      const at = phases.indexOf(cook) + 1;
+      const more = Array.from({ length: k - 1 }, (_, i) => [
+        { text: `Sors-les à l'écumoire ; fournée ${i + 2} sur ${k} dans la même eau`, min: 0.5 },
+        { ...cook, text: `${cook.text} (fournée ${i + 2})` },
+      ]).flat();
+      phases.splice(at, 0, ...more);
+    }
+    m.src = { ...src, phases, text: `${src.text} En ${k} fournées dans la même eau : ${m.base!.info.label} n'y tiennent pas d'un coup.` };
+    m.dur += extra;
+    m.hobDur += extra;
+    m.act += 0.5 * (k - 1);
+    m.notes.push(`${m.base!.info.label[0].toUpperCase()}${m.base!.info.label.slice(1)} en ${k} fournées : ${article(shortName(big.id, big.name)!).toLowerCase()} n'en prend pas plus d'un coup.`);
+    return true;
+  };
+  const noPot = (m: Work) => errors.push({ kind: "unknown_equipment", message: `${recipes[m.r].name}, étape ${m.order} : il faut un récipient d'environ ${fmtL(baseLoad([m]).liters)} pour ${m.base!.info.label} et la cuisine n'en a pas d'assez grand.`, stepIds: [m.id] });
   for (const [key, members] of groups) {
     // Minutes où les autres étapes de la session tiennent chaque récipient : à éviter (on attendrait qu'il se libère).
     const busy = new Map<string, number>();
     for (const w of works) if (w.vessel && !members.includes(w)) busy.set(w.vessel, (busy.get(w.vessel) ?? 0) + w.dur);
-    // Un récipient de plus coûte plus cher qu'attendre un peu qu'un récipient se libère : on regroupe d'abord.
-    const cost = (ids: string[]) => ids.length * 45 + ids.reduce((x, id) => x + (busy.get(id) ?? 0) / 2 + (vesselLiters(eq.get(id)!) ?? 9) / 10, 0);
+    // Le moins de cuissons d'abord (un récipient de plus pèse plus que toute attente), puis les récipients
+    // les moins pris ailleurs, puis les plus petits.
+    const cost = (ids: string[]) => ids.length * 1000 + ids.reduce((x, id) => x + (busy.get(id) ?? 0) / 2 + (vesselLiters(eq.get(id)!) ?? 9) / 10, 0);
     const smallest = (ms: Work[]) =>
       pots
         .filter((e) => holdsAll(e.id, ms))
@@ -1216,9 +1265,10 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     const recipesIn = new Set(members.map((m) => m.r));
     if (recipesIn.size < 2 || members.length > 5) {
       for (const m of members) {
-        if (holdsAll(m.vessel!, [m])) continue;
+        if (m.vessel && holdsAll(m.vessel, [m])) continue;
         const v = smallest([m]);
         if (v) moveTo(m, v);
+        else if (!inBatches(m) && !m.vessel) noPot(m);
       }
       continue;
     }
@@ -1243,9 +1293,11 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     assign(0, new Map());
     // Rien à regrouper (chaque recette seule dans son récipient) : chacune garde le sien s'il la tient.
     if (!found.length || [...found[0].parts.values()].every((ms) => ms.length === 1)) {
-      for (const m of members) if (!holdsAll(m.vessel!, [m])) {
+      for (const m of members) {
+        if (m.vessel && holdsAll(m.vessel, [m])) continue;
         const v = smallest([m]);
         if (v) moveTo(m, v);
+        else if (!inBatches(m) && !m.vessel) noPot(m);
       }
       continue;
     }
@@ -1290,6 +1342,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       for (const m of ms) if (m !== lead) merged.set(m, lead);
       lead.deps = [...ms.flatMap((m) => m.deps)];
       lead.notes.push(`Une seule cuisson de ${info.label} pour ${list(ms.map((m) => recipes[m.r].name))}.`);
+      mergeNotes.push(`${info.label[0].toUpperCase()}${info.label.slice(1)} : une seule cuisson pour ${list(ms.map((m) => recipes[m.r].name))} (${formatQty(total, null)} dans ${article(shortName(vessel, eq.get(vessel)?.name)!).toLowerCase()}), puis le partage.`);
     }
   }
   if (merged.size) {
@@ -1315,7 +1368,10 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
   const isPot = (id: string) => kindOf(id) === "pot";
   const isPan = (id: string) => kindOf(id) === "pan";
   const loadsOf = input.map((r) => stepLoads(r, isPot, isPan));
-  const loadOfWork = (w: Work): StepLoad | null => (w.out && w.base ? baseLoad([w]) : (loadsOf[w.r].get(w.order - 1) ?? null));
+  const loadOfWork = (w: Work): StepLoad | null => {
+    if (w.base?.batches) return { liters: baseLiters(w.base.info, w.base.method, w.base.grams / w.base.batches / 1000), mode: "boil" };
+    return w.out && w.base ? baseLoad([w]) : (loadsOf[w.r].get(w.order - 1) ?? null);
+  };
 
   // Attention : la chronologie de chaque étape (mains, surveille, libre) et ses intervalles « mains ».
   for (const w of works) {
@@ -1795,6 +1851,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
         ...(full ? { ingredients: stepIngredients(w, text, phases) } : {}),
       };
       if (w.base) step.base = w.base.info.label;
+      if (w.base?.batches) step.batches = w.base.batches;
       if (w.out) step.shared = w.out.shared;
       if (hobLevelLabel) step.hobLevelLabel = hobLevelLabel;
       // Volume : ce que met l'étape dans son récipient, et ce qu'il offre (remplissage compris).
@@ -2047,6 +2104,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     plan.persons = persons;
     plan.handoffs = handoffs;
   }
+  if (mergeNotes.length) plan.decisions = mergeNotes;
   if (eveMin != null) plan.prep.eveMin = eveMin;
   if (opts.eve) plan.eve = { minutes: eveDoneMin, tasks: eveTasks, bowls: bowls.filter((b) => b.fridge).map((b) => b.letter), doneTasks: [...opts.eve.doneTasks] };
   if (opts.durations) {

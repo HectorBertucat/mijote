@@ -10,15 +10,14 @@
 // - légumes ou œufs à l'eau : 2,5 L d'eau par kilo (1,5 L au moins) et 1,5 L par kilo de légumes ;
 // - dans un mijoté, tout compte pour 1 L par kilo (la sauce remplit les vides), les feuilles 1,5 ;
 // - dans un bol de prep, les morceaux crus prennent de la place : oignons émincés 1,6 L/kg,
-//   champignons 2,2, haricots verts 1,8, feuilles 5, viande en morceaux 1,1 ; un bol se remplit aux
-//   quatre cinquièmes ;
+//   champignons 2,2, haricots verts 1,8, feuilles 5, viande en morceaux 1 ; un bol se remplit à 90 % ;
 // - au four, une plaque ou un plat rôtit en une couche environ 1,5 g par cm².
 import type { PlannerEquipment, PlannerIngredient, PlannerRecipe, PlannerStep, StepKind } from "./planner";
 
 /** Remplissage maximal d'un récipient : à l'ébullition, ou pour un mijoté, une sauce. */
 export const FILL = { boil: 0.75, stew: 0.85 } as const;
 /** Remplissage maximal d'un bol ou d'une boîte de prep. */
-export const BOWL_FILL = 0.8;
+export const BOWL_FILL = 0.9;
 /** Rôtir en une couche : grammes par cm² de plaque ou de plat. */
 export const ROAST_G_PER_CM2 = 1.5;
 
@@ -131,7 +130,7 @@ const BOWL_BULK: [RegExp, number][] = [
   [/patate|pomme_de_terre|carotte|potiron|butternut/, 1.4],
   [/emmental|parmesan|mozzarella|rape|fromage/, 1.6],
   [/riz|pates|semoule|quinoa|boulgour|lentille|pois_casses|farine|sucre/, 1.25],
-  [/poulet|porc|boeuf|dinde|veau|agneau|merguez|saucisse|chorizo|filet|echine|saute/, 1.1],
+  [/poulet|porc|boeuf|dinde|veau|agneau|merguez|saucisse|chorizo|filet|echine|saute/, 1],
 ];
 const bulk = (table: [RegExp, number][], food: string | null | undefined) => table.find(([re]) => re.test(food ?? ""))?.[1] ?? 1;
 
