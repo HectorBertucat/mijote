@@ -18,7 +18,8 @@ import { getRunProfile } from "@/lib/running/store";
 import { act, clockOf, normOpts, optsOf, suggestedReps, type Live, type LiveAction } from "@/lib/training/live";
 import { activeLive, createDuo, createLive, endLive, getLive, guideOpts, setGuideOpts, writeLive, type LiveRow } from "@/lib/training/live-store";
 import { GEAR_LABEL, META } from "@/lib/training/library";
-import { motionOf } from "@/lib/training/figures";
+import { guideMotion, motionOf } from "@/lib/training/figures";
+import { cycleDuration } from "@/lib/training/motion";
 import { lastFor, levelFor, nextType, ready, type Program, type Workout } from "@/lib/training/program";
 import { programById, programFor } from "@/lib/training/programs";
 import { listWorkouts } from "@/lib/training/store";
@@ -172,6 +173,8 @@ function exerciseView(p: Program, workouts: Workout[], id: string) {
     last: lastFor(workouts, id),
     ready: ready(p, workouts, id),
     hasFigure: !!motionOf(p, id),
+    // Durée d'une répétition au rythme guidé (secondes) : celle de la figure, ou de la planche sans figure.
+    cycle: cycleDuration(guideMotion(p, id)),
   };
 }
 
@@ -245,7 +248,7 @@ export function liveView(db: Db, row: LiveRow, now: number) {
     ...row,
     now,
     opts: optsOf(l),
-    state: phaseOf(l, row.ended, row.version, now, cur && ex && reps != null ? { ex, motion: motionOf(p, cur.ex), reps } : null),
+    state: phaseOf(l, row.ended, row.version, now, cur && ex && reps != null ? { ex, motion: guideMotion(p, cur.ex), reps } : null),
     figureIds: [...new Set(l.steps.flatMap((s) => (s.k === "ex" || s.k === "emom" ? [s.ex] : [])))].filter((id) => motionOf(p, id)),
     view: {
       step,

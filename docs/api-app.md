@@ -8,7 +8,7 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 
 - **Signal** : le `GET` de l'import (`/api/sante/import`) annonce `"app_v1"` dans `features` quand cette API existe. Sans lui, l'app n'appelle rien ici.
 
-- Base : `<url de l'instance>/api/app/v1/`. Même code d'installation que l'import : l'URL, la clé de la personne et, derrière Cloudflare Access, le jeton de service.
+- Base : `<racine de l'instance>/api/sante/import/app/v1/` (conseillée), ou `<racine>/api/app/v1/` (la même API). La première est sous le préfixe de l'import : derrière Cloudflare Access, la règle « Service Auth » de `/api/sante/import` la couvre déjà ; la seconde demande sa propre règle, sinon Access répond par une redirection 302 vers sa page de connexion. Même code d'installation que l'import : l'URL, la clé de la personne et, derrière Cloudflare Access, le jeton de service.
 - En-têtes : `X-Mijote-Key: <clé>` (obligatoire ; elle désigne la personne), `CF-Access-Client-Id` et `CF-Access-Client-Secret` si l'instance est derrière Access. Pas de mot de passe d'instance sur ce chemin : la clé suffit.
 - Réponses en JSON : `{ ok: true, … }` ou `{ ok: false, error }` avec 400 (demande invalide), 401 (clé manquante ou inconnue), 404 (chemin, séance ou entrée inconnus, ou pas à cette personne), 409 (séance terminée).
 - Corps des `POST` en JSON. Jours `AAAA-MM-JJ` (jour de Paris) ; instants des séances et des horloges en **ms depuis l'epoch, heure du serveur** (`now`, `state.serverTime`, l'événement `hello` du flux : l'app corrige l'écart avec son horloge et décompte en local) ; autres instants en ISO 8601 avec décalage.
@@ -54,7 +54,7 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 
 ## Sport
 
-`program.exercises[]` : la fiche (`name`, `short`, `reps: [min, max]`, `uni`, `unit: "s"` pour une tenue, `tempo`, `cues`, `errors`, `ladder`, `guide`), plus `gear` (`[{ id, label }]`), `pattern`, `muscles` (`[{ id, label, load }]`, `load` 3 = cible, 2 = aide, 1 = stabilise, du plus au moins sollicité), `level` (cran en cours), `last` (la dernière fois), `ready` (prêt à monter d'un cran), `hasFigure`.
+`program.exercises[]` : la fiche (`name`, `short`, `reps: [min, max]`, `uni`, `unit: "s"` pour une tenue, `tempo`, `cues`, `errors`, `ladder`, `guide`), plus `gear` (`[{ id, label }]`), `pattern`, `muscles` (`[{ id, label, load }]`, `load` 3 = cible, 2 = aide, 1 = stabilise, du plus au moins sollicité), `level` (cran en cours), `last` (la dernière fois), `ready` (prêt à monter d'un cran), `hasFigure`, `cycle` (durée d'une répétition au rythme guidé, en secondes : celle de la figure, ou de la figure de planche si l'exercice n'en a pas, comme le site ; la série dure `reps × cycle`).
 
 `guide` : `{ auto, lead, change }` : enchaînement automatique, secondes de mise en place avant une série (0 à 30), secondes pour passer d'un exercice à l'autre dans un superset (0 à 90).
 
@@ -74,7 +74,7 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
   - `T < 0` : mise en place, `−T` secondes restantes (bips à 3, 2, 1) ;
   - `T < dur` : en cours, côté 1 ; la figure se lit à `T mod cycle`, la répétition en cours est `floor(T / cycle) + 1` ;
   - unilatéral (`uni`) : de `dur` à `dur + 5`, changement de côté, puis côté 2 jusqu'à `2 × dur + 5` ;
-  - ensuite : fini. Un écran envoie alors `record` (1,2 s après la fin) ; le serveur ignore les doublons.
+  - ensuite : fini. Un écran envoie alors `record` (1,2 s après la fin) avec `value` = l'objectif (des répétitions, ou des secondes pour une tenue) ; le serveur ignore les doublons.
 - **Repos** : `cur.restEnd` ; `view.restLeft` en secondes. À 0, un écran envoie `go` `n: 1`.
 - **Finisher** (`emom`) : `cur.emom` est le départ (peut être dans le futur : mise en place) ; un tour toutes les `every` secondes.
 - **Pause** : `cur.paused` fige toutes ces horloges à cet instant ; `resume` les décale du temps passé.

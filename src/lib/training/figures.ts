@@ -298,3 +298,9 @@ function rowMotion(pull: number, hold: number, lower: number): Motion {
 export function motionOf(p: { motions?: Record<string, Motion> } | null | undefined, ex: string): Motion | null {
   return p?.motions?.[ex] ?? MOTIONS[ex] ?? null;
 }
+
+/** La figure qui rythme une série : celle de l'exercice, sinon la planche (un programme a toujours ses figures ;
+ * filet de sécurité). Le site et l'API de l'app en tirent la même durée de répétition. */
+export function guideMotion(p: { motions?: Record<string, Motion> } | null | undefined, ex: string): Motion {
+  return motionOf(p, ex) ?? MOTIONS.jPlank;
+}
