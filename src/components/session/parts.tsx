@@ -29,7 +29,25 @@ export const kindLabel = (k: PlanStep["kind"]) => (k === "preheat" ? "Four" : ST
 export const recipeOf = (plan: SessionPlan, slug: string | null | undefined) => plan.recipes.find((r) => r.slug === slug);
 /** Couleur d’une étape : celle de sa recette (var(--c-recipe-N)), encre douce pour une action commune. */
 export const stepColor = (plan: SessionPlan, s: PlanStep) => recipeOf(plan, s.recipeSlug)?.color ?? "var(--c-ink-3)";
-export const shortName = (name: string | undefined) => (name ?? "").split(/\s+/)[0] ?? "";
+/**
+ * Nom court d’un plat dans une puce ou un titre serré : le premier mot (« Colombo », « Dahl »), sauf quand il ne
+ * distingue rien : « One pot » saute (« Orzo »), et une viande ou un mot générique prend le mot suivant (« Poulet
+ * basquaise », « Porc au caramel », « Pasta al forno ») plutôt que trois « Poulet » dans la même session.
+ */
+const GENERIC = new Set(["poulet", "porc", "bœuf", "boeuf", "pasta", "sauté", "saute"]);
+const LINK = new Set(["de", "du", "des", "d’", "au", "aux", "à", "la", "le", "les", "al", "et"]);
+export const shortName = (name: string | undefined) => {
+  const words = (name ?? "").split(",")[0].split(/\s+/).filter(Boolean);
+  if (words[0]?.toLowerCase() === "one" && words[1]?.toLowerCase() === "pot" && words.length > 2) words.splice(0, 2);
+  const first = words[0] ?? "";
+  if (!GENERIC.has(first.toLowerCase())) return first.charAt(0).toUpperCase() + first.slice(1);
+  const out = [first];
+  for (const w of words.slice(1)) {
+    out.push(w);
+    if (!LINK.has(w.toLowerCase())) break;
+  }
+  return out.join(" ");
+};
 const rc = (color: string) => ({ "--rc": color }) as CSSProperties;
 
 /**

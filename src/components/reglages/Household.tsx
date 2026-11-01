@@ -7,6 +7,7 @@ import { useActionState, useState, useTransition } from "react";
 import { Alert, Button, Field, Icon, Input, Segmented } from "@/components/ui";
 import { addPersonAction, removePersonAction, renamePersonAction, type FormState } from "@/app/reglages/actions";
 import { ACTIVITY_LABEL, GOAL_LABEL } from "@/lib/health/core";
+import { ofName } from "@/lib/session/people";
 
 export type PersonRow = { id: string; name: string; portionUnits: number };
 
@@ -110,13 +111,13 @@ function PersonLine({ p, busy, onSave, onRemove }: { p: PersonRow; busy: boolean
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line py-4">
       {/* Le prénom se corrige sur place : un champ qui ne se montre qu’au survol et au focus. */}
       <input
-        aria-label={`Prénom de ${p.name}`}
+        aria-label={`Prénom ${ofName(p.name)}`}
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={40}
         className="min-h-12 min-w-0 flex-1 basis-40 rounded-[8px] border border-transparent bg-transparent px-3 font-display text-h3 font-bold text-ink [font-stretch:100%] transition-[border-color,background-color] duration-[var(--dur-1)] ease-[var(--ease-out)] hover:border-line-strong focus:border-accent focus:bg-surface focus:outline-none"
       />
-      <Segmented label={`Part de ${p.name}`} value={units} onChange={setUnits} options={PORTIONS} />
+      <Segmented label={`Part ${ofName(p.name)}`} value={units} onChange={setUnits} options={PORTIONS} />
       <div className="flex items-center gap-2">
         {changed && (
           <Button size="sm" variant="primary" icon="check" disabled={busy} onClick={() => onSave(name, Number(units))}>

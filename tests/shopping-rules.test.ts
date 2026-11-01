@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ResolvedProduct } from "@/lib/chronocatalog";
-import { aisleFor, judge, packsFor, pickProduct } from "@/lib/shopping/rules";
+import { aisleFor, guessAisle, judge, packsFor, pickProduct } from "@/lib/shopping/rules";
 import { buyName } from "@/lib/shopping/label";
 
 const prod = (over: Partial<ResolvedProduct> = {}, a: Partial<NonNullable<ResolvedProduct["availability"]>> = {}): ResolvedProduct => ({
@@ -57,4 +57,11 @@ test("nom en rayon : la préparation part, les parenthèses restent", () => {
   assert.equal(buyName("Râpé (moitié dans la ricotta, moitié dessus)"), "Râpé (moitié dans la ricotta, moitié dessus)");
   assert.equal(buyName("Sauté de porc (1 barquette de 500 g), en dés de 5 mm"), "Sauté de porc (1 barquette de 500 g)");
   assert.equal(buyName("Merguez (6)"), "Merguez (6)");
+});
+
+test("rayon deviné sans catalogue : la préparation ne compte pas", () => {
+  assert.equal(guessAisle("Gingembre frais, râpé"), "Fruits et légumes");
+  assert.equal(guessAisle("Ail, râpé"), "Fruits et légumes");
+  assert.equal(guessAisle("Râpé (moitié dans la ricotta, moitié dessus)"), "Crèmerie");
+  assert.equal(guessAisle("Oignons, émincés"), "Fruits et légumes");
 });

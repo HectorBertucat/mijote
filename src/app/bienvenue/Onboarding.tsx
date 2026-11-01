@@ -29,7 +29,7 @@ function Parts({ at }: { at: number }) {
   );
 }
 
-export function Onboarding({ people, kitchen, home, store, catalog }: { people: PersonRow[]; kitchen: KitchenConfig; home: string; store: string; catalog: boolean }) {
+export function Onboarding({ people, kitchen, home, store, catalog, ai }: { people: PersonRow[]; kitchen: KitchenConfig; home: string; store: string; catalog: boolean; ai: boolean }) {
   const [at, setStep] = useState(0);
   const setAt = (i: number) => {
     setStep(i);
@@ -76,9 +76,9 @@ export function Onboarding({ people, kitchen, home, store, catalog }: { people: 
         <div className="grid gap-8 lg:grid-cols-12 lg:gap-x-6">
           <div className="grid min-w-0 content-start gap-8 lg:col-span-7">
             <div className="reveal">
-              <QuestionHead as="h1" title={`Où fais-tu les courses${NB}?`} hint="Un marché, un supermarché, un drive : la liste se range par rayon, et l’IA propose des produits qu’on y trouve." />
+              <QuestionHead as="h1" title={`Où fais-tu les courses${NB}?`} hint={`Un marché, un supermarché, un drive${NB}: la liste se range par rayon${ai ? ", et l’IA propose des produits qu’on y trouve" : ""}.`} />
             </div>
-            <HomeForm home={home} store={store} catalog={catalog} finish>
+            <HomeForm home={home} store={store} catalog={catalog} ai={ai} finish>
               <Button variant="quiet" onClick={() => setAt(1)}>
                 Revoir la cuisine
               </Button>

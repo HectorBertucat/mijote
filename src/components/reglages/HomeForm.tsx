@@ -6,7 +6,7 @@ import { useActionState } from "react";
 import { Button, Field, Input } from "@/components/ui";
 import { finishSetupAction, saveHomeAction, type FormState } from "@/app/reglages/actions";
 
-export function HomeForm({ home, store, catalog, finish = false, children }: { home: string; store: string; catalog: boolean; finish?: boolean; children?: React.ReactNode }) {
+export function HomeForm({ home, store, catalog, ai = false, finish = false, children }: { home: string; store: string; catalog: boolean; ai?: boolean; finish?: boolean; children?: React.ReactNode }) {
   const [state, save, saving] = useActionState<FormState, FormData>(async (prev, f) => {
     const r = await saveHomeAction(prev, f);
     if (finish && r?.ok) await finishSetupAction();
@@ -15,7 +15,7 @@ export function HomeForm({ home, store, catalog, finish = false, children }: { h
   return (
     <form action={save} className="grid gap-8">
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Où se font les courses" help="Donné à l’IA, pour des produits qu’on trouve vraiment. Facultatif.">
+        <Field label="Où se font les courses" help={ai ? "En tête des listes, et donné à l’IA pour des produits qu’on trouve vraiment. Facultatif." : "En tête des listes de courses. Facultatif."}>
           {(id, d) => <Input id={id} aria-describedby={d} name="store" defaultValue={store} maxLength={80} placeholder="Le marché du samedi, le drive du quartier" />}
         </Field>
         <Field label="Nom de la maison" help="Affiché au survol du mot-symbole. Facultatif.">
@@ -25,7 +25,7 @@ export function HomeForm({ home, store, catalog, finish = false, children }: { h
       <p className="max-w-[60ch] border-l-2 border-line-strong pl-4 text-small text-ink-2">
         {catalog
           ? "Catalogue relié : la liste de courses propose des produits, des prix et des remplaçants."
-          : "Pas de catalogue relié : la liste de courses donne les quantités par rayon, et les prix se saisissent à la validation. Pour en relier un, voir docs/catalogue.md."}
+          : "Pas de catalogue relié : la liste de courses donne les quantités par rayon, et le prix payé se note à côté de chaque article pour suivre les coûts. Pour en relier un, voir docs/catalogue.md."}
       </p>
       <div className="flex flex-wrap items-center gap-4">
         <Button type="submit" variant="primary" icon="check" state={saving ? "loading" : "idle"} loadingLabel={finish ? "On ouvre la cuisine…" : "Enregistrement…"}>

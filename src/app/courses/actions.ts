@@ -103,6 +103,8 @@ export async function validateList(listId: string): Promise<Result> {
     revalidatePath("/courses");
     revalidatePath("/placard");
     const noPrice = r.unpriced ? ` ${r.unpriced} ligne${r.unpriced > 1 ? "s" : ""} sans prix (hors des coûts).` : "";
+    // Sans aucun prix (pas de catalogue, rien de saisi) : pas de « 0 article, 0,00 € ».
+    if (!r.purchases) return { ok: true, message: `Courses validées : ${r.unpriced} article${r.unpriced > 1 ? "s" : ""}, sans prix (hors des coûts).` };
     return { ok: true, message: `Commande validée : ${r.purchases} article${r.purchases > 1 ? "s" : ""}, ${eur(r.total)}. Le placard est à jour.${noPrice}` };
   } catch (e) {
     return fail(e);

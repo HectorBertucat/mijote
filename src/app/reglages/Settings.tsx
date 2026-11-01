@@ -6,6 +6,7 @@ import { HomeForm } from "@/components/reglages/HomeForm";
 import { Household } from "@/components/reglages/Household";
 import { KitchenForm } from "@/components/reglages/KitchenForm";
 import { DocSection } from "@/components/reglages/parts";
+import { aiEnabled } from "@/lib/ai";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { db } from "@/lib/db/client";
 import { listPeople } from "@/lib/health/store";
@@ -25,8 +26,8 @@ export function Settings({ profileId }: { profileId: string }) {
       <DocSection id="cuisine" title="La cuisine" lead="Le planificateur répartit les étapes sur ces foyers, ce four et ces récipients, et sur rien d’autre.">
         <KitchenForm initial={loadKitchen(db)} />
       </DocSection>
-      <DocSection id="courses" title="Les courses" lead="Le magasin aide l’IA à proposer des produits qui existent ; le nom de la maison s’affiche dans l’en-tête.">
-        <HomeForm home={getSetting(db, SETTING.homeName) ?? ""} store={getSetting(db, SETTING.storeLabel) ?? ""} catalog={catalogEnabled()} />
+      <DocSection id="courses" title="Les courses" lead={`Le magasin s’affiche en tête des listes${aiEnabled() ? " et aide l’IA à proposer des produits qui existent" : ""}${"\u00a0"}; le nom de la maison, au survol du mot-symbole.`}>
+        <HomeForm home={getSetting(db, SETTING.homeName) ?? ""} store={getSetting(db, SETTING.storeLabel) ?? ""} catalog={catalogEnabled()} ai={aiEnabled()} />
       </DocSection>
       <DocSection id="prise-en-main" title="La prise en main" lead="La visite montre le cycle de la semaine en quelques étapes : choisir, acheter, cuisiner, ranger.">
         <div className="flex flex-wrap items-center gap-4">

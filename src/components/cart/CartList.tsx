@@ -15,6 +15,7 @@ import { Ticket, type TicketLine } from "./Ticket";
 import { useToast } from "./Toast";
 import { eur, grams } from "./format";
 import { buyName } from "@/lib/shopping/label";
+import { typo } from "@/lib/typo";
 
 export interface RowData {
   id: string;
@@ -213,7 +214,7 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
                   });
                 }}
               >
-                {inCart.length ? "Valider la commande" : "Tout valider"}
+                {inCart.length ? (catalog ? "Valider la commande" : "Valider les courses") : "Tout valider"}
               </Button>
             </div>
           </div>
@@ -275,7 +276,7 @@ function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; cat
   const p = r.product;
   const sig = signalOf(r, catalog, ordered);
   const done = r.inCart && !ordered;
-  const name = p?.name ?? buyName(r.item);
+  const name = typo(p?.name ?? buyName(r.item));
   const qty = p ? `${r.packs} ×` : grams(r.needG);
   const meta = [p?.quantityLabel, r.forRecipes, r.warnings.includes("facultatif") ? "facultatif" : null].filter(Boolean).join(" · ");
   const canTick = !ordered && (!!p || !catalog);
@@ -537,7 +538,7 @@ function OrderedBanner({ listId, title, orderedAt, catalog, lines, total, onMsg 
       </div>
       <div className="grid gap-4 sm:col-span-7">
         <h2 id="commande-titre" className="text-h2">
-          Commande validée
+          {catalog ? "Commande validée" : "Courses validées"}
         </h2>
         <p className="text-ink-2">
           {priced ? "Prix figés" : "Validée"}

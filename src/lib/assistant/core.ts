@@ -12,6 +12,7 @@ import { z } from "zod";
 import { portionOf, type DayTarget, type MealRef, type Outside } from "@/lib/eaters/core";
 import { adviceOf, checkHabit, daysLabel, HABIT_FOODS, habitMacros, isShaker, macrosOf, outsideMean, outsideWeek, type HabitLike } from "@/lib/eaters/habits";
 import { FOODS } from "@/lib/nutrition/foods";
+import { ofName } from "@/lib/session/people";
 
 // ─── Instantané des données ───
 
@@ -264,11 +265,11 @@ export function checkAction(a: ActionInput, s: Snapshot): Checked {
       const before = outsideWith(p, p.habits.map(habitLike));
       const after = outsideWith(p, [...p.habits.map(habitLike), { weekdays, items, kcal: m.kcal, proteinG: m.proteinG }]);
       const gap = dayGap(p, after);
-      if (gap && gap.kcal < -OVER_KCAL) return { ok: false, reason: `Avec cette habitude, la journée de ${p.name} dépasserait sa cible de ~${kcal(-gap.kcal)}.` };
+      if (gap && gap.kcal < -OVER_KCAL) return { ok: false, reason: `Avec cette habitude, la journée ${ofName(p.name)} dépasserait sa cible de ~${kcal(-gap.kcal)}.` };
       const notes: string[] = [];
       if (!p.dayTarget) notes.push(`${p.name} n'a pas encore de cible : l'effet sur sa journée n'est pas chiffré.`);
       const before0 = dayGap(p, before);
-      if (before0 && before0.protein < 15 && before0.kcal < 250) notes.push(`Les repas du batch couvraient déjà la journée de ${p.name}.`);
+      if (before0 && before0.protein < 15 && before0.kcal < 250) notes.push(`Les repas du batch couvraient déjà la journée ${ofName(p.name)}.`);
       return {
         ok: true,
         title: `${a.label.trim()} pour ${p.name}`,
@@ -289,7 +290,7 @@ export function checkAction(a: ActionInput, s: Snapshot): Checked {
       const before = outsideWith(p, p.habits.map(habitLike));
       const rest = p.habits.filter((x) => x.id !== h.id).map(habitLike);
       const after = rest.length ? outsideWith(p, rest) : { kcal: 0, protein: 0 };
-      return { ok: true, title: `Retirer « ${h.label} » de ${p.name}`, lines: [{ label: "Apportait", value: `${kcal(m.kcal)} · ${g(m.protein)} de protéines, ${daysLabel(h.weekdays)}` }, ...gapLines(p, before, after)], notes: [] };
+      return { ok: true, title: `Retirer « ${h.label} » ${ofName(p.name)}`, lines: [{ label: "Apportait", value: `${kcal(m.kcal)} · ${g(m.protein)} de protéines, ${daysLabel(h.weekdays)}` }, ...gapLines(p, before, after)], notes: [] };
     }
     case "manger_boite": {
       const b = s.boxes.find((x) => x.id === a.boxId);

@@ -17,6 +17,7 @@ import type { MealRef } from "@/lib/eaters/core";
 import type { RecipeInput } from "@/lib/recipes/format";
 import { Checks, fmtUsd, IngredientsDiff, Leftovers, NutritionCompare, StepsList } from "./RecipeDiff";
 import { firstOfMonth } from "@/lib/typo";
+import { ofName } from "@/lib/session/people";
 
 interface Budget {
   spentUsd: number;
@@ -227,7 +228,7 @@ function Bubble({ me = false, children }: { me?: boolean; children: React.ReactN
 function intro(h: Macros | null, name: string | null, t: MealRef | null) {
   if (!h) return "Que veux-tu changer ?";
   const k = Math.round(h.kcal);
-  const who = name ? `La part de ${name}` : "Une part";
+  const who = name ? `La part ${ofName(name)}` : "Une part";
   const v = verdictFor(t, h);
   if (!t || !v) return `Que veux-tu changer ? ${who} est à ${k} kcal et ${Math.round(h.protein)} g de protéines.`;
   const gap = v.kcal === "high" ? `, ${k - t.kcalMax} au-dessus de sa cible` : v.kcal === "low" ? `, ${t.kcalMin - k} sous sa cible` : ", dans sa cible";

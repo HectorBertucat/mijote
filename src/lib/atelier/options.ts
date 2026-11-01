@@ -5,6 +5,7 @@ import { SAMPLE_HOUSEHOLD, type Member } from "@/lib/eaters/core";
 import { proteinShare, type Macros } from "@/lib/nutrition/compute";
 import type { RecipeInput } from "@/lib/recipes/format";
 import { norm, portions } from "./verify";
+import { ofName } from "@/lib/session/people";
 
 export interface AdjustOption {
   id: string;
@@ -32,7 +33,7 @@ export function adjustOptions(r: RecipeInput, household: Member[] = SAMPLE_HOUSE
   const p = portions(r, list);
   const h: Macros = p.lead;
   const t = lead.ref;
-  const who = `la part de ${lead.name} (${lead.units} unités)`;
+  const who = `la part ${ofName(lead.name)} (${lead.units} unités)`;
   const now = `Aujourd'hui, ${who} fait ${h.kcal} kcal et ${Math.round(h.protein)} g de protéines (calcul en code).`;
   const out: AdjustOption[] = [];
 

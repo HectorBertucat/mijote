@@ -222,7 +222,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
         )}
 
         <div className="min-w-0 lg:col-span-8 lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <CartList catalog={catalogEnabled()} listId={id} title={title} ordered={ordered} orderedAt={list.orderedAt} groups={groups} copy={<CopyButton text={copy} />} />
+          <CartList catalog={catalogEnabled()} listId={id} title={title} ordered={ordered} orderedAt={list.orderedAt} groups={groups} copy={<CopyButton text={copy} links={catalogEnabled()} />} />
         </div>
 
         {catalogEnabled() && (
@@ -252,7 +252,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
             <SubmitButton pendingText="Je planifie la session…" variant={ordered ? undefined : "soft"}>
               {ordered ? "Lancer la session avec ma commande" : "Lancer la session avec cette liste"}
             </SubmitButton>
-            {ordered && <CopyButton text={copy} />}
+            {ordered && <CopyButton text={copy} links={catalogEnabled()} />}
           </div>
         </form>
       </section>

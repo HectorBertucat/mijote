@@ -30,6 +30,7 @@ import { dayRefOf, weekNutrition } from "@/lib/week/nutrition";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PendingMark } from "@/components/PendingMark";
 import { addAction, clearAction, extraAction, factorAction, proposeAction, removeAction, weekListAction } from "./actions";
+import { ofName } from "@/lib/session/people";
 
 export const dynamic = "force-dynamic";
 
@@ -151,7 +152,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
       .filter((e) => e.ref)
       .map((e) => ({ e, p: portionOf(e, r) }))
       .filter(({ p }) => p.verdict && (p.verdict.protein === "low" || p.capped))
-      .map(({ e, p }) => `${r.name} : ${p.verdict!.protein === "low" ? `un peu léger en protéines pour ${e.name}` : `part de ${e.name} difficile à caler`}`)
+      .map(({ e, p }) => `${r.name} : ${p.verdict!.protein === "low" ? `un peu léger en protéines pour ${e.name}` : `part ${ofName(e.name)} difficile à caler`}`)
   );
   const minutes = plan ? plan.totalMin : est ? est.totalMin : null;
   const title = periodHeading(w, N);
@@ -179,7 +180,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             {ready && <StampSemainePrete seed={w} size={118} className="-my-4" />}
           </div>
           <p className="mt-4 max-w-[46ch] text-lead text-ink">
-            Coche 1 à 3&nbsp;plats, je calcule les quantités et je répartis les {toEat}&nbsp;repas{people.length > 1 ? ` de ${joinFr(people.map((p) => p.name))}` : ""}.
+            Coche 1 à 3&nbsp;plats, je calcule les quantités et je répartis les {toEat}&nbsp;repas{people.length > 1 ? ` ${ofName(joinFr(people.map((p) => p.name)))}` : ""}.
           </p>
           <p className="mt-2 text-small text-ink-2">
             Cuisine le {longDate(cookDate)}
@@ -311,7 +312,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                       </Link>
                     }
                   >
-                    Part de {e.name} à la taille habituelle&nbsp;: il manque {joinFr(e.missing)}.
+                    Part {ofName(e.name)} à la taille habituelle&nbsp;: il manque {joinFr(e.missing)}.
                   </Notice>
                 ))}
               </ul>
