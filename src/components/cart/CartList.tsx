@@ -38,6 +38,13 @@ export interface RowData {
   canRefuse: boolean;
   /** Ce que le vrai panier du drive a dit de la ligne (added, already, partial, unavailable, failed, skipped). */
   drive?: { outcome: string; qty: number | null } | null;
+  /** Quantité totale dans son unité (« 7 gousses », « 350 g »), sans produit du drive. */
+  qty?: string | null;
+  /** Détail par recette (« 3 gousses pour Colombo, 4 pour Dahl »). */
+  parts?: string | null;
+  /** Suite d’un même aliment (unité qui ne s’additionne pas) ; joined : la ligne suivante en est une. */
+  cont?: boolean;
+  joined?: boolean;
 }
 
 type Opt = { kind: "cart"; id: string; on: boolean } | { kind: "all"; on: boolean } | { kind: "packs"; id: string; packs: number } | { kind: "price"; id: string; price: number | null };
@@ -113,7 +120,7 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
           <Bar value={buyable.length ? inCart.length / buyable.length : 0} />
         </div>
       ) : (
-        <OrderedBanner listId={listId} title={title} orderedAt={orderedAt} catalog={catalog} lines={inCart.map((r) => ({ qty: r.product ? `${r.packs} ×` : grams(r.needG), name: r.product?.name ?? buyName(r.item), price: r.totalPrice }))} total={inCart.reduce((s, r) => s + (r.totalPrice ?? 0), 0)} onMsg={show} />
+        <OrderedBanner listId={listId} title={title} orderedAt={orderedAt} catalog={catalog} lines={inCart.map((r) => ({ qty: r.product ? `${r.packs} ×` : (r.qty ?? grams(r.needG)), name: r.product?.name ?? buyName(r.item), price: r.totalPrice }))} total={inCart.reduce((s, r) => s + (r.totalPrice ?? 0), 0)} onMsg={show} />
       )}
 
       {groups.map(({ aisle, rows: gr }) => {
@@ -130,13 +137,13 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
               </summary>
               <ul>
                 {gr.map((g) => (
-                  <li key={g.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line py-3">
-                    <FoodIllu item={g.item} size="s" />
+                  <li key={g.id} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b py-3 ${g.joined ? "border-dashed border-line" : "border-line"}`}>
+                    <FoodIllu item={g.item} size="s" className={g.cont ? "invisible" : ""} />
                     <span className="min-w-0">
                       <span className="block truncate">{buyName(g.item)}</span>
                       {g.forRecipes && <span className="block truncate text-small text-ink-3">{g.forRecipes}</span>}
                     </span>
-                    <span className="num text-small text-ink-2">{grams(g.needG)}</span>
+                    <span className="num text-small text-ink-2">{g.qty ?? grams(g.needG)}</span>
                   </li>
                 ))}
               </ul>
@@ -277,12 +284,12 @@ function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; cat
   const sig = signalOf(r, catalog, ordered);
   const done = r.inCart && !ordered;
   const name = typo(p?.name ?? buyName(r.item));
-  const qty = p ? `${r.packs} ×` : grams(r.needG);
+  const qty = p ? `${r.packs} ×` : (r.qty ?? grams(r.needG));
   const meta = [p?.quantityLabel, r.forRecipes, r.warnings.includes("facultatif") ? "facultatif" : null].filter(Boolean).join(" · ");
   const canTick = !ordered && (!!p || !catalog);
   const swipe = useSwipe(canTick, (dir) => onCart(dir === "right"));
   return (
-    <li id={`ligne-${r.id}`} className="relative scroll-mt-28 overflow-hidden border-b border-line">
+    <li id={`ligne-${r.id}`} className={`relative scroll-mt-28 overflow-hidden border-b ${r.joined ? "border-dashed border-line" : "border-line"}`}>
       {swipe.dx !== 0 && (
         <span aria-hidden className={`absolute inset-0 flex items-center px-4 text-small font-bold ${swipe.dx > 0 ? "justify-start bg-accent-soft text-accent" : "justify-end bg-surface-2 text-ink-2"}`}>
           <span className="inline-flex items-center gap-1">
@@ -299,7 +306,8 @@ function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; cat
         <span className="-ml-3">
           {canTick ? <Tick checked={r.inCart} onChange={onCart} label={r.inCart ? `Retirer ${name} du panier` : `${name} : au panier`} /> : <Tick checked={r.inCart} label={r.inCart ? "commandé" : "pas commandé"} />}
         </span>
-        <FoodIllu item={r.item} size="s" className={`mt-2 transition-opacity duration-[var(--dur-1)] ${done ? "opacity-40" : ""}`} />
+        {/* La suite d’un même aliment : pas de second dessin, la ligne se lit comme un complément de celle du dessus. */}
+        <FoodIllu item={r.item} size="s" className={`mt-2 transition-opacity duration-[var(--dur-1)] ${r.cont ? "invisible" : done ? "opacity-40" : ""}`} />
         <div className="min-w-0 pt-2">
           {ordered ? (
             <RowName qty={qty} name={name} done={false} />
@@ -354,8 +362,8 @@ function Detail({ r, catalog, ordered, pending, start, show, onPacks, close }: {
   const alts = r.state !== "ok" ? r.alts.filter((a) => !r.accepted.some((x) => x.id === a.id)) : [];
   const facts: [string, ReactNode][] = [
     ["Pour", r.item],
-    ...(r.forRecipes ? ([["Recettes", r.forRecipes]] as [string, ReactNode][]) : []),
-    ...(r.needG != null ? ([["Besoin", <span key="b" className="num">{grams(r.needG)}</span>]] as [string, ReactNode][]) : []),
+    ...(r.parts || r.forRecipes ? ([["Recettes", r.parts ?? r.forRecipes]] as [string, ReactNode][]) : []),
+    ...(r.qty || r.needG != null ? ([["Besoin", <span key="b" className="num">{r.qty ?? grams(r.needG)}</span>]] as [string, ReactNode][]) : []),
     ...(p ? ([["Produit", [p.brandName, p.quantityLabel].filter(Boolean).join(", ") || p.name]] as [string, ReactNode][]) : []),
     ...(p && r.unitPrice != null ? ([["Prix", <span key="p" className="num">{eur(r.unitPrice)} le paquet</span>]] as [string, ReactNode][]) : []),
   ];

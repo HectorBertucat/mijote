@@ -6,7 +6,7 @@ import { cookEvents, cookSessions, durationSamples, equipment, equipmentFit, rec
 import { orderedIngredientsFor } from "@/lib/shopping/ordered";
 import { modeOf, planSession, type DurationInput, type EveDone, type OrderedIngredient, type SessionMode, type OrderedIngredientsProvider, type PlannerRecipe, type PlannerResources, type SessionPlan } from "./planner";
 import { reduce, type SessionEvent, type EventKind } from "./state";
-import { learn, measureSession, plannerInput, WINDOW, type Correction, type StoredSample } from "./durations";
+import { cookedEnough, learn, measureSession, plannerInput, WINDOW, type Correction, type StoredSample } from "./durations";
 
 export function loadResources(db: Db): PlannerResources {
   return {
@@ -284,7 +284,9 @@ export function addEvent(db: Db, sessionId: string, e: NewEvent): SessionEvent |
 export function recordDurations(db: Db, sessionId: string): number {
   const s = db.select().from(cookSessions).where(eq(cookSessions.id, sessionId)).get();
   if (!s?.planJson) return 0;
-  const samples = measureSession(s.planJson as SessionPlan, eventsAfter(db, sessionId, 0), s.startedAt);
+  const events = eventsAfter(db, sessionId, 0);
+  // Terminée dès la prep : rien n'est appris (durations.ts, cookedEnough).
+  const samples = cookedEnough(s.planJson as SessionPlan, events) ? measureSession(s.planJson as SessionPlan, events, s.startedAt) : [];
   const at = s.endedAt ?? new Date().toISOString();
   db.delete(durationSamples).where(eq(durationSamples.sessionId, sessionId)).run();
   for (const x of samples) {
@@ -295,16 +297,25 @@ export function recordDurations(db: Db, sessionId: string): number {
   return samples.length;
 }
 
-/** Corrections apprises des WINDOW dernières sessions terminées (mesurées au besoin : sessions finies avant le 20/10). */
+/**
+ * Corrections apprises des WINDOW dernières sessions terminées et vraiment cuisinées (mesurées au besoin :
+ * sessions finies avant le 20/10). Une session terminée dès la prep est sautée, même si des mesures
+ * en ont été enregistrées avant cette règle : elles restent en base, ignorées.
+ */
 export function learnedDurations(db: Db): { input: DurationInput; corrections: Map<string, Correction>; sessions: string[] } {
-  const done = db
+  const recent = db
     .select({ id: cookSessions.id })
     .from(cookSessions)
     .where(and(eq(cookSessions.status, "done"), eq(cookSessions.test, false)))
     .orderBy(desc(cookSessions.endedAt))
-    .limit(WINDOW)
-    .all()
-    .map((r) => r.id);
+    .limit(WINDOW * 3)
+    .all();
+  const done: string[] = [];
+  for (const { id } of recent) {
+    if (done.length >= WINDOW) break;
+    const plan = db.select({ plan: cookSessions.planJson }).from(cookSessions).where(eq(cookSessions.id, id)).get()?.plan as SessionPlan | null;
+    if (plan?.steps && cookedEnough(plan, eventsAfter(db, id, 0))) done.push(id);
+  }
   if (!done.length) return { input: { factors: {}, sessions: 0 }, corrections: new Map(), sessions: [] };
   let rows = db.select().from(durationSamples).where(inArray(durationSamples.sessionId, done)).all();
   const measured = new Set(rows.map((r) => r.sessionId));

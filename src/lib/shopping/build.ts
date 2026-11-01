@@ -8,6 +8,8 @@ import { effectivePrice, live, LIVE_REFRESH_MAX, liveRequests, resolve, search, 
 import { associationKey, NO_PREFS, prefsFor, type AssocRow, type Prefs } from "@/lib/products/core";
 import { loadAssociations } from "@/lib/products/store";
 import { aisleFor, AISLES, guessAisle, judge, nameVariants, packsFor, pickProduct, qtyPrefix, type Aisle } from "./rules";
+import { buyName } from "./label";
+import { nameKey, partition, pieceGrams, pieceUnit, total, type QtyLine } from "./merge";
 
 const CONCURRENCY = 6;
 
@@ -49,7 +51,9 @@ export interface Need {
   lines: string[];
   pantry: boolean;
   optional: boolean;
-  allPieces: boolean; // toutes les lignes comptent des pièces (« 2 oignons ») : on achète en pièces
+  allPieces: boolean; // on achète en pièces (« 2 oignons », « 7 gousses ») : merge.ts, total()
+  /** Unité des pièces (« gousse »), null pour des pièces nues. */
+  unit: string | null;
   sources: Source[];
   /** Produits du drive associés (src/lib/products) : commun, ou réglage propre à la ligne de recette. */
   prefs: Prefs;
@@ -221,28 +225,37 @@ export async function planList(ings: Ing[], opts: PlanOptions = {}): Promise<Pla
   const rows = opts.associations ?? [];
   const needs = new Map<string, Need>();
 
+  // Une ligne de recette, quantités multipliées, avant regroupement (src/lib/shopping/merge.ts).
+  interface Entry extends QtyLine {
+    key: string;
+    label: string;
+    ing: Ing;
+    pantry: boolean;
+    prefs?: Prefs;
+  }
+  const entries: Entry[] = [];
   function add(key: string, label: string, grams: number | null, pieces: number | null, ing: Ing, pantry: boolean, prefs?: Prefs) {
     const { factor, extraG } = scaleOf(ing);
     if (grams != null) grams = grams * factor + extraG;
     else if (extraG > 0) grams = extraG;
     if (pieces != null) pieces = factor === 1 ? pieces : Math.ceil(pieces * factor - 1e-6);
     if (extraG > 0 && pieces != null && grams != null) pieces = null; // grammes ajoutés : on achète au poids
-    const n = needs.get(key) ?? { key, label, grams: null, pieces: null, recipeIds: new Set(), lines: [], pantry, optional: true, allPieces: true, sources: [], prefs: prefs ?? NO_PREFS(key) };
-    if (grams != null) n.grams = (n.grams ?? 0) + grams;
-    if (pieces != null && Number.isInteger(pieces)) n.pieces = (n.pieces ?? 0) + pieces;
-    else n.allPieces = false;
-    n.recipeIds.add(ing.recipeId);
-    n.lines.push(ing.lineRaw);
-    n.optional &&= ing.optional;
-    n.sources.push({ ing, grams, units: pieces });
-    needs.set(key, n);
+    const unit = pieces != null ? pieceUnit(ing.lineRaw) : null;
+    entries.push({ key, label, grams, pieces, unit, pieceG: pieceGrams(ing.foodId, unit), ing, pantry, prefs });
   }
 
   // 1. Chaque ligne passe par /resolve pour savoir de quel type de produit il s'agit.
   const buy = ings.filter((i) => !i.pantry);
   const first = await mapLimit(buy, (i) => resolveIngredient(i, lineRes).finally(tick));
 
-  // 2. Agrégation par type canonique (sinon par nom lu dans la ligne).
+  // 2. Agrégation par type canonique, sinon par nom d'achat (« Ail, haché » et « Ail, râpé » : une ligne).
+  // Une ligne que le catalogue n'a pas reconnue rejoint le type d'une ligne du même nom qu'il a reconnue.
+  const typedByName = new Map<string, { base: string; label: string }>();
+  buy.forEach((ing, k) => {
+    const type = first[k]?.matchedTypes[0];
+    const n = nameKey(ing.item);
+    if (type && n && !typedByName.has(n)) typedByName.set(n, { base: `type:${type.slug}`, label: type.name });
+  });
   buy.forEach((ing, k) => {
     const r = first[k];
     if (r?.none && r.none.reason !== "no_match") {
@@ -251,14 +264,45 @@ export async function planList(ings: Ing[], opts: PlanOptions = {}): Promise<Pla
       return;
     }
     const type = r?.matchedTypes[0];
-    const base = type ? `type:${type.slug}` : `item:${(r?.parsed?.item ?? ing.item).toLowerCase()}`;
-    const label = type?.name ?? r?.parsed?.item ?? ing.item;
+    const read = r?.parsed?.item ?? ing.item;
+    const same = type ? null : (typedByName.get(nameKey(ing.item)) ?? null);
+    const base = type ? `type:${type.slug}` : (same?.base ?? `item:${nameKey(read) || read.toLowerCase()}`);
+    const label = type?.name ?? same?.label ?? read;
     // Produits associés : la ligne qui a son propre réglage (« pulpe concassée pour ce plat ») a sa ligne de courses.
     const prefs = prefsFor(rows, associationKey(ing, r ?? null).key, ing.id);
     const key = prefs.hasOverride ? `${base}@${ing.id}` : base;
     add(key, label, r?.quantity?.grams ?? ing.grams, r?.quantity?.pieces ?? ing.units ?? null, ing, false, prefs);
   });
+  // Le placard garde le nom entier (« Sel, poivre » n'est pas « Sel »).
   for (const ing of ings.filter((i) => i.pantry)) add(`placard:${ing.item.toLowerCase()}`, ing.item, ing.grams, ing.units, ing, true);
+
+  // Un besoin par aliment ; deux unités impossibles à additionner (« 1 tête » et « 20 g » d'ail) : un besoin
+  // par unité, côte à côte (même clé + « #n »).
+  const byKey = new Map<string, Entry[]>();
+  for (const e of entries) byKey.set(e.key, [...(byKey.get(e.key) ?? []), e]);
+  for (const [key, list] of byKey) {
+    const groups = partition(list);
+    groups.forEach((idx, g) => {
+      const es = idx.map((i) => list[i]);
+      const t = total(es);
+      const labels = new Set(es.map((e) => e.label));
+      const k = groups.length > 1 && g > 0 ? `${key}#${g}` : key;
+      needs.set(k, {
+        key: k,
+        label: labels.size > 1 ? buyName(es[0].label) : es[0].label,
+        grams: t.grams,
+        pieces: t.pieces,
+        recipeIds: new Set(es.map((e) => e.ing.recipeId)),
+        lines: es.map((e) => e.ing.lineRaw),
+        pantry: es[0].pantry,
+        optional: es.every((e) => e.ing.optional),
+        allPieces: t.allPieces,
+        sources: es.map((e) => ({ ing: e.ing, grams: e.grams, units: e.pieces })),
+        prefs: es[0].prefs ?? NO_PREFS(key),
+        unit: t.unit,
+      });
+    });
+  }
 
   // 3. Une requête par besoin agrégé, avec la quantité totale, pour le choix du produit et les paquets.
   const toBuy = [...needs.values()].filter((n) => !n.pantry);
