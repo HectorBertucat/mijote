@@ -33,7 +33,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Migration | `pnpm db:generate --name <nom>` |
 | Recettes de `src/seed/recipes/` | `pnpm import:recipes` |
 | Dessins manquants | `pnpm illus:coverage` |
-| Audit du planificateur | `pnpm plan:audit` |
+| Audit du planificateur (paires et triplets, cuisines fictives ; `--tout`, `--paires`) | `pnpm plan:audit` |
 | Journal (vérifier, afficher ; `--fold` sur main) | `pnpm changelog` |
 
 ## Où regarder
@@ -42,13 +42,13 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Accueil (action du moment) | `src/app/page.tsx`, `src/lib/home/` (`next.ts` pur, `store.ts` : `homeView`) |
 | Écran de lancement, visite guidée, premiers pas | `src/components/tour/` (`LaunchSplash.tsx`, `Tour.tsx`), `src/lib/tour/` (`core.ts` pur, `store.ts`), `src/components/accueil/FirstSteps.tsx`, images de démarrage iOS `src/lib/launch.ts` et `src/app/lancement/` |
 | Mise en route, réglages, foyer | `src/app/bienvenue/`, `src/app/reglages/`, `src/lib/household.ts`, `src/lib/settings.ts` |
-| Cuisine → équipement | `src/lib/kitchen/` (`presets.ts` pur, `store.ts`) |
+| Cuisine → équipement | `src/lib/kitchen/` (`presets.ts` pur : récipients, bols et boîtes, plaques du four ; `store.ts`) |
 | Mangeurs et parts | `src/lib/eaters/` (`core.ts` et `habits.ts` purs : part, habitudes hors batch, conseil ; `store.ts` : `loadEaters`, `householdMembers`, `leadOf`, `adviceFor`) |
 | Nutrition | `src/lib/nutrition/` (incrémenter `NUTRITION_VERSION` si le calcul change) |
 | Fiche recette, bibliothèque | `src/app/recettes/`, `src/components/fiche/` (bloc à filet, chiffres de tête, tableau d'ingrédients), `src/components/RecipeParts.tsx` (`StepItem`) |
 | Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus ; `fit.ts` pur : adéquation des recettes et de la sélection aux repères, pastilles, suggestion), `src/components/semaine/` (`Fit.tsx`) |
 | Courses | `src/lib/shopping/` (`merge.ts` pur : un même aliment en une ligne, unité commune, détail par recette), catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
-| Session | `src/lib/session/` (`planner.ts`, `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`) |
+| Session | `src/lib/session/` (`planner.ts` ; purs : `capacity.ts` volumes et bases communes, `attention.ts` mains/surveille/libre, `containers.ts` bols de prep, `text.ts` titres, `audit.ts` ; `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`), docs/session.md (les règles, les champs du plan) |
 | Boîtes, frigo | `src/lib/boxes/` (`core.ts` pur : grammes par boîte, rangement ; `store.ts`), `src/app/frigo/`, `src/components/boxes/` |
 | Assistant (partout, ⌘I) | `src/lib/assistant/` (`core.ts` pur : contexte, outils, `checkAction` ; `store.ts` : instantané, conversation, exécution), `src/app/api/assistant/route.ts` (flux), `src/components/assistant/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |

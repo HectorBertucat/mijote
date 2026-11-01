@@ -384,6 +384,8 @@ export interface PlanContainers {
   moment: number;
   plates: number;
   missing: string[];
+  /** Boîtes de conservation de la cuisine (pour ranger en fin de session), si elles sont décrites. */
+  storage?: { count: number; liters: number };
 }
 
 export interface DurationApplied {
@@ -694,7 +696,16 @@ export function planSession(input: PlannerRecipe[], res: PlannerResources, opts:
   const decisions: string[] = [];
   for (const sw of swaps) {
     const others = input.filter((_, i) => i !== sw.r && input[i].steps.some((s) => s.equipmentId === sw.from)).map((r) => r.name);
-    decisions.push(`${input[sw.r].name} se fait dans ${article(shortName(sw.to)!).toLowerCase()} au lieu ${ofArticle(shortName(sw.from)!)}${others.length ? ` (${article(shortName(sw.from)!).toLowerCase()} sert à : ${others.join(", ")})` : ""}.`);
+    const forced = found[sw.r].forced.some((opts) => opts.some((o) => o.from === sw.from));
+    const need = forced ? vesselNeeds(input[sw.r], (id) => kindOfIn(res, id) === "pot", (id) => kindOfIn(res, id) === "pan").get(sw.from) : undefined;
+    const why = forced
+      ? res.equipment.some((e) => e.id === sw.from)
+        ? ` (il faut environ ${fmtL(need?.liters ?? 0)}, plus que n'en prend ${article(shortName(sw.from)!).toLowerCase()})`
+        : ` (${article(shortName(sw.from)!).toLowerCase()} n'est pas dans ta cuisine)`
+      : others.length
+        ? ` (${article(shortName(sw.from)!).toLowerCase()} sert à : ${others.join(", ")})`
+        : "";
+    decisions.push(`${input[sw.r].name} se fait dans ${article(shortName(sw.to)!).toLowerCase()} au lieu ${ofArticle(shortName(sw.from)!)}${why}.`);
   }
   if (braise != null) {
     const r = input[braise];
@@ -1267,8 +1278,11 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       for (const m of members) {
         if (m.vessel && holdsAll(m.vessel, [m])) continue;
         const v = smallest([m]);
-        if (v) moveTo(m, v);
-        else if (!inBatches(m) && !m.vessel) noPot(m);
+        if (v) {
+          const from = m.src!.equipmentId ?? m.vessel!;
+          mergeNotes.push(`${recipes[m.r].name} : ${m.base!.info.label} dans ${article(shortName(v, eq.get(v)?.name)!).toLowerCase()} au lieu ${ofArticle(shortName(from)!)}${eq.has(from) ? ` (il faut environ ${fmtL(baseLoad([m]).liters)}, plus que n'en prend ${article(shortName(from)!).toLowerCase()})` : " (absent de ta cuisine)"}.`);
+          moveTo(m, v);
+        } else if (!inBatches(m) && !m.vessel) noPot(m);
       }
       continue;
     }
@@ -1296,8 +1310,11 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       for (const m of members) {
         if (m.vessel && holdsAll(m.vessel, [m])) continue;
         const v = smallest([m]);
-        if (v) moveTo(m, v);
-        else if (!inBatches(m) && !m.vessel) noPot(m);
+        if (v) {
+          const from = m.src!.equipmentId ?? m.vessel!;
+          mergeNotes.push(`${recipes[m.r].name} : ${m.base!.info.label} dans ${article(shortName(v, eq.get(v)?.name)!).toLowerCase()} au lieu ${ofArticle(shortName(from)!)}${eq.has(from) ? ` (il faut environ ${fmtL(baseLoad([m]).liters)}, plus que n'en prend ${article(shortName(from)!).toLowerCase()})` : " (absent de ta cuisine)"}.`);
+          moveTo(m, v);
+        } else if (!inBatches(m) && !m.vessel) noPot(m);
       }
       continue;
     }
@@ -2056,6 +2073,8 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     plates: bowls.filter((b) => b.holder === "assiette").length,
     missing: alloc.missing,
   };
+  const storage = res.equipment.find((e) => e.kind === "container" && e.dimsJson?.role === "frigo");
+  if (storage) containers.storage = { count: Math.max(0, storage.count ?? 0), liters: storage.capacityL ?? 1 };
   if (alloc.missing.length) warnings.push(`Il manque ${alloc.missing.length} bol${alloc.missing.length > 1 ? "s" : ""} (${alloc.missing.map((l) => `bol ${l}`).join(", ")}) : ta cuisine en a ${owned}, la session en demande ${alloc.peak} en même temps. Une boîte, un plat ou une casserole propre fera l'affaire.`);
   const late = bowls.filter((b) => b.fillAfter);
   if (late.length) prepNotes.push(`Pas assez de bols pour tout préparer d'avance : ${late.map((b) => `remplis le bol ${b.letter} quand le bol ${b.fillAfter} est vidé`).join(", ")}.`);
