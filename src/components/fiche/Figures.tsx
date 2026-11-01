@@ -30,9 +30,10 @@ export function Figures({ items }: { items: Figure[] }) {
       {items.map((f, i) => (
         <div key={f.key} className={`grid min-w-0 content-start gap-2 py-4 sm:py-6 ${i > 0 ? "border-l border-line pl-3 sm:pl-6" : "pr-3 sm:pr-6"}`}>
           <dt className="label order-2 text-ink-2">{f.label}</dt>
-          <dd className="order-1 flex items-baseline whitespace-nowrap">
-            <span className="num-tight text-h1 sm:text-num-xl">{f.value}</span>
-            {f.unit && <span className="ml-1 font-display text-h3 font-[650] text-ink-2 [font-stretch:75%]">{f.unit}</span>}
+          {/* L’unité passe sous le chiffre plutôt que de déborder sur la colonne voisine (« 1091 kcal » au téléphone). */}
+          <dd className="order-1 flex flex-wrap items-baseline gap-x-1">
+            <span className="num-tight whitespace-nowrap text-h1 sm:text-num-xl">{f.value}</span>
+            {f.unit && <span className="font-display text-h3 font-[650] text-ink-2 [font-stretch:75%]">{f.unit}</span>}
           </dd>
           {f.sub && <dd className="order-3 text-small text-ink-2">{f.sub}</dd>}
         </div>

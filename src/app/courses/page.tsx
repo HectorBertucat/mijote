@@ -10,6 +10,7 @@ import { pantryTotals, spendingTotals } from "@/lib/costs";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { storeLabel } from "@/lib/settings";
 import { plural } from "@/components/semaine/format";
+import { firstOfMonth } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default function Listes() {
     const [label, tone] = STATUS[l.status] ?? [l.status, "idle" as PillTone];
     const wk = l.weekPlanId ? weekOf.get(l.weekPlanId) : null;
     const at = new Date(l.createdAt);
-    const day = at.toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
+    const day = firstOfMonth(at.toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }));
     const time = at.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).replace(":", "\u00a0h\u00a0");
     const week = wk ? `${periodLabel(wk.weekStart, wk.days, "short")} · ` : "";
     return { id: l.id, title: l.title ?? "Liste de courses", day, sub: `${week}faite à ${time}`, label, tone, ordered: l.status === "ordered" || l.status === "paid", archived: Boolean(l.archivedAt) };

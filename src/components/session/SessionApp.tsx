@@ -515,7 +515,7 @@ function FullView(p: SessionProps & { c: Controls }) {
           </span>
         }
       />
-      <div className="mx-auto grid max-w-[90rem] gap-6 px-4 py-6 sm:px-6">
+      <div className="mx-auto grid max-w-[90rem] grid-cols-[minmax(0,1fr)] gap-6 px-4 py-6 sm:px-6">
         <Issues plan={plan} sessionId={p.id} />
         {state.status === "fridge" ? (
           <FridgeView plan={plan} c={c} choice={p.dayChoice ?? null} qr={qr} />

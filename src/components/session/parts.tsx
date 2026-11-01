@@ -208,7 +208,8 @@ export function SessionHead({ title, sub, online, phase, onPhase, right, lead, c
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${plain ? "border-b border-line bg-surface text-ink" : "bg-inverse text-on-inverse"} ${compact ? "px-4 py-3" : "px-4 py-3 sm:px-6"}`} data-session-head>
       {lead ?? <span className={`size-2.5 shrink-0 rounded-full bg-current ${online ? "k-live" : "opacity-40"}`} title={online ? "en direct" : "reconnexion…"} aria-label={online ? "En direct" : "Reconnexion"} />}
-      <div className="min-w-0 flex-1">
+      {/* Au moins 12 rem pour le titre : au téléphone, les boutons passent dessous plutôt que de le réduire à « Sessio… ». */}
+      <div className="min-w-0 flex-1 basis-[12rem]">
         <b className={`block truncate font-display [font-stretch:100%] text-[17px]`}>{title}</b>
         {compact ? (
           <div className="flex min-w-0 items-center gap-2 text-small">

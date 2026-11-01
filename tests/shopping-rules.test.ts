@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ResolvedProduct } from "@/lib/chronocatalog";
 import { aisleFor, judge, packsFor, pickProduct } from "@/lib/shopping/rules";
+import { buyName } from "@/lib/shopping/label";
 
 const prod = (over: Partial<ResolvedProduct> = {}, a: Partial<NonNullable<ResolvedProduct["availability"]>> = {}): ResolvedProduct => ({
   id: over.id ?? "p1",
@@ -47,4 +48,13 @@ test("on évite le produit au détail ou ancien quand le type en a un autre", ()
   assert.equal(packsFor(barquette, 1100), 2);
   assert.equal(aisleFor("viande"), "Boucherie");
   assert.equal(aisleFor("legume", { isFrozen: true }), "Surgelés");
+});
+
+test("nom en rayon : la préparation part, les parenthèses restent", () => {
+  assert.equal(buyName("Oignons, émincés"), "Oignons");
+  assert.equal(buyName("Œufs, battus dans la ricotta (ça lie et ça ajoute des protéines)"), "Œufs");
+  assert.equal(buyName("Émincés de cuisse de poulet (sans os ni peau)"), "Émincés de cuisse de poulet (sans os ni peau)");
+  assert.equal(buyName("Râpé (moitié dans la ricotta, moitié dessus)"), "Râpé (moitié dans la ricotta, moitié dessus)");
+  assert.equal(buyName("Sauté de porc (1 barquette de 500 g), en dés de 5 mm"), "Sauté de porc (1 barquette de 500 g)");
+  assert.equal(buyName("Merguez (6)"), "Merguez (6)");
 });

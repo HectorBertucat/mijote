@@ -33,10 +33,13 @@ export function Notice({ icon = "alert", tone = "warn", children, action }: { ic
 export function Fold({ id, title, aside, children, open = false }: { id: string; title: string; aside?: ReactNode; children: ReactNode; open?: boolean }) {
   return (
     <details id={id} className="group scroll-mt-24 border-t border-line" open={open}>
-      <summary className="flex min-h-tap cursor-pointer list-none flex-wrap items-baseline gap-x-6 gap-y-1 py-6 [&::-webkit-details-marker]:hidden">
-        <h2 className="text-h3 font-bold tracking-[-0.015em] [font-stretch:100%]">{title}</h2>
-        {aside && <span className="min-w-0 flex-1 text-small text-ink-2">{aside}</span>}
-        <Icon name="chev" className="ml-auto self-center text-ink-3 transition-[transform,color] duration-[var(--dur-2)] ease-[var(--ease-out)] group-hover:text-ink group-open:rotate-90" />
+      <summary className="flex min-h-tap cursor-pointer list-none items-center gap-4 py-6 [&::-webkit-details-marker]:hidden">
+        {/* Au téléphone, le résumé passe sous le titre (sinon chaque ligne le commence à une hauteur différente). */}
+        <span className="grid min-w-0 flex-1 gap-1 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-6">
+          <h2 className="text-h3 font-bold tracking-[-0.015em] [font-stretch:100%]">{title}</h2>
+          {aside && <span className="min-w-0 text-small text-ink-2 sm:flex-1">{aside}</span>}
+        </span>
+        <Icon name="chev" className="shrink-0 text-ink-3 transition-[transform,color] duration-[var(--dur-2)] ease-[var(--ease-out)] group-hover:text-ink group-open:rotate-90" />
       </summary>
       <div className="animate-pop pb-12 motion-reduce:animate-none">{children}</div>
     </details>

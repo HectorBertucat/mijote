@@ -11,9 +11,10 @@ import { cancelOrder, cartAll, changePacks, chooseAcceptedProduct, chooseAlterna
 import { Button, buttonClass, Icon, Sheet, Stepper } from "@/components/ui";
 import { FoodIllu } from "@/components/illus/Illu";
 import { ProductPicker } from "./ProductPicker";
-import { Ticket } from "./Ticket";
+import { Ticket, type TicketLine } from "./Ticket";
 import { useToast } from "./Toast";
 import { eur, grams } from "./format";
+import { buyName } from "@/lib/shopping/label";
 
 export interface RowData {
   id: string;
@@ -111,7 +112,7 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
           <Bar value={buyable.length ? inCart.length / buyable.length : 0} />
         </div>
       ) : (
-        <OrderedBanner listId={listId} title={title} orderedAt={orderedAt} lines={inCart.map((r) => ({ packs: r.packs, name: r.product?.name ?? r.item, price: r.totalPrice }))} total={inCart.reduce((s, r) => s + (r.totalPrice ?? 0), 0)} onMsg={show} />
+        <OrderedBanner listId={listId} title={title} orderedAt={orderedAt} catalog={catalog} lines={inCart.map((r) => ({ qty: r.product ? `${r.packs} ×` : grams(r.needG), name: r.product?.name ?? buyName(r.item), price: r.totalPrice }))} total={inCart.reduce((s, r) => s + (r.totalPrice ?? 0), 0)} onMsg={show} />
       )}
 
       {groups.map(({ aisle, rows: gr }) => {
@@ -131,7 +132,7 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
                   <li key={g.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 border-b border-line py-3">
                     <FoodIllu item={g.item} size="s" />
                     <span className="min-w-0">
-                      <span className="block truncate">{g.item}</span>
+                      <span className="block truncate">{buyName(g.item)}</span>
                       {g.forRecipes && <span className="block truncate text-small text-ink-3">{g.forRecipes}</span>}
                     </span>
                     <span className="num text-small text-ink-2">{grams(g.needG)}</span>
@@ -220,7 +221,7 @@ export function CartList({ listId, title = "Courses", ordered, orderedAt, groups
       )}
       {copy && !ordered && <div className="sm:hidden">{copy}</div>}
 
-      <Sheet open={picking != null} onClose={() => setPickId(null)} title={picking ? (picking.product?.name ?? picking.item) : ""}>
+      <Sheet open={picking != null} onClose={() => setPickId(null)} title={picking ? (picking.product?.name ?? buyName(picking.item)) : ""}>
         {picking && <Detail r={picking} catalog={catalog} ordered={ordered} pending={pending} start={start} show={show} onPacks={(n) => run({ kind: "packs", id: picking.id, packs: n }, () => changePacks(picking.id, n))} close={() => setPickId(null)} />}
       </Sheet>
       {pending && <span className="sr-only">Enregistrement…</span>}
@@ -274,7 +275,7 @@ function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; cat
   const p = r.product;
   const sig = signalOf(r, catalog, ordered);
   const done = r.inCart && !ordered;
-  const name = p?.name ?? r.item;
+  const name = p?.name ?? buyName(r.item);
   const qty = p ? `${r.packs} ×` : grams(r.needG);
   const meta = [p?.quantityLabel, r.forRecipes, r.warnings.includes("facultatif") ? "facultatif" : null].filter(Boolean).join(" · ");
   const canTick = !ordered && (!!p || !catalog);
@@ -322,7 +323,7 @@ function Row({ r, catalog, ordered, onCart, onPick, onPrice }: { r: RowData; cat
         </div>
         <div className="grid justify-items-end pt-2 text-right">
           {!p && !catalog && !ordered ? (
-            <PriceInput value={r.totalPrice} label={r.item} onSave={onPrice} />
+            <PriceInput value={r.totalPrice} label={name} onSave={onPrice} />
           ) : (
             <>
               <span className={`num text-body font-semibold ${done ? "text-ink-3" : ""}`}>{eur(r.totalPrice)}</span>
@@ -526,19 +527,21 @@ function useSwipe(enabled: boolean, onSwipe: (dir: "left" | "right") => void) {
   };
 }
 
-function OrderedBanner({ listId, title, orderedAt, lines, total, onMsg }: { listId: string; title: string; orderedAt: string | null; lines: { packs: number; name: string; price: number | null }[]; total: number; onMsg: (m: string, ok: boolean) => void }) {
+function OrderedBanner({ listId, title, orderedAt, catalog, lines, total, onMsg }: { listId: string; title: string; orderedAt: string | null; catalog: boolean; lines: TicketLine[]; total: number; onMsg: (m: string, ok: boolean) => void }) {
+  const priced = lines.some((l) => l.price != null);
   const [pending, start] = useTransition();
   return (
     <section aria-labelledby="commande-titre" className="grid gap-6 sm:grid-cols-12 sm:items-start sm:gap-x-6">
       <div className="sm:col-span-5">
-        <Ticket seed={listId} title={title} lines={lines} total={total} orderedAt={orderedAt} />
+        <Ticket seed={listId} title={title} lines={lines} total={priced ? total : null} orderedAt={orderedAt} drive={catalog} />
       </div>
       <div className="grid gap-4 sm:col-span-7">
         <h2 id="commande-titre" className="text-h2">
           Commande validée
         </h2>
         <p className="text-ink-2">
-          Prix figés{orderedAt ? ` le ${new Date(orderedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}` : ""}. Ce qui reste des paquets est au placard.
+          {priced ? "Prix figés" : "Validée"}
+          {orderedAt ? ` le ${new Date(orderedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" })}` : ""}. Ce qui reste des paquets est au placard.
         </p>
         <span className="flex flex-wrap gap-2">
           <Link href="/placard" className={buttonClass({ variant: "primary", size: "sm" })}>
