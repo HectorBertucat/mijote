@@ -1,0 +1,17 @@
+/* Graphiques (src/components/ui/charts/) : ce que l'île client allume (data-on) sur le dessin du serveur. */
+@layer components {
+  /* Barre survolée : un creux derrière la colonne ; une barre seule passe au bleu de sélection. */
+  .viz-slot { transition: background-color var(--dur-1) var(--ease-out); }
+  .viz-slot[data-on] { background: var(--c-surface-2); }
+  .viz-slot[data-on] .viz-bar:not(:has(i)) { background: var(--c-accent) !important; }
+  .viz-partial:has(i) { opacity: 0.55; }
+  /* Case du calendrier survolée : un anneau d'encre. */
+  .viz-cell { transition: box-shadow var(--dur-1) var(--ease-out); }
+  .viz-cell[data-on] { box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-ink); }
+  .viz-tip { animation: viz-in var(--dur-1) var(--ease-out); }
+  @keyframes viz-in { from { opacity: 0; } }
+}
+@media (forced-colors: active) {
+  .viz-slot[data-on] .viz-bar { background: Highlight !important; }
+  .viz-cell[data-on] { outline: 2px solid Highlight; }
+}

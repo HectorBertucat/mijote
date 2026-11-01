@@ -24,3 +24,4 @@ export * from "./tape";
 export * from "./scenes";
 export * from "./wordmark";
 export * from "./skeleton";
+export * from "./charts";

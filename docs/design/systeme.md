@@ -140,6 +140,25 @@ Une seule : `--sh-float` (`0 1px 0 rgb(21 22 26 / .04), 0 16px 40px -16px rgb(21
 - Changement de page : l’ancienne s’efface (`--dur-1`), la nouvelle arrive en fondu (`--dur-2`) avec 6 px de glissement ; en-tête et barre d’onglets ne bougent pas (`PageTransition`, transitions de vue). Pendant le chargement, un squelette fidèle à la page (`PageSkeleton`), qui pulse lentement et s’efface sous le contenu.
 - Onglets : l’état actif suit le tap, pas l’arrivée de la page ; le trait glisse d’un onglet à l’autre (`--dur-3`).
 
+### Graphiques
+
+Kit `src/components/ui/charts/` (démonstration : `/kit/graphiques`). Dessinés par le serveur, en SVG qui s’étire à la largeur (traits à épaisseur constante) et en HTML pour les barres, les chiffres et les repères ; une seule île client, `ChartHover`, lit les valeurs. Aucune bibliothèque.
+
+| Pièce | Pour |
+|---|---|
+| `LineChart` | Une courbe dans le temps : lignes, bande (fourchette), points ; zones horizontales en option (zones cardiaques). Tient des séries denses (quelques milliers de points). |
+| `BarChart` | Barres par jour, semaine ou mois ; empilées avec `series` (sommeil par phase, temps par type de séance) ; ligne de moyenne. |
+| `Sparkline` | La petite courbe d’une tuile chiffrée, sans interaction. |
+| `CalendarHeat` | La régularité sur un an (six mois sur téléphone). |
+| `HBarChart` | Une répartition, chaque valeur écrite au bout de sa barre (temps par type, temps par zone). |
+| `PeriodScope` | La période (7 j, 30 j, 3 mois, 1 an, tout) : une rangée au-dessus des graphiques qu’elle règle, dans l’adresse ; pendant le calcul, les graphiques restent en place, estompés. |
+| `ChartFigure`, `ChartValue`, `Legend`, `ChartEmpty` | Le cadre : repère, chiffre de tête, légende (marque de la série, texte à l’encre), état vide à la hauteur du dessin. |
+
+- **Marques** : barres de 24 px au plus, bout arrondi de 4 px, base carrée, 2 px de papier entre deux barres et entre deux morceaux ; traits de 2 px ; points de 4 à 5 px. Grille en filets `rule`, jamais en pointillés ; chiffres de l’axe dans une gouttière à gauche, en `ink-2` (contraste AA), l’unité sur le plus haut.
+- **Couleur** (jetons `--c-viz-*`, validés au script du skill dataviz en clair et en sombre) : une série = l’encre (`--c-viz-mark`), la barre en cours plus pâle (`--c-viz-soft`), la sélection en cocotte. Types de séance : catégorielle `--c-viz-cat-1…5` dans l’ordre fixe, quatre au plus puis « Autre » en gris, un type garde sa couleur quand la période change. Régularité (`--c-viz-heat-1…5`), sommeil (`--c-viz-sleep-*`) et zones cardiaques (`--c-viz-zone-1…5`) : rampes d’une seule teinte, du clair au foncé (inversées en sombre). `ok`/`warn`/`ko`, la tomate et les couleurs de recette n’entrent jamais dans un graphique.
+- **Lire une valeur** : survol, doigt (glisser horizontalement sans bloquer le défilement) ou clavier (le graphique est un curseur : flèches, Début, Fin, Échap) ; l’infobulle met la valeur d’abord, le nom ensuite. Chaque graphique a son tableau pour les lecteurs d’écran. Un seul axe vertical par graphique.
+- **Mouvement** : rien ne pousse ni ne grandit ; l’infobulle apparaît en fondu (`--dur-1`).
+
 ### Signatures
 
 - **La nappe vichy** : le motif de la couleur du plat sous chaque boîte, et en bande plein cadre en haut de la fiche.

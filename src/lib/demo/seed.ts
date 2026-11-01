@@ -7,6 +7,7 @@ import type { Db } from "@/lib/db/open";
 import { cookSessions, foodTemplates, mealBoxes, people, preferences, recipeIngredients, recipes, shoppingLists, workouts } from "@/lib/db/schema";
 import { eatBox, freezeBox, storeBoxes, thawBox } from "@/lib/boxes/store";
 import { addEntry } from "@/lib/health/log";
+import { ingestV2, parseV2 } from "@/lib/health/ingest-v2";
 import { addWeighIn, setWaist } from "@/lib/health/store";
 import { applyKitchen } from "@/lib/kitchen/store";
 import { createSession } from "@/lib/session/store";
@@ -18,7 +19,7 @@ import { RENFO_TEMPLATE } from "@/lib/training/renfo";
 import { assignProgram } from "@/lib/training/programs";
 import { addDays } from "@/lib/week/propose";
 import { addRecipe, ensureWeek, loadSelection } from "@/lib/week/store";
-import { demoHousehold, demoWorkouts, type DemoHousehold } from "./household";
+import { demoHealth, demoHousehold, demoWorkouts, type DemoHousehold } from "./household";
 
 /** Une heure de Paris approchée en UTC (à une heure près selon la saison : le repas reste le même). */
 const at = (date: string, utc: string) => new Date(`${date}T${utc}:00.000Z`);
@@ -90,6 +91,12 @@ export async function seedDemo(db: Db, today: string) {
   for (const p of h.preferences) db.insert(preferences).values(p).onConflictDoNothing().run();
   for (const x of h.habits) db.insert(foodTemplates).values({ ...x, position: 0 }).onConflictDoNothing().run();
   for (const w of h.weighIns) addWeighIn(db, w.personId, w.kg, at(w.date, "06:10"));
+  // Un an d'Apple Santé, reçu comme l'app iPhone l'enverrait (vérifié puis rangé par l'import v2).
+  for (const [k, id] of (["alex", "sam"] as const).entries()) {
+    const parsed = parseV2(demoHealth(id, today, 101 + k * 17), at(today, "23:00"));
+    if ("error" in parsed) throw new Error(`démo, Apple Santé : ${parsed.error}`);
+    ingestV2(db, id, parsed);
+  }
   for (const w of h.waist) setWaist(db, w.personId, w.date, w.cm);
   for (const p of h.programs) {
     const template = p.template === "kb" ? KB_TEMPLATE : RENFO_TEMPLATE;
