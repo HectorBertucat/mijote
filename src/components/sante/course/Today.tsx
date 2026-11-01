@@ -69,7 +69,7 @@ export function TodayHero({ v, aside }: { v: CourseView; aside?: ReactNode }) {
                 <span className="text-h1">{KIND_LABEL[h.row.kind as SessionKind] ?? h.row.session.title}</span>
                 <span className="num-tight text-h1 text-ink-2">{durText(h.row.minutes * 60)}</span>
               </h2>
-              <p className="text-body text-ink-2">{h.row.session.title}</p>
+              {/[:×]/.test(h.row.session.title) && <p className="text-body text-ink-2">{h.row.session.title}</p>}
               <p>
                 {h.watch.kind === "montre" ? (
                   <Verdict tone="ok">Sur ta montre</Verdict>

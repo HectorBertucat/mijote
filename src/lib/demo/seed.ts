@@ -10,7 +10,7 @@ import { addEntry } from "@/lib/health/log";
 import { ingestV2, parseV2 } from "@/lib/health/ingest-v2";
 import { addWeighIn, setWaist } from "@/lib/health/store";
 import { applyKitchen } from "@/lib/kitchen/store";
-import { noteFeedback, saveRunSettings, syncPlan } from "@/lib/running/store";
+import { ackPlans, noteFeedback, saveRunSettings, syncPlan, watchPlans } from "@/lib/running/store";
 import { createSession } from "@/lib/session/store";
 import type { SessionPlan } from "@/lib/session/planner";
 import { setSetting, SETTING } from "@/lib/settings";
@@ -130,8 +130,12 @@ export async function seedDemo(db: Db, today: string) {
   // Course : Alex suit un plan depuis six semaines ; son ressenti après les dernières sorties.
   saveRunSettings(db, "alex", DEMO_RUN_SETTINGS, runFrom);
   db.update(runProfiles).set({ startedOn: runFrom }).where(eq(runProfiles.personId, "alex")).run();
-  for (const e of efforts.slice(-4)) noteFeedback(db, "alex", { date: e.date, effort: e.effort, pain: 0 });
-  syncPlan(db, "alex", at(today, "06:00"));
+  for (const e of efforts.slice(-4)) noteFeedback(db, "alex", { date: e.date, effort: e.effort, pain: 0, enjoy: e.effort <= 3 ? 4 : 3 });
+  // Le plan lu chaque matin, comme si la page ou l'app l'avaient ouvert : les séances passées sont rangées
+  // (faites, manquées) ; celle du jour est sur la montre (accusé de l'app).
+  for (let d = runFrom; d <= today; d = addDays(d, 1)) syncPlan(db, "alex", at(d, "06:00"));
+  const todays = watchPlans(db, "alex", at(today, "06:05")).plans.filter((p) => p.date === today);
+  ackPlans(db, "alex", { scheduled: todays.map((p) => ({ id: p.id, version: p.version })), scheduler: { supported: true, authorized: true } }, at(today, "06:05"));
 
   setSetting(db, SETTING.setupDone, at(calendar.historyFrom, "19:00").toISOString());
 }

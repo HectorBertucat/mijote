@@ -10,7 +10,7 @@ import { TREND_WEEKS } from "./constants";
 import { addDays, daysBetween, median, mondayOfDay } from "./dates";
 import { decodeHr } from "./details";
 import { longestBefore, longestRatio } from "./load";
-import { getRunProfile, runningData, syncPlan, type AnalyzedRun, type RunningData } from "./store";
+import { getRunProfile, runningData, sessionIdOf, syncPlan, type AnalyzedRun, type RunningData } from "./store";
 import { intensityShare, regularity, weeklyVolume, type RunPoint } from "./trends";
 import {
   downsample,
@@ -89,9 +89,16 @@ export function courseView(db: Db, personId: string, now = new Date()) {
   const { data, plan } = state;
   const today = data.today;
   const profile = getRunProfile(db, personId)!;
-  const rows = state.sessions.map(asRow);
-  const byId = new Map(data.rows.map((r) => [r.id, r]));
   const monday = mondayOfDay(today);
+  // Les séances passées de la semaine que le plan n'a pas rangées (page pas ouverte ces jours-là : seul ce qui
+  // est à venir s'écrit) : reprises du plan, faites s'il y a une course ce jour-là, sinon manquées.
+  const stored = new Set(state.sessions.map((r) => r.id));
+  const ranOn = new Map(data.runs.map((r) => [r.date, r.sampleId]));
+  const missing: PlannedRow[] = plan.sessions
+    .filter((s) => s.weekStart === monday && s.date < today && !s.cancelled && !stored.has(sessionIdOf(personId, s.weekStart, s.role)))
+    .map((s) => ({ id: sessionIdOf(personId, s.weekStart, s.role), date: s.date, time: s.time, kind: s.kind, minutes: s.minutes, status: ranOn.has(s.date) ? "faite" : "manquee", session: s.session, version: 1, watchVersion: null, watchError: null, sampleId: ranOn.get(s.date) ?? null }));
+  const rows = [...missing, ...state.sessions.map(asRow)].sort((a, b) => a.date.localeCompare(b.date));
+  const byId = new Map(data.rows.map((r) => [r.id, r]));
 
   // En tête : la séance du jour, sinon la prochaine.
   const pick = pickSession(rows, today);
@@ -134,7 +141,7 @@ export function courseView(db: Db, personId: string, now = new Date()) {
   const week = weekDays(
     today,
     weekRows,
-    data.runs.filter((r) => r.date >= monday).map((r) => ({ sampleId: r.sampleId, date: r.date, minutes: r.analysis.movingMin || r.minutes, km: r.distanceKm, plannedId: r.plannedId })),
+    data.runs.filter((r) => r.date >= monday).map((r) => ({ sampleId: r.sampleId, date: r.date, minutes: r.analysis.movingMin || r.minutes, km: r.distanceKm, plannedId: r.plannedId ?? missing.find((x) => x.sampleId === r.sampleId)?.id ?? null })),
     data.others.filter((o) => o.date >= monday).map((o) => ({ date: o.date, kind: otherKind(o.kind), minutes: o.minutes })),
     data.fixed.map((x) => ({ weekday: x.weekday, kind: x.kind }))
   );
@@ -167,7 +174,7 @@ export function courseView(db: Db, personId: string, now = new Date()) {
     otherByDay.set(o.date, [...(otherByDay.get(o.date) ?? []), `${OTHER_LABEL[otherKind(o.kind)].toLowerCase()}${o.minutes ? ` ${durText(o.minutes * 60)}` : ""}`]);
   }
 
-  const items = data.runs.map((r) => itemOf(r, byId)).reverse();
+  const items = data.runs.map((r) => ({ ...itemOf(r, byId), kind: itemOf(r, byId).kind ?? ((missing.find((x) => x.sampleId === r.sampleId)?.kind as SessionKind | undefined) ?? null) })).reverse();
   const noted = new Set(db.select({ date: runFeedback.date }).from(runFeedback).where(eq(runFeedback.personId, personId)).all().map((x) => x.date));
   const due = feedbackDue(items, noted, today);
 
