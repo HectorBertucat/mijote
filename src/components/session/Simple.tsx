@@ -26,7 +26,7 @@ import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
 import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, stepHead, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
-import { attentionHint, attentionOf, batchesLabel, fmtMin, phaseText, remindersOf, ringInfo, timedPhase } from "@/lib/session/guide";
+import { attentionHint, attentionOf, batchesLabel, containerLine, fmtMin, isContainerWarning, phaseText, remindersOf, ringInfo, timedPhase } from "@/lib/session/guide";
 import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, SharedSplit, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
 import { PhaseNext } from "./blocks";
 
@@ -86,7 +86,7 @@ export function SimpleView(p: SimpleProps) {
     const fresh = c.state.status !== "cooking" && c.state.prepDone.size === 0 && c.state.started.size === 0;
     if (fresh && !seen.has("duo")) {
       tone = "ink";
-      body = <Interlude n={null} title="À deux" lines={[`${plan.recipes.map((r) => r.name).join(", ")}.`, `Chacun son fil, une consigne à la fois. Environ ${dur(plan.totalMin)} en tout.`]} art={<DuoArt />} qr={p.person ? null : p.qr} />;
+      body = <Interlude n={null} title="À deux" lines={[`${plan.recipes.map((r) => r.name).join(", ")}.`, `Chacun son fil, une consigne à la fois. Environ ${dur(plan.totalMin)} en tout.`, containerLine(plan)].filter((x): x is string => Boolean(x))} art={<DuoArt />} qr={p.person ? null : p.qr} />;
       bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("duo")}>C’est parti</MainButton>;
     } else return <SimpleDuo plan={plan} c={c} person={p.person} overlay={p.overlay} dark={dark} wake={wake} detail={detail} onEnd={() => setConfirming(true)} ringing={ringing} />;
   } else if (stage === "prep") {
@@ -99,7 +99,7 @@ export function SimpleView(p: SimpleProps) {
         <Interlude
           n={1}
           title={evening ? "Prépare, ce soir" : "Prépare"}
-          lines={[`${bowls.length ? `${bowls.length} bol${bowls.length > 1 ? "s" : ""} à remplir` : "Pas de bol à remplir avant de commencer"}, environ ${dur(evening ? (plan.prep.eveMin ?? 0) : plan.prep.minutes)}.`, evening ? "Ce soir, ce qui se garde au frigo ; demain, le reste puis la cuisson." : "Sors tout, coupe, remplis. Ensuite, une consigne à la fois."]}
+          lines={[`${bowls.length ? `${bowls.length} bol${bowls.length > 1 ? "s" : ""} à remplir` : "Pas de bol à remplir avant de commencer"}, environ ${dur(evening ? (plan.prep.eveMin ?? 0) : plan.prep.minutes)}.`, evening ? "Ce soir, ce qui se garde au frigo ; demain, le reste puis la cuisson." : "Sors tout, coupe, remplis. Ensuite, une consigne à la fois.", containerLine(plan)].filter((x): x is string => Boolean(x))}
           art={<FoodsArt plan={plan} />}
           qr={p.qr}
         />
@@ -445,7 +445,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
         <h1 className="text-h1">Tout sur le plan de travail</h1>
         <p className="text-lead text-ink-2">{bowls.length ? "Remplis chaque bol, touche-le quand il est prêt. Les lettres reviennent dans les consignes." : "Sors ce qui attend sur le plateau. Les bols se remplissent plus tard, pendant la cuisson : l’écran le dira."}</p>
         <Issues plan={plan} sessionId={id} />
-        {!evening && plan.prep.notes.map((n) => (
+        {!evening && plan.prep.notes.filter((n) => !(plan.containers && isContainerWarning(n))).map((n) => (
           <p key={n} className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">
             <Icon name="flame" size="s" className="mt-1 shrink-0 text-ink-2" />
             {typo(n)}

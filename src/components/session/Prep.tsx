@@ -8,7 +8,7 @@ import { Alert, Button, Check, Icon, Progress } from "@/components/ui";
 import type { Controls } from "./SessionApp";
 import { Bowl, BowlFoods, bowlName, bowlOf, bowlOrdered, bowlQty, dur, Eyebrow, recipeOf, shortName } from "./parts";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
-import { weighItems } from "@/lib/session/guide";
+import { isContainerWarning, weighItems } from "@/lib/session/guide";
 import { atMoment, prepBowls } from "@/lib/session/flow";
 import { BowlItems } from "./guide";
 
@@ -44,7 +44,7 @@ export function PrepPhase({ plan, c, aside }: { plan: SessionPlan; c: Controls; 
             : "Les bols de la veille sont au frigo : sors-les. Il reste la prep qui ne se fait pas la veille, puis la cuisson."}
         </Alert>
       )}
-      {!p.evening && plan.prep.notes.map((n) => <Alert key={n} tone="warn" icon="flame">{n}</Alert>)}
+      {!p.evening && plan.prep.notes.filter((n) => !(plan.containers && isContainerWarning(n))).map((n) => <Alert key={n} tone="warn" icon="flame">{n}</Alert>)}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <section className="grid content-start gap-3" aria-label="Gestes">

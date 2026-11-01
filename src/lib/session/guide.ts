@@ -410,8 +410,16 @@ export function missingText(m: NonNullable<ContainerNote["missing"]>): { title: 
   };
 }
 
-/** L'avertissement du planificateur qui redit les bols manquants (l'écran le dit déjà, en clair). */
-export const isContainerWarning = (w: string) => /^Il manque \d+ bols? \(bol/.test(w);
+/** Les contenants en une phrase pour l'écran d'ouverture : ce qui manque (rien d'autre, le détail vient à la prep). */
+export function containerLine(plan: Pick<SessionPlan, "bowls" | "containers">): string | null {
+  const m = containerNote(plan)?.missing;
+  if (!m) return null;
+  const t = missingText(m);
+  return `${t.title} : la session en demande ${m.peak} en même temps, ta cuisine en a ${m.owned}.`;
+}
+
+/** La remarque du planificateur qui redit les bols manquants ou l'ordre de remplissage (ContainersNote le dit déjà, en clair). */
+export const isContainerWarning = (w: string) => /^Il manque \d+ bols? \(bol|^Pas assez de bols pour tout préparer d'avance/.test(w);
 
 // ─── Le fil : en cours (mains), en fond (surveille, libre), ensuite ───
 
