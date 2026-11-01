@@ -7,7 +7,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { BoxGlyph } from "./BoxGlyph";
-import { gramsLabel, placeFor, sideWords, splitPot, type PotModel, type Weights } from "@/lib/boxes/core";
+import { gramsLabel, placeFor, sideWords, splitNote, splitPot, type PotModel, type Weights } from "@/lib/boxes/core";
 import type { StoredPot } from "@/lib/boxes/store";
 import { storeSessionBoxes } from "@/app/frigo/actions";
 
@@ -30,7 +30,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
   const places = split.boxes.map((b) => placeFor(model.cookedOn ?? "", b.plannedFor?.date ?? null, model.fridgeDays, model.freezerOk));
   const inFridge = places.filter((p) => p === "fridge").length;
   const inFreezer = places.length - inFridge;
-  const bounded = Object.values(split.modes).includes("borne");
+  const note = weighed ? splitNote(model, split) : null;
   const planned = split.boxes.filter((b) => b.plannedFor).length;
 
   const store = () =>
@@ -93,7 +93,13 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
           La marmite ne couvre pas les {planned} repas prévus : chaque boîte est plus petite que la part visée.
         </Alert>
       )}
-      {bounded && weighed && <p className="text-small text-ink-2">{sw.the.charAt(0).toUpperCase() + sw.the.slice(1)} {sw.stays} entre la moitié et le double de la proportion de la marmite : la part vise les calories, les protéines au plus près.</p>}
+      {split.rest && (
+        <p className="num text-small text-ink-2">
+          Et une petite boîte de reste, pour qui veut{weighed && <> : {gramsLabel(split.rest.dishG ?? 0)}{split.rest.sideG != null && <> + {gramsLabel(split.rest.sideG)} de {sideName}</>}</>}
+          {split.rest.kcal != null && <> (≈&nbsp;{split.rest.kcal}&nbsp;kcal)</>}. Les autres boîtes sont au haut de leur repère.
+        </p>
+      )}
+      {note && <p className="text-small text-ink-2">{note}</p>}
 
       {session && (
         <div className="flex flex-wrap items-center gap-4">
