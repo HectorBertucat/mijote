@@ -73,7 +73,7 @@ test("détail v2.1 : lu champ par champ, bornes, série en binaire (3 octets par
 
 test("import v2.1 : GET annonce les fonctions, détail rangé, complété par uuid, gardé si renvoyé sans, supprimé avec la séance", () => {
   const { db, h, post } = setup();
-  assert.deepEqual(importGet(db, h(), NOW).body.features, ["workout_details", "plans"]);
+  assert.deepEqual(importGet(db, h(), NOW).body.features, ["workout_details", "plans", "app_v1"]);
 
   // Une course d'abord reçue sans détail, puis renvoyée avec : complétée.
   let r = post({ version: 2, workouts: [runWorkout("w1", "2026-11-02T17:30:00Z", 40, {}, null)] });

@@ -39,6 +39,7 @@ test("api app : moi, santé, journal, course, chemin inconnu", () => {
   const j = call(alex, "GET", "jour?date=2026-10-20").body as { date: string; totals: { kcal: number } };
   assert.equal(j.date, "2026-10-20");
   assert.equal(call(alex, "GET", "course").status, 200);
+  assert.deepEqual((call(alex, "GET", "course/sorties?limit=5").body as { runs: unknown[] }).runs, []);
   assert.equal(call(alex, "GET", "rien").status, 404);
 });
 
@@ -94,4 +95,66 @@ test("api app : une séance se lance, se pilote par gestes à l'heure du serveur
   const end = call(alex, "POST", `sport/seance/${id}/fin`, { note: "" }, t0 + 120_000);
   assert.equal(end.status, 200, JSON.stringify(end.body));
   assert.ok((end.body as { workoutId: string }).workoutId);
+});
+
+test("api app : l'import annonce app_v1, chaque réponse a generatedAt et pas de null", () => {
+  const { alex, call } = setup();
+  const r = call(alex, "GET", "sport/seance");
+  assert.equal(typeof r.body.generatedAt, "string");
+  assert.ok(!("live" in r.body), "pas de séance : clé absente, pas null");
+  const noNull = (x: unknown): boolean => (Array.isArray(x) ? true : x && typeof x === "object" ? Object.values(x).every((v) => v !== null && noNull(v)) : true);
+  assert.ok(noNull(call(alex, "GET", "sport").body));
+  assert.ok(noNull(call(alex, "GET", "sante?periode=tout").body));
+});
+
+test("api app : séries à plat pour les graphiques", () => {
+  const { alex, call } = setup();
+  const s = call(alex, "GET", "sante?periode=tout").body as { series: Record<string, { unit: string; points: { date: string; value: number }[] }> };
+  for (const [k, v] of Object.entries(s.series)) {
+    assert.ok(v.unit, k);
+    for (const p of v.points) assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(p.date) && Number.isFinite(p.value), k);
+  }
+});
+
+test("api app : une figure seule, versionnée, avec ses repères, son matériel et le rôle des muscles", () => {
+  const { alex, call } = setup();
+  const f = call(alex, "GET", "sport/figures/goblet").body as { id: string; version: string; loop: boolean; cues: { t: number; label: string }[]; accessories: { type: string }[]; muscles: { role: string }[] };
+  assert.equal(f.id, "goblet");
+  assert.match(f.version, /^[0-9a-f]{12}$/);
+  assert.equal(f.version, (call(alex, "GET", "sport/figures/goblet").body as { version: string }).version, "même figure, même version");
+  assert.deepEqual(f.cues[0], { t: 0, label: "Descends" });
+  assert.ok(f.accessories.some((a) => a.type === "kettlebell"));
+  assert.ok(f.muscles.some((m) => m.role === "primary"));
+  assert.equal(call(alex, "GET", "sport/figures/inconnu").status, 404);
+  const s = call(alex, "GET", "sport").body as { program: { figureIds: Record<string, string[]> } };
+  assert.ok(s.program.figureIds.A.includes("goblet"));
+});
+
+test("api app : gestes nommés, phase et fin de phase, révision périmée, renvoi sans effet", () => {
+  const { alex, call } = setup();
+  const t0 = Date.parse("2026-10-20T08:00:00Z");
+  type L = { live: { version: number; state: { revision: number; phase: string; phaseEndsAt?: number; pausedPhase?: string }; live: { i: number }; figureIds: string[] } };
+  const id = (call(alex, "POST", "sport/seance", { type: "A" }, t0).body as { live: { id: string } }).live.id;
+  let r = call(alex, "POST", `sport/seance/${id}/action`, { action: "next" }, t0).body as L;
+  assert.equal(r.live.live.i, 1);
+  assert.ok(r.live.figureIds.includes("goblet"));
+  assert.equal(r.live.state.phase, "work", "série sans rythme : elle attend « Série faite »");
+  r = call(alex, "POST", `sport/seance/${id}/action`, { action: "start", revision: r.live.state.revision, actionId: "a1" }, t0 + 1000).body as L;
+  assert.equal(r.live.state.phase, "setup");
+  assert.equal(r.live.state.phaseEndsAt, t0 + 6000);
+  // Le même actionId renvoyé ne refait rien.
+  const again = call(alex, "POST", `sport/seance/${id}/action`, { action: "start", actionId: "a1" }, t0 + 2000).body as L;
+  assert.equal(again.live.version, r.live.version);
+  const stale = call(alex, "POST", `sport/seance/${id}/action`, { action: "pause", revision: 1 }, t0 + 3000);
+  assert.equal(stale.status, 409);
+  assert.ok("live" in stale.body);
+  r = (call(alex, "GET", `sport/seance/${id}`, null, t0 + 7000).body as L);
+  assert.equal(r.live.state.phase, "work");
+  r = call(alex, "POST", `sport/seance/${id}/action`, { action: "pause" }, t0 + 8000).body as L;
+  assert.equal(r.live.state.phase, "paused");
+  assert.equal(r.live.state.pausedPhase, "work");
+  assert.ok(!("phaseEndsAt" in r.live.state));
+  r = call(alex, "POST", `sport/seance/${id}/action`, { action: "log", reps: 14 }, t0 + 9000).body as L;
+  assert.equal(r.live.live.i, 2);
+  assert.equal(call(alex, "POST", `sport/seance/${id}/action`, { action: "voler" }).status, 400);
 });

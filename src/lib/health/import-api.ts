@@ -45,7 +45,8 @@ export function importGet(db: Db, headers: Headers, now = new Date()): ApiReply 
     lastSyncAt: link.lastSyncAt,
     v2: true,
     // v2.1 : le détail des séances et les séances planifiées vers la montre (/api/sante/import/plans).
-    features: ["workout_details", "plans"],
+    // app_v1 : l'API de l'app (Santé, journal, course, sport en natif), docs/api-app.md.
+    features: ["workout_details", "plans", "app_v1"],
     // Tant que l'app n'a pas envoyé tout l'historique (ou après « Tout renvoyer »).
     ...(link.historyCompleteAt ? {} : { history: "all" }),
   });
