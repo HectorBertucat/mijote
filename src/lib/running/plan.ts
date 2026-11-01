@@ -434,9 +434,11 @@ function weekTargets(st: State, w: string, x: PlanInput, runs: DoneRun[], n0: nu
   } else {
     // Volume visé : + 10 % sur la moyenne des 2 dernières semaines réalisées (décharges exclues), + 20 % au plus.
     // Seules comptent les semaines de la phase en cours (choix de Mijote : avant, c'était un autre régime).
+    // Une première semaine commencée en cours de route ne compte pas : elle sous-estimerait le réalisé.
+    const partial = (ws: string) => ws === mondayOfDay(x.startedOn) && x.startedOn > ws;
     const done = [1, 2, 3, 4]
       .map((k) => addDays(w, -7 * k))
-      .filter((ws) => !deloads.has(ws) && ws >= st.phaseSince)
+      .filter((ws) => !deloads.has(ws) && ws >= st.phaseSince && !partial(ws))
       .slice(0, 2)
       .map((ws) => runsIn(runs, ws, addDays(ws, 7)).reduce((s, r) => s + runMinutesOf(r), 0));
     const vref = done.length ? done.reduce((s, v) => s + v, 0) / done.length : st.refV;
@@ -452,7 +454,10 @@ function weekTargets(st: State, w: string, x: PlanInput, runs: DoneRun[], n0: nu
     }
     if (x.morning?.signals.some((s) => s.kind === "hrv_basse" || s.kind === "fc_repos_haute") && w === mondayOfDay(x.today)) V = Math.min(V, st.prevV ?? V);
     // Sortie longue : + 5 min par semaine (phase 1), + 10 min toutes les 2 semaines (phase 2–3) ; une sortie : + 5 toutes les 2.
-    const prevL = after ? st.refL : (st.prevL ?? st.refL);
+    // La sortie longue repart de la plus longue réellement courue la semaine d'avant (comme le volume), sinon de la prévue.
+    const lastWeek = addDays(w, -7);
+    const ranLong = lastWeek >= st.phaseSince && !partial(lastWeek) && !deloads.has(lastWeek) ? Math.max(0, ...runsIn(runs, lastWeek, w).map(runMinutesOf)) : 0;
+    const prevL = after ? st.refL : ranLong > 0 ? ranLong : (st.prevL ?? st.refL);
     const step = n === 1 ? (st.weekInPhase % 2 ? P1_LONG_STEP : 0) : st.phase === 1 ? P1_LONG_STEP : st.weekInPhase % 2 ? P2_LONG_STEP : 0;
     L = Math.min(st.repeat ? prevL : prevL + step, share * V);
   }
