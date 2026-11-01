@@ -1,6 +1,6 @@
 "use server";
 
-// Course : réglages, ressenti, pause et reprise, depuis la page /sante/course. Tout est relu côté serveur
+// Course : réglages, ressenti, pause et reprise, depuis les pages /sante/course. Tout est relu côté serveur
 // (src/lib/running/store.ts, schémas bornés) : rien ne passe tel quel du navigateur.
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -12,9 +12,14 @@ import { GOALS } from "@/lib/running/plan";
 
 const int = (v: FormDataEntryValue | null) => (v == null || String(v).trim() === "" ? null : Math.round(Number(v)));
 const str = (v: FormDataEntryValue | null) => (v == null || String(v).trim() === "" ? null : String(v).trim());
-const back = (error?: string) => {
-  revalidatePath("/sante/course");
-  redirect(error ? `/sante/course?erreur=${encodeURIComponent(error)}` : "/sante/course");
+/** Retour vers une page du module seulement (jamais une adresse venue d'ailleurs). */
+const safe = (v: FormDataEntryValue | null, fallback = "/sante/course") => {
+  const s = v == null ? "" : String(v);
+  return /^\/sante\/course(\/[\w-]+)*$/.test(s) ? s : fallback;
+};
+const back = (error?: string, to = "/sante/course") => {
+  revalidatePath("/sante/course", "layout");
+  redirect(error ? `${to}?erreur=${encodeURIComponent(error)}` : to);
 };
 
 export async function saveSettingsAction(form: FormData) {
@@ -45,7 +50,7 @@ export async function saveSettingsAction(form: FormData) {
   } catch (e) {
     error = e instanceof Error && "issues" in e ? (e as unknown as { issues: { message: string }[] }).issues.map((i) => i.message).join(", ") : "Réglages invalides.";
   }
-  back(error);
+  back(error, error ? "/sante/course/reglages" : "/sante/course");
 }
 
 export async function feedbackAction(form: FormData) {
@@ -59,12 +64,13 @@ export async function feedbackAction(form: FormData) {
       pain: int(form.get("pain")),
       painWhere: where && (PAIN_PLACES as readonly string[]).includes(where) ? (where as (typeof PAIN_PLACES)[number]) : null,
       sick: form.get("sick") === "on",
+      enjoy: int(form.get("enjoy")),
       note: str(form.get("note")),
     });
   } catch {
     error = "Ressenti invalide (effort 1 à 10, douleur 0 à 10).";
   }
-  back(error);
+  back(error, safe(form.get("back")));
 }
 
 export async function pauseAction() {

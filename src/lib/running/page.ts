@@ -14,6 +14,7 @@ import { getRunProfile, runningData, syncPlan, type AnalyzedRun, type RunningDat
 import { intensityShare, regularity, weeklyVolume, type RunPoint } from "./trends";
 import {
   downsample,
+  durText,
   easyShareOf,
   efficiencyTrend,
   feedbackDue,
@@ -27,6 +28,7 @@ import {
   weekDays,
   weekSentence,
   whyLine,
+  OTHER_LABEL,
   type OtherKind,
   type PlannedRow,
 } from "./view";
@@ -154,6 +156,17 @@ export function courseView(db: Db, personId: string, now = new Date()) {
   const m = data.morning;
   const lastNight = m.shortSleep;
 
+  // Toutes les activités des 12 dernières semaines, par jour (calendrier de régularité).
+  const since = addDays(today, -7 * 12);
+  const activity = new Map<string, number>();
+  const otherByDay = new Map<string, string[]>();
+  for (const r of data.runs) if (r.date > since) activity.set(r.date, (activity.get(r.date) ?? 0) + (r.analysis.movingMin || r.minutes));
+  for (const o of data.others) {
+    if (o.date <= since) continue;
+    activity.set(o.date, (activity.get(o.date) ?? 0) + o.minutes);
+    otherByDay.set(o.date, [...(otherByDay.get(o.date) ?? []), `${OTHER_LABEL[otherKind(o.kind)].toLowerCase()}${o.minutes ? ` ${durText(o.minutes * 60)}` : ""}`]);
+  }
+
   const items = data.runs.map((r) => itemOf(r, byId)).reverse();
   const noted = new Set(db.select({ date: runFeedback.date }).from(runFeedback).where(eq(runFeedback.personId, personId)).all().map((x) => x.date));
   const due = feedbackDue(items, noted, today);
@@ -178,6 +191,8 @@ export function courseView(db: Db, personId: string, now = new Date()) {
     regularity: { ...reg, done: past.filter((r) => r.status === "faite").length, planned: past.length },
     efficiency,
     intensity,
+    activity,
+    otherByDay,
     caution: { painRecent, signals: m.signals, morning: { hrv: m.hrv, rest: m.rest, shortSleep: lastNight } },
     runs: items,
     feedbackDue: due,
