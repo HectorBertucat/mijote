@@ -21,6 +21,7 @@ Une page par partie, sous `/sante/…` (liste dans `src/components/sante/SanteNa
 - **Apple Santé** (`/sante/apple`) : l'app iPhone Mijote Santé, distribuée à part, envoie ce que la personne choisit dans Santé. La page affiche, pour le profil ouvert, le code d'installation en QR code et en texte, le dernier envoi, ce qui a été reçu par type et si l'historique complet est arrivé ; « Tout renvoyer » et « Changer la clé ». L'import du fichier d'export de Santé (lu dans le navigateur) reste en option repliée. Voir « Apple Santé » plus bas.
 - **Sommeil et forme** (vue d'ensemble) : si l'app les envoie, sommeil moyen des 7 dernières nuits (phases de la dernière), FC au repos et variabilité cardiaque sur 7 jours comparées au mois d'avant, VO2max, masse grasse, et leurs graphiques sur la période. Affichés seulement ; ni la cible ni l'assistant ni le coach ne les lisent.
 - **Entraînement** : voir [sport.md](sport.md).
+- **Course** (`/sante/course`) : le module Course, activable par personne (jours et heures, 2 à 4 sorties, objectif, FC saisies facultatives) ; l'état (phase, niveau, messages, critères de passage), le plan de la semaine en cours et de la suivante en texte, les zones et la charge, les dernières courses analysées, le ressenti après une sortie (effort, douleur et où, malade), pause et reprise. Méthode : [course.md](course.md).
 
 ### La phrase de la semaine
 Calculée en code, sans IA (`synthesis`, `src/lib/health/series.ts`) : pas par jour sur les 7 derniers jours complets face aux 28 jours d'avant (« autant » sous 5 % d'écart), séances des 7 derniers jours face au plan, sommeil moyen (« un peu court » sous 7 h), FC au repos si elle a bougé de 3 bpm ou plus, tendance du poids et son rythme. Une phrase par chiffre présent, rien sans mesure.
@@ -47,8 +48,9 @@ Affiché par Santé › Apple Santé, un par personne, en QR code ou en texte :
 
 ### GET : l'état
 ```json
-{ "ok": true, "person": "Alex", "mode": "week", "window": 7, "lastSyncAt": "2026-10-31T07:12:00.000Z", "v2": true, "history": "all" }
+{ "ok": true, "person": "Alex", "mode": "week", "window": 7, "lastSyncAt": "2026-10-31T07:12:00.000Z", "v2": true, "features": ["workout_details", "plans"], "history": "all" }
 ```
+`features` (v2.1) : Mijote accepte le détail des séances et sert les séances planifiées.
 `history: "all"` tant que l'app n'a pas envoyé tout l'historique de la personne, et de nouveau après « Tout renvoyer ». `mode` et `window` ne servent qu'à l'ancien Raccourci.
 
 ### POST v2
@@ -68,6 +70,20 @@ Affiché par Santé › Apple Santé, un par personne, en QR code ou en texte :
 - **Doublons** : par uuid pour `samples`, `workouts`, `sleep` ; par (type, date) pour `daily`, dont le total remplace le précédent. Une pesée ou une séance déjà reçue du Raccourci ou de l'export au même instant est reprise sous son uuid. `deleted` retire par uuid.
 - **Paquets** : 2 000 éléments et 1 Mo au plus par requête (au-delà : 413). Sans `batch`, la requête est le dernier paquet. `lastSyncAt` n'est noté qu'au paquet `last: true` ; l'historique n'est noté reçu qu'au paquet `last: true, history: "complete"`.
 - **Réponse** : `{ "ok": true, "accepted": { "samples": 12, "daily": 4, "workouts": 1, "sleep": 9, "deleted": 0 }, "skipped": 0 }` (éléments acceptés, déjà connus compris) ; sinon `{ "ok": false, "error": "…" }` en 400, 401 ou 413.
+
+### v2.1 : le détail des séances
+Champ facultatif `details` d'une séance (`src/lib/running/details.ts`), lu champ par champ : un champ illisible ou hors bornes est retiré, la séance et le reste du détail passent.
+- `hr` : paires `[s, bpm]`, 2 000 points au plus (au-delà, la série est refusée), bpm 25–250, temps entre 0 et la durée + 1 min ; un même instant deux fois : le dernier gagne.
+- `splits` : 300 au plus, `km` croissants (sinon tous retirés), `sec` 1 s–24 h, `hrAvg` 25–250, dénivelés 0–5 000 m.
+- `cadenceAvg` 30–260, `strideM` 0,2–3, `elevGainM`/`elevLossM` 0–20 000, `power.avgW` 0–2 500, `indoor`, `pausesSec`, `events` (500 au plus), `source` (`name`, `model`), `plannedId`, `effort` 1–10 (arrondi à 0,1), `weather` (`tempC` −40–60, `humidityPct` 0–100).
+- Rangé dans `workout_details`, à côté de la séance : la série en binaire (3 octets par point, 6 Ko pour 2 000 points contre ~24 Ko en JSON), hors de `health_samples` pour que les agrégations de Santé restent légères ; le pic de 30 s et « FC douteuse » sont calculés à l'arrivée.
+- Complétion par uuid : une séance renvoyée avec détail le remplace ; renvoyée sans, elle garde le sien ; supprimée dans Santé, son détail part avec. `accepted.details` compte les détails rangés (les autres clés de la réponse ne bougent pas).
+
+### v2.1 : les séances vers la montre
+`/api/sante/import/plans` (`src/lib/running/watch-api.ts`, route `src/app/api/sante/import/plans/route.ts`) : même clé, même chemin ouvert dans `src/lib/auth.ts` (préfixe `/api/sante/import`), donc la même règle Cloudflare Access. 404 en démo.
+- `GET` : `{ ok, plans: [{ id, version, date, time?, title, workout, notes }], removed: [id] }`, les séances prévues du jour J à J+7. `workout` est le `WorkoutSpec` de l'app (`toWorkoutSpec`, `src/lib/running/workout.ts`) : alertes de FC en plage de bpm (`range_min`, `range_max`), jamais en zone de la montre. `id` est un UUID stable (personne, semaine, rôle) ; `version` monte quand la séance change ; `removed` : les séances annulées à venir.
+- `POST` : l'accusé `{ scheduled: [{ id, version, at }], failed: [{ id, version, error }], removed: [id], scheduler: { supported, authorized } }` → `{ ok: true }`. Programmée dans la version en cours : statut « programmée » ; un échec garde son message ; ids inconnus ignorés.
+- Une course reçue avec `details.plannedId` coche la séance prévue ; sans, Mijote la rapproche par le jour.
 
 ### Ce qui en est fait
 Les pesées font la courbe et la cible ; pas et séances comptent pour les objectifs d'activité ; sommeil, cœur, VO2max et masse grasse s'affichent dans la vue d'ensemble. L'énergie active et au repos ne change pas la cible (la balance mesure mieux la dépense). Les apports (`diet_*`, `water`) et le cycle (`menstrual`) sont gardés et comptés sur la page Apple Santé, mais ne sont lus ni par l'assistant ni par le coach.
