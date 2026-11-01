@@ -160,6 +160,8 @@ async function main() {
     check(((await (await fetch(`${BASE}/api/sante/import`, { headers: santeKey })).json()) as { features?: string[] }).features?.includes("plans") === true, "import Apple Santé : GET annonce les séances planifiées");
     saveRunSettings(db, lea, { enabled: true, days: [1, 3, 5, 6].map((weekday) => ({ weekday, time: "18:30" })), perWeek: 3, goal: "plus_longtemps" }, new Date().toISOString().slice(0, 10));
     await page("/sante/course", "mijote.profil=lea", /Marche-course niveau 1/);
+    await page("/sante/course/reglages", "mijote.profil=lea", /Réglages de la course/);
+    await page("/sante/course/sorties", "mijote.profil=lea", /Sorties/);
     check((await get("/api/sante/import/plans", undefined)).status === 401, "séances de la montre sans clé → 401");
     const plans = (await (await fetch(`${BASE}/api/sante/import/plans`, { headers: santeKey })).json()) as { ok?: boolean; plans?: { id: string; version: number; workout?: { activity?: string } }[] };
     check(plans.ok === true && (plans.plans?.length ?? 0) > 0 && plans.plans![0].workout?.activity === "running", "séances de la montre : GET → WorkoutSpec");
@@ -224,6 +226,7 @@ async function demo() {
     check((await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) })).status === 404, "démo : pas d'assistant, même avec une clé");
     check((await get("/api/sante/import", cookieA)).status === 404, "démo : pas d'import Apple Santé");
     await page("/sante/course", cookieA, /Sortie longue|Footing/);
+    await page("/sante/course/sorties", cookieA, /Footing/);
     check((await get("/api/sante/import/plans", cookieA)).status === 404, "démo : pas de séances vers la montre");
     check((await get("/bienvenue", cookieA)).status === 307, "démo : pas de mise en route");
 
