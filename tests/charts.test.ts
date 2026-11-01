@@ -100,7 +100,7 @@ test("tableau des lecteurs d'écran : une suite sans mesure en une ligne, les me
 
 test("formats : les formateurs gardés rendent la même chose que toLocaleString", () => {
   for (const [v, d] of [[8400, 0], [81.25, 1], [-0.5, 2], [1234567.891, 1]] as const) {
-    assert.equal(fmt(v, d), v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }));
+    assert.equal(fmt(v, d), v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/^-/, "−"), "au vrai moins près");
     assert.equal(fmt(v, d), fmt(v, d), "deuxième appel, même formateur");
   }
   assert.equal(fmtDay("2026-11-03", "weekday"), new Date("2026-11-03T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }));
