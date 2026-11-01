@@ -820,7 +820,8 @@ export const runSessions = sqliteTable(
   (t) => [index("idx_run_sessions_person").on(t.personId, t.date)]
 );
 
-// Ressenti après une course (docs/course.md § 4.8) : effort 1–10, douleur 0–10 et où, malade.
+// Ressenti après une course (docs/course.md § 4.8) : effort 1–10, douleur 0–10 et où, malade, plaisir 1–5
+// (affiché seulement : le plan ne le lit pas).
 export const runFeedback = sqliteTable(
   "run_feedback",
   {
@@ -831,6 +832,7 @@ export const runFeedback = sqliteTable(
     pain: integer("pain"),
     painWhere: text("pain_where"),
     sick: integer("sick", { mode: "boolean" }).notNull().default(false),
+    enjoy: integer("enjoy"),
     note: text("note"),
     createdAt: text("created_at").notNull().default(now),
   },

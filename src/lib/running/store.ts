@@ -143,12 +143,14 @@ export const FeedbackInput = z.object({
   pain: z.number().int().min(0).max(10).nullable().default(null),
   painWhere: z.enum(PAIN_PLACES).nullable().default(null),
   sick: z.boolean().default(false),
+  /** Plaisir 1–5 : affiché, jamais lu par le plan. */
+  enjoy: z.number().int().min(1).max(5).nullable().default(null),
   note: z.string().trim().max(300).nullable().default(null),
 });
 
 export function noteFeedback(db: Db, personId: string, input: z.input<typeof FeedbackInput>) {
   const f = FeedbackInput.parse(input);
-  const values = { effort: f.effort, pain: f.pain, painWhere: f.pain ? f.painWhere : null, sick: f.sick, note: f.note || null };
+  const values = { effort: f.effort, pain: f.pain, painWhere: f.pain ? f.painWhere : null, sick: f.sick, enjoy: f.enjoy, note: f.note || null };
   db.insert(runFeedback)
     .values({ id: randomUUID(), personId, date: f.date, ...values })
     .onConflictDoUpdate({ target: [runFeedback.personId, runFeedback.date], set: values })
