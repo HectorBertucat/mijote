@@ -3,6 +3,8 @@
 @import "./cuisine-tokens.css";
 /* Kit de composants (src/components/ui/) : traits animés, anneaux, hachures. */
 @import "../components/ui/kit.css";
+/* Graphiques : états allumés par le survol. */
+@import "../components/ui/charts/charts.css";
 @import "../components/illus/illus.css";
 
 /* Atelier : ce qui change dans une recette (ajout, retrait, nouvelle quantité). */

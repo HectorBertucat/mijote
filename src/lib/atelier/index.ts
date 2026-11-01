@@ -81,7 +81,7 @@ export async function proposeAdjustment(
     screen: "ajuster",
     ...AI,
     system: systemPrompt(promptContext(db, deps.leadId)),
-    prompt: adjustPrompt(current, request),
+    prompt: adjustPrompt(current, request, household),
     schema: AdjustOutput,
     devMock: () => mockAdjust(current, request),
   });

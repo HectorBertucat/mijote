@@ -13,6 +13,8 @@ import { portionOf, type DayTarget, type MealRef, type Outside } from "@/lib/eat
 import { adviceOf, checkHabit, daysLabel, HABIT_FOODS, habitMacros, isShaker, macrosOf, outsideMean, outsideWeek, type HabitLike } from "@/lib/eaters/habits";
 import { FOODS } from "@/lib/nutrition/foods";
 import { ofName } from "@/lib/session/people";
+import { checkRunningAction, isRunAction, RUN_ACTION_LABEL, RUN_ACTIONS, runContextText, type RunActionInput, type RunContext } from "@/lib/running/actions";
+import { recipeFit, weekFit, type FitEater } from "@/lib/week/fit";
 
 // ─── Instantané des données ───
 
@@ -80,6 +82,8 @@ export interface Snapshot {
   };
   recipes: SnapRecipe[];
   boxes: SnapBox[];
+  /** La course de la personne qui parle, si elle a activé le module (src/lib/running/). */
+  running?: RunContext | null;
 }
 
 /** La page d'où la question est posée : son chemin et ce qu'on y regarde. */
@@ -131,6 +135,8 @@ export const ACTION_TOOLS = {
     description: "Proposer de lancer la liste de courses des recettes retenues pour la semaine en cours.",
     schema: z.object({ why }),
   },
+  // Course (docs/course.md § 6) : seulement pour la personne qui parle, si elle a activé le module.
+  ...RUN_ACTIONS,
 } as const;
 
 export type ActionKind = keyof typeof ACTION_TOOLS;
@@ -143,13 +149,14 @@ export const KIND_LABEL: Record<ActionKind, string> = {
   retirer_habitude: "Retirer une habitude",
   manger_boite: "Manger une boîte",
   faire_courses: "Faire les courses",
+  ...RUN_ACTION_LABEL,
 };
 export const ACTION_KINDS = Object.keys(ACTION_TOOLS) as ActionKind[];
 export type ActionInput<K extends ActionKind = ActionKind> = { [P in K]: { kind: P } & z.infer<(typeof ACTION_TOOLS)[P]["schema"]> }[K];
 
-/** Les outils tels qu'envoyés à l'API (schéma JSON strict, sans bornes : le code borne). */
-export function toolDefinitions() {
-  return ACTION_KINDS.map((name) => {
+/** Les outils tels qu'envoyés à l'API (schéma JSON strict, sans bornes : le code borne). Ceux de la course seulement si le module est activé. */
+export function toolDefinitions(running = false) {
+  return ACTION_KINDS.filter((name) => running || !isRunAction(name)).map((name) => {
     const { $schema: _s, ...input_schema } = z.toJSONSchema(ACTION_TOOLS[name].schema) as Record<string, unknown>;
     return { name, description: ACTION_TOOLS[name].description, input_schema };
   });
@@ -221,6 +228,7 @@ function gapLines(p: SnapPerson, before: Outside, after: Outside): ActionCard["l
 /** Vérifie une action proposée sur l'instantané : refus motivé, ou carte chiffrée. */
 export function checkAction(a: ActionInput, s: Snapshot): Checked {
   const person = (id: string) => s.people.find((p) => p.id === id);
+  if (isRunAction(a.kind)) return checkRunningAction(a as RunActionInput, s.running ?? null);
   switch (a.kind) {
     case "ajouter_recette": {
       const r = s.recipes.find((x) => x.slug === a.slug);
@@ -315,6 +323,8 @@ export function checkAction(a: ActionInput, s: Snapshot): Checked {
         notes: s.week.list?.ordered ? ["Une commande est déjà passée pour cette semaine : la nouvelle liste s'y ajoute."] : [],
       };
     }
+    default:
+      return { ok: false, reason: "Action inconnue." };
   }
 }
 
@@ -351,6 +361,7 @@ export const pickModel = (text: string): "small" | "plan" => (PLANNING.test(text
 /** Ce que l'assistant sait du foyer, en texte compact. Tous les chiffres viennent de l'appli. */
 export function buildContext(s: Snapshot): string {
   const L: string[] = [`Aujourd'hui : ${s.today}.`];
+  const fitters: FitEater[] = s.people.map((p) => ({ id: p.id, name: p.name, baseUnits: p.baseUnits, ref: p.ref, dayTarget: p.dayTarget, outside: outsideWith(p, p.habits.map(habitLike)), hasShaker: p.habits.some(isShaker) }));
   L.push("", "## Foyer");
   for (const p of s.people) {
     const head = `- ${p.name} (personId ${p.id})${p.id === s.speakerId ? " — c'est la personne qui te parle" : ""}`;
@@ -376,16 +387,24 @@ export function buildContext(s: Snapshot): string {
   L.push("", `## Semaine en cours (${s.week.label})`);
   if (s.week.selected.length) {
     L.push(`Recettes retenues (${s.week.selected.length}/${MAX_WEEK_RECIPES}) : ${s.week.selected.map((slug) => s.recipes.find((r) => r.slug === slug)?.name ?? slug).join(", ")}.`);
+    // Adéquation aux repères (src/lib/week/fit.ts), recettes à parts égales : le constat et la suggestion de l'appli.
+    const live = s.recipes.filter((r) => r.status !== "archived");
+    const fit = weekFit(fitters, s.week.selected.map((slug) => live.find((r) => r.slug === slug)).filter((r) => !!r), { library: live, excluded: new Map(live.map((r) => [r.slug, new Set(r.excludedFor)])) });
+    for (const p of fit.people) if (p.perMeal && p.ref) L.push(`- ${p.name} : un repas moyen de la sélection fait ${kcal(p.perMeal.kcal)}, ${g(p.perMeal.protein)} de protéines (${p.level === "loin" ? "loin du repère" : p.level === "juste" ? "juste" : "dans le repère"})`);
+    for (const w of fit.warnings) L.push(`  Écart pour ${w.name} : ${w.text}. Suggestion de l'appli : ${w.suggestion.text}`);
   } else L.push("Aucune recette retenue.");
   L.push(s.week.list ? `Liste de courses : ${s.week.list.ordered ? "commandée" : "faite"}${s.week.list.changed ? ", mais la sélection a changé depuis" : ", à jour"}.` : "Pas encore de liste de courses.");
 
-  L.push("", "## Bibliothèque (slug — nom : part de chacun, calculée par l'appli)");
+  L.push("", "## Bibliothèque (slug — nom : part de chacun et adéquation à son repère, calculées par l'appli)");
   for (const r of s.recipes) {
     if (r.status === "archived") continue;
     const parts = s.people.map((p) => {
       if (r.excludedFor.includes(p.id)) return `${p.name} pas servie`;
       const x = portionOf({ baseUnits: p.baseUnits, ref: p.ref }, r);
-      return x.kcal == null ? `${p.name} ?` : `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.`;
+      if (x.kcal == null) return `${p.name} ?`;
+      const f = recipeFit(fitters.find((e) => e.id === p.id)!, r);
+      const why = f.issue === "proteines" ? `protéines ${g(f.proteinBest!)} au mieux` : f.issue ? FIT_ISSUE[f.issue] : "";
+      return `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.${f.level ? ` (${f.level}${f.level !== "bien" ? ` : ${why}` : ""})` : ""}`;
     });
     L.push(`- ${r.slug} — ${r.name}${s.week.selected.includes(r.slug) ? " [retenue]" : ""}${r.status === "liked" ? " [aimée]" : ""} : ${parts.join(", ")}`);
   }
@@ -400,8 +419,11 @@ export function buildContext(s: Snapshot): string {
 
   L.push("", "## Aliments pour une habitude (id : nom, pour 100 g)");
   L.push(HABIT_FOODS.map((id) => `${id} : ${FOODS[id].name} (${kcal(FOODS[id].kcal)}, ${g(FOODS[id].protein)} prot.)`).join(" ; "));
+  if (s.running) L.push("", runContextText(s.running));
   return L.join("\n");
 }
+
+const FIT_ISSUE = { proteines: "peu protéiné", "trop-riche": "trop riche", "trop-leger": "trop léger" } as const;
 
 /** Ce qu'on regarde : « fiche de … », « la semaine », etc. (ajouté au message, pas au contexte en cache). */
 export function pageLine(page: PageContext, s: Snapshot): string {
@@ -413,6 +435,7 @@ export function pageLine(page: PageContext, s: Snapshot): string {
     [/^\/frigo/, "le frigo"],
     [/^\/sante\/objectifs/, "ses objectifs de Santé"],
     [/^\/sante\/habitudes/, "ses habitudes hors batch"],
+    [/^\/sante\/course/, "sa page Course (plan de course à pied)"],
     [/^\/sante/, "sa page Santé"],
     [/^\/recettes/, "la bibliothèque de recettes"],
     [/^\/session/, "une session de cuisine"],

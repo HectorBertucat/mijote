@@ -88,6 +88,33 @@
   --c-recipe-8: #44546a; /* ardoise */
   --c-on-recipe: #ffffff;
 
+  /* Graphiques (src/components/ui/charts/, docs/design/systeme.md § Graphiques). Validés au script du
+     skill dataviz sur le papier clair et sombre : catégorielle (types de séance, 4 teintes au plus +
+     « Autre » en gris), rampes ordinales (régularité, phases de sommeil, zones cardiaques). */
+  --c-viz-mark: #4a4e57;
+  --c-viz-soft: #a3a7b0;
+  --c-viz-band: rgb(21 22 26 / 0.09);
+  --c-viz-cat-1: #008ba3; /* sarcelle */
+  --c-viz-cat-2: #a87c00; /* moutarde */
+  --c-viz-cat-3: #7a4fb5; /* prune */
+  --c-viz-cat-4: #c4497a; /* rose */
+  --c-viz-cat-5: #6f8a1d; /* olive */
+  --c-viz-other: #9a9da5;
+  --c-viz-heat-1: #a3a7b0;
+  --c-viz-heat-2: #82868f;
+  --c-viz-heat-3: #60646d;
+  --c-viz-heat-4: #3c3f47;
+  --c-viz-heat-5: #15161a;
+  --c-viz-sleep-deep: #1f2a40;
+  --c-viz-sleep-core: #3d4f73;
+  --c-viz-sleep-rem: #62779f;
+  --c-viz-sleep-awake: #94a6c8;
+  --c-viz-zone-1: #d4935f;
+  --c-viz-zone-2: #c0733f;
+  --c-viz-zone-3: #a8582e;
+  --c-viz-zone-4: #8a4126;
+  --c-viz-zone-5: #682d1d;
+
   /* Ombres (élévations 1 à 3) */
   --sh-1: 0 1px 2px rgb(27 29 35 / 0.06), 0 1px 1px rgb(27 29 35 / 0.04);
   --sh-2: 0 6px 16px -4px rgb(27 29 35 / 0.12), 0 2px 4px rgb(27 29 35 / 0.05);
@@ -165,6 +192,29 @@
     --c-recipe-7: #a9cc5c;
     --c-recipe-8: #9daec6;
     --c-on-recipe: #15171c;
+    --c-viz-mark: #b4b7bf;
+    --c-viz-soft: #5d626d;
+    --c-viz-band: rgb(242 240 235 / 0.1);
+    --c-viz-cat-1: #1a9aa6;
+    --c-viz-cat-2: #b08a12;
+    --c-viz-cat-3: #9479e0;
+    --c-viz-cat-4: #d6588c;
+    --c-viz-cat-5: #7d9c2c;
+    --c-viz-other: #6e7480;
+    --c-viz-heat-1: #4d525d;
+    --c-viz-heat-2: #6e7480;
+    --c-viz-heat-3: #979ca7;
+    --c-viz-heat-4: #c4c8cf;
+    --c-viz-heat-5: #eef0f4;
+    --c-viz-sleep-deep: #e8edf7;
+    --c-viz-sleep-core: #b3c0db;
+    --c-viz-sleep-rem: #8396bd;
+    --c-viz-sleep-awake: #5a6c94;
+    --c-viz-zone-1: #7a3a26;
+    --c-viz-zone-2: #9c4d30;
+    --c-viz-zone-3: #c0683f;
+    --c-viz-zone-4: #dc8a5c;
+    --c-viz-zone-5: #f0b48a;
     --sh-1: 0 1px 2px rgb(0 0 0 / 0.4);
     --sh-2: 0 8px 20px -6px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
     --sh-3: 0 28px 56px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);
@@ -222,6 +272,29 @@
   --c-recipe-7: #a9cc5c;
   --c-recipe-8: #9daec6;
   --c-on-recipe: #15171c;
+  --c-viz-mark: #b4b7bf;
+  --c-viz-soft: #5d626d;
+  --c-viz-band: rgb(242 240 235 / 0.1);
+  --c-viz-cat-1: #1a9aa6;
+  --c-viz-cat-2: #b08a12;
+  --c-viz-cat-3: #9479e0;
+  --c-viz-cat-4: #d6588c;
+  --c-viz-cat-5: #7d9c2c;
+  --c-viz-other: #6e7480;
+  --c-viz-heat-1: #4d525d;
+  --c-viz-heat-2: #6e7480;
+  --c-viz-heat-3: #979ca7;
+  --c-viz-heat-4: #c4c8cf;
+  --c-viz-heat-5: #eef0f4;
+  --c-viz-sleep-deep: #e8edf7;
+  --c-viz-sleep-core: #b3c0db;
+  --c-viz-sleep-rem: #8396bd;
+  --c-viz-sleep-awake: #5a6c94;
+  --c-viz-zone-1: #7a3a26;
+  --c-viz-zone-2: #9c4d30;
+  --c-viz-zone-3: #c0683f;
+  --c-viz-zone-4: #dc8a5c;
+  --c-viz-zone-5: #f0b48a;
   --sh-1: 0 1px 2px rgb(0 0 0 / 0.4);
   --sh-2: 0 8px 20px -6px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
   --sh-3: 0 28px 56px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);

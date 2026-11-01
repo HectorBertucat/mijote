@@ -4,11 +4,13 @@
 // remplit le journal de Santé). Seules les dates sont reculées à la main, pour que tout ait eu lieu.
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { cookSessions, foodTemplates, mealBoxes, people, preferences, recipeIngredients, recipes, shoppingLists, workouts } from "@/lib/db/schema";
+import { cookSessions, foodTemplates, mealBoxes, people, preferences, recipeIngredients, recipes, runProfiles, shoppingLists, workouts } from "@/lib/db/schema";
 import { eatBox, freezeBox, storeBoxes, thawBox } from "@/lib/boxes/store";
 import { addEntry } from "@/lib/health/log";
+import { ingestV2, parseV2 } from "@/lib/health/ingest-v2";
 import { addWeighIn, setWaist } from "@/lib/health/store";
 import { applyKitchen } from "@/lib/kitchen/store";
+import { ackPlans, noteFeedback, saveRunSettings, syncPlan, watchPlans } from "@/lib/running/store";
 import { createSession } from "@/lib/session/store";
 import type { SessionPlan } from "@/lib/session/planner";
 import { setSetting, SETTING } from "@/lib/settings";
@@ -19,7 +21,7 @@ import { RENFO_TEMPLATE } from "@/lib/training/renfo";
 import { assignProgram } from "@/lib/training/programs";
 import { addDays } from "@/lib/week/propose";
 import { addRecipe, ensureWeek, loadSelection } from "@/lib/week/store";
-import { demoHousehold, demoWorkouts, type DemoHousehold } from "./household";
+import { DEMO_RUN_SETTINGS, demoHealth, demoHousehold, demoRuns, demoWorkouts, runStart, type DemoHousehold } from "./household";
 
 /** Une heure de Paris approchée en UTC (à une heure près selon la saison : le repas reste le même). */
 const at = (date: string, utc: string) => new Date(`${date}T${utc}:00.000Z`);
@@ -93,6 +95,22 @@ export async function seedDemo(db: Db, today: string) {
   for (const p of h.preferences) db.insert(preferences).values(p).onConflictDoNothing().run();
   for (const x of h.habits) db.insert(foodTemplates).values({ ...x, position: 0 }).onConflictDoNothing().run();
   for (const w of h.weighIns) addWeighIn(db, w.personId, w.kg, at(w.date, "06:10"));
+  // Un an d'Apple Santé, reçu comme l'app iPhone l'enverrait (vérifié puis rangé par l'import v2).
+  const runFrom = runStart(today);
+  let efforts: { date: string; effort: number }[] = [];
+  for (const [k, id] of (["alex", "sam"] as const).entries()) {
+    const payload = demoHealth(id, today, 101 + k * 17);
+    // Alex : depuis la mise en route du module Course, ses courses suivent le plan et viennent avec leur détail (v2.1).
+    if (id === "alex") {
+      const before = payload.workouts.filter((w) => w.activity === "running" && w.start < runFrom);
+      const course = demoRuns(today, 211, before.map((w) => ({ date: w.start.slice(0, 10), minutes: w.durationMin, km: w.distanceM ? w.distanceM / 1000 : null })));
+      payload.workouts = [...payload.workouts.filter((w) => !(w.activity === "running" && w.start >= runFrom)), ...course.runs];
+      efforts = course.efforts;
+    }
+    const parsed = parseV2(payload, at(today, "23:00"));
+    if ("error" in parsed) throw new Error(`démo, Apple Santé : ${parsed.error}`);
+    ingestV2(db, id, parsed);
+  }
   for (const w of h.waist) setWaist(db, w.personId, w.date, w.cm);
   for (const p of h.programs) {
     const template = p.template === "kb" ? KB_TEMPLATE : RENFO_TEMPLATE;
@@ -111,6 +129,16 @@ export async function seedDemo(db: Db, today: string) {
   await cookedWeek(db, h, calendar.current, h.weeks.current, { archive: false, freezeMargin: 1 });
   const next = planWeek(db, calendar.next.start, h.weeks.next);
   await buildShoppingList(db, next.sel.map((x) => x.slug), { weekPlanId: next.planId, scales: Object.fromEntries(next.sel.map((x) => [x.slug, x.factor])) });
+
+  // Course : Alex suit un plan depuis six semaines ; son ressenti après les dernières sorties.
+  saveRunSettings(db, "alex", DEMO_RUN_SETTINGS, runFrom);
+  db.update(runProfiles).set({ startedOn: runFrom }).where(eq(runProfiles.personId, "alex")).run();
+  for (const e of efforts.slice(-4)) noteFeedback(db, "alex", { date: e.date, effort: e.effort, pain: 0, enjoy: e.effort <= 3 ? 4 : 3 });
+  // Le plan lu chaque matin, comme si la page ou l'app l'avaient ouvert : les séances passées sont rangées
+  // (faites, manquées) ; celle du jour est sur la montre (accusé de l'app).
+  for (let d = runFrom; d <= today; d = addDays(d, 1)) syncPlan(db, "alex", at(d, "06:00"));
+  const todays = watchPlans(db, "alex", at(today, "06:05")).plans.filter((p) => p.date === today);
+  ackPlans(db, "alex", { scheduled: todays.map((p) => ({ id: p.id, version: p.version })), scheduler: { supported: true, authorized: true } }, at(today, "06:05"));
 
   setSetting(db, SETTING.setupDone, at(calendar.historyFrom, "19:00").toISOString());
 }

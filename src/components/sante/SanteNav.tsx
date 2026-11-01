@@ -12,6 +12,7 @@ export const SANTE_PAGES = [
   { href: "/sante/aujourdhui", label: "Aujourd’hui" },
   { href: "/sante/habitudes", label: "Hors batch" },
   { href: "/sante/entrainement", label: "Entraînement" },
+  { href: "/sante/course", label: "Course" },
   { href: "/sante/demarrer", label: "Mise en route" },
   { href: "/sante/profil", label: "Profil" },
   { href: "/sante/apple", label: "Apple Santé" },
@@ -24,7 +25,7 @@ export function SanteNav() {
   return (
     <nav aria-label="Santé" className="k-noscroll -mx-5 flex gap-6 overflow-x-auto border-b border-line px-5 sm:mx-0 sm:px-0">
       {SANTE_PAGES.map((p) => {
-        const on = current === p.href;
+        const on = current === p.href || (p.href !== "/sante" && current.startsWith(`${p.href}/`));
         return (
           <Link
             key={p.href}

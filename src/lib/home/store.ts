@@ -12,6 +12,7 @@ import { estimateSession } from "@/lib/session/estimate";
 import { dayIndexIn, defaultPeriod, periodDays, type PeriodDay } from "@/lib/week/period";
 import { MEAL_LABEL, type Meal } from "@/lib/week/propose";
 import { loadWeek, periodPlans, weekView } from "@/lib/week/store";
+import { todayRun } from "@/lib/running/page";
 import { cookDayOf, nextStep, type HomeState, type HomeStep } from "./next";
 
 const MEALS: Meal[] = ["lunch", "dinner"];
@@ -188,6 +189,8 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
     multiple: personName.size > 1,
     todayMeals,
     advice: advice?.kind === "gap" ? advice.text : null,
+    /** La séance de course du jour du profil actif (module Course activé), sans recalcul du plan. */
+    run: todayRun(db, profileId, today),
   };
 }
 

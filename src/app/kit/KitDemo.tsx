@@ -2,6 +2,7 @@
 
 // Page /kit : la vitrine du système v3 (Systeme.tsx), puis chaque composant du kit dans ses états, avec le nom à
 // importer depuis "@/components/ui".
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Alert,
@@ -115,6 +116,9 @@ export function KitDemo() {
       <header className="grid gap-4 border-t-2 border-ink pt-6">
         <h2 className="text-h1">Les pièces, vivantes</h2>
         <p className="max-w-[52ch] text-lead text-ink-2">Chaque composant du kit dans ses états. Tout s’importe depuis <code className="num">@/components/ui</code>.</p>
+        <p className="text-small text-ink-2">
+          À part : <Link href="/kit/graphiques" className="font-bold text-ink underline underline-offset-4">les graphiques</Link>, <Link href="/kit/boites" className="font-bold text-ink underline underline-offset-4">les boîtes</Link>, <Link href="/kit/dessins" className="font-bold text-ink underline underline-offset-4">les dessins</Link>.
+        </p>
       </header>
 
       <div className="grid gap-x-12 gap-y-18 lg:grid-cols-2">

@@ -7,9 +7,13 @@ import os from "os";
 import path from "path";
 import { and, eq, sql } from "drizzle-orm";
 import { openDb } from "@/lib/db/open";
-import { appSettings, cookSessions, foodLog, mealBoxes, mealSlots, people, shoppingLists, weekPlans, weekRecipes, weighIns, workouts } from "@/lib/db/schema";
+import { appSettings, cookSessions, foodLog, healthSamples, mealBoxes, mealSlots, people, shoppingLists, weekPlans, weekRecipes, weighIns, workoutDetails, workouts } from "@/lib/db/schema";
+import { syncPlan } from "@/lib/running/store";
+import { overview } from "@/lib/health/overview";
 import { basesToPurge, canCreate, demoEnabled, demoLimits, isVisitorId, maxPageCount, newVisitorId, visitorFile, visitorOfFile } from "@/lib/demo/core";
-import { demoCalendar, demoHousehold, demoWorkouts, sessionDays, weightSeries } from "@/lib/demo/household";
+import { demoCalendar, demoHealth, demoHousehold, demoWorkouts, HEALTH_DAYS, sessionDays, SLEEP_NIGHTS, weightSeries } from "@/lib/demo/household";
+import { parseV2 } from "@/lib/health/ingest-v2";
+import { addDays } from "@/lib/week/propose";
 import { seedDemo } from "@/lib/demo/seed";
 import { aiEnabled } from "@/lib/ai";
 import { authEnabled } from "@/lib/auth";
@@ -102,7 +106,7 @@ test("le foyer démo : profils complets, pesées et séances datées avant aujou
   const h = demoHousehold(today);
   assert.deepEqual(h.people.map((p) => p.name), ["Alex", "Sam"]);
   for (const p of h.people) for (const k of ["sex", "birthDate", "heightCm", "activity", "goal", "setupDoneAt"] as const) assert.ok(p[k] != null, `${p.name} : ${k}`);
-  for (const w of h.weighIns) assert.ok(w.date >= h.calendar.historyFrom && w.date <= today && w.kg > 50 && w.kg < 90);
+  for (const w of h.weighIns) assert.ok(w.date >= addDays(today, -HEALTH_DAYS) && w.date <= today && w.kg > 50 && w.kg < 90);
   assert.ok(h.weighIns.some((w) => w.date === today), "une pesée aujourd'hui");
   const alex = h.weighIns.filter((w) => w.personId === "alex");
   assert.ok(alex[0].kg > alex.at(-1)!.kg, "Alex perd doucement");
@@ -121,6 +125,28 @@ test("le foyer démo : profils complets, pesées et séances datées avant aujou
   for (const slug of all) assert.ok(slugs.has(slug), slug);
 });
 
+test("un an d'Apple Santé pour la démo : un paquet v2 que l'import accepte en entier, le même chaque jour", () => {
+  const today = "2026-11-05";
+  const now = new Date(`${today}T23:00:00Z`);
+  for (const id of ["alex", "sam"] as const) {
+    const p = demoHealth(id, today, 7);
+    assert.deepEqual(p, demoHealth(id, today, 7));
+    const parsed = parseV2(p, now);
+    assert.ok(!("error" in parsed));
+    if ("error" in parsed) return;
+    assert.equal(parsed.skipped, 0, `${id} : rien de refusé`);
+    const steps = p.daily.filter((d) => d.type === "steps");
+    assert.equal(steps.length, HEALTH_DAYS + 1);
+    assert.ok(steps.every((d) => d.date <= today && d.value > 0));
+    assert.ok(steps.at(-1)!.value < steps.at(-2)!.value, "aujourd'hui n'est pas fini");
+    const nights = new Set(p.sleep.map((x) => x.end.slice(0, 10)));
+    assert.ok(nights.size >= SLEEP_NIGHTS - 1 && nights.size <= SLEEP_NIGHTS + 1);
+    assert.ok(p.workouts.length > 60, `${id} : ${p.workouts.length} séances`);
+    assert.ok(p.samples.some((x) => x.type === "vo2max"));
+  }
+  assert.ok(demoHealth("alex", today, 7).workouts.some((w) => w.activity === "running" && w.distanceM! > 4000));
+});
+
 test("la base modèle : foyer prêt, semaine répartie, courses, session finie, boîtes au frigo et au congélo", async () => {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mijote-demo-"));
@@ -133,6 +159,15 @@ test("la base modèle : foyer prêt, semaine répartie, courses, session finie, 
     assert.equal(db.select().from(people).all().length, 2);
     assert.ok(db.select().from(weighIns).all().length > 60);
     assert.ok(db.select().from(workouts).all().length >= 20);
+    // Course : Alex suit un plan depuis six semaines, ses courses ont leur détail, le plan est rangé.
+    assert.ok(db.select().from(workoutDetails).all().length >= 14);
+    const run = syncPlan(db, "alex", new Date(`${today}T08:00:00Z`))!;
+    assert.ok(run.plan.phase >= 1, `phase ${run.plan.phase}`);
+    assert.ok(run.data.runs.some((r) => r.analysis.decoupling.ok), "un découplage calculable (sortie longue)");
+    assert.ok(run.data.runs.filter((r) => r.analysis.loadSource === "serie").length >= 14, "charge tirée de la série de FC");
+    assert.ok(run.data.runs.every((r) => r.date < today));
+    assert.ok(run.sessions.some((s) => s.date >= today && s.status === "prevue"));
+    assert.equal(run.plan.paused, null);
     assert.equal(db.select().from(weekRecipes).all().length, 9);
     const done = db.select().from(cookSessions).where(eq(cookSessions.status, "done")).all();
     assert.equal(done.length, 2);
@@ -154,6 +189,13 @@ test("la base modèle : foyer prêt, semaine répartie, courses, session finie, 
       const open = db.select().from(mealSlots).where(eq(mealSlots.weekPlanId, plan.id)).all().filter((x) => x.place !== "away");
       assert.equal(open.filter((x) => !x.recipeId).length, 0, `repas sans plat la semaine du ${start}`);
     }
+    // Un an d'Apple Santé : la vue d'ensemble a de quoi dessiner.
+    assert.ok(db.select().from(healthSamples).all().length > 3000);
+    const alex = db.select().from(people).where(eq(people.id, "alex")).get()!;
+    const o = overview(db, alex, "1an", today);
+    assert.ok(o.bars.steps!.filter((b) => b.value != null).length >= 50);
+    assert.ok(o.synthesis.length >= 3, o.synthesis.join(" "));
+    assert.ok(o.types.types.includes("Course"));
     // L'accueil se lit sans erreur.
     const home = homeView(db, "alex");
     assert.ok(home);

@@ -1,7 +1,8 @@
 // Le traitement de /api/sante/import, sans Next : la route (src/app/api/sante/import/route.ts) lui passe la
 // base, les en-têtes et le corps brut ; les tests aussi. Réponses : { status, body } en JSON.
-//   GET  → { person, lastSyncAt, v2: true, history?: "all" } pour l'app ; { mode, window } pour le Raccourci.
-//   POST → v2 (`version: 2`) : échantillons, totaux du jour, séances, sommeil, suppressions, par paquets ;
+//   GET  → { person, lastSyncAt, v2: true, features, history?: "all" } pour l'app ; { mode, window } pour le Raccourci.
+//   POST → v2 (`version: 2`) : échantillons, totaux du jour, séances (et leur détail, v2.1), sommeil,
+//          suppressions, par paquets ;
 //          v1 : pesées, pas, énergie active et séances de la fenêtre (ancien Raccourci, export de Santé).
 import type { Db } from "@/lib/db/open";
 import { ImportPayload, ingest } from "./ingest";
@@ -25,7 +26,8 @@ export function keyOf(headers: Headers) {
 /** Corps annoncé trop gros : la route ne le lit même pas. */
 export const tooLarge = (headers: Headers) => Number(headers.get("content-length") ?? 0) > MAX_BYTES;
 
-function byKey(db: Db, headers: Headers) {
+/** La personne de la clé, ou la réponse 401 (aussi pour /api/sante/import/plans). */
+export function byKey(db: Db, headers: Headers) {
   const key = keyOf(headers);
   const link = key ? linkForKey(db, key) : null;
   return link ? { link } : { error: fail(key ? "clé inconnue : recopie le code depuis Santé › Apple Santé" : "clé manquante", 401) };
@@ -42,6 +44,8 @@ export function importGet(db: Db, headers: Headers, now = new Date()): ApiReply 
     window,
     lastSyncAt: link.lastSyncAt,
     v2: true,
+    // v2.1 : le détail des séances et les séances planifiées vers la montre (/api/sante/import/plans).
+    features: ["workout_details", "plans"],
     // Tant que l'app n'a pas envoyé tout l'historique (ou après « Tout renvoyer »).
     ...(link.historyCompleteAt ? {} : { history: "all" }),
   });

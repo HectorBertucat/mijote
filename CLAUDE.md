@@ -46,15 +46,17 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Mangeurs et parts | `src/lib/eaters/` (`core.ts` et `habits.ts` purs : part, habitudes hors batch, conseil ; `store.ts` : `loadEaters`, `householdMembers`, `leadOf`, `adviceFor`) |
 | Nutrition | `src/lib/nutrition/` (incrémenter `NUTRITION_VERSION` si le calcul change) |
 | Fiche recette, bibliothèque | `src/app/recettes/`, `src/components/fiche/` (bloc à filet, chiffres de tête, tableau d'ingrédients), `src/components/RecipeParts.tsx` (`StepItem`) |
-| Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus) |
+| Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus ; `fit.ts` pur : adéquation des recettes et de la sélection aux repères, pastilles, suggestion), `src/components/semaine/` (`Fit.tsx`) |
 | Courses | `src/lib/shopping/`, catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
 | Session | `src/lib/session/` (`planner.ts`, `flow.ts` pour la vue simple), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`) |
 | Boîtes, frigo | `src/lib/boxes/` (`core.ts` pur : grammes par boîte, rangement ; `store.ts`), `src/app/frigo/`, `src/components/boxes/` |
 | Assistant (partout, ⌘I) | `src/lib/assistant/` (`core.ts` pur : contexte, outils, `checkAction` ; `store.ts` : instantané, conversation, exécution), `src/app/api/assistant/route.ts` (flux), `src/components/assistant/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
-| Santé | `src/lib/health/`, docs/sante.md |
+| Santé | `src/lib/health/`, docs/sante.md ; vue d'ensemble : `src/app/sante/page.tsx`, sections `src/components/sante/overview/`, séries `src/lib/health/overview.ts` (SQL) et `series.ts` (pur : périodes, paquets, synthèse) |
+| Graphiques | `src/components/ui/charts/` (`LineChart`, `BarChart`, `Sparkline`, `CalendarHeat`, `HBarChart`, `PeriodScope` ; île client `hover.tsx`), jetons `--c-viz-*`, démonstration `/kit/graphiques`, docs/design/systeme.md § Graphiques |
 | Apple Santé (app iPhone, import) | `src/lib/health/import-api.ts` (GET/POST), `ingest-v2.ts` (format v2 : bornes, dédoublonnage), `ingest.ts` (v1), `link.ts` (clé, code d'installation), `samples.ts` et `sleep.ts` (lecture), `src/app/sante/apple/` |
 | Sport | `src/lib/training/` (`library.ts`, `generate.ts`, `ai.ts`, `motion-check.ts`, `programs.ts`), docs/sport.md |
+| Course | `src/lib/running/` (purs : `zones.ts`, `load.ts`, `analysis.ts`, `plan.ts`, `workout.ts`, `actions.ts`, `details.ts`, `view.ts` : ce que montre l'interface ; `store.ts` : réglages, plan rangé dans `run_sessions` ; `page.ts` : ce que lisent les pages ; `watch-api.ts` : `/api/sante/import/plans`), `src/app/sante/course/` (page, `[id]` une sortie, `sorties`, `reglages`), `src/components/sante/course/`, docs/course.md (la méthode, incrémenter `RUNNING_VERSION` si un calcul change) |
 | Dessins | `src/lib/illus/` (`art.ts`, `resolve.ts`, `dish.ts` : la boîte d'un plat, `sanitize.ts`, `ai.ts`), `src/components/ui/dish.tsx` (`DishBox`), docs/illustrations.md |
 | Chargement, transitions de page | `loading.tsx` de chaque rubrique, kit `src/components/ui/skeleton.tsx`, `src/components/PageTransition.tsx`, onglets `src/components/Nav.tsx` |
 | Accès | `src/proxy.ts`, `src/lib/auth.ts` |
