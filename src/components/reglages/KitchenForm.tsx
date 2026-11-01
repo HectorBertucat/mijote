@@ -1,6 +1,6 @@
 "use client";
 
-// La cuisine du foyer, pas à pas : plaque, foyers, four, poêles, casseroles, cocotte et plats, appareils.
+// La cuisine du foyer, pas à pas : plaque, foyers, four, poêles, casseroles, cocotte et plats, appareils, bols et boîtes.
 // Une question par écran, un choix par défaut déjà pris, « Je ne sais pas » toujours possible (la valeur
 // par défaut sert et la question est notée « à vérifier »). Le planificateur n’utilise que ce qui est décrit.
 // DA v3 : la question en grand, les choix en lignes à filets, l’aide concrète en marge, la progression en traits.
@@ -16,6 +16,7 @@ import {
   kitchenSummary,
   matchHobPreset,
   typicalLevels,
+  type BowlSize,
   type HobType,
   type KitchenConfig,
   type KitchenQuestion,
@@ -34,11 +35,22 @@ const STEPS: { title: string; ask: string; hint: string; questions: KitchenQuest
   { title: "Casseroles et faitout", ask: `Quelles casseroles${NB}?`, hint: "Le riz, les sauces, l’eau des pâtes : chacune a sa place sur le feu.", questions: ["casseroles"] },
   { title: "Cocotte et plats à four", ask: `Une cocotte, des plats à four${NB}?`, hint: "Pour les mijotés et les gratins, qui se font pendant qu’on fait autre chose.", questions: ["pots", "plats"] },
   { title: "Les appareils", ask: `Quels appareils${NB}?`, hint: "Coche ce qui est dans tes placards, même rangé au fond.", questions: ["airFryer", "mixers", "extras"] },
+  { title: "Bols et boîtes", ask: `Combien de bols et de boîtes${NB}?`, hint: "La prep se range dedans : le planificateur n’en sort pas plus que tu n’en as, et réutilise ceux qui se vident.", questions: ["containers"] },
   { title: "Récapitulatif", ask: "Ta cuisine, en résumé", hint: "Touche une ligne pour la corriger.", questions: [] },
 ];
 const RECAP = STEPS.length - 1;
 /** Rubrique du récapitulatif → étape du parcours. */
-const SUMMARY_STEP = [0, 2, 3, 4, 5, 6];
+const SUMMARY_STEP = [0, 2, 3, 4, 5, 6, 7];
+
+const BOWL_SIZES: { key: keyof KitchenConfig["containers"]["bowls"]; title: string; one: string; max: number }[] = [
+  { key: "petit", title: "Petits bols", one: "petit bol", max: 1 },
+  { key: "moyen", title: "Bols moyens", one: "bol moyen", max: 3 },
+  { key: "grand", title: "Grands bols, saladiers", one: "grand bol", max: 8 },
+];
+const BOXES: { key: "prepBoxes" | "storageBoxes"; title: string; hint: string }[] = [
+  { key: "prepBoxes", title: "Boîtes de prep", hint: "À couvercle : une marinade, un bol préparé la veille qui passe la nuit au frigo." },
+  { key: "storageBoxes", title: "Boîtes de conservation", hint: "Celles du Frigo, où vont les parts de chacun." },
+];
 
 const HOB_HINT: Record<HobType, string> = {
   induction: "Lisse et noire ; un aimant colle sous les casseroles qui y chauffent.",
@@ -117,6 +129,7 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
     if (qs.includes("pans")) Object.assign(patch, { pans: d.pans, poeleMaxG: null });
     if (qs.includes("casseroles")) Object.assign(patch, { casseroles: d.casseroles, faitout: d.faitout });
     if (qs.includes("pots")) Object.assign(patch, { cocotte: d.cocotte, plats: d.plats });
+    if (qs.includes("containers")) Object.assign(patch, { containers: d.containers });
     setMsg(null);
     setC((cur) => ({ ...cur, ...patch, unsure: [...new Set([...cur.unsure, ...qs])] }));
     if (qs.includes("hobSizes")) setCustom(false);
@@ -462,7 +475,59 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
       ),
     },
 
-    // 8. Récapitulatif
+    // 8. Bols et boîtes
+    {
+      main: (
+        <div className="grid">
+          {BOWL_SIZES.map(({ key, title, one, max }) => {
+            const b = c.containers.bowls[key];
+            const setB = (patch: Partial<BowlSize>) => set({ containers: { ...c.containers, bowls: { ...c.containers.bowls, [key]: { ...b, ...patch } } } }, ["containers"]);
+            return (
+              <Block key={key} title={title}>
+                <Line>
+                  <Stepper decLabel={`Un ${one} de moins`} incLabel={`Un ${one} de plus`} value={b.count} min={0} max={20} onChange={(n) => setB({ count: n })} />
+                  Combien
+                  <Stepper decLabel="Moins" incLabel="Plus" value={b.liters} min={0.1} max={max} step={key === "petit" ? 0.1 : 0.5} unit="L" onChange={(n) => setB({ liters: Math.round(n * 10) / 10 })} />
+                  Contenance
+                </Line>
+              </Block>
+            );
+          })}
+          {BOXES.map(({ key, title, hint }) => {
+            const b = c.containers[key];
+            const setB = (patch: Partial<BowlSize>) => set({ containers: { ...c.containers, [key]: { ...b, ...patch } } }, ["containers"]);
+            return (
+              <Block key={key} title={title}>
+                <Line>
+                  <Stepper decLabel="Une boîte de moins" incLabel="Une boîte de plus" value={b.count} min={0} max={30} onChange={(n) => setB({ count: n })} />
+                  Combien
+                  <Stepper decLabel="Moins" incLabel="Plus" value={b.liters} min={0.2} max={5} step={0.1} unit="L" onChange={(n) => setB({ liters: Math.round(n * 10) / 10 })} />
+                  Contenance
+                </Line>
+                <p className="text-small text-ink-2">{hint}</p>
+              </Block>
+            );
+          })}
+          {c.oven && (
+            <Block icon="oven" title="Plaques du four">
+              <Line>
+                <Stepper decLabel="Une plaque de moins" incLabel="Une plaque de plus" value={c.containers.ovenTrays} min={0} max={4} onChange={(n) => set({ containers: { ...c.containers, ovenTrays: n } }, ["containers"])} />
+                Lèchefrites et plaques livrées avec le four
+              </Line>
+              <p className="text-small text-ink-2">Pour rôtir en une couche : une plaque prend environ 1,8{NB}kg de légumes en cubes.</p>
+            </Block>
+          )}
+        </div>
+      ),
+      help: (
+        <HowTo title="Comment compter">
+          <p>Un petit bol : un ramequin, un bol à café (0,5{NB}L). Un moyen : un bol à soupe ou à céréales (1,5{NB}L). Un grand : un saladier (3{NB}L).</p>
+          <p>Compte ceux que tu peux sortir pour cuisiner, pas ceux du service. Ce qui se verse au moment (une boîte de pulpe, la crème) ne prend pas de bol.</p>
+        </HowTo>
+      ),
+    },
+
+    // 9. Récapitulatif
     {
       main: (
         <div className="grid gap-6">

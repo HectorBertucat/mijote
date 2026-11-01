@@ -1340,7 +1340,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       lead.letters = letters;
       lead.base = { ...lead.base!, grams: total, key };
       for (const m of ms) if (m !== lead) merged.set(m, lead);
-      lead.deps = [...ms.flatMap((m) => m.deps)];
+      lead.deps = ms.flatMap((m) => m.deps);
       lead.notes.push(`Une seule cuisson de ${info.label} pour ${list(ms.map((m) => recipes[m.r].name))}.`);
       mergeNotes.push(`${info.label[0].toUpperCase()}${info.label.slice(1)} : une seule cuisson pour ${list(ms.map((m) => recipes[m.r].name))} (${formatQty(total, null)} dans ${article(shortName(vessel, eq.get(vessel)?.name)!).toLowerCase()}), puis le partage.`);
     }
@@ -1704,7 +1704,8 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     const last = blocks[blocks.length - 1];
     const prev = last?.[last.length - 1];
     // Une étape de cuisson qui démarre entre deux gestes coupe le moment (le bol qu'elle prend est prêt avant).
-    const cut = works.some((x) => x.start != null && x.start > last?.[0].start! + EPS && x.start < w.start! + EPS);
+    const from = last ? last[0].start! : -Infinity;
+    const cut = works.some((x) => x.start != null && x.start > from + EPS && x.start < w.start! + EPS);
     if (prev && w.start! <= prev.start! + prev.dur + 0.5 && !cut) last.push(w);
     else blocks.push([w]);
   }
@@ -2224,7 +2225,7 @@ export function validatePlan(plan: Pick<SessionPlan, "steps" | "recipes"> & Part
 const POT_ID = /^(casserole|faitout|cocotte)/;
 /** Le genre d'un équipement (pot, pan, dish…), même absent de la cuisine (d'après son id standard). */
 function kindOfIn(res: PlannerResources, id: string): string | undefined {
-  return res.equipment.find((e) => e.id === id)?.kind ?? (POT_ID.test(id) ? "pot" : /^poele/.test(id) ? "pan" : /^plat/.test(id) ? "dish" : undefined);
+  return res.equipment.find((e) => e.id === id)?.kind ?? (POT_ID.test(id) ? "pot" : id.startsWith("poele") ? "pan" : id.startsWith("plat") ? "dish" : undefined);
 }
 function stepLike(s: PlannerStep) {
   return { kind: s.kind, durationMin: s.durationMin ?? null, activeMin: s.activeMin ?? null, equipmentId: s.equipmentId ?? null, ovenTemp: s.ovenTemp ?? null };

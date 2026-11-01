@@ -33,7 +33,7 @@ test("trois recettes au riz : deux cuissons de riz au lieu de trois, jamais dans
     assert.equal(shared.shared!.reduce((x, s) => x + s.share, 0), 1);
     assert.ok(shared.shared!.every((s) => s.cookedG > s.rawG * 2), "le poids cuit est dit");
     assert.match(shared.phases![shared.phases!.length - 1].text, /^Partage le riz : .*cuit pour/);
-    assert.ok(p.decisions?.some((d) => /^Riz : une seule cuisson pour/.test(d)));
+    assert.ok(p.decisions?.some((d) => d.startsWith("Riz : une seule cuisson pour")));
     for (const s of rice) assert.ok(s.load!.liters <= s.load!.usableL!, `${s.id} : ${s.load!.liters} L dans ${s.equipmentId}`);
     // La casserole moyenne (2 L) ne reçoit jamais 400 g de riz ou plus.
     assert.ok(!rice.some((s) => s.equipmentId === "casserole-16"));
@@ -145,7 +145,7 @@ test("four : où étaler ce qui rôtit, et quand la surface manque", () => {
   const p = planSession([paprika], RES, { mode: "solo" });
   const bake = p.steps.find((s) => s.id === `${paprika.slug}#2`)!;
   assert.ok(bake.dishes && bake.dishes.haveCm2 >= bake.dishes.needCm2, JSON.stringify(bake.dishes));
-  assert.ok(bake.notes.some((n) => /^Étale en une couche sur /.test(n)));
+  assert.ok(bake.notes.some((n) => n.startsWith("Étale en une couche sur ")));
   const noTray = resOf({ ...DEFAULT_KITCHEN, plats: 1, containers: { ...DEFAULT_KITCHEN.containers, ovenTrays: 0 } });
   const q = planSession([paprika], noTray, { mode: "solo" });
   assert.ok(q.warnings.some((w) => /à rôtir en une couche demandent environ/.test(w)));
