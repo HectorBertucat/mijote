@@ -66,7 +66,7 @@ test("conseil : un manque notable de protéines appelle un shaker, sinon rien n'
   // Rien de notable (moins de 15 g, moins de 250 kcal).
   const ok = adviceOf(target, { kcal: 1000, protein: 70 }, { kcal: 300, protein: 12 });
   assert.equal(ok.kind, "ok");
-  assert.match(ok.text, /aucun complément n'est utile/);
+  assert.match(ok.text, /aucun complément n’est utile/);
 });
 
 test("une habitude saisie est vérifiée", () => {

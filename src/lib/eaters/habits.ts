@@ -160,7 +160,7 @@ export function adviceOf(target: DayTarget, batchMeal: { kcal: number; protein: 
   const lowK = kcal >= ADVICE_KCAL;
   if (!lowP && !lowK) {
     const what = outside.kcal > 0 ? "Les repas du batch et tes habitudes couvrent" : "Les repas du batch couvrent";
-    return { kind: "ok", proteinG: Math.max(0, protein), kcal: Math.max(0, kcal), text: `${what} ta cible du jour : aucun complément n'est utile.` };
+    return { kind: "ok", proteinG: Math.max(0, protein), kcal: Math.max(0, kcal), text: `${what} ta cible du jour : aucun complément n’est utile.` };
   }
   const shaker = shakerOf();
   const bfast = breakfastOf();

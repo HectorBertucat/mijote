@@ -95,7 +95,7 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
                         <b className="num whitespace-nowrap">{unitsLabel(part.units)}</b>
                       </span>
                       <span className="flex flex-wrap items-baseline justify-between gap-x-4 text-small text-ink-2">
-                        <span className="num">{`${part.kcal}${NB}kcal · ${part.protein}${NB}g`}</span>
+                        <span className="num">{`${part.kcal == null ? "—" : fr(part.kcal)}${NB}kcal · ${part.protein}${NB}g`}</span>
                         {part.verdict && <Verdict tone={verdictTone(part.verdict.protein === "low" ? "low" : part.verdict.kcal)}>{part.verdict.protein === "low" ? "peu de protéines" : WORD[part.verdict.kcal]}</Verdict>}
                       </span>
                     </li>

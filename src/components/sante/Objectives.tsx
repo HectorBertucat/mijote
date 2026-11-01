@@ -5,6 +5,7 @@ import { buttonClass } from "@/components/ui";
 import { GOAL_LABEL } from "@/lib/health/core";
 import { frDate } from "@/lib/health/goal-format";
 import { projection, SPORTS, weekAgainstPlan, weeklyCounts, type Session, type SportPlanItem } from "@/lib/health/goals";
+import { typo } from "@/lib/typo";
 import { NB, Row, Section, signed, Verdict } from "./carnet";
 
 const fr = (x: number, d = 1) => x.toFixed(d).replace(".", ",");
@@ -74,7 +75,7 @@ export function GoalCard({ g, sessions, monday, today, coachLink = true, ai = tr
           )}
           {g.constraints && (
             <Row k="Ce que tu peux faire">
-              <span className="whitespace-pre-wrap text-small">{g.constraints}</span>
+              <span className="whitespace-pre-wrap">{typo(g.constraints)}</span>
             </Row>
           )}
         </dl>
