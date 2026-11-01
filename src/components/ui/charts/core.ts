@@ -29,6 +29,14 @@ export function fmt(v: number, digits = 0) {
   if (!f) numFmts.set(digits, (f = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits })));
   return f.format(v);
 }
+/**
+ * Gros chiffre (Archivo serrée, `.num-tight`) : l'espace fine des milliers s'y réduit à presque rien (« 9472 »),
+ * elle devient une insécable (« 9 472 »). Un nombre est d'abord formaté ; un autre contenu passe tel quel.
+ */
+export function bigNum<T>(v: T): T | string {
+  if (typeof v === "number") return bigNum(fmt(v, Number.isInteger(v) ? 0 : 1));
+  return typeof v === "string" ? v.replace(/(\d)\u202f(?=\d{3}(?!\d))/g, `$1${NB}`) : v;
+}
 /** Graduation courte : « 12 k » au-delà de 10 000 ; les décimales (`digits` au plus) seulement si le repère en a. */
 export const tickText = (v: number, digits = 0) => (Math.abs(v) >= 10_000 ? `${fmt(v / 1000, v % 1000 ? 1 : 0)}${NNB}k` : fmt(v, Number.isInteger(v) ? 0 : digits));
 /** « 7 h 05 » à partir de minutes. */

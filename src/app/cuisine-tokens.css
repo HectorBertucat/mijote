@@ -114,6 +114,10 @@
   --c-viz-zone-3: #a8582e;
   --c-viz-zone-4: #8a4126;
   --c-viz-zone-5: #682d1d;
+  /* Bandes de zones derrière une courbe : lavis de la teinte (zone 1 à 5 : ΔE OKLab 5 à 11 sur le papier),
+     plus appuyé en sombre où le même écart se voit moins (ΔE 9 à 24) ; un filet à chaque limite. */
+  --viz-zone-wash: 0.2;
+  --viz-zone-rule: 0.5;
 
   /* Ombres (élévations 1 à 3) */
   --sh-1: 0 1px 2px rgb(27 29 35 / 0.06), 0 1px 1px rgb(27 29 35 / 0.04);
@@ -215,6 +219,7 @@
     --c-viz-zone-3: #c0683f;
     --c-viz-zone-4: #dc8a5c;
     --c-viz-zone-5: #f0b48a;
+    --viz-zone-wash: 0.34;
     --sh-1: 0 1px 2px rgb(0 0 0 / 0.4);
     --sh-2: 0 8px 20px -6px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
     --sh-3: 0 28px 56px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);
@@ -295,6 +300,7 @@
   --c-viz-zone-3: #c0683f;
   --c-viz-zone-4: #dc8a5c;
   --c-viz-zone-5: #f0b48a;
+  --viz-zone-wash: 0.34;
   --sh-1: 0 1px 2px rgb(0 0 0 / 0.4);
   --sh-2: 0 8px 20px -6px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
   --sh-3: 0 28px 56px -12px rgb(0 0 0 / 0.7), 0 4px 10px rgb(0 0 0 / 0.35);

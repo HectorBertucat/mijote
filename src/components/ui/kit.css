@@ -9,6 +9,12 @@
   .k-noscroll { scrollbar-width: none; }
   .k-noscroll::-webkit-scrollbar { display: none; }
 }
+
+/* Rangée qui défile (onglets) : le bord coupé s'estompe pour dire qu'il y a la suite. data-fade = start, end ou les deux. */
+.k-edge-fade { --fade: 32px; }
+.k-edge-fade[data-fade="end"] { -webkit-mask: linear-gradient(to right, black calc(100% - var(--fade)), transparent); mask: linear-gradient(to right, black calc(100% - var(--fade)), transparent); }
+.k-edge-fade[data-fade="start"] { -webkit-mask: linear-gradient(to left, black calc(100% - var(--fade)), transparent); mask: linear-gradient(to left, black calc(100% - var(--fade)), transparent); }
+.k-edge-fade[data-fade="both"] { -webkit-mask: linear-gradient(to right, transparent, black var(--fade) calc(100% - var(--fade)), transparent); mask: linear-gradient(to right, transparent, black var(--fade) calc(100% - var(--fade)), transparent); }
 .k-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: k-spin 0.8s linear infinite; flex: none; }
 
 /* Case animée : la case se remplit, la coche se trace, le libellé se barre. */

@@ -3,7 +3,7 @@
 // une personne sans montre voit ses séances, et rien d'autre ne laisse de trou.
 import type { ReactNode } from "react";
 import { Sparkline } from "@/components/ui/charts";
-import { fmt, hmin, shiftDay as shift } from "@/components/ui/charts/core";
+import { bigNum, fmt, hmin, shiftDay as shift } from "@/components/ui/charts/core";
 import type { Overview } from "@/lib/health/overview";
 import { typo } from "@/lib/typo";
 import { HowCalc, NB, Section, signed } from "../carnet";
@@ -18,7 +18,7 @@ function Tile({ label, value, unit, sub, note, spark, sparkLabel }: { label: str
     <div className="grid min-w-0 content-start gap-2 border-t border-line pt-4">
       <span className="label text-ink-2">{label}</span>
       <b className="num-tight block text-[clamp(2.25rem,1.9rem+1vw,2.75rem)] leading-[0.9] whitespace-nowrap text-ink">
-        {value}
+        {bigNum(value)}
         {unit && <span className="ml-1.5 text-[0.36em] font-[650] tracking-normal text-ink-2 [font-stretch:100%]">{unit}</span>}
       </b>
       {sub && <span className="text-small text-ink-2">{sub}</span>}

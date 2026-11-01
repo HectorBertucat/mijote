@@ -1,7 +1,7 @@
 // Les pièces communes des graphiques, sans état (rendu serveur) : le cadre (titre, chiffre de tête, légende,
 // tableau pour les lecteurs d'écran), la grille horizontale, l'axe des dates, l'état vide.
 import type { ReactNode } from "react";
-import { tableRows, type Tip } from "./core";
+import { bigNum, tableRows, type Tip } from "./core";
 
 /** Un graphique dans la page : un repère, une lecture à droite (la valeur qui compte), le dessin, la légende. */
 export function ChartFigure({ title, value, aside, legend, table, children, className = "" }: { title: ReactNode; value?: ReactNode; aside?: ReactNode; legend?: ReactNode; table?: ReactNode; children: ReactNode; className?: string }) {
@@ -25,7 +25,7 @@ export function ChartFigure({ title, value, aside, legend, table, children, clas
 export function ChartValue({ value, unit, sub }: { value: ReactNode; unit?: ReactNode; sub?: ReactNode }) {
   return (
     <>
-      <b className="num-tight text-[28px] leading-none text-ink">{value}</b>
+      <b className="num-tight text-[28px] leading-none text-ink">{bigNum(value)}</b>
       {unit && <span className="ml-1 text-small text-ink-2">{unit}</span>}
       {sub && <span className="block pt-1 text-small text-ink-2">{sub}</span>}
     </>

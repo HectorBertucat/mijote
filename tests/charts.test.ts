@@ -2,7 +2,7 @@
 // coupés aux trous, point le plus proche du pointeur, niveaux du calendrier, textes à la française.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bandPath, dateTicks, dayNum, dotsPath, fmt, fmtDay, hmin, levelOf, linePath, nearest, niceDomain, niceStep, NO_DATA, shiftDay, tableRows, tickText, tipText } from "@/components/ui/charts/core";
+import { bandPath, bigNum, dateTicks, dayNum, dotsPath, fmt, fmtDay, hmin, levelOf, linePath, nearest, niceDomain, niceStep, NO_DATA, shiftDay, tableRows, tickText, tipText } from "@/components/ui/charts/core";
 
 test("pas ronds et domaines : zéro en bas pour des barres, une série plate s'ouvre", () => {
   assert.equal(niceStep(10, 4), 2.5);

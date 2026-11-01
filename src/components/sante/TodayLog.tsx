@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, buttonClass, Check, Field, Input, RecipeTile, Segmented, Sheet, Stepper, Tabs, Textarea } from "@/components/ui";
+import { bigNum } from "@/components/ui/charts/core";
 import { HowCalc, NB, Note, qty, Section, Verdict } from "./carnet";
 import { useToast } from "@/components/cart/Toast";
 import { changeUnits, eatFree, eatRecipe, eatTemplate, estimateFree, markComplete, removeEntry } from "@/app/sante/actions";
@@ -354,7 +355,7 @@ function Eaten({ label, value, unit, target, tone, word, sub, className = "" }: 
     <div className={`grid min-w-0 content-start gap-3 ${className}`}>
       <span className="label text-ink-2">{label}</span>
       <b className="num-tight text-num-xl whitespace-nowrap">
-        {Math.round(value).toLocaleString("fr-FR")}
+        {bigNum(Math.round(value))}
         <span className="ml-2 text-[0.3em] font-[650] text-ink-2 [font-stretch:100%]">{target ? `/ ${target.toLocaleString("fr-FR")}${NB}${unit}` : unit}</span>
       </b>
       {target != null && (
