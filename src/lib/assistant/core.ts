@@ -393,7 +393,8 @@ export function buildContext(s: Snapshot): string {
       const x = portionOf({ baseUnits: p.baseUnits, ref: p.ref }, r);
       if (x.kcal == null) return `${p.name} ?`;
       const f = recipeFit(fitters.find((e) => e.id === p.id)!, r);
-      return `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.${f.level ? ` (${f.level}${f.level !== "bien" ? ` : ${FIT_ISSUE[f.issue!]}` : ""})` : ""}`;
+      const why = f.issue === "proteines" ? `protéines ${g(f.proteinBest!)} au mieux` : f.issue ? FIT_ISSUE[f.issue] : "";
+      return `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.${f.level ? ` (${f.level}${f.level !== "bien" ? ` : ${why}` : ""})` : ""}`;
     });
     L.push(`- ${r.slug} — ${r.name}${s.week.selected.includes(r.slug) ? " [retenue]" : ""}${r.status === "liked" ? " [aimée]" : ""} : ${parts.join(", ")}`);
   }

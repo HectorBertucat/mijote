@@ -56,6 +56,7 @@ export interface RecipeFit {
   proteinBest: number | null;
   /** Écart en points (20 kcal ou 2 g de protéines manquants = 1) : pour trier. */
   points: number;
+  ref: MealRef | null;
 }
 
 /** Petits écarts tolérés en « juste ». */
@@ -79,7 +80,7 @@ function proteinBestOf(e: Pick<FitEater, "baseUnits">, ref: MealRef, r: { kcalUn
 
 export function recipeFit(e: FitEater, r: Pick<FitRecipe, "kcalUnit" | "proteinUnit">): RecipeFit {
   const p = portionOf(e, r);
-  const base = { personId: e.id, name: e.name, units: p.units, kcal: p.kcal, protein: p.protein };
+  const base = { personId: e.id, name: e.name, units: p.units, kcal: p.kcal, protein: p.protein, ref: e.ref };
   if (!e.ref || r.kcalUnit == null || r.kcalUnit <= 0 || p.kcal == null || p.protein == null) return { ...base, level: null, issue: null, proteinBest: null, points: r.kcalUnit == null ? 8 : 0 };
   const t = e.ref;
   const best = proteinBestOf(e, t, { kcalUnit: r.kcalUnit, proteinUnit: r.proteinUnit });
@@ -123,23 +124,74 @@ export function fitRank(fits: RecipeFit[]): number {
 /** La recette ne s'écarte franchement du repère de personne (filtre « Pour nos objectifs »). */
 export const fitsAll = (fits: RecipeFit[]) => fits.length > 0 && fits.every((f) => f.level === "bien" || f.level === "juste");
 
-/** La pastille d'une recette : un mot, seulement quand il dit quelque chose. */
+/** La pastille d'une recette : quelques mots, seulement quand ils disent quelque chose. */
 export interface FitBadge {
   tone: "ok" | "warn";
   text: string;
 }
 
-export function fitBadge(fits: RecipeFit[]): FitBadge | null {
+/** Protéines pour 100 kcal d'une recette (null sans macros). */
+export const densityOf = (r: Pick<FitRecipe, "kcalUnit" | "proteinUnit">) => (r.kcalUnit && r.kcalUnit > 0 ? ((r.proteinUnit ?? 0) * 100) / r.kcalUnit : null);
+
+/** Part de la bibliothèque marquée « Protéiné » : le quart le plus dense, pas plus. */
+const DENSE_SHARE = 0.25;
+
+/**
+ * Les recettes qui se distinguent par leurs protéines : le quart le plus dense de la bibliothèque,
+ * et au moins la densité qu'il faut à la personne la plus exigeante (densityTarget). Relatif à la
+ * bibliothèque : une pastille sur chaque plat ne dirait plus rien.
+ */
+export function proteinDense(library: Pick<FitRecipe, "slug" | "kcalUnit" | "proteinUnit">[], eaters: Pick<FitEater, "ref">[]): Set<string> {
+  const refs = eaters.flatMap((e) => (e.ref ? [e.ref] : []));
+  if (!refs.length) return new Set();
+  const need = Math.max(...refs.map(densityTarget));
+  const known = library.flatMap((r) => {
+    const d = densityOf(r);
+    return d == null ? [] : [{ slug: r.slug, d }];
+  });
+  const top = Math.max(1, Math.floor(known.length * DENSE_SHARE));
+  return new Set(
+    known
+      .filter((x) => x.d >= need)
+      .sort((a, b) => b.d - a.d)
+      .slice(0, top)
+      .map((x) => x.slug)
+  );
+}
+
+/**
+ * La pastille : un écart franc d'abord (« Peu protéiné pour Alex ») ; sinon « Protéiné pour … »
+ * pour une recette dense (proteinDense) et les personnes à qui elle va bien ; rien dans les autres cas.
+ */
+export function fitBadge(fits: RecipeFit[], dense = false): FitBadge | null {
   const known = fits.filter((f) => f.level);
   if (!known.length) return null;
   const worst = known.filter((f) => f.level === "loin").sort((a, b) => b.points - a.points)[0];
   if (worst) return { tone: "warn", text: `${ISSUE_WORD[worst.issue!]} pour ${worst.name}` };
   const good = known.filter((f) => f.level === "bien");
-  if (!good.length) return null;
-  return { tone: "ok", text: `Calé pour ${joinNames(good.map((f) => f.name))}` };
+  if (!dense || !good.length) return null;
+  return { tone: "ok", text: `Protéiné pour ${joinNames(good.map((f) => f.name))}` };
 }
 
 const ISSUE_WORD: Record<FitIssue, string> = { proteines: "Peu protéiné", "trop-riche": "Trop riche", "trop-leger": "Trop léger" };
+
+/**
+ * Une ligne compacte pour un contexte d'IA (assistant, atelier) : « Alex loin, peu protéiné
+ * (27 g au mieux pour 52 visés) ; Sam bien ». Les chiffres viennent de recipeFit.
+ */
+export function fitLine(fits: RecipeFit[]): string {
+  return fits
+    .filter((f) => f.level)
+    .map((f) => {
+      if (f.level === "bien" || !f.issue) return `${f.name} ${f.level}`;
+      const why =
+        f.issue === "proteines"
+          ? `${f.protein} g de protéines pour ${f.ref!.proteinMin} visés, ${f.proteinBest} au mieux`
+          : `${fr(f.kcal!)} kcal à la part ${f.issue === "trop-riche" ? "la plus petite" : "la plus grande"}`;
+      return `${f.name} ${f.level}, ${ISSUE_WORD[f.issue].toLowerCase()} (${why})`;
+    })
+    .join(" ; ");
+}
 
 const joinNames = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} et ${xs[xs.length - 1]}`);
 
@@ -241,7 +293,8 @@ export function weekFit(
   selected: FitRecipe[],
   opts: { served?: Served; library?: FitRecipe[]; excluded?: Map<string, Set<string>> } = {}
 ): WeekFit {
-  const people = eaters.map((e) => personWeek(e, selected.filter((r) => !opts.excluded?.get(r.slug)?.has(e.id)), opts.served?.get(e.id)));
+  // Avec une répartition, une personne qui n'y figure pas ne mange aucun repas du batch.
+  const people = eaters.map((e) => personWeek(e, selected.filter((r) => !opts.excluded?.get(r.slug)?.has(e.id)), opts.served ? (opts.served.get(e.id) ?? new Map()) : undefined));
   const warnings: FitWarning[] = [];
   for (const pw of people) {
     if (pw.level !== "loin" || !pw.perMeal || !pw.ref) continue;
@@ -263,11 +316,12 @@ function suggest(e: FitEater, pw: PersonWeekFit, issue: FitIssue, eaters: FitEat
   const recipe = selected.length < MAX_RECIPES ? bestAddition(e, pw, issue, eaters, selected, opts) : null;
   if (issue === "proteines") {
     const g = round5Up(2 * pw.proteinShort);
-    const side = e.hasShaker ? `un en-cas protéiné de plus (200 g de skyr : ~21 g)` : `un shaker de ~${g} g de protéines par jour`;
+    const skyr = Math.round(2 * FOODS.skyr.protein);
+    const side = e.hasShaker ? `un en-cas protéiné de plus (200 g de skyr : ~${skyr} g)` : `un shaker de ~${g} g de protéines par jour`;
     const text = recipe
       ? `Ajoute un plat plus protéiné, par ex. ${recipe.name}, ou ${side}.`
       : e.hasShaker
-        ? `Un en-cas protéiné de plus couvrirait l’écart (~${g} g par jour ; 200 g de skyr en donnent ~21).`
+        ? `Un en-cas protéiné de plus couvrirait l’écart (~${g} g par jour ; 200 g de skyr en donnent ~${skyr}).`
         : `Un shaker de ~${g} g de protéines par jour couvrirait l’écart (~${wheyFor(g)} g de poudre).`;
     return { recipe, shakerG: e.hasShaker ? null : g, text };
   }

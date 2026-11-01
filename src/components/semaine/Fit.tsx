@@ -1,4 +1,4 @@
-// Objectifs → recettes, sur la Semaine (src/lib/week/fit.ts) : une pastille d’un mot sur chaque plat,
+// Objectifs → recettes, sur la Semaine (src/lib/week/fit.ts) : une pastille sur les plats qui se distinguent,
 // un avertissement seulement quand une sélection s’écarte du repère de quelqu’un (avec de quoi y
 // remédier), une ligne quand tout va bien, et les chiffres repliés. Sans état.
 import type { ReactNode } from "react";
@@ -6,13 +6,13 @@ import { Icon } from "@/components/ui";
 import type { FitBadge, FitWarning, WeekFit } from "@/lib/week/fit";
 import { HowTo, Notice } from "./Parts";
 
-/** La pastille d’un plat : une icône et quelques mots, sous ses faits (« Calé pour Alex et Sam »). */
+/** La pastille d’un plat : une icône et quelques mots, sous ses faits (« Protéiné pour Alex », « Peu protéiné pour Sam »). */
 export function FitMark({ badge }: { badge: FitBadge | null }) {
   if (!badge) return null;
   const ok = badge.tone === "ok";
   return (
-    <span className={`mt-1 flex items-center gap-1 ${ok ? "text-ink-2" : "text-warn-ink"}`}>
-      <Icon name={ok ? "check" : "alert"} size="s" className={`shrink-0 ${ok ? "text-ok" : "text-warn"}`} />
+    <span className={`mt-1 flex items-start gap-1 ${ok ? "text-ink-2" : "text-warn-ink"}`}>
+      <Icon name={ok ? "check" : "alert"} size="s" className={`mt-[3px] shrink-0 ${ok ? "text-ok" : "text-warn"}`} />
       {badge.text}
     </span>
   );
@@ -20,10 +20,13 @@ export function FitMark({ badge }: { badge: FitBadge | null }) {
 
 /** Les écarts d’une sélection, à poser dans la liste « À regarder » : une phrase, une suggestion, un bouton. */
 export function FitWarnings({ warnings, add }: { warnings: FitWarning[]; add?: (slug: string, name: string) => ReactNode }) {
+  // Un plat suggéré à deux personnes : un seul bouton, sur le premier avertissement.
+  const firstFor = new Map<string, string>();
+  for (const w of warnings) if (w.suggestion.recipe && !firstFor.has(w.suggestion.recipe.slug)) firstFor.set(w.suggestion.recipe.slug, w.personId);
   return warnings.map((w) => (
-    <Notice key={w.personId} icon="scale" action={w.suggestion.recipe && add ? add(w.suggestion.recipe.slug, w.suggestion.recipe.name) : undefined}>
+    <Notice key={w.personId} icon="scale" action={w.suggestion.recipe && add && firstFor.get(w.suggestion.recipe.slug) === w.personId ? add(w.suggestion.recipe.slug, w.suggestion.recipe.name) : undefined}>
       <b>
-        {w.issue === "proteines" ? "Protéines justes" : w.issue === "trop-riche" ? "Repas riches" : "Repas légers"} pour {w.name}
+        {w.issue === "proteines" ? "Peu de protéines" : w.issue === "trop-riche" ? "Repas trop riches" : "Repas trop légers"} pour {w.name}
       </b>
       &nbsp;: {w.text}. {w.suggestion.text}
     </Notice>

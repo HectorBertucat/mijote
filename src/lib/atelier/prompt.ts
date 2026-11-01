@@ -2,7 +2,8 @@
 // nutritionnelle, équipement, préférences. La recette et la demande vont dans le message.
 import { FOODS } from "@/lib/nutrition/foods";
 import type { Member } from "@/lib/eaters/core";
-import { densityTarget } from "@/lib/week/fit";
+import { computeNutrition } from "@/lib/nutrition/compute";
+import { densityTarget, fitLine, recipeFits } from "@/lib/week/fit";
 import type { RecipeInput } from "@/lib/recipes/format";
 import { toAiRecipe } from "./schema";
 
@@ -63,10 +64,25 @@ ${prefs || "- (aucune préférence notée)"}`;
 
 const json = (r: RecipeInput) => JSON.stringify(toAiRecipe(r));
 
-export function adjustPrompt(recipe: RecipeInput, request: string): string {
+/**
+ * Adéquation de la recette au repère de chacun, calculée par l'appli (src/lib/week/fit.ts) : la part
+ * suit les kcal de chacun, la ligne dit qui elle sert bien et où elle coince. Vide sans repère.
+ */
+export function fitContext(recipe: Pick<RecipeInput, "ingredients" | "servingsUnits">, household: Member[]): string {
+  const withRef = household.filter((m) => m.ref);
+  if (!withRef.length || recipe.servingsUnits <= 0) return "";
+  const n = computeNutrition(
+    recipe.ingredients.map((i) => ({ item: i.item, food: i.food ?? null, grams: i.grams ?? null, units: i.units ?? null, yield: i.yield ?? null })),
+    recipe.servingsUnits
+  );
+  const line = fitLine(recipeFits(withRef.map((m) => ({ id: m.id, name: m.name, baseUnits: m.units, ref: m.ref })), { kcalUnit: n.perUnit.kcal, proteinUnit: n.perUnit.protein }));
+  return line ? `\nAdéquation actuelle aux repères (calcul de l'appli : bien, juste ou loin) : ${line}.\n` : "";
+}
+
+export function adjustPrompt(recipe: RecipeInput, request: string, household: Member[] = []): string {
   return `Recette actuelle (JSON) :
 ${json(recipe)}
-
+${fitContext(recipe, household)}
 Demande : ${request}
 
 Rends la recette complète ajustée.
@@ -93,7 +109,7 @@ export function creationPrompt(input: { request: CreationRequest; library: { nam
   const base = current
     ? `Recette en cours (JSON) :
 ${json(current)}
-
+${fitContext(current, people ?? [])}
 Modifie-la :
 ${request.add.length ? `- Ajoute : ${request.add.join(", ")} (intègre-les vraiment au plat, quantités et étapes).\n` : ""}${request.remove.length ? `- Retire : ${request.remove.join(", ")} (et ce qui ne sert plus).\n` : ""}- Pour chaque ingrédient gardé, recopie exactement son « item ».`
     : `Crée une recette.`;

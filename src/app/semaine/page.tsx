@@ -10,7 +10,7 @@ import { periodPlans, weekView } from "@/lib/week/store";
 import { composerHref } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
 import { estimateRecipe, estimateSession } from "@/lib/session/estimate";
-import { fitBadge, fitRank, fitsAll, fitSummary, recipeFits, weekFit, type Served } from "@/lib/week/fit";
+import { densityOf, fitBadge, fitRank, fitsAll, fitSummary, proteinDense, recipeFits, weekFit, type Served } from "@/lib/week/fit";
 import { buildPlan } from "@/lib/session/store";
 import { FactorStepper, type Control } from "@/components/semaine/FactorStepper";
 import { Leftovers, LeftoversSkeleton } from "@/components/semaine/Leftovers";
@@ -136,6 +136,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   const goals = eaters.some((e) => e.ref);
   const shelfLib = library.filter((r) => r.status !== "archived" && r.servingsUnits > 0);
   const fitsOf = new Map(shelfLib.map((r) => [r.slug, recipeFits(eaters, r, tastes.excluded.get(r.slug))]));
+  const dense = proteinDense(shelfLib, eaters);
   const served: Served = new Map();
   for (const rp of a.recipes)
     for (const m of rp.meals)
@@ -161,7 +162,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
     .sort(
       (x, y) =>
         Number(chosen.has(y.r.slug)) - Number(chosen.has(x.r.slug)) ||
-        (byGoals ? fitRank(fitsOf.get(x.r.slug) ?? []) - fitRank(fitsOf.get(y.r.slug) ?? []) : 0) ||
+        (byGoals ? fitRank(fitsOf.get(x.r.slug) ?? []) - fitRank(fitsOf.get(y.r.slug) ?? []) || (densityOf(y.r) ?? 0) - (densityOf(x.r) ?? 0) : 0) ||
         (x.r.status === "liked" ? 0 : 1) - (y.r.status === "liked" ? 0 : 1) ||
         x.r.name.localeCompare(y.r.name, "fr")
     );
@@ -369,17 +370,25 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             {shelf.map(({ r, est: e }) => {
               const on = chosen.has(r.slug);
               const facts = [`${fmtMin(e.activeMin)}\u00a0actif`, r.tags.includes("one pot") ? "one\u00a0pot" : null, r.freezerOk ? "se\u00a0congèle" : null, r.status === "liked" ? null : "à\u00a0essayer"].filter(Boolean).join(" · ");
+              const badge = fitBadge(fitsOf.get(r.slug) ?? [], dense.has(r.slug));
+              const label = `${on ? "Retirer" : "Choisir"} ${r.name}${badge ? ` (${badge.text.charAt(0).toLowerCase()}${badge.text.slice(1)})` : ""}`;
               return (
                 <li key={r.slug} className="min-w-0">
                   <form action={on ? removeAction : addAction} className="h-full">
                     {keep({ slug: r.slug })}
-                    <PickButton on={on} disabled={!on && full} name={r.name} visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")} facts={
+                    <PickButton
+                      on={on}
+                      disabled={!on && full}
+                      name={r.name}
+                      visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")}
+                      facts={
                         <>
                           {facts}
-                          <FitMark badge={fitBadge(fitsOf.get(r.slug) ?? [])} />
+                          <FitMark badge={badge} />
                         </>
                       }
-                      label={on ? `Retirer ${r.name}` : `Choisir ${r.name}`} />
+                      label={label}
+                    />
                   </form>
                 </li>
               );

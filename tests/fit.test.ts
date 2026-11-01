@@ -2,8 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mealRef } from "@/lib/eaters/core";
-import { systemPrompt } from "@/lib/atelier/prompt";
-import { densityTarget, fitBadge, fitRank, fitsAll, fitSummary, recipeFit, recipeFits, weekFit, wheyFor, type FitEater, type FitRecipe } from "@/lib/week/fit";
+import { adjustPrompt, systemPrompt } from "@/lib/atelier/prompt";
+import { densityOf, densityTarget, fitBadge, fitLine, fitRank, fitsAll, fitSummary, proteinDense, recipeFit, recipeFits, weekFit, wheyFor, type FitEater, type FitRecipe } from "@/lib/week/fit";
 
 // Alex : recomposition, très protéiné. Sam : perte de poids, petit gabarit, un shaker le matin.
 const alex: FitEater = { id: "alex", name: "Alex", baseUnits: 5, ref: { kcalMin: 700, kcalMax: 760, proteinMin: 52, proteinMax: 68 } };
@@ -34,7 +34,9 @@ test("recette très protéinée : bien pour les deux, protéines au-dessus du re
   assert.equal(s.units, 4.5);
   assert.equal(s.protein, 59); // au-dessus de 47 : pas un défaut
   assert.equal(s.level, "bien");
-  assert.deepEqual(fitBadge(recipeFits(both, tikka)), { tone: "ok", text: "Calé pour Alex et Sam" });
+  // Une pastille verte seulement pour une recette qui se distingue (proteinDense) : sinon rien.
+  assert.equal(fitBadge(recipeFits(both, tikka)), null);
+  assert.deepEqual(fitBadge(recipeFits(both, tikka), true), { tone: "ok", text: "Protéiné pour Alex et Sam" });
 });
 
 test("recette pauvre en protéines : même la plus grande part sous le plafond de kcal n'atteint pas le repère", () => {
@@ -52,9 +54,10 @@ test("petit écart : « juste », sans pastille", () => {
   const a = recipeFit(alex, chili);
   assert.equal(a.protein, 50);
   assert.equal(a.level, "juste");
-  // Sam y est bien : la pastille ne parle que d'elle
-  assert.deepEqual(fitBadge(recipeFits(both, chili)), { tone: "ok", text: "Calé pour Sam" });
-  assert.equal(fitBadge([recipeFit(alex, chili)]), null);
+  // Sam y est bien : une pastille « Protéiné » ne nomme que Sam
+  assert.equal(fitBadge(recipeFits(both, chili)), null);
+  assert.deepEqual(fitBadge(recipeFits(both, chili), true), { tone: "ok", text: "Protéiné pour Sam" });
+  assert.equal(fitBadge([recipeFit(alex, chili)], true), null);
 });
 
 test("plat très riche : la part de Sam est déjà au plus petit (60 %), trop riche quand même", () => {
@@ -167,4 +170,51 @@ test("atelier : les protéines pour 100 kcal qu'une recette doit apporter, dans 
   assert.match(prompt, /au moins 7,1 g pour Alex, 5,8 g pour Sam/);
   // Une recette à 7,1 g pour 100 kcal tombe bien pour Alex.
   assert.equal(recipeFit(alex, { kcalUnit: 146, proteinUnit: 10.4 }).level, "bien");
+});
+
+test("une personne absente de la répartition (tous ses repas ailleurs) ne compte aucun repas", () => {
+  const served = new Map([["sam", new Map([["pates-creme", 6]])]]);
+  const w = weekFit(both, [tikka, pates], { served });
+  const a = w.people.find((p) => p.personId === "alex")!;
+  assert.equal(a.meals, 0);
+  assert.equal(a.level, null);
+  assert.equal(w.warnings.some((x) => x.personId === "alex"), false);
+});
+
+test("ligne compacte pour l'assistant et l'atelier : qui la recette sert bien, où elle coince", () => {
+  assert.equal(fitLine(recipeFits(both, tikka)), "Alex bien ; Sam bien");
+  assert.equal(fitLine(recipeFits(both, pates)), "Alex loin, peu protéiné (27 g de protéines pour 52 visés, 27 au mieux) ; Sam loin, peu protéiné (24 g de protéines pour 36 visés, 24 au mieux)");
+  assert.match(fitLine(recipeFits(both, gratin)), /^Alex loin, trop riche \(1\s020 kcal à la part la plus petite\)/);
+  assert.equal(fitLine(recipeFits(both, mystere)), "");
+});
+
+test("atelier : la recette à ajuster arrive avec son adéquation calculée par l'appli", () => {
+  const recipe = {
+    slug: "pates-creme",
+    name: "Pâtes à la crème",
+    servingsUnits: 10,
+    ingredients: [
+      { item: "pâtes", lineRaw: "500 g pâtes", food: "pates", grams: 500 },
+      { item: "crème", lineRaw: "200 g crème", food: "creme_legere", grams: 200 },
+    ],
+    steps: [],
+  } as unknown as Parameters<typeof adjustPrompt>[0];
+  const household = [{ id: "alex", name: "Alex", units: 5, ref: alex.ref }];
+  assert.match(adjustPrompt(recipe, "plus protéiné", household), /Adéquation actuelle aux repères \(calcul de l'appli : bien, juste ou loin\) : Alex loin, peu protéiné/);
+  // Sans repère : rien.
+  assert.doesNotMatch(adjustPrompt(recipe, "plus protéiné"), /Adéquation/);
+});
+
+test("« Protéiné » : le quart le plus dense de la bibliothèque, et assez dense pour le plus exigeant", () => {
+  // Densités (g pour 100 kcal) : dinde 10,8 ; tikka 9,3 ; chili 6,7 ; pâtes 3,8 ; gratin 4,4. Alex demande 7,1.
+  assert.equal(Math.round(densityOf(dinde)! * 10) / 10, 10.8);
+  assert.equal(densityOf(mystere), null);
+  const lib = [dinde, tikka, chili, pates, gratin, mystere, r("lentilles", 120, 8), r("saumon", 150, 11)];
+  // 7 recettes connues → 1 au plus.
+  assert.deepEqual([...proteinDense(lib, both)], ["dinde-curry"]);
+  const big = [...lib, r("thon", 110, 12), r("oeufs", 140, 11), r("tofu", 120, 9)];
+  assert.deepEqual([...proteinDense(big, both)].sort(), ["dinde-curry", "thon"]);
+  // Sans repère : rien. Une bibliothèque pauvre : rien non plus (sous ce qu'il faut à Alex).
+  assert.equal(proteinDense(lib, [{ ref: null }]).size, 0);
+  assert.equal(proteinDense([pates, gratin, r("riz", 150, 5), r("pain", 250, 8)], both).size, 0);
 });
