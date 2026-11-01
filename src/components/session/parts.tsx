@@ -182,7 +182,7 @@ export function WakePill({ wake, onInk = true }: { wake: { on: boolean; request:
     <button
       type="button"
       onClick={() => void wake.request()}
-      className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-small font-semibold ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
+      className={`relative inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-small font-semibold before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
       title={wake.on ? "L’écran reste allumé pendant la session" : "Toucher pour garder l’écran allumé"}
     >
       <Icon name={wake.on ? "lock" : "sun"} size="s" />

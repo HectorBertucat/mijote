@@ -46,7 +46,7 @@ export function ProfileSwitch({ profiles, active, className = "" }: { profiles: 
                 router.refresh();
               });
             }}
-            className={`group relative grid h-tap min-w-9 place-items-center rounded-[4px] px-2 font-display text-[15px] font-bold tracking-[0.02em] [font-stretch:75%] ${on ? "text-ink" : "text-faint hover:text-ink"}`}
+            className={`group relative grid h-tap min-w-tap place-items-center rounded-[4px] px-2 font-display text-[15px] font-bold tracking-[0.02em] [font-stretch:75%] ${on ? "text-ink" : "text-faint hover:text-ink"}`}
           >
             {initials.get(p.id)}
             <span aria-hidden className={`absolute inset-x-2 bottom-2 h-0.5 bg-ink transition-transform duration-[var(--dur-2)] ease-[var(--ease-out)] ${on ? "scale-x-100" : "scale-x-0 group-hover:scale-x-50 group-hover:bg-faint"}`} />

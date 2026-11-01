@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 
-const CHIP = "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[8px] border px-3 text-[14px] font-bold transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)]";
+const CHIP = "relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[8px] border px-3 text-[14px] font-bold transition-colors duration-[var(--dur-1)] ease-[var(--ease-out)]";
 const OFF = "border-line bg-transparent text-ink-2 hover:border-line-strong hover:text-ink";
 const ON = "border-inverse bg-inverse text-on-inverse";
 

@@ -61,7 +61,7 @@ export function TopNav({ profiles, active, search, assistant, home }: { profiles
   return (
     <header className="vt-site-header sticky top-0 z-20 border-b border-line bg-bg pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-8 px-5 sm:px-10">
-        <Link href="/" title={home ?? undefined} className="group -mx-1 rounded-[4px] px-1">
+        <Link href="/" title={home ?? undefined} className="group -mx-1 grid h-tap items-center rounded-[4px] px-1">
           <Wordmark />
         </Link>
         <nav ref={nav} className={`relative hidden h-full flex-1 items-stretch gap-7 ${bare ? "" : "sm:flex"}`} aria-label="Rubriques">
