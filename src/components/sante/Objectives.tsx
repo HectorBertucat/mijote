@@ -21,7 +21,7 @@ export interface GoalSummary {
   constraints: string | null;
 }
 
-export function GoalCard({ g, sessions, monday, today, coachLink = true, className = "" }: { g: GoalSummary; sessions: Session[]; monday: string; today: string; coachLink?: boolean; className?: string }) {
+export function GoalCard({ g, sessions, monday, today, coachLink = true, ai = true, className = "" }: { g: GoalSummary; sessions: Session[]; monday: string; today: string; coachLink?: boolean; ai?: boolean; className?: string }) {
   const eta = g.targetWeightKg != null && g.trendKg != null ? projection(g.trendKg, g.targetWeightKg, g.ratePct, today) : null;
   const late = eta && g.targetDate && eta.date > g.targetDate;
   const week = weekAgainstPlan(sessions, g.plan, monday);
@@ -50,8 +50,7 @@ export function GoalCard({ g, sessions, monday, today, coachLink = true, classNa
           {g.goal && (
             <Row k="Rythme">
               <span className="num">
-                {signed(g.ratePct, 2)}
-                {NB}% du poids par semaine
+                {Math.abs(g.ratePct) < 0.005 ? "poids stable" : `${signed(g.ratePct, 2)}${NB}% du poids par semaine`}
               </span>
             </Row>
           )}
@@ -81,7 +80,7 @@ export function GoalCard({ g, sessions, monday, today, coachLink = true, classNa
         </dl>
       )}
       <div className="flex flex-wrap gap-2">
-        {coachLink && (
+        {coachLink && (empty || ai) && (
           <Link href="/sante/objectifs" className={buttonClass({ size: "sm", variant: empty ? "primary" : "secondary" })}>
             {empty ? "Fixer mes objectifs" : "En parler au coach"}
           </Link>
