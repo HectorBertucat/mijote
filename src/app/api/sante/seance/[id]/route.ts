@@ -23,8 +23,9 @@ const LiveSchema = z.object({
   t0: z.number(),
   log: z.record(z.string(), z.array(z.number().nullable()).max(20)),
   levels: z.record(z.string(), z.number().int().min(0).max(20)),
-  cur: z.object({ reps: z.number().optional(), guide: z.number().optional(), restEnd: z.number().optional(), emom: z.number().optional() }),
+  cur: z.object({ reps: z.number().optional(), guide: z.number().optional(), restEnd: z.number().optional(), emom: z.number().optional(), paused: z.number().optional() }),
   pair: z.string().max(60).optional(),
+  opts: z.object({ auto: z.boolean(), lead: z.number().int().min(0).max(30), change: z.number().int().min(0).max(90) }).optional(),
 });
 const Body = z.union([z.object({ expect: z.number().int(), live: LiveSchema }), z.object({ finish: z.object({ note: z.string().max(2000) }) }), z.object({ abandon: z.literal(true) })]);
 

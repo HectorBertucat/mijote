@@ -6,7 +6,7 @@ import { MOTIONS } from "@/lib/training/figures";
 import { cycleDuration, sample } from "@/lib/training/motion";
 import { BONES, dist } from "@/lib/training/skeleton";
 import { buildSteps, EXERCISES, KB_TEMPLATE, lastFor, nextType, ORDER, ready, withBonus, type Workout } from "@/lib/training/program";
-import { assignProgram, exerciseLookup, programFor, TEMPLATES } from "@/lib/training/programs";
+import { assignProgram, exerciseLookup, programById, programFor, TEMPLATES } from "@/lib/training/programs";
 import { generateProgram, sessionMinutes } from "@/lib/training/generate";
 import { available, LIBRARY, META } from "@/lib/training/library";
 import { checkMotion } from "@/lib/training/motion-check";
@@ -17,8 +17,11 @@ import { openDb } from "@/lib/db/open";
 import { seedTest } from "./helpers";
 import { listWorkouts, saveWorkout } from "@/lib/training/store";
 import { sessionMap } from "@/components/sante/training/LiveSession";
-import { act, entriesOf, guideAt, startLive } from "@/lib/training/live";
-import { activeLive, createDuo, createLive, endLive, getLive, writeLive } from "@/lib/training/live-store";
+import { act, DEFAULT_OPTS, entriesOf, guideAt, leadFor, normOpts, startLive } from "@/lib/training/live";
+import { musclesFromText, musclesOf, ranked } from "@/lib/training/muscles";
+import { drawFigure } from "@/lib/training/draw";
+
+import { activeLive, createDuo, createLive, endLive, getLive, guideOpts, writeLive } from "@/lib/training/live-store";
 
 test("chaque exercice du programme a sa figure animée", () => {
   for (const id of ORDER) assert.ok(MOTIONS[id], id);
@@ -193,12 +196,64 @@ test("séance partagée : gestes, étape gardée, repos qui démarre seul, rythm
   l = act(P, l, { k: "go", at: l.i, n: 1 }, t0 + 130_000);
   assert.deepEqual(l.cur, {});
   l = act(P, l, { k: "guide", at: l.i, on: true, reps: 12 }, t0 + 131_000);
-  assert.equal(l.cur.guide, t0 + 131_000);
+  assert.equal(l.cur.guide, t0 + 131_000 + DEFAULT_OPTS.lead * 1000, "le rythme part après la mise en place");
   assert.equal(l.cur.reps, 12);
   assert.deepEqual(entriesOf(l).map((e) => [e.ex, e.sets]), [["goblet", [16]], ["row", [12]]]);
 });
 
+test("rythme guidé : mise en place, pause qui fige tout, reprise décalée", () => {
+  const t0 = 2_000_000;
+  let l = startLive(P, "A", t0, { auto: false, lead: 5, change: 12 });
+  l = act(P, l, { k: "go", at: 0, n: 1 }, t0);
+  l = act(P, l, { k: "guide", at: 1, on: true, reps: 10 }, t0 + 1000);
+  assert.equal(l.cur.guide, t0 + 6000);
+  assert.equal(guideAt((t0 + 3000 - l.cur.guide!) / 1000, 30, false).phase, "ready");
+  // 5 s de plus pendant la mise en place, puis « Go » : part tout de suite, jamais dans le passé.
+  l = act(P, l, { k: "lead+", at: 1, sec: 5 }, t0 + 2000);
+  assert.equal(l.cur.guide, t0 + 11_000);
+  l = act(P, l, { k: "lead+", at: 1, sec: -3600 }, t0 + 4000);
+  assert.equal(l.cur.guide, t0 + 4000);
+  assert.equal(act(P, l, { k: "lead+", at: 1, sec: 5 }, t0 + 5000), l, "rien une fois la série lancée");
+  // Pause de 20 s : le départ du rythme recule d'autant.
+  l = act(P, l, { k: "pause", at: 1 }, t0 + 10_000);
+  assert.equal(l.cur.paused, t0 + 10_000);
+  assert.equal(act(P, l, { k: "pause", at: 1 }, t0 + 12_000), l);
+  l = act(P, l, { k: "resume", at: 1 }, t0 + 30_000);
+  assert.equal(l.cur.paused, undefined);
+  assert.equal(l.cur.guide, t0 + 24_000);
+  // Repos en pause : la fin du repos recule aussi.
+  l = act(P, l, { k: "record", at: 1, ex: "goblet", set: 1, value: 10 }, t0 + 60_000);
+  l = act(P, l, { k: "record", at: 2, ex: "row", set: 1, value: 10 }, t0 + 90_000);
+  const end = l.cur.restEnd!;
+  l = act(P, l, { k: "pause", at: l.i }, t0 + 100_000);
+  l = act(P, l, { k: "resume", at: l.i }, t0 + 107_000);
+  assert.equal(l.cur.restEnd, end + 7000);
+});
+
+test("mode automatique : chaque série démarre seule, plus de temps pour changer d'exercice", () => {
+  const t0 = 3_000_000;
+  let l = startLive(P, "A", t0, { auto: true, lead: 4, change: 15 });
+  l = act(P, l, { k: "go", at: 0, n: 1 }, t0);
+  assert.equal(l.steps[1].k, "ex");
+  assert.equal(l.cur.guide, t0 + 4000, "première série : la mise en place");
+  l = act(P, l, { k: "record", at: 1, ex: "goblet", set: 1, value: 12 }, t0 + 60_000);
+  assert.equal(leadFor(l, 2), 15);
+  assert.equal(l.cur.guide, t0 + 75_000, "superset : le temps de changer d'exercice");
+  l = act(P, l, { k: "record", at: 2, ex: "row", set: 1, value: 12 }, t0 + 120_000);
+  assert.equal(l.steps[l.i].k, "rest");
+  l = act(P, l, { k: "go", at: l.i, n: 1 }, t0 + 180_000);
+  assert.equal(l.cur.guide, t0 + 184_000, "après un repos : la mise en place seulement");
+  // Passer en manuel puis en automatique sur une série pas lancée la lance.
+  let m = startLive(P, "A", t0);
+  m = act(P, m, { k: "go", at: 0, n: 1 }, t0);
+  assert.equal(m.cur.guide, undefined);
+  m = act(P, m, { k: "opts", opts: { auto: true } }, t0 + 1000);
+  assert.equal(m.cur.guide, t0 + 1000 + DEFAULT_OPTS.lead * 1000);
+  assert.deepEqual(normOpts({ auto: "oui", lead: 99, change: -3 }), { auto: false, lead: 30, change: 0 });
+});
+
 test("rythme guidé : côté 1, pause de 5 s, côté 2, fini", () => {
+  assert.equal(guideAt(-2, 10, false).phase, "ready");
   assert.deepEqual(guideAt(3, 10, false), { phase: "run", side: 1, t: 3 });
   assert.equal(guideAt(10, 10, false).phase, "done");
   assert.equal(guideAt(12, 10, true).phase, "switch");
@@ -373,4 +428,32 @@ test("rythme : les marques tombent sur les débuts de phase, les répétitions s
   const path = rhythmPath(m, 2, 1, 4);
   assert.ok(path.length > 90 && path[0].x === -1);
   assert.ok(path.every((p) => p.h >= -1e-9 && p.h <= 1 + 1e-9));
+});
+
+test("réglages du rythme gardés par personne, repris à la séance suivante", () => {
+  const { db } = openDb(":memory:");
+  seedTest(db);
+  assert.deepEqual(guideOpts(db, "alex"), DEFAULT_OPTS);
+  const row = createLive(db, "alex", "kb12", "A", 1000)!;
+  const next = act(programById(db, "kb12")!, row.live, { k: "opts", opts: { auto: true, change: 20 } }, 2000);
+  assert.ok(writeLive(db, row.id, row.version, next, 2000).ok);
+  assert.deepEqual(guideOpts(db, "alex"), { auto: true, lead: DEFAULT_OPTS.lead, change: 20 });
+  assert.equal(createLive(db, "alex", "kb12", "B", 3000)!.live.opts?.auto, true);
+  assert.deepEqual(guideOpts(db, "sam"), DEFAULT_OPTS, "l'autre personne garde les siens");
+});
+
+test("muscles : chaque exercice de la bibliothèque a sa carte, les inventés la tirent de leur texte", () => {
+  for (const id of Object.keys(LIBRARY)) assert.ok(ranked(musclesOf(id)).some((x) => x.w === 3), id);
+  assert.deepEqual(musclesFromText("Fessiers, ischios et gainage"), { fessiers: 3, ischios: 2, abdos: 2, obliques: 2 });
+  assert.equal(musclesOf("ia-inconnu", { muscles: "Pectoraux, triceps" }).pectoraux, 3);
+});
+
+test("dessin : chaque figure a son corps, son matériel tenu et posé", () => {
+  for (const [id, m] of Object.entries(MOTIONS)) {
+    const prims = drawFigure(sample(m, 0.3), m);
+    assert.ok(prims.filter((p) => p.paint === "near").length >= 8, id);
+    assert.ok(prims.every((p) => !p.d.includes("NaN")), id);
+    if (m.keys.some((k) => k.bell) || m.gear?.length) assert.ok(prims.some((p) => p.paint === "tool"), `${id} : matériel tenu`);
+    if (m.props?.length) assert.ok(prims.some((p) => p.paint === "prop"), `${id} : matériel posé`);
+  }
 });

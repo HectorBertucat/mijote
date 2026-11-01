@@ -1,7 +1,7 @@
 // Mouvement d'un exercice : des poses clés et une suite d'étapes chronométrées (le tempo).
 // La même horloge pilote la figure, le libellé de phase (« Descends 3·2·1 », « Tiens »),
 // les bips et le compteur de répétitions. Module pur.
-import { mix, mixConstraints, solve, type Angles, type Constraints, type Pt, type Skeleton } from "./skeleton";
+import { mix, mixConstraints, solve, type Angles, type Constraints, type Joint, type Pt, type Skeleton } from "./skeleton";
 
 /** Kettlebell : tenue par une main (ou les deux, côté proche), centre décalé de la main. */
 export interface Bell {
@@ -23,10 +23,28 @@ export interface Step {
   count?: boolean; // afficher le décompte (secondes) pendant l'étape
 }
 
+/** Matériel posé, dessiné dans son rectangle (haut du rectangle = la surface où l'on s'appuie). */
+export interface Prop {
+  kind: "bench" | "chair" | "sofa" | "counter";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Côté du dossier (chaise, canapé). */
+  back?: "left" | "right";
+}
+
+/** Matériel tenu ou porté, en plus de la kettlebell des poses (`bell`). */
+export type HeldGear =
+  | { kind: "dumbbell"; hands: ("handN" | "handF")[] } // haltères (remplacent la kettlebell des poses)
+  | { kind: "band"; from: Joint; to: ("handN" | "handF")[] } // élastique tendu d'un appui aux mains
+  | { kind: "miniband" }; // mini-bande au-dessus des genoux
+
 export interface Motion {
   keys: Key[];
   steps: Step[];
-  props?: { kind: "bench"; x: number; y: number; w: number; h: number }[];
+  props?: Prop[];
+  gear?: HeldGear[];
 }
 
 export const cycleDuration = (m: Motion) => m.steps.reduce((s, x) => s + x.dur, 0);
@@ -36,7 +54,7 @@ export const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * 
 
 export interface Frame {
   skel: Skeleton;
-  bell: { at: Pt; handle: Pt } | null;
+  bell: { at: Pt; handle: Pt; hand: Bell["hand"] } | null;
   step: number;
   label: string;
   remaining: number; // secondes restantes dans l'étape
@@ -48,7 +66,7 @@ export interface Frame {
 function bellAt(skel: Skeleton, b: Bell | null | undefined): Frame["bell"] {
   if (!b) return null;
   const h = skel[b.hand];
-  return { handle: h, at: [h[0] + b.dx, h[1] + b.dy] };
+  return { handle: h, hand: b.hand, at: [h[0] + b.dx, h[1] + b.dy] };
 }
 
 function mixBell(a: Bell | null | undefined, b: Bell | null | undefined, t: number): Bell | null {
