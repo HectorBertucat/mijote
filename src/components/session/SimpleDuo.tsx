@@ -8,13 +8,14 @@ import type { Person, PrepTask, SessionPlan } from "@/lib/session/planner";
 import { itemStatus, personFocus, personNext, threadOf, type ThreadItem, type TimerState } from "@/lib/session/state";
 import { weighItems } from "@/lib/session/guide";
 import { BowlChip, BowlItems, BowlText, Lanes } from "./guide";
-import { Icon, Tape } from "@/components/ui";
+import { Icon } from "@/components/ui";
 import { handoffLine, ofName } from "@/lib/session/people";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import type { Controls } from "./SessionApp";
 import { handoffsFor } from "./blocks";
 import { prepTitle } from "./Prep";
 import { Bowl, bowlOf, clock, HandoffRow, PersonMono, recipeOf, usePeople, stepTitle } from "./parts";
+import { RecipeTape } from "./RecipeSheet";
 import { ActionBar, COLUMN, MainButton, personOf, RingBar, Ringing, Shell, SimpleHead, StepNow } from "./Simple";
 
 type Wake = { on: boolean; request: () => Promise<void> };
@@ -73,7 +74,7 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
   const theirs = personFocus(plan, c.state, other, c.now);
   return (
     <div className="grid gap-8 pt-6">
-      {focus.type === "step" ? <StepNow plan={plan} c={c} step={focus.step} /> : <PrepNow plan={plan} task={focus.task} />}
+      {focus.type === "step" ? <StepNow plan={plan} c={c} step={focus.step} /> : <PrepNow plan={plan} c={c} task={focus.task} />}
       {theirs && (
         <p className="flex items-center gap-3 border-y border-line py-3 text-[17px] text-ink-2">
           <PersonMono person={other} size={28} />
@@ -104,7 +105,7 @@ function PersonNow({ plan, c, person, ringing }: { plan: SessionPlan; c: Control
 }
 
 /** Un geste de prep à faire maintenant : ce qu’on coupe, combien, et dans quel bol. */
-function PrepNow({ plan, task }: { plan: SessionPlan; task: PrepTask }) {
+function PrepNow({ plan, c, task }: { plan: SessionPlan; c: Controls; task: PrepTask }) {
   const slug = task.recipeSlug ?? bowlOf(plan, task.bowls?.[0] ?? "")?.recipeSlug ?? task.items[0]?.recipeSlug ?? null;
   const recipe = recipeOf(plan, slug);
   return (
@@ -112,11 +113,7 @@ function PrepNow({ plan, task }: { plan: SessionPlan; task: PrepTask }) {
       <header className="flex items-center gap-4">
         {task.kind === "cut" && task.items[0] ? <FoodIllu food={task.items[0].food} item={task.title} size={80} live className="shrink-0" /> : <StepIllu kind="prep" text={task.text ?? task.title} size={80} live className="shrink-0" />}
         <div className="grid min-w-0 justify-items-start gap-2">
-          {recipe && (
-            <Tape tint={recipe.color} seed={recipe.slug} wrap>
-              {recipe.name}
-            </Tape>
-          )}
+          {recipe && <RecipeTape plan={plan} c={c} slug={recipe.slug} />}
           <p className="label">
             <span className="text-accent">Maintenant</span> <span className="text-ink-2">· prep</span>
           </p>

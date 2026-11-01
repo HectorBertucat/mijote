@@ -27,7 +27,7 @@ export function CookPhase({ plan, c, side }: { plan: SessionPlan; c: Controls; s
           <Eyebrow>Minuteurs</Eyebrow>
           <PauseAll timers={c.timers} now={now} allPaused={c.allPaused} onClick={c.pauseAll} />
         </div>
-        <TimerList plan={plan} timers={c.timers.filter((t) => !(t.phase != null && t.stepId === focus?.id))} now={now} onAdd={c.addMinutes} onStop={c.stopTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} onPause={c.pauseTimer} />
+        <TimerList plan={plan} timers={c.timers.filter((t) => !(t.phase != null && t.stepId === focus?.id))} now={now} onAdd={c.addMinutes} onStop={c.stopTimer} onFinish={c.finishTimer} onCancel={c.cancelTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} onPause={c.pauseTimer} />
         <Eyebrow className="mt-1">Foyers et four</Eyebrow>
         <Resources plan={plan} state={state} now={now} cookingStart={cookingStart} scale={0.9} />
         {side}

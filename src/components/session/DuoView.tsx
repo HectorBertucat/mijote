@@ -79,7 +79,7 @@ export function DuoView(p: SessionProps & { c: Controls }) {
                   <Eyebrow>Minuteurs</Eyebrow>
                   <PauseAll timers={c.timers} now={c.now} allPaused={c.allPaused} onClick={c.pauseAll} />
                 </div>
-                <TimerList plan={plan} timers={c.timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} onPause={c.pauseTimer} />
+                <TimerList plan={plan} timers={c.timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} onFinish={c.finishTimer} onCancel={c.cancelTimer} onAdjust={c.adjustTimer} onReset={c.resetTimer} onPause={c.pauseTimer} />
                 <Eyebrow className="mt-1">Foyers et four</Eyebrow>
                 <Resources plan={plan} state={state} now={c.now} cookingStart={c.cookingStart} scale={0.7} />
                 <Eyebrow className="mt-1">Bols</Eyebrow>
@@ -198,7 +198,7 @@ function PersonColumn({ plan, c, person }: { plan: SessionPlan; c: Controls; per
           <b className="font-display text-[22px]">{who} a tout fini</b>
         </div>
       )}
-      {timers.length > 0 && <TimerList plan={plan} timers={timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} onPause={c.pauseTimer} />}
+      {timers.length > 0 && <TimerList plan={plan} timers={timers} now={c.now} onAdd={c.addMinutes} onStop={c.stopTimer} onFinish={c.finishTimer} onCancel={c.cancelTimer} onPause={c.pauseTimer} />}
       {rows.map((r) => (r.kind === "handoff" ? <Handoff key={`h-${r.h.toStepId}-${r.h.fromStepId}`} plan={plan} c={c} h={r.h} /> : <ThreadRow key={r.it.id} plan={plan} c={c} item={r.it} person={person} />))}
       {finished.length > 0 && (
         <details className="group">

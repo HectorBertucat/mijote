@@ -10,7 +10,7 @@ import { prepBowls } from "@/lib/session/flow";
 import { handoffLine } from "@/lib/session/people";
 import { batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus } from "@/lib/session/state";
 import { fmtMin, timedPhase } from "@/lib/session/guide";
-import { BackButton, BowlText, ContainersNote, RecipeContext, RestartButtons, SharedSplit, TakeBowls } from "./guide";
+import { BackButton, BowlText, ContainersNote, NeedsNote, RecipeContext, RestartButtons, SharedSplit, TakeBowls, UsesBlock } from "./guide";
 import { batchesLabel, isContainerWarning } from "@/lib/session/guide";
 import { applyScales } from "@/app/session/actions";
 import { Alert, Button, Icon, Induction } from "@/components/ui";
@@ -72,7 +72,7 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       aria-live="polite"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <RecipeContext plan={plan} step={step} status={st} extra={batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? (batchesLabel(step)?.toLocaleLowerCase("fr") ?? null) : null} />
+        <RecipeContext plan={plan} c={c} step={step} status={st} extra={batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? (batchesLabel(step)?.toLocaleLowerCase("fr") ?? null) : null} />
         <span className="num text-small font-semibold text-ink-2">
           {st === "todo" ? `prévue ${clock(cookingStart + step.startMin * 60000)}${late > 2 ? ` · ${late} min de retard` : ""}` : startedAt ? `commencée ${clock(startedAt)}` : ""}
         </span>
@@ -80,7 +80,7 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       <div className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={step.text} size={size === "lg" ? "xl" : "l"} live={st === "active"} className="illu-tile shrink-0 max-sm:size-[72px]" style={{ "--tile": recipe?.color ?? "var(--c-ink-3)" }} />
         <h2 className={`sx-consigne min-w-0 ${size === "lg" ? "sx-consigne-sm" : "!text-[26px]"}`}>
-          <BowlText plan={plan} text={head} ready={state.bowlsReady} />
+          <BowlText plan={plan} text={head} ready={state.bowlsReady} uses={step.uses} />
         </h2>
       </div>
       {/* Avec des sous-étapes, le texte complet passe au second plan : elles disent quoi faire. */}
@@ -89,6 +89,8 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       {wantsDropGuide(step, currentPhase(state, step), st === "active") && <DropGuide />}
       <StepSpecs plan={plan} step={step} />
       <SharedSplit plan={plan} step={step} now={st === "active" && currentPhase(state, step) === (step.phases?.length ?? 0) - 1} />
+      <NeedsNote plan={plan} state={state} step={step} now={now} />
+      <UsesBlock plan={plan} state={state} step={step} />
       <TakeBowls plan={plan} step={step} ready={state.bowlsReady} phase={st === "active" ? currentPhase(state, step) : null} />
       {step.cue && <StepCue cue={step.cue} />}
       {step.notes.map((n) => (isHandoff(n) ? <Alert key={n} tone="info" icon="swap">{n}</Alert> : <Alert key={n} tone="warn">{n}</Alert>))}

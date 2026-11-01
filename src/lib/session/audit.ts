@@ -6,6 +6,7 @@
 // - une base commune (le riz de deux recettes) cuit dans le moins de récipients possible ;
 // - toute étape qui prend des ingrédients les donne avec leurs quantités ;
 // - jamais deux moments « mains » en même temps pour une personne (validatePlan) ;
+// - aucune étape avant ce qu'elle reprend (le poulet saisi, la sauce) ni avant ses prérequis (le four chaud) ;
 // - et aucune erreur du plan.
 import { baseFood, baseLiters, baseMethod, usableLiters } from "./capacity";
 import { validatePlan, type PlannerResources, type SessionPlan } from "./planner";
@@ -14,7 +15,7 @@ import { validatePlan, type PlannerResources, type SessionPlan } from "./planner
  * `vessel_warned`, `bowls_warned` : trop petit ou pas assez de bols, mais la cuisine n'a pas mieux et le plan le
  * dit en clair (pas un écart du planificateur).
  */
-export type AuditKind = "error" | "vessel_small" | "vessel_warned" | "bowls_over" | "bowls_warned" | "bases_apart" | "no_quantities" | "hands";
+export type AuditKind = "error" | "vessel_small" | "vessel_warned" | "bowls_over" | "bowls_warned" | "bases_apart" | "no_quantities" | "hands" | "before_need";
 /** Ce qui n'est pas un écart : une limite de la cuisine, dite par le plan. */
 export const WARNED: AuditKind[] = ["vessel_warned", "bowls_warned"];
 
@@ -67,6 +68,20 @@ export function auditPlan(plan: SessionPlan, res: PlannerResources): AuditIssue[
       else bins.push(g);
     }
     if (list.length > bins.length) out.push({ kind: "bases_apart", message: `${base} : ${list.length} cuissons pour ${recipes.size} recettes, ${bins.length} suffiraient`, stepIds: list.map((s) => s.id) });
+  }
+
+  // Ordre : une étape part après ses prérequis, et ne reprend un produit (à sa sous-étape) qu'une fois fait.
+  const byId = new Map(plan.steps.map((s) => [s.id, s]));
+  for (const s of plan.steps) {
+    for (const id of s.needs ?? []) {
+      const n = byId.get(id);
+      if (n && s.startMin < n.endMin - 0.01) out.push({ kind: "before_need", message: `${s.id} commence à ${s.startMin.toFixed(1)}, avant la fin de ${id} (${n.endMin.toFixed(1)})`, stepIds: [s.id, id] });
+    }
+    for (const u of s.uses ?? []) {
+      const n = byId.get(u.stepId);
+      const at = s.startMin + (u.phase != null ? (s.phases ?? []).slice(0, u.phase).reduce((x, p) => x + p.min, 0) : 0);
+      if (n && at < n.endMin - 0.01) out.push({ kind: "before_need", message: `${s.id} reprend ${u.name} à ${at.toFixed(1)}, avant la fin de ${u.stepId} (${n.endMin.toFixed(1)})`, stepIds: [s.id, u.stepId] });
+    }
   }
 
   // Quantités : chaque étape qui prend des bols dit ce qu'il y a dedans, en grammes, en pièces ou en dose.

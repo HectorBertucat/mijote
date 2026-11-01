@@ -401,8 +401,8 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
 
 // ─── Minuteurs ───
 
-/** Minuteurs du kit, à l’heure du serveur (tous les écrans sonnent à la même seconde) : pause, +1 min et arrêter. */
-export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, onPause, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d’origine. */ onReset?: (t: TimerState) => void; /** Pause ou reprise (sur tous les écrans). */ onPause?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
+/** Minuteurs du kit, à l’heure du serveur (tous les écrans sonnent à la même seconde) : pause, +1 min, terminer maintenant et arrêter. */
+export function TimerList({ plan, timers, now, onAdd, onStop, onFinish, onCancel, onAdjust, onReset, onPause, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Terminer maintenant : c’est prêt, la sous-étape (ou l’étape) est faite. */ onFinish?: (t: TimerState) => void; /** Arrêter sans rien marquer fait (sinon `onStop`). */ onCancel?: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d’origine. */ onReset?: (t: TimerState) => void; /** Pause ou reprise (sur tous les écrans). */ onPause?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
   if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[14px] text-ink-2">Aucun minuteur en cours. Ils se lancent d’un geste, sur l’étape (« Lance 8 min »), jamais tout seuls.</p> : null;
   return (
     <div className="grid gap-2">
@@ -436,7 +436,8 @@ export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset,
                   {onReset && Math.abs(t.endsAt - originalEnd(t, now)) > 2000 && (
                     <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="refresh" className="hidden lg:inline-flex" aria-label={`Revenir au minuteur d’origine (${t.refMinutes} min)`} title={`Revenir au minuteur d’origine (${t.refMinutes} min)`} onClick={() => onReset(t)} />
                   )}
-                  <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="x" aria-label="Arrêter le minuteur" onClick={() => onStop(t)} />
+                  {onFinish && <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="check" aria-label="Terminer maintenant : c’est prêt" title="Terminer maintenant : c’est prêt" onClick={() => onFinish(t)} />}
+                  <Button size={big ? "md" : "sm"} variant="quiet" iconOnly icon="x" aria-label="Arrêter le minuteur, sans rien marquer fait" title="Arrêter, sans rien marquer fait" onClick={() => (onCancel ?? onStop)(t)} />
                 </span>
               )
             }

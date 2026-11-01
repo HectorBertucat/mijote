@@ -2033,9 +2033,9 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
     };
     if (duo) step.person = p.before.person ?? "A";
     steps.push(step);
-    // L'étape qui enfourne attend le four chaud.
+    // L'étape qui enfourne d'emblée attend le four chaud (celle qui commence sur le foyer l'attend plus tard, pour enfourner).
     const bake = steps.find((x) => x.id === p.before.id);
-    if (bake) bake.needs = [...(bake.needs ?? []), step.id];
+    if (bake && (!bake.oven || bake.oven.fromMin <= bake.startMin + EPS)) bake.needs = [...(bake.needs ?? []), step.id];
   });
   // Seul : une étape dont un bol se remplit pendant la cuisson attend ce geste.
   for (const g of steps.filter((x) => x.tasks))

@@ -7,17 +7,19 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { restartSession } from "@/app/session/actions";
-import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
-import { stepStatus, type TimerState } from "@/lib/session/state";
-import { ATTENTION_LABELS, containerNote, fmtMin, lanesOf, missingText, recipeStep, reminderAt, ringInfo, shareOf, takeAt, takeOf, weighLine, type LaneItem, type Undo } from "@/lib/session/guide";
+import type { Person, PlanBowl, PlanStep, SessionPlan, StepUse } from "@/lib/session/planner";
+import { isReady, liveTimer, needsLeft, stepStatus, type SessionState, type TimerState } from "@/lib/session/state";
+import { ATTENTION_LABELS, containerNote, fmtMin, lanesOf, missingText, needsText, recipeStep, reminderAt, ringInfo, shareOf, takeAt, takeOf, weighLine, type LaneItem, type Undo } from "@/lib/session/guide";
+import { productLines, richParts } from "@/lib/session/sheet";
 import { atMoment } from "@/lib/session/flow";
 import { bowlParts, clip, stepTitleOf } from "@/lib/session/text";
 import { recipeVar } from "@/components/ui/recipe";
-import { Alert, Button, Icon, Tape } from "@/components/ui";
+import { Alert, Button, Icon } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import { typo } from "@/lib/typo";
 import type { Controls } from "./SessionApp";
 import { chime, clock, mmss, PauseAll, recipeOf, shortName } from "./parts";
+import { RecipeLink, RecipeTape } from "./RecipeSheet";
 
 const rc = (color: string) => ({ "--rc": recipeVar(color) }) as CSSProperties;
 
@@ -186,14 +188,141 @@ export function BowlChip({ plan, letter, ready, size = "text" }: { plan: Session
   );
 }
 
-/** Un texte de consigne où chaque bol cité (« bol G ») devient une pastille qui montre son contenu. */
-export function BowlText({ plan, text, ready }: { plan: SessionPlan; text: string; ready?: Set<string> }) {
-  const parts = bowlParts(text, plan.bowls.map((b) => b.letter));
+/**
+ * Un texte de consigne où chaque bol cité (« bol G ») devient une pastille qui montre son contenu, et
+ * chaque produit repris d'une étape d'avant (`uses` : « Poulet » saisi à l'étape 8) une pastille qui dit
+ * d'où il vient.
+ */
+export function BowlText({ plan, text, ready, uses }: { plan: SessionPlan; text: string; ready?: Set<string>; uses?: StepUse[] }) {
+  const parts = uses?.length ? richParts(text, plan.bowls.map((b) => b.letter), uses) : bowlParts(text, plan.bowls.map((b) => b.letter));
   if (parts.length === 1 && parts[0].t === "text") return <>{typo(text)}</>;
   return (
     <>
-      {parts.map((p, i) => (p.t === "text" ? <span key={i}>{typo(p.v)}</span> : <BowlChip key={i} plan={plan} letter={p.v} ready={ready?.has(p.v)} />))}
+      {parts.map((p, i) =>
+        p.t === "text" ? <span key={i}>{typo(p.v)}</span> : p.t === "bowl" ? <BowlChip key={i} plan={plan} letter={p.v} ready={ready?.has(p.v)} /> : <ProductChip key={i} plan={plan} stepId={p.step} word={p.v} use={uses!.find((u) => u.stepId === p.step)} />
+      )}
     </>
+  );
+}
+
+// ─── Ce qu’une étape reprend d’une étape d’avant ───
+
+const STATUS_WORD = { done: "fait", active: "en cours", todo: "pas encore fait" } as const;
+
+/** Ce que montre la bulle d’un produit repris : quoi, d’où (récipient, étape), où en est l’étape qui le fait. */
+function ProductCard({ plan, use, state }: { plan: SessionPlan; use: StepUse; state?: SessionState }) {
+  const from = plan.steps.find((x) => x.id === use.stepId);
+  const recipe = from ? recipeOf(plan, from.recipeSlug) : null;
+  const st = from && state ? stepStatus(state, from.id) : null;
+  return (
+    <div className="grid gap-2" style={rc(recipe?.color ?? "var(--c-ink-3)")}>
+      <span className="label text-ink-2">Repris de l’étape {from?.no}</span>
+      <b className="text-[19px] leading-snug">{typo(use.name.charAt(0).toLocaleUpperCase("fr") + use.name.slice(1))}</b>
+      <span className="text-[15px] text-ink-2">{[use.where ? (use.inPlace ? `déjà dans ${use.where.toLocaleLowerCase("fr")}` : `fait ${/^(Four)$/.test(use.where) ? "au four" : `dans ${use.where.toLocaleLowerCase("fr")}`}`) : null, recipe?.name].filter(Boolean).join(" · ")}</span>
+      {from && <span className="text-[15px]">Étape {from.no} · {stepTitleOf(from, 60)}{st ? <b className={st === "done" ? "" : "text-accent"}> · {STATUS_WORD[st]}</b> : null}</span>}
+    </div>
+  );
+}
+
+/** Le mot d’un produit repris dans une consigne (« Poulet ») : souligné, avec le numéro de l’étape qui le fait ; la bulle dit d’où il vient. */
+export function ProductChip({ plan, stepId, word, use, state }: { plan: SessionPlan; stepId: string; word: string; use?: StepUse; state?: SessionState }) {
+  const from = plan.steps.find((x) => x.id === stepId);
+  if (!from || !use) return <>{typo(word)}</>;
+  const recipe = recipeOf(plan, from.recipeSlug);
+  return (
+    <Peek
+      label={`${use.name}, de l’étape ${from.no}${use.where ? ` (${use.where.toLocaleLowerCase("fr")})` : ""}`}
+      className="inline align-baseline"
+      trigger={
+        // Le numéro de l'étape en exposant, dessiné (pas dans le texte : la consigne se lit et se copie telle quelle).
+        <span
+          data-no={from.no}
+          className="underline decoration-[var(--rc)] decoration-dotted decoration-2 underline-offset-[0.18em] after:ml-[0.12em] after:inline-grid after:min-w-[1.3em] after:place-items-center after:rounded-[3px] after:bg-[var(--rc)] after:px-[0.2em] after:align-[0.35em] after:text-[0.42em] after:font-bold after:leading-[1.5] after:text-on-recipe after:no-underline after:content-[attr(data-no)]"
+          style={rc(recipe?.color ?? "var(--c-ink-3)")}
+        >
+          {typo(word)}
+        </span>
+      }
+    >
+      <ProductCard plan={plan} use={use} state={state} />
+    </Peek>
+  );
+}
+
+/** « Reprends » : ce que l’étape reprend d’étapes d’avant, nommé, d’où il vient, et s’il est prêt. */
+export function UsesBlock({ plan, state, step }: { plan: SessionPlan; state: SessionState; step: PlanStep }) {
+  const lines = productLines(plan, state, step);
+  if (!lines.length) return null;
+  return (
+    <section className="grid gap-3" aria-label="Ce que l’étape reprend">
+      <h2 className="label text-ink-2">Reprends</h2>
+      <ul className="grid gap-2">
+        {lines.map((l) => {
+          const recipe = recipeOf(plan, l.recipeSlug);
+          return (
+            <li key={l.stepId} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 text-[17px]" style={rc(recipe?.color ?? "var(--c-ink-3)")}>
+              <Peek
+                label={`${l.name}, de l’étape ${l.no}`}
+                className="inline-grid shrink-0"
+                trigger={<span className="num inline-grid size-10 place-items-center rounded-[8px] border-[2.5px] border-[var(--rc)] bg-[color-mix(in_srgb,var(--rc)_16%,var(--c-surface))] font-display text-[17px] font-extrabold text-[var(--rc)]">{l.no}</span>}
+              >
+                <ProductCard plan={plan} use={l} state={state} />
+              </Peek>
+              <span className="grid min-w-0">
+                <b>{typo(l.name.charAt(0).toLocaleUpperCase("fr") + l.name.slice(1))}</b>
+                <span className="text-[15px] text-ink-2">
+                  {l.from}
+                  {l.phase != null && step.phases?.[l.phase] ? ` · à la sous-étape ${l.phase + 1}` : ""}
+                  {l.status !== "done" && <b className="text-accent"> · {l.status === "active" ? "pas encore prêt (en cours)" : "pas encore fait"}</b>}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Avant de commencer : ce que l’étape attend encore (le four qui chauffe, le poulet pas encore saisi). */
+export function NeedsNote({ plan, state, step, now }: { plan: SessionPlan; state: SessionState; step: PlanStep; now: number }) {
+  if (stepStatus(state, step.id) !== "todo") return null;
+  const left = needsLeft(plan, state, step);
+  if (!left.length) return null;
+  const blocked = left.filter((n) => !n.closable);
+  if (blocked.length) return <Alert tone="warn" icon="clock" title="Pas encore">{typo(`${needsText(blocked)}. Commence-la d’abord, ou force si tu sais ce que tu fais.`)}</Alert>;
+  const t = [...state.timers.values()].find((x) => left.some((n) => n.step.id === x.stepId) && x.doneAt == null);
+  const live = t ? liveTimer(t, now) : null;
+  const preheat = left.find((n) => n.step.kind === "preheat");
+  return (
+    <Alert tone="info" icon={preheat ? "oven" : "clock"} title={preheat ? "Le four chauffe encore" : `L’étape ${left[0].step.no} n’est pas finie`}>
+      {live ? `Reste ${mmss(Math.max(0, live.endsAt - now))}. ` : ""}
+      {typo(preheat ? "S’il est déjà chaud, le bouton arrête le préchauffage et tu enfournes ; le retour le relance." : "Si c’est prêt, le bouton la finit et commence celle-ci ; le retour la rouvre.")}
+    </Alert>
+  );
+}
+
+// ─── Les gestes d’un minuteur : pause, une minute de plus, terminer maintenant, arrêter ───
+
+/** Les gestes d’un minuteur, partout où il s’affiche : pause, +1 min, terminer maintenant (c’est prêt), arrêter (rien n’est marqué fait). */
+export function TimerActions({ c, t, size = "sm", className = "" }: { c: Controls; t: TimerState; size?: "sm" | "kitchen"; className?: string }) {
+  const paused = t.pausedAt != null;
+  const variant = size === "kitchen" ? "secondary" : "secondary";
+  return (
+    <span className={`flex flex-wrap gap-2 ${className}`}>
+      <Button size={size} variant={paused ? "primary" : "quiet"} icon={paused ? "play" : "pause"} onClick={() => c.pauseTimer(t)} aria-pressed={paused} data-action={paused ? "reprendre-minuteur" : "pause-minuteur"} className="w-fit">
+        {paused ? "Reprendre" : "Pause"}
+      </Button>
+      <Button size={size} variant={variant} icon="plus" onClick={() => c.addMinutes(t, 1)} aria-label="Une minute de plus" className="w-fit">
+        1 min
+      </Button>
+      <Button size={size} variant={variant} icon="check" onClick={() => c.finishTimer(t)} title="C’est prêt : la sous-étape (ou l’étape) est faite, sans attendre la sonnerie" data-action="terminer-minuteur" className="w-fit">
+        Terminer
+      </Button>
+      <Button size={size} variant="quiet" icon="x" onClick={() => c.cancelTimer(t)} title="Arrête le minuteur sans rien marquer fait" data-action="arreter-minuteur" className="w-fit">
+        Arrêter
+      </Button>
+    </span>
   );
 }
 
@@ -348,16 +477,14 @@ export function ContainersNote({ plan }: { plan: SessionPlan }) {
 // ─── L’étape : quelle recette, où on en est ───
 
 /** Le repère de recette d’une étape : son étiquette, « étape 2 sur 5 » de la recette et de la session. */
-export function RecipeContext({ plan, step, status, extra }: { plan: SessionPlan; step: PlanStep; status: "todo" | "active" | "done"; extra?: string | null }) {
+export function RecipeContext({ plan, c, step, status, extra }: { plan: SessionPlan; c: Controls; step: PlanStep; status: "todo" | "active" | "done"; extra?: string | null }) {
   const recipe = recipeOf(plan, step.recipeSlug);
   const rs = recipeStep(plan, step);
   const where = [step.kind !== "preheat" ? step.equipmentName : "Four"].filter(Boolean).join(" · ");
   return (
     <div className="grid min-w-0 justify-items-start gap-2">
       {recipe ? (
-        <Tape tint={recipe.color} seed={recipe.slug} wrap>
-          {recipe.name}
-        </Tape>
+        <RecipeTape plan={plan} c={c} slug={recipe.slug} />
       ) : (
         <span className="label text-ink-2">Pour toute la session</span>
       )}
@@ -411,10 +538,10 @@ function LaneRow({ plan, c, item, onFinish }: { plan: SessionPlan; c: Controls; 
         <span className="grid min-w-0 gap-1">
           <span className="text-[14px] leading-snug text-ink-2">
             <span className="mr-2 inline-block size-2.5 rounded-full bg-[var(--rc)]" aria-hidden />
-            {recipe?.name ?? "Four"} · étape {step.no}
+            <RecipeLink plan={plan} c={c} slug={step.recipeSlug} className="hover:text-ink hover:underline">{recipe?.name ?? "Four"}</RecipeLink> · étape {step.no}
             <AttentionTag a={item.attention} className="ml-2 align-[-1px]" />
           </span>
-          <b className="text-[17px] leading-snug"><BowlText plan={plan} text={item.doing} ready={c.state.bowlsReady} /></b>
+          <b className="text-[17px] leading-snug"><BowlText plan={plan} text={item.doing} ready={c.state.bowlsReady} uses={step.uses} /></b>
           {rem.due ? (
             <span className="flex items-center gap-2 text-[17px] font-bold text-accent">
               <Icon name="bell" size="s" /> Maintenant : {rem.due.text.toLowerCase()}
@@ -436,6 +563,7 @@ function LaneRow({ plan, c, item, onFinish }: { plan: SessionPlan; c: Controls; 
           )
         )}
       </div>
+      {timer && <TimerActions c={c} t={timer} className="pl-[52px]" />}
     </li>
   );
 }
@@ -480,14 +608,15 @@ export function Lanes({ plan, c, focus, person, showNow = false }: { plan: Sessi
                 <span className="grid min-w-0">
                   <span className="text-[14px] leading-snug text-ink-2">
                     <span className="mr-2 inline-block size-2.5 rounded-full bg-[var(--rc)]" aria-hidden />
-                    {recipeOf(plan, s.recipeSlug)?.name ?? "Four"} · étape {s.no}
+                    <RecipeLink plan={plan} c={c} slug={s.recipeSlug} className="hover:text-ink hover:underline">{recipeOf(plan, s.recipeSlug)?.name ?? "Four"}</RecipeLink> · étape {s.no}
+                    {!isReady(plan, c.state, s) && <b className="ml-2 text-accent">· attend l’étape {needsLeft(plan, c.state, s).filter((n) => !n.closable).map((n) => n.step.no).join(" et ")}</b>}
                   </span>
-                  <span className="text-[17px] leading-snug"><BowlText plan={plan} text={stepTitleOf(s, 90)} ready={c.state.bowlsReady} /></span>
+                  <span className="text-[17px] leading-snug"><BowlText plan={plan} text={stepTitleOf(s, 90)} ready={c.state.bowlsReady} uses={s.uses} /></span>
                 </span>
               </li>
             ))}
           </ul>
-          {focus && stepStatus(c.state, focus.id) === "active" && l.freeHands && stepStatus(c.state, first.id) === "todo" && (
+          {focus && stepStatus(c.state, focus.id) === "active" && l.freeHands && stepStatus(c.state, first.id) === "todo" && isReady(plan, c.state, first) && (
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-[17px]">Tes mains sont libres : tu peux commencer l’étape {first.no} en parallèle.</span>
               <Button size="sm" variant="secondary" icon="play" onClick={() => c.act(first, person ?? null)}>
@@ -540,17 +669,7 @@ export function TimerCard({ plan, c, t }: { plan: SessionPlan; c: Controls; t: T
       {info.where.length > 0 && <span className="text-[14px] text-ink-2">{info.where.join(" · ")}</span>}
       <span className="num text-[14px]">{paused ? "En pause : la fin repart à la reprise." : `Sonne à ${clock(t.endsAt)} · reste ${mmss(Math.max(0, t.endsAt - c.now))}`}</span>
       <span className="text-[17px]"><span className="label text-ink-2">À la fin · </span><BowlText plan={plan} text={info.action} /></span>
-      <span className="flex flex-wrap gap-2">
-        <Button size="sm" variant={paused ? "primary" : "secondary"} icon={paused ? "play" : "pause"} onClick={() => c.pauseTimer(t)} aria-pressed={paused}>
-          {paused ? "Reprendre" : "Pause"}
-        </Button>
-        <Button size="sm" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)}>
-          1 min
-        </Button>
-        <Button size="sm" variant="quiet" icon="x" onClick={() => c.send([{ kind: "timer_done", ref: t.id }])} title="Arrête le minuteur sans rien marquer fait">
-          Arrêter
-        </Button>
-      </span>
+      <TimerActions c={c} t={t} />
     </div>
   );
 }
@@ -589,7 +708,7 @@ export function RingDetails({ plan, c, t }: { plan: SessionPlan; c: Controls; t:
         {info.recipe && (
           <p className="text-[17px] font-bold">
             <span className="mr-2 inline-block size-3 rounded-full border-2 border-current bg-[var(--rc)] align-[-1px]" style={rc(info.recipe.color)} aria-hidden />
-            {info.recipe.name}
+            <RecipeLink plan={plan} c={c} slug={info.recipe.slug} className="underline decoration-dotted underline-offset-4">{info.recipe.name}</RecipeLink>
             {info.step ? <span className="font-normal opacity-80"> · étape {info.step.no}</span> : null}
           </p>
         )}
