@@ -1,6 +1,6 @@
 // Le foyer de la démo, en données pures datées par rapport à aujourd'hui : Alex et Sam, le foyer fictif
 // des tests (tests/helpers.ts), avec des profils Santé complets, leurs goûts, leurs habitudes du matin,
-// huit semaines de pesées et de séances, et les plats de trois semaines. ./seed.ts l'écrit en base
+// huit semaines de séances guidées, un an de pesées et d'Apple Santé, et les plats de trois semaines. ./seed.ts l'écrit en base
 // avec les fonctions de l'appli.
 import type { InferInsertModel } from "drizzle-orm";
 import type { people, preferences } from "@/lib/db/schema";
@@ -20,7 +20,7 @@ export interface DemoCalendar {
   current: { start: string; cookedOn: string; listOn: string };
   /** Semaine suivante : les plats choisis, la liste de courses à faire. */
   next: { start: string };
-  /** Premier jour de l'historique Santé (pesées, séances). */
+  /** Premier jour avec Mijote (mise en route, carnet de séances) ; Apple Santé remonte un an plus tôt (HEALTH_DAYS). */
   historyFrom: string;
 }
 
@@ -208,9 +208,10 @@ export function demoHousehold(today: string): DemoHousehold {
         weekdays: [0, 1, 2, 3, 4, 5, 6],
       }),
     ],
+    // Un an de pesées (balance connectée) : Alex perd doucement, plus vite depuis Mijote ; Sam reste stable.
     weighIns: [
-      ...weightSeries(from, today, 83.4, 81.2, 11).map((w) => ({ personId: "alex", ...w })),
-      ...weightSeries(from, today, 62.8, 62.5, 23).map((w) => ({ personId: "sam", ...w })),
+      ...weightYear(today, [[365, 86.8], [250, 85.2], [180, 84.9], [100, 85.3], [HISTORY_DAYS, 83.4], [0, 81.2]], 11).map((w) => ({ personId: "alex", ...w })),
+      ...weightYear(today, [[365, 63.4], [200, 62.6], [90, 63.1], [HISTORY_DAYS, 62.8], [0, 62.5]], 23).map((w) => ({ personId: "sam", ...w })),
     ],
     waist: Array.from({ length: 8 }, (_, i) => ({ personId: "alex", date: addDays(from, 7 * i + 1), cm: Math.round((92.5 - i * 0.4) * 10) / 10 })),
     programs: [
@@ -255,4 +256,169 @@ export function demoWorkouts(program: Program, personId: string, from: string, t
     const minutes = 30 + Math.round((rnd() + 0.5) * 10);
     return { id: `demo-${personId}-${date}`, personId, date, ts: Date.parse(`${date}T18:30:00Z`) + minutes * 60_000, type, minutes, entries };
   });
+}
+
+// ─── Un an d'Apple Santé : ce que l'app iPhone aurait envoyé (format v2, docs/sante.md) ───
+
+/** Jours d'historique envoyés par « l'iPhone » de la démo (pas, énergie, cœur, séances, pesées). */
+export const HEALTH_DAYS = 365;
+/** Nuits envoyées (le sommeil pèse le plus en lignes : quatre mois suffisent aux graphiques). */
+export const SLEEP_NIGHTS = 120;
+
+/** Le paquet v2 d'une personne, tel que l'app l'enverrait, prêt pour `parseV2` puis `ingestV2`. */
+export interface DemoHealthPayload {
+  version: 2;
+  samples: { uuid: string; type: string; start: string; end: string; value: number; unit: string }[];
+  daily: { type: string; date: string; value: number; unit: string }[];
+  workouts: { uuid: string; activity: string; start: string; end: string; durationMin: number; kcal: number; distanceM?: number; hrAvg?: number }[];
+  sleep: { uuid: string; stage: "core" | "deep" | "rem" | "awake"; start: string; end: string }[];
+}
+
+/** Une courbe par étapes (jours avant aujourd'hui → valeur), interpolée, pour des saisons crédibles. */
+function along(steps: [number, number][], daysAgo: number) {
+  const s = [...steps].sort((a, b) => b[0] - a[0]);
+  if (daysAgo >= s[0][0]) return s[0][1];
+  for (let k = 1; k < s.length; k++) {
+    const [a, va] = s[k - 1];
+    const [b, vb] = s[k];
+    if (daysAgo >= b) return va + ((vb - va) * (a - daysAgo)) / (a - b);
+  }
+  return s[s.length - 1][1];
+}
+
+/** Pesées sur un an : la courbe passe par les étapes, un peu de bruit, des matins sans balance. */
+export function weightYear(today: string, steps: [number, number][], seed: number): { date: string; kg: number }[] {
+  const rnd = noise(seed);
+  const out: { date: string; kg: number }[] = [];
+  for (let ago = HEALTH_DAYS; ago >= 0; ago--) {
+    const skip = rnd();
+    if (ago > 0 && ago < HEALTH_DAYS && skip > (ago > HISTORY_DAYS ? 0.1 : 0.3)) continue; // plus régulier depuis Mijote
+    out.push({ date: addDays(today, -ago), kg: Math.round((along(steps, ago) + rnd() * 0.8) * 10) / 10 });
+  }
+  return out;
+}
+
+interface Habit {
+  /** Pas par jour en semaine et le week-end, au fil de l'année (jours avant aujourd'hui → pas). */
+  steps: [number, number][];
+  weekendSteps: number;
+  restingHr: number;
+  hrv: number;
+  vo2max: [number, number][];
+  /** Heure du coucher (UTC, en heures) et durée de la nuit (minutes). */
+  bed: number;
+  sleepMin: number;
+  /** Séances enregistrées par la montre : jour de la semaine (0 = lundi), activité, minutes, km (0 sans distance). */
+  workouts: { weekday: number; activity: string; minutes: number; km: number; every?: number; until?: number }[];
+  bodyFat?: [number, number][];
+  /** Une semaine de vacances (marche, montagne) et une semaine malade : jours avant aujourd'hui. */
+  holiday: number;
+  sick: number;
+}
+
+const HABITS: Record<"alex" | "sam", Habit> = {
+  alex: {
+    steps: [[365, 6400], [240, 7200], [120, 8800], [60, 8200], [0, 9100]],
+    weekendSteps: 1.25,
+    restingHr: 61,
+    hrv: 44,
+    vo2max: [[365, 39.5], [120, 41.8], [0, 43.4]],
+    bed: 21.75,
+    sleepMin: 432,
+    workouts: [
+      { weekday: 5, activity: "running", minutes: 38, km: 6.4 },
+      { weekday: 2, activity: "traditional_strength_training", minutes: 35, km: 0, until: HISTORY_DAYS },
+      { weekday: 6, activity: "cycling", minutes: 75, km: 24, every: 2 },
+    ],
+    bodyFat: [[365, 23.5], [0, 20.8]],
+    holiday: 92,
+    sick: 255,
+  },
+  sam: {
+    steps: [[365, 8800], [200, 9600], [100, 10400], [0, 9800]],
+    weekendSteps: 0.85,
+    restingHr: 56,
+    hrv: 58,
+    vo2max: [[365, 38.2], [0, 39.6]],
+    bed: 21.25,
+    sleepMin: 455,
+    workouts: [
+      { weekday: 2, activity: "yoga", minutes: 45, km: 0 },
+      { weekday: 6, activity: "swimming", minutes: 40, km: 1.5, every: 2 },
+      { weekday: 3, activity: "walking", minutes: 50, km: 4.2 },
+      { weekday: 1, activity: "functional_strength_training", minutes: 30, km: 0, until: HISTORY_DAYS },
+    ],
+    holiday: 85,
+    sick: 150,
+  },
+};
+
+const iso = (date: string, hours: number) => new Date(Date.parse(`${date}T00:00:00Z`) + hours * 3_600_000).toISOString();
+
+/**
+ * L'année d'Apple Santé d'une personne de la démo : pas, énergie active et minutes d'exercice chaque jour,
+ * FC au repos et variabilité chaque matin, VO2max tous les quinze jours, masse grasse chaque semaine (Alex,
+ * balance connectée), les nuits des quatre derniers mois par phase, et les séances de la montre. Une
+ * semaine de vacances (beaucoup de marche) et une semaine malade (cœur plus haut, peu de pas) donnent du
+ * relief. Pur : même graine, mêmes données ; aujourd'hui n'est pas fini (pas du matin seulement).
+ */
+export function demoHealth(personId: "alex" | "sam", today: string, seed: number): DemoHealthPayload {
+  const h = HABITS[personId];
+  const rnd = noise(seed);
+  const out: DemoHealthPayload = { version: 2, samples: [], daily: [], workouts: [], sleep: [] };
+  const id = (kind: string, date: string, k = 0) => `demo-${personId}-${kind}-${date}-${k}`;
+  for (let ago = HEALTH_DAYS; ago >= 0; ago--) {
+    const date = addDays(today, -ago);
+    const wd = weekdayOf(date);
+    const holiday = ago <= h.holiday && ago > h.holiday - 7;
+    const sick = ago <= h.sick && ago > h.sick - 6;
+    const base = along(h.steps, ago) * (wd >= 5 ? h.weekendSteps : 1) * (holiday ? 1.7 : sick ? 0.35 : 1);
+    const steps = Math.max(800, Math.round(base * (1 + rnd() * 0.45)));
+    const part = ago === 0 ? 0.32 : 1; // aujourd'hui : la matinée seulement
+    out.daily.push({ type: "steps", date, value: Math.round(steps * part), unit: "count" });
+
+    // Séances de la montre ce jour-là.
+    let workoutMin = 0;
+    for (const [k, w] of h.workouts.entries()) {
+      if (wd !== w.weekday || ago === 0 || sick || (w.until != null && ago < w.until)) continue;
+      if (w.every && Math.floor(ago / 7) % w.every) continue;
+      if (rnd() > -0.32) {
+        const minutes = Math.round(w.minutes * (1 + rnd() * 0.3));
+        const start = iso(date, wd >= 5 ? 8.5 : 17.5);
+        const km = w.km ? Math.round(w.km * (minutes / w.minutes) * 100) / 100 : 0;
+        out.workouts.push({ uuid: id("w", date, k), activity: w.activity, start, end: iso(date, (wd >= 5 ? 8.5 : 17.5) + minutes / 60), durationMin: minutes, kcal: Math.round(minutes * (w.km ? 9 : 6) * (1 + rnd() * 0.2)), ...(km ? { distanceM: Math.round(km * 1000) } : {}), hrAvg: Math.round(118 + rnd() * 30) });
+        workoutMin += minutes;
+      }
+    }
+    out.daily.push({ type: "active_energy", date, value: Math.round((steps * 0.034 + workoutMin * 6.5 + 60) * part), unit: "kcal" });
+    out.daily.push({ type: "exercise_min", date, value: Math.round((Math.max(0, steps - 4000) / 260 + workoutMin) * part), unit: "min" });
+
+    // Le cœur, mesuré chaque matin : plus haut et moins variable quand on est malade.
+    const fit = (HEALTH_DAYS - ago) / HEALTH_DAYS; // un peu meilleur au fil de l'année
+    out.samples.push({ uuid: id("rhr", date), type: "resting_hr", start: iso(date, 5), end: iso(date, 5), value: Math.round(h.restingHr - fit * 2 + (sick ? 7 : 0) + rnd() * 3), unit: "bpm" });
+    out.samples.push({ uuid: id("hrv", date), type: "hrv_sdnn", start: iso(date, 5.5), end: iso(date, 5.5), value: Math.round(h.hrv + fit * 5 - (sick ? 14 : 0) + rnd() * 16), unit: "ms" });
+    if (ago % 14 === 3) out.samples.push({ uuid: id("vo2", date), type: "vo2max", start: iso(date, 9), end: iso(date, 9), value: Math.round((along(h.vo2max, ago) + rnd() * 0.6) * 10) / 10, unit: "mL/kg/min" });
+    if (h.bodyFat && wd === 0) out.samples.push({ uuid: id("fat", date), type: "body_fat", start: iso(date, 5.2), end: iso(date, 5.2), value: Math.round((along(h.bodyFat, ago) + rnd() * 0.6) * 10) / 10, unit: "%" });
+
+    // La nuit qui finit ce matin : léger, profond, léger, paradoxal, un réveil bref.
+    if (ago < SLEEP_NIGHTS) {
+      const total = h.sleepMin * (sick ? 1.08 : 1) * (wd >= 5 ? 1.06 : 1) + rnd() * 70;
+      const bed = h.bed + (wd >= 5 ? 0.6 : 0) + rnd() * 0.8 - 24; // la veille au soir
+      const parts: [DemoHealthPayload["sleep"][number]["stage"], number][] = [
+        ["core", total * 0.12],
+        ["deep", total * (0.16 + rnd() * 0.06)],
+        ["core", total * 0.3],
+        ["rem", total * (0.2 + rnd() * 0.05)],
+        ["awake", 6 + rnd() * 6],
+      ];
+      parts.push(["core", total - parts.reduce((s, [st, m]) => s + (st === "awake" ? 0 : m), 0)]);
+      let t = bed;
+      for (const [k, [stage, min]] of parts.entries()) {
+        if (min <= 0) continue;
+        out.sleep.push({ uuid: id("sleep", date, k), stage, start: iso(date, t), end: iso(date, t + min / 60) });
+        t += min / 60;
+      }
+    }
+  }
+  return out;
 }

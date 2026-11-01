@@ -23,7 +23,7 @@ Il n'y a rien à garder : le dossier `demo/` est vidé et refait à chaque déma
 
 Le foyer fictif des tests, Alex et Sam, avec tout ce qu'il faut pour que chaque écran parle. Tout est daté par rapport à aujourd'hui (heure de Paris), et la base modèle est refaite chaque jour :
 - profils Santé complets (objectifs, sports, contraintes), goûts, habitude du matin de chacun ;
-- huit semaines de pesées, de tour de taille et de séances de sport (un programme kettlebell pour Alex, renfo pour Sam) ;
+- huit semaines de tour de taille et de séances guidées (un programme kettlebell pour Alex, renfo pour Sam), et un an d'Apple Santé reçu comme l'app iPhone l'enverrait (`demoHealth`, rangé par l'import v2) : pesées, pas, énergie active, minutes d'exercice, FC au repos, variabilité, VO2max, masse grasse (Alex), séances de la montre (course, vélo, natation, yoga, marche), les nuits des quatre derniers mois par phase, une semaine de vacances et une semaine malade ;
 - la semaine en cours : trois plats répartis, la liste payée samedi, la session terminée dimanche, les boîtes rangées (celles des repas passés mangées, ce qui remplit le journal ; la marge et les jours lointains au congélo, celles d'aujourd'hui et de demain sorties la veille) ;
 - la semaine d'avant, cuisinée et mangée ; la suivante, avec ses plats et sa liste de courses à faire.
 
@@ -44,7 +44,7 @@ Les réglages (foyer, cuisine, magasin) restent modifiables : ils ne valent que 
 
 ## Une base par visiteur
 
-Le choix : une copie de la base modèle par visiteur, reconnue par un cookie, plutôt qu'une base partagée remise à zéro à heure fixe. Une base partagée est plus simple, mais un visiteur y voit les essais des autres, et « Recommencer » effacerait le travail de tout le monde. Une copie SQLite d'environ 1 Mo coûte une milliseconde et reste entièrement isolée.
+Le choix : une copie de la base modèle par visiteur, reconnue par un cookie, plutôt qu'une base partagée remise à zéro à heure fixe. Une base partagée est plus simple, mais un visiteur y voit les essais des autres, et « Recommencer » effacerait le travail de tout le monde. Une copie SQLite d'environ 2,5 Mo coûte quelques millisecondes et reste entièrement isolée.
 
 1. Au démarrage (`src/instrumentation.ts`), la base modèle se construit dans `<MIJOTE_DATA_DIR>/demo/modele.db`, puis une fois par jour à côté, et remplace l'ancienne d'un renommage.
 2. `src/proxy.ts` lit le cookie `mijote.demo` (32 caractères hexadécimaux, sinon un nouvel identifiant est tiré) et le passe aux pages dans l'en-tête `x-mijote-demo`, toujours réécrit par le serveur.

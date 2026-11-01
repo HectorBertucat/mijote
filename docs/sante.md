@@ -13,14 +13,23 @@ Une page par partie, sous `/sante/…` (liste dans `src/components/sante/SanteNa
 - **Profils** : les personnes du foyer, sélecteur dans la barre du haut (cookie par appareil, `src/lib/health/active.ts`).
 
 ## Les pages
-- **Vue d'ensemble** : poids et tendance, rythme réel et visé, cible de la semaine et son explication, tour de taille.
+- **Vue d'ensemble** (`src/app/sante/page.tsx`, sections dans `src/components/sante/overview/`) : de haut en bas, la phrase de la semaine (calculée, `synthesis`), la tendance du poids, la cible et les protéines, « Cette semaine » (pas, énergie active, séances, sommeil, FC au repos, variabilité, VO2max, masse grasse, chacun avec sa comparaison au mois d'avant et sa courbe sur 30 jours, seulement s'il existe), « Activité » (régularité sur un an, dernières séances avec durée, distance, énergie), « Évolution » sur la période choisie (`?periode=7j|30j|3m|1an|tout`, 30 jours par défaut : poids, pas, énergie, minutes d'activité, temps par type de séance, sommeil par phase, FC au repos, variabilité), puis objectifs et tour de taille. Les séries sont regroupées en SQL par jour, semaine ou mois (`src/lib/health/overview.ts`), le calcul est pur (`series.ts`, tests `tests/sante-series.test.ts`). Une section de plus (la course) s'ajoute comme composant.
 - **Démarrer** (`/sante/demarrer`) : ce qui manque pour une part juste, le formulaire (hors batch : les habitudes, ou un chiffre), ce qui en découle et le conseil.
 - **Aujourd'hui** : repas prévus de la Semaine cochés en un tap, habitudes du jour proposées d'office, journal par repas, « Journée complète ».
 - **Hors batch** (`/sante/habitudes`) : les habitudes (modèles shaker protéiné, petit-déjeuner classique, rien), leurs aliments et leurs jours, le hors batch jour par jour et le conseil.
 - **Objectifs** : poids visé, échéance, plan de sport, contraintes ; le coach (IA) propose, `checkProposal` (`goals.ts`) vérifie : rythme −1 à +0,5 %/sem., protéines 1,2–2,4 g/kg, poids visé dans un IMC 18,5–30, cible jamais sous le métabolisme de base.
 - **Apple Santé** (`/sante/apple`) : l'app iPhone Mijote Santé, distribuée à part, envoie ce que la personne choisit dans Santé. La page affiche, pour le profil ouvert, le code d'installation en QR code et en texte, le dernier envoi, ce qui a été reçu par type et si l'historique complet est arrivé ; « Tout renvoyer » et « Changer la clé ». L'import du fichier d'export de Santé (lu dans le navigateur) reste en option repliée. Voir « Apple Santé » plus bas.
-- **Sommeil et forme** (vue d'ensemble) : si l'app les envoie, sommeil moyen des 7 dernières nuits (phases de la dernière), FC au repos et variabilité cardiaque sur 7 jours comparées au mois d'avant, VO2max, masse grasse. Affichés seulement ; ni la cible ni l'assistant ni le coach ne les lisent.
+- **Sommeil et forme** (vue d'ensemble) : si l'app les envoie, sommeil moyen des 7 dernières nuits (phases de la dernière), FC au repos et variabilité cardiaque sur 7 jours comparées au mois d'avant, VO2max, masse grasse, et leurs graphiques sur la période. Affichés seulement ; ni la cible ni l'assistant ni le coach ne les lisent.
 - **Entraînement** : voir [sport.md](sport.md).
+
+### La phrase de la semaine
+Calculée en code, sans IA (`synthesis`, `src/lib/health/series.ts`) : pas par jour sur les 7 derniers jours complets face aux 28 jours d'avant (« autant » sous 5 % d'écart), séances des 7 derniers jours face au plan, sommeil moyen (« un peu court » sous 7 h), FC au repos si elle a bougé de 3 bpm ou plus, tendance du poids et son rythme. Une phrase par chiffre présent, rien sans mesure.
+
+### Les séries
+- Totaux du jour (pas, énergie, minutes) : moyenne par jour mesuré dans une semaine ou un mois (pas, énergie), total du paquet (minutes) ; un jour sans donnée n'est pas un zéro. La barre d'aujourd'hui (ou de la semaine en cours) est pâle : elle n'est pas finie.
+- Mesures à un instant (cœur) : moyenne du jour (heure d'hiver de Paris), points du jour et moyenne glissante sur 7 jours ; au-delà de deux ans d'historique, à la semaine et sur 4 semaines.
+- Poids : la tendance de l'appli calculée sur tout l'historique, la fourchette des pesées des 7 derniers jours ; au-delà d'un peu plus d'un an, un point par semaine.
+- Séances : carnet guidé et Apple Santé réunis sans doublon (même règle que les objectifs) ; les quatre types les plus pratiqués gardent leur couleur, le reste va dans « Autre ».
 
 ## Apple Santé
 

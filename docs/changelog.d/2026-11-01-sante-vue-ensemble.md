@@ -1,0 +1,6 @@
+## 2026-11-01 : Santé, vue d'ensemble refaite et kit de graphiques
+- Kit de graphiques `src/components/ui/charts/` (sans bibliothèque, rendu serveur, une île client pour lire les valeurs au survol, au doigt et au clavier) : courbe de tendance avec bande et zones, barres simples ou empilées avec moyenne, petite courbe, calendrier de régularité, histogramme horizontal, choix de la période ; tableau pour les lecteurs d'écran ; démonstration `/kit/graphiques`.
+- Jetons `--c-viz-*` (série, palette catégorielle des types de séance, rampes de régularité, de sommeil et de zones cardiaques), validés en clair et en sombre.
+- Santé › Vue d'ensemble : la phrase de la semaine calculée en code, chiffres de la semaine avec comparaison au mois d'avant et courbe sur 30 jours, régularité sur un an et dernières séances (durée, distance, énergie), évolution sur 7 j, 30 j, 3 mois, 1 an ou tout (`?periode=`) : poids, pas, énergie active, minutes d'activité, temps par type de séance, sommeil par phase, FC au repos, variabilité. Squelette de chargement ajusté.
+- Séries regroupées en SQL par jour, semaine ou mois (`src/lib/health/overview.ts`), calcul pur et testé (`src/lib/health/series.ts`).
+- Démo : un an d'Apple Santé pour Alex et Sam, écrit par l'import v2 (base modèle d'environ 2,5 Mo).
