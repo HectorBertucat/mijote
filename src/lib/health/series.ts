@@ -7,7 +7,7 @@ import { addDays } from "@/lib/week/propose";
 export type Grain = "day" | "week" | "month";
 export type PeriodKey = "7j" | "30j" | "3m" | "1an" | "tout";
 
-/** Les périodes de la vue d'ensemble ; `grain` regroupe les barres (les courbes restent au jour jusqu'à un an). */
+/** Les périodes de la vue d'ensemble ; `grain` regroupe les barres (les courbes restent au jour jusqu'à un an : `lineGrainOf`). */
 export const PERIODS: { key: PeriodKey; label: string; long: string; days: number | null; grain: Grain }[] = [
   { key: "7j", label: "7 j", long: "les 7 derniers jours", days: 7, grain: "day" },
   { key: "30j", label: "30 j", long: "les 30 derniers jours", days: 30, grain: "day" },
@@ -28,6 +28,15 @@ export interface Period {
   to: string;
   grain: Grain;
 }
+
+/**
+ * Le pas des courbes (cœur) : au jour tant que les barres sont au jour ou à la semaine (un an au plus de
+ * points), au mois avec elles sur plusieurs années (des centaines de semaines ne se lisent pas, et pèsent).
+ */
+export const lineGrainOf = (grain: Grain): Grain => (grain === "month" ? "month" : "day");
+
+/** La fenêtre de la moyenne glissante d'une courbe : 7 jours, 4 semaines ou 3 mois. */
+export const ROLLING: Record<Grain, number> = { day: 7, week: 4, month: 3 };
 
 export const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 
@@ -178,27 +187,40 @@ export interface WeightPoint {
   /** Pesée du jour (moyenne des pesées du paquet en semaines). */
   kg: number | null;
   trend: number;
-  /** Fourchette des pesées : 7 derniers jours (au jour) ou le paquet (à la semaine). */
+  /** Fourchette des pesées : 7 derniers jours (au jour) ou le paquet (semaine, mois). */
   lo: number | null;
   hi: number | null;
 }
 
+/** Le pas de la courbe du poids : au jour jusqu'à un peu plus d'un an, puis à la semaine, au mois avec les barres sur plusieurs années. */
+export function weightGrain(period: Pick<Period, "from" | "to"> & { grain?: Grain }): Grain {
+  if (dayDiff(period.from, period.to) <= 400) return "day";
+  return period.grain === "month" ? "month" : "week";
+}
+
 /**
  * La courbe du poids sur la période : la tendance (moyenne exponentielle de l'appli) calculée sur tout
- * l'historique pour être juste dès le premier jour, puis coupée. Au-delà d'un an, un point par semaine.
+ * l'historique pour être juste dès le premier jour, puis coupée. Au-delà d'un an, un point par semaine (par
+ * mois sur plusieurs années : `weightGrain`). `series` : la même tendance si elle est déjà calculée (jusqu'à `period.to`).
  */
-export function weightView(dailyKg: { date: string; kg: number }[], period: Pick<Period, "from" | "to">): WeightPoint[] {
-  const series: TrendPoint[] = trendSeries(dailyKg, period.to);
-  const inRange = series.filter((p) => p.date >= period.from && p.date <= period.to);
-  if (dayDiff(period.from, period.to) <= 400) {
-    return inRange.map((p) => {
-      const i = series.indexOf(p);
+export function weightView(dailyKg: { date: string; kg: number }[], period: Pick<Period, "from" | "to"> & { grain?: Grain }, series: TrendPoint[] = trendSeries(dailyKg, period.to)): WeightPoint[] {
+  const first = series.findIndex((p) => p.date >= period.from);
+  const inRange = first < 0 ? [] : series.slice(first).filter((p) => p.date <= period.to);
+  const grain = weightGrain(period);
+  if (grain === "day") {
+    return inRange.map((p, k) => {
+      const i = first + k;
       const win = series.slice(Math.max(0, i - 6), i + 1).flatMap((x) => (x.kg != null ? [x.kg] : []));
       return { date: p.date, kg: p.kg, trend: p.trend, lo: win.length ? Math.min(...win) : null, hi: win.length ? Math.max(...win) : null };
     });
   }
   const by = new Map<string, TrendPoint[]>();
-  for (const p of inRange) by.set(bucketOf(p.date, "week"), [...(by.get(bucketOf(p.date, "week")) ?? []), p]);
+  for (const p of inRange) {
+    const b = bucketOf(p.date, grain);
+    const xs = by.get(b);
+    if (xs) xs.push(p);
+    else by.set(b, [p]);
+  }
   return [...by.entries()].map(([start, pts]) => {
     const kgs = pts.flatMap((x) => (x.kg != null ? [x.kg] : []));
     return { date: start, kg: mean(kgs), trend: pts[pts.length - 1].trend, lo: kgs.length ? Math.min(...kgs) : null, hi: kgs.length ? Math.max(...kgs) : null };

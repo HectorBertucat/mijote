@@ -1,5 +1,9 @@
 /* Graphiques (src/components/ui/charts/) : ce que l'île client allume (data-on) sur le dessin du serveur. */
 @layer components {
+  /* La colonne d'une barre et la barre (bars.tsx) : en classes ici plutôt qu'en utilitaires, car répétées
+     des centaines de fois par page (un historique de plusieurs années au mois). */
+  .viz-slot { display: flex; height: 100%; min-width: 0; flex: 1; align-items: flex-end; justify-content: center; border-radius: 4px; padding-inline: 1px; }
+  .viz-bar { display: flex; width: 100%; max-width: 24px; flex-direction: column-reverse; gap: 2px; overflow: hidden; border-radius: 4px 4px 0 0; }
   /* Barre survolée : un creux derrière la colonne ; une barre seule passe au bleu de sélection. */
   .viz-slot { transition: background-color var(--dur-1) var(--ease-out); }
   .viz-slot[data-on] { background: var(--c-surface-2); }

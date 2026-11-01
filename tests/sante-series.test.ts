@@ -8,8 +8,10 @@ import { openDb } from "@/lib/db/open";
 import { healthSamples, workouts } from "@/lib/db/schema";
 import { addWeighIn } from "@/lib/health/store";
 import { bucketRows, firstDay, listActivities, overview, sleepBuckets, sleepNights } from "@/lib/health/overview";
-import { bucketOf, bucketsBetween, daily, fillBuckets, groupRows, minutesByType, nextBucket, OTHER, periodOf, recent, rollingMean, sessionsSince, synthesis, weightView, type Activity } from "@/lib/health/series";
+import { bucketOf, bucketsBetween, daily, fillBuckets, groupRows, lineGrainOf, minutesByType, nextBucket, OTHER, periodOf, recent, rollingMean, sessionsSince, synthesis, weightGrain, weightView, type Activity } from "@/lib/health/series";
+import { trendSeries } from "@/lib/health/core";
 import { addDays } from "@/lib/week/propose";
+import { dayString, weekdayOf } from "@/lib/days";
 import { seedTest } from "./helpers";
 
 const TODAY = "2026-11-01"; // un dimanche
@@ -97,6 +99,39 @@ test("poids : tendance calculée sur tout l'historique, fourchette des 7 dernier
   const all = weightView(kg, { from: "2024-05-01", to: last });
   assert.ok(all.length >= 128 && all.length <= 130, `${all.length} semaines`);
   assert.ok(all.every((w) => w.lo == null || (w.lo <= w.kg! && w.kg! <= w.hi!)));
+  // Sur plusieurs années au mois (« Tout ») : un point par mois, la dernière tendance du mois.
+  const months = weightView(kg, { from: "2024-05-01", to: last, grain: "month" });
+  assert.equal(months.length, 30);
+  assert.equal(months[0].date, "2024-05-01");
+  assert.equal(months[months.length - 1].trend, all[all.length - 1].trend);
+  assert.ok(months.every((w) => w.lo == null || (w.lo <= w.kg! && w.kg! <= w.hi!)));
+  // La tendance déjà calculée donne la même courbe.
+  assert.deepEqual(weightView(kg, { from: addDays(last, -29), to: last }, trendSeries(kg, last)), month);
+  assert.deepEqual(weightView(kg, { from: "2024-05-01", to: last }, trendSeries(kg, last)), all);
+});
+
+test("pas des courbes : au jour jusqu'à un an, au mois sur plusieurs années, comme le poids", () => {
+  assert.deepEqual((["day", "week", "month"] as const).map(lineGrainOf), ["day", "day", "month"]);
+  assert.equal(weightGrain({ from: "2026-01-01", to: "2026-10-31", grain: "week" }), "day");
+  assert.equal(weightGrain({ from: "2024-01-01", to: "2026-10-31", grain: "week" }), "week");
+  assert.equal(weightGrain({ from: "2018-01-01", to: "2026-10-31", grain: "month" }), "month");
+});
+
+test("addDays : le calendrier sans objet Date, identique à setUTCDate", () => {
+  const ref = (d: string, n: number) => {
+    const t = new Date(`${d}T00:00:00Z`);
+    t.setUTCDate(t.getUTCDate() + n);
+    return t.toISOString().slice(0, 10);
+  };
+  for (let d = "1999-12-01"; d < "2001-03-31"; d = ref(d, 1)) for (const n of [-400, -60, -1, 0, 1, 28, 365, 2.5, -2.5]) assert.equal(addDays(d, n), ref(d, n), `${d} ${n}`);
+  assert.equal(addDays("2024-02-28", 1), "2024-02-29");
+  assert.equal(addDays("2100-02-28", 1), "2100-03-01");
+  assert.throws(() => addDays("pas une date", 1));
+  for (let n = -30_000; n < 60_000; n += 7) {
+    const d = new Date(n * 86_400_000);
+    assert.equal(dayString(n), d.toISOString().slice(0, 10));
+    assert.equal(weekdayOf(n), d.getUTCDay());
+  }
 });
 
 const act = (date: string, label: string, minutes: number): Activity => ({ date, at: null, label, minutes, distanceM: null, kcal: null, source: "apple" });

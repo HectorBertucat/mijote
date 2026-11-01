@@ -2,7 +2,7 @@
 // coupés aux trous, point le plus proche du pointeur, niveaux du calendrier, textes à la française.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bandPath, dateTicks, dayNum, dotsPath, fmt, hmin, levelOf, linePath, nearest, niceDomain, niceStep, shiftDay, tickText, tipText } from "@/components/ui/charts/core";
+import { bandPath, dateTicks, dayNum, dotsPath, fmt, fmtDay, hmin, levelOf, linePath, nearest, niceDomain, niceStep, NO_DATA, shiftDay, tableRows, tickText, tipText } from "@/components/ui/charts/core";
 
 test("pas ronds et domaines : zéro en bas pour des barres, une série plate s'ouvre", () => {
   assert.equal(niceStep(10, 4), 2.5);
@@ -78,4 +78,30 @@ test("pointeur et niveaux : le point le plus proche, les seuils du calendrier", 
   assert.equal(nearest([], 0.5), -1);
   const levels = [1, 20, 40, 60, 90];
   assert.deepEqual([null, 0, 10, 20, 45, 89, 120].map((v) => levelOf(v, levels)), [0, 0, 1, 2, 3, 4, 5]);
+});
+
+test("tableau des lecteurs d'écran : une suite sans mesure en une ligne, les mesures une par une", () => {
+  const v = (title: string, value: string) => ({ title, rows: [{ value, label: "pas" }] });
+  const none = (title: string) => ({ title, rows: [{ value: NO_DATA }] });
+  const rows = tableRows([none("janvier 2020"), none("février 2020"), none("mars 2020"), v("avril 2020", "8 000"), none("mai 2020"), v("juin 2020", "7 500"), { title: "juillet 2020", rows: [] }, { title: "août 2020", rows: [] }]);
+  assert.deepEqual(
+    rows.map((r) => [r.title, r.rows[0]?.value ?? "—"]),
+    [
+      ["janvier 2020 – mars 2020", NO_DATA],
+      ["avril 2020", "8 000"],
+      ["mai 2020", NO_DATA],
+      ["juin 2020", "7 500"],
+      ["juillet 2020 – août 2020", "—"],
+    ]
+  );
+  assert.deepEqual(tableRows([]), []);
+});
+
+test("formats : les formateurs gardés rendent la même chose que toLocaleString", () => {
+  for (const [v, d] of [[8400, 0], [81.25, 1], [-0.5, 2], [1234567.891, 1]] as const) {
+    assert.equal(fmt(v, d), v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }));
+    assert.equal(fmt(v, d), fmt(v, d), "deuxième appel, même formateur");
+  }
+  assert.equal(fmtDay("2026-11-03", "weekday"), new Date("2026-11-03T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }));
+  assert.equal(fmtDay("2026-11-03", "full"), "3 nov. 2026");
 });

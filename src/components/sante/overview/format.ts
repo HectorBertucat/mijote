@@ -1,12 +1,12 @@
 // Textes des graphiques de la vue d'ensemble : titre d'un paquet, repères sous les barres, moyenne de la période.
-import { fmtDay } from "@/components/ui/charts/core";
+import { dateFmt, fmtDay } from "@/components/ui/charts/core";
 import type { Bucket, Grain } from "@/lib/health/series";
 
 /** « lun. 3 nov. », « semaine du 27 oct. », « octobre 2026 ». */
 export function bucketTitle(start: string, grain: Grain) {
   if (grain === "day") return fmtDay(start, "weekday");
   if (grain === "week") return `semaine du ${fmtDay(start)}`;
-  return new Date(`${start}T12:00:00Z`).toLocaleDateString("fr-FR", { timeZone: "UTC", month: "long", year: "numeric" });
+  return dateFmt("month-long", { month: "long", year: "numeric" }).format(new Date(`${start}T12:00:00Z`));
 }
 
 /** « par jour », « par semaine », « par mois ». */

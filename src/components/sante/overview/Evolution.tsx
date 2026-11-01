@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { BarChart, ChartEmpty, ChartFigure, ChartValue, HBarChart, Legend, LineChart, PeriodScope } from "@/components/ui/charts";
 import { dateTicks, dayNum, fmt, fmtDay, hmin, NB, shiftDay, VIZ_CAT, VIZ_OTHER, VIZ_SLEEP } from "@/components/ui/charts/core";
 import type { Overview } from "@/lib/health/overview";
-import { OTHER, PERIODS, rollingMean, type Bucket, type Grain } from "@/lib/health/series";
+import { lineGrainOf, OTHER, PERIODS, ROLLING, rollingMean, weightGrain, type Bucket } from "@/lib/health/series";
 import { signed } from "../carnet";
 import { bucketTicks, bucketTitle, per, periodMean } from "./format";
 
@@ -80,8 +80,9 @@ function weightChart(o: Overview) {
   if (w.length < 2) return null;
   const first = w[0];
   const last = w[w.length - 1];
-  // Au-delà d'un peu plus d'un an, un point par semaine (weightView).
-  const weekly = dayNum(o.period.to) - dayNum(o.period.from) > 400;
+  // Au-delà d'un peu plus d'un an, un point par semaine, par mois sur plusieurs années (weightView).
+  const g = weightGrain(o.period);
+  const unit = g === "month" ? "du mois" : "de la semaine";
   const x = w.map((p) => dayNum(p.date));
   const ticks = dateTicks(o.period.from, o.period.to).map((t) => ({ x: dayNum(t.date), label: t.label }));
   return (
@@ -92,8 +93,8 @@ function weightChart(o: Overview) {
       legend={
         <Legend
           items={[
-            { label: weekly ? "moyenne des pesées de la semaine" : "pesée du jour", color: "var(--c-ink-3)", shape: "dot" },
-            { label: weekly ? "pesées de la semaine, la plus basse et la plus haute" : "fourchette des pesées sur 7 jours", color: "var(--c-viz-band)", shape: "band" },
+            { label: g !== "day" ? `moyenne des pesées ${unit}` : "pesée du jour", color: "var(--c-ink-3)", shape: "dot" },
+            { label: g !== "day" ? `pesées ${unit}, la plus basse et la plus haute` : "fourchette des pesées sur 7 jours", color: "var(--c-viz-band)", shape: "band" },
             { label: "tendance, ce qui compte", color: "var(--c-ink)", shape: "line" },
           ]}
         />
@@ -103,10 +104,10 @@ function weightChart(o: Overview) {
         x={x}
         xDomain={[dayNum(o.period.from), dayNum(o.period.to)]}
         xTicks={ticks}
-        titles={w.map((p) => (weekly ? `semaine du ${fmtDay(p.date)}` : fmtDay(p.date, "weekday")))}
+        titles={w.map((p) => bucketTitle(p.date, g))}
         layers={[
           { type: "band", label: "fourchette", lo: w.map((p) => p.lo), hi: w.map((p) => p.hi) },
-          { type: "dots", label: weekly ? "pesées" : "pesée", values: w.map((p) => p.kg), size: w.length > 120 ? 3 : 5 },
+          { type: "dots", label: g !== "day" ? "pesées" : "pesée", values: w.map((p) => p.kg), size: w.length > 120 ? 3 : 5 },
           { type: "line", label: "tendance", values: w.map((p) => p.trend) },
         ]}
         format={kg}
@@ -201,17 +202,17 @@ const HEART = {
   hrv: { title: "Variabilité cardiaque", unit: "ms", digits: 0, minSpan: 20 },
 } as const;
 
-/** Le cœur : la mesure du jour en points, la moyenne glissante sur 7 jours (ou 4 semaines) en trait. */
+/** Le cœur : la mesure du jour (ou la moyenne du mois) en points, la moyenne glissante sur 7 jours (ou 3 mois) en trait. */
 function heartChart(o: Overview, key: "restingHr" | "hrv") {
   const b = o.lines[key];
   if (!b) return null;
   const c = HEART[key];
-  const grain: Grain = o.period.grain === "month" ? "week" : "day";
+  const grain = lineGrainOf(o.period.grain);
   const vals = b.map((x) => x.value);
-  const avg = rollingMean(vals, grain === "day" ? 7 : 4);
+  const avg = rollingMean(vals, ROLLING[grain]);
   const m = periodMean(b, "mean");
   const f = (v: number) => `${fmt(v, c.digits)}${NB}${c.unit}`;
-  const label = grain === "day" ? "moyenne sur 7 jours" : "moyenne sur 4 semaines";
+  const label = grain === "day" ? "moyenne sur 7 jours" : "moyenne sur 3 mois";
   return (
     <ChartFigure
       key={key}
@@ -221,7 +222,7 @@ function heartChart(o: Overview, key: "restingHr" | "hrv") {
         m != null && (
           <Legend
             items={[
-              { label: grain === "day" ? "mesure du jour" : "moyenne de la semaine", color: "var(--c-ink-3)", shape: "dot" },
+              { label: grain === "day" ? "mesure du jour" : "moyenne du mois", color: "var(--c-ink-3)", shape: "dot" },
               { label, color: "var(--c-ink)", shape: "line" },
             ]}
           />
@@ -237,7 +238,7 @@ function heartChart(o: Overview, key: "restingHr" | "hrv") {
           xTicks={dateTicks(o.period.from, o.period.to).map((t) => ({ x: dayNum(t.date), label: t.label }))}
           titles={b.map((x) => bucketTitle(x.start, grain))}
           layers={[
-            { type: "dots", label: grain === "day" ? "mesure" : "semaine", values: vals, size: b.length > 120 ? 3 : 4 },
+            { type: "dots", label: grain === "day" ? "mesure" : "mois", values: vals, size: b.length > 120 ? 3 : 4 },
             { type: "line", label: "moyenne", values: avg },
           ]}
           format={f}

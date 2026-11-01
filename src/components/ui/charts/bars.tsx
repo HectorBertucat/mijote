@@ -2,7 +2,7 @@
 // (pas, énergie, minutes) ou plusieurs empilées (phases du sommeil, temps par type de séance). Barre de
 // 24 px au plus, bout arrondi de 4 px, carrée à la base, 2 px de papier entre deux barres et entre deux
 // morceaux. La barre en cours (jour, semaine pas finis) est plus pâle. Une ligne de moyenne en option.
-import { frac, niceDomain, tickText, type Tip, type TipRow } from "./core";
+import { frac, NO_DATA, niceDomain, tickText, type Tip, type TipRow } from "./core";
 import { ChartHover } from "./hover";
 import { AxisFrame, ChartTable, XAxis, YGrid, YLabels } from "./parts";
 
@@ -62,7 +62,7 @@ export function BarChart({
     title: b.partial ? `${b.title} (en cours)` : b.title,
     rows:
       b.value == null
-        ? [{ value: "pas de mesure" }]
+        ? [{ value: NO_DATA }]
         : [
             ...(stacked
               ? series!.flatMap((s): TipRow[] => (b.parts?.[s.key] ? [{ value: format(b.parts[s.key]), label: s.label, color: s.color, shape: "rect" }] : [])).reverse()
@@ -82,10 +82,10 @@ export function BarChart({
               <YGrid ticks={ticks} pos={fy} />
               <ol aria-hidden className="absolute inset-0 flex items-end">
                 {data.map((b, i) => (
-                  <li key={i} data-i={i} className="viz-slot flex h-full min-w-0 flex-1 items-end justify-center rounded-[4px] px-px">
+                  <li key={i} data-i={i} className="viz-slot">
                     {b.value != null && b.value > 0 && (
                       <span
-                        className={`viz-bar flex w-full max-w-6 flex-col-reverse gap-[2px] overflow-hidden rounded-t-[4px] ${b.partial ? "viz-partial" : ""}`}
+                        className={b.partial ? "viz-bar viz-partial" : "viz-bar"}
                         style={{ height: `${fy(b.value) * 100}%`, ...(stacked ? {} : { background: b.partial ? "var(--c-viz-soft)" : color }) }}
                       >
                         {stacked && series!.map((s) => (b.parts?.[s.key] ? <i key={s.key} className="block min-h-px" style={{ flexGrow: b.parts[s.key], background: s.color }} /> : null))}
