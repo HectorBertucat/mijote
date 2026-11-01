@@ -381,8 +381,9 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
     const first = lastKey.current === "";
     lastKey.current = key;
     if (first && elapsed > 1) return; // écran qui arrive en cours de route : pas de rafale
-    if (g.phase === "ready") readyLeft <= 3 && sound(660, 0.1);
-    else if (g.phase === "switch" || g.phase === "done") sound(990, 0.4);
+    if (g.phase === "ready") {
+      if (readyLeft <= 3) sound(660, 0.1);
+    } else if (g.phase === "switch" || g.phase === "done") sound(990, 0.4);
     else if (!seconds && frame.rep < reps) sound(frame.step === 0 ? 990 : 660, frame.step === 0 ? 0.14 : 0.08);
     else if (seconds && Math.ceil(reps - g.t) <= 3) sound(660, 0.08);
   });
