@@ -465,7 +465,7 @@ export function ringInfo(plan: SessionPlan, state: SessionState, t: TimerState):
   const where = [
     step.kind !== "preheat" && step.equipmentName && !/^four$/i.test(step.equipmentName) ? step.equipmentName : null,
     step.hobId ? `${hobName(plan, step.hobId)}${level != null ? ` · niveau ${level}` : step.hobLevelLabel ? ` · niveau ${step.hobLevelLabel}` : step.hobLevel != null ? ` · niveau ${step.hobLevel}` : ""}` : null,
-    step.oven ? `four ${step.oven.temp} °C${step.oven.levels.length ? ` · gradin${step.oven.levels.length > 1 ? "s" : ""} ${step.oven.levels.join(" et ")}` : ""}` : step.kind === "preheat" ? `four ${step.text.match(/(\d+)\s*°C/)?.[1] ?? ""} °C`.replace(/\s+°C$/, "") : null,
+    step.oven ? `four ${step.oven.temp} °C${step.oven.levels.length ? ` · gradin${step.oven.levels.length > 1 ? "s" : ""} ${step.oven.levels.join(" et ")}` : ""}` : step.kind === "preheat" ? (step.text.match(/(\d+)\s*°C/) ? `four ${step.text.match(/(\d+)\s*°C/)![1]} °C` : "four") : null,
   ].filter((x): x is string => Boolean(x));
   const thenStep = sameRecipe ? `Étape suivante de la recette : ${stepTitleOf(sameRecipe, 60)}` : null;
   if (ph) {
