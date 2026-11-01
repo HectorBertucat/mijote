@@ -33,10 +33,16 @@ export function stageOf(plan: SessionPlan, state: SessionState): Stage {
 /** Prep la veille, le soir : seulement ce qui se garde au frigo. */
 const evening = (plan: SessionPlan, state: SessionState) => modeOf(plan) === "veille" && !state.eveDone;
 
-/** Les bols à remplir avant la cuisson : ce soir (veille), sinon tous sauf ceux qu'un geste finit pendant la cuisson. */
+/** Un groupe pesé et versé au moment de l'étape (une boîte de pulpe, la crème, le riz) : pas de bol à remplir. */
+export const atMoment = (b: Pick<PlanBowl, "holder">) => b.holder === "moment";
+
+/** Les bols à remplir avant la cuisson : ce soir (veille), sinon tous sauf ceux qu'un geste finit pendant la cuisson ; jamais ceux du moment. */
 export function prepBowls(plan: SessionPlan, state: SessionState): PlanBowl[] {
-  return evening(plan, state) ? plan.bowls.filter((b) => b.fridge) : plan.bowls.filter((b) => !b.during?.length);
+  return (evening(plan, state) ? plan.bowls.filter((b) => b.fridge) : plan.bowls.filter((b) => !b.during?.length)).filter((b) => !atMoment(b));
 }
+
+/** Les groupes du moment : rien à préparer, l'étape dit quoi peser. */
+export const momentBowls = (plan: Pick<SessionPlan, "bowls">): PlanBowl[] => plan.bowls.filter(atMoment);
 
 /** Les gestes de prep du moment (ce soir, le reste le jour J, ou tout). */
 export function prepTasks(plan: SessionPlan, state: SessionState): PrepTask[] {

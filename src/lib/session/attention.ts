@@ -59,8 +59,8 @@ const PASTA = /\bp[âa]tes\b|orzo|risotto/i;
 const SAUCE = /sauce|mijot|réduit|frémi|compote|dahl|curry/i;
 const COVERED_LONG = /couvercle|couvert(?! à demi)|sans ouvrir/i;
 
-/** Ce que demande une attente (sous-étape `wait`, ou la fin d'une étape sans sous-étape). */
-function waitAttention(text: string, step: StepLike, onHob: boolean): Pick<TimedPhase, "attention" | "reminder"> {
+/** Ce que demande une attente (sous-étape `wait`, ou la fin d'une étape sans sous-étape) ; l'écran la relit pour l'attente qui finit une étape. */
+export function waitAttention(text: string, step: StepLike, onHob: boolean): Pick<TimedPhase, "attention" | "reminder"> {
   if (!onHob || step.kind === "bake" || step.kind === "rest" || step.kind === "cool") return { attention: "libre" };
   if (/sans ouvrir|l'eau chauffe|eau chauffe|hors du feu|repos/i.test(text)) return { attention: "libre" };
   if (step.kind === "boil" && PASTA.test(`${text} ${step.text}`) && !/couvert/i.test(text)) return { attention: "surveille", reminder: { everyMin: 3, text: "Remue, que ça n'attache pas" } };

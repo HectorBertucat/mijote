@@ -9,6 +9,7 @@ import type { Controls } from "./SessionApp";
 import { Bowl, BowlFoods, bowlName, bowlOf, bowlOrdered, bowlQty, dur, Eyebrow, recipeOf, shortName } from "./parts";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import { weighItems } from "@/lib/session/guide";
+import { atMoment, prepBowls } from "@/lib/session/flow";
 import { BowlItems } from "./guide";
 
 export const prepTitle = (t: PrepTask) => (t.kind === "cut" ? t.title : t.kind === "weigh" ? `Pesée · ${t.title}` : `Avant de cuire · ${t.title}`);
@@ -23,8 +24,8 @@ export function prepScope(plan: SessionPlan, c: Controls) {
   const later = evening ? plan.prep.tasks.filter((t) => !t.eve) : [];
   const doneEve = resumed ? plan.prep.tasks.filter((t) => t.eve) : [];
   // Seul : un bol qu’un geste finit pendant la cuisson n’est pas attendu avant (il se coche dans le fil).
-  const bowls = evening ? plan.bowls.filter((b) => b.fridge) : plan.bowls.filter((b) => !b.during?.length);
-  const laterBowls = evening ? plan.bowls.filter((b) => !b.fridge) : [];
+  const bowls = prepBowls(plan, state);
+  const laterBowls = evening ? plan.bowls.filter((b) => !b.fridge && !atMoment(b)) : [];
   const duringBowls = evening ? [] : plan.bowls.filter((b) => b.during?.length);
   const ready = bowls.filter((b) => state.bowlsReady.has(b.letter)).length;
   const done = tasks.filter((t) => state.prepDone.has(t.id)).length;

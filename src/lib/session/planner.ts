@@ -1342,7 +1342,10 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
         share: Math.round((m.base!.grams / total) * 100) / 100,
       }));
       const shareText = `Partage ${info.label === "riz" ? "le riz" : `les ${info.label}`} : ${shared.map((p) => `${formatQty(p.cookedG, null)}${info.cookedYield !== 1 ? " cuit" : ""} pour ${recipes[input.findIndex((r) => r.slug === p.recipeSlug)].name}`).join(", ")}`;
-      const phases: StepPhase[] = [...(model.src!.phases ?? []).map((p) => ({ ...p, text: relabelBowls(p.text, letterMaps[model.r]) })), { text: shareText, min: SHARE_MIN }];
+      // La sous-étape qui verse la base cite tous les bols de la cuisson commune (« Riz (bols D et I) + eau »).
+      let cited = false;
+      const together = (t: string) => (cited ? t : t.replace(/\(bol [A-Z]{1,2}\)|\bbol [A-Z]{1,2}\b/, (m) => ((cited = true), m.startsWith("(") ? `(bols ${list(letters)})` : `bols ${list(letters)}`)));
+      const phases: StepPhase[] = [...(model.src!.phases ?? []).map((p) => ({ ...p, text: together(relabelBowls(p.text, letterMaps[model.r])) })), { text: shareText, min: SHARE_MIN }];
       lead.out = { text: `${text} ${shareText}.`, phases, shared };
       lead.src = { ...model.src!, equipmentId: vessel, text: model.src!.text };
       lead.dur = model.dur + SHARE_MIN;
@@ -1809,7 +1812,9 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
       if (max && (src.kind === "sear" || COOK_APPLIANCES.has(w.vessel!)) && w.dur >= 5) {
         const g = gramsOf(r, src.bowls);
         if (g > max) {
-          batches = Math.ceil(g / max);
+          // Les fournées que la fiche découpe déjà (sous-étapes numérotées) font foi : la sauce versée à la fin ne se saisit pas.
+          const said = Math.max(0, ...(src.phases ?? []).map((p) => p.batch ?? 0));
+          batches = said >= 2 ? said : Math.ceil(g / max);
           if (!/fournée/i.test(src.text)) {
             warnings.push(`${r.name}, étape ${w.order} : ${Math.round(g)} g dans ${article(shortName(w.vessel)!)}, prévois ${batches} fournées (${max} g au plus).`);
           }
@@ -2010,7 +2015,7 @@ function planCore(input: PlannerRecipe[], res: PlannerResources, opts: PlanOptio
 
   // « sert à l'étape N » (un geste qui finit le bol ne le « sert » pas : il le remplit).
   for (const b of bowls) {
-    const s = steps.find((x) => !x.tasks && x.recipeSlug === b.recipeSlug && x.bowls.includes(b.letter));
+    const s = steps.find((x) => !x.tasks && (x.recipeSlug === b.recipeSlug || x.shared?.some((p) => p.recipeSlug === b.recipeSlug)) && x.bowls.includes(b.letter));
     b.usedBy = s ? { stepId: s.id, no: s.no } : null;
     if (interleave) {
       delete b.tasks;

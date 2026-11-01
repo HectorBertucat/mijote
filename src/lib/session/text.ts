@@ -157,13 +157,22 @@ export function clip(text: string, max = 64): string {
   return `${out.replace(/[,:;–]$/, "").trim()}…`;
 }
 
+/**
+ * La consigne d'une étape à l'écran : le titre et le détail du planificateur (`title`, `detail`), sinon,
+ * pour un plan d'avant, la première phrase du texte et le reste.
+ */
+export function stepHead(step: Pick<PlanStep, "text" | "title" | "detail">): { head: string; rest: string } {
+  if (step.title) return { head: typo(step.title), rest: typo(step.detail ?? "") };
+  return splitStep(step.text);
+}
+
 /** Titre court d'une étape (le fil, « ensuite », les boutons) : la consigne de tête, raccourcie proprement. */
-export function stepTitleOf(step: Pick<PlanStep, "text" | "kind">, max = 64): string {
+export function stepTitleOf(step: Pick<PlanStep, "text" | "kind" | "title">, max = 64): string {
   if (step.kind === "preheat") {
     const temp = step.text.match(/(\d+)\s*°C/)?.[1];
     if (temp) return typo(`Préchauffe le four à ${temp} °C`);
   }
-  return clip(splitStep(step.text).head, max);
+  return clip(stepHead(step).head, max);
 }
 
 export type TextPart = { t: "text"; v: string } | { t: "bowl"; v: string };

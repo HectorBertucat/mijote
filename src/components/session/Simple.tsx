@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
 import { batchOf, currentPhase, liveTimer, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
-import { prepBowls, prepExtras, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
+import { atMoment, prepBowls, prepExtras, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
 import { Button, Check, Icon, type ButtonVariant, type IconName } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import { BoxGlyph } from "@/components/boxes/BoxGlyph";
@@ -24,10 +24,10 @@ import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
-import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, stepHead, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
-import { attentionOf, fmtMin, ringInfo, timedPhase } from "@/lib/session/guide";
-import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
+import { attentionOf, batchesLabel, fmtMin, ringInfo, timedPhase } from "@/lib/session/guide";
+import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, SharedSplit, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
 import { PhaseNext } from "./blocks";
 
 export interface SimpleProps {
@@ -525,7 +525,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
             Plus tard, pendant la cuisson : {during.map((b) => `bol ${b.letter} (${bowlName(b)})`).join(", ")}. L’écran le dira.
           </p>
         )}
-        {evening && plan.bowls.some((b) => !b.fridge) && <p className="text-[17px] text-ink-2">Demain : {plan.bowls.filter((b) => !b.fridge).map((b) => `bol ${b.letter}`).join(", ")}.</p>}
+        {evening && plan.bowls.some((b) => !b.fridge && !atMoment(b)) && <p className="text-[17px] text-ink-2">Demain : {plan.bowls.filter((b) => !b.fridge && !atMoment(b)).map((b) => `bol ${b.letter}`).join(", ")}.</p>}
       </div>
     </div>
   );
@@ -585,7 +585,7 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
   const st = stepStatus(state, step.id);
   const n = st === "active" ? currentPhase(state, step) : null;
   const phase = n != null ? step.phases![n] : null;
-  const { head, rest } = splitStep(step.text);
+  const { head, rest } = stepHead(step);
   const batch = st === "active" ? batchOf(state, step) : null;
   const late = st === "todo" ? Math.round((now - (cookingStart + step.startMin * 60000)) / 60000) : 0;
   const consigne = phase?.text ?? head;
@@ -593,7 +593,7 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
     <article key={`${step.id}:${n ?? "-"}`} className="sx-swap grid gap-6" aria-live="polite">
       <header className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={phase?.text ?? step.text} size={80} live={st === "active"} className="illu-tile shrink-0" style={{ "--tile": stepColor(plan, step) }} />
-        <RecipeContext plan={plan} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
+        <RecipeContext plan={plan} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : st === "todo" ? batchesLabel(step)?.toLocaleLowerCase("fr") : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
       </header>
       <div className="grid gap-3">
         {phase && <p className="text-[17px] leading-snug text-ink-2"><BowlText plan={plan} text={head} ready={state.bowlsReady} /></p>}
@@ -608,7 +608,8 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
       {step.phases && step.phases.length > 1 && st === "active" && <PhaseTrack step={step} n={n} c={c} />}
       {n != null && <PhaseNext step={step} n={n} running={Boolean(phaseTimer(state, step.id, n))} />}
       <Dials plan={plan} c={c} step={step} level={phase?.hobLevel ?? null} />
-      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} />
+      <SharedSplit plan={plan} step={step} now={n != null && n === step.phases!.length - 1} />
+      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} phase={n} />
       {wantsDropGuide(step, n, st === "active") && <DropGuide onInk />}
       {step.notes.map((x) => (
         <p key={x} className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">

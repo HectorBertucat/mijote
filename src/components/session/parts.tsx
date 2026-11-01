@@ -58,7 +58,7 @@ export const shortName = (name: string | undefined) => {
 const rc = (color: string) => ({ "--rc": color }) as CSSProperties;
 
 // Découpage et titres des consignes : src/lib/session/text.ts (pur, testé).
-export { splitStep } from "@/lib/session/text";
+export { splitStep, stepHead } from "@/lib/session/text";
 /** Titre court d’une étape pour le fil : la consigne de tête, jamais coupée au milieu d’une parenthèse. */
 export const stepTitle = (_plan: SessionPlan, s: PlanStep): string => stepTitleOf(s);
 

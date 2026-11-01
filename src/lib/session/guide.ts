@@ -5,15 +5,20 @@
 // il s'agit, ce qu'il touche, quoi faire maintenant et ce qui suit ; le fil range les étapes en
 // « mains » (ce qui t'occupe), « en fond » (surveille, libre) et « ensuite ».
 //
-// Niveau d'attention et rappels : lus dans le plan s'il les porte (`attention`, `reminders` sur
-// l'étape ou la sous-étape), sinon déduits du texte et du type d'étape.
+// Le plan du moteur (docs/session.md) dit l'attention de chaque moment (`attention`, `hands`,
+// `reminders`, `phase.reminder`), ce qui entre dans chaque étape (`ingredients`, quantités mises à
+// l'échelle), où attend chaque groupe (`holder` : au moment, bol, boîte, assiette) et la part de chaque
+// recette d'une cuisson commune (`shared`). Un plan d'avant ne les porte pas : l'attention et les
+// rappels se déduisent alors du texte, et les bols de l'étape tiennent lieu d'ingrédients.
 import type { EventKind, SessionEvent, SessionState, TimerState } from "./state";
-import type { Person, PlanBowlItem, PlanStep, PrepTask, SessionPlan } from "./planner";
+import { formatQty, type Person, type PlanBowl, type PlanBowlItem, type PlanStep, type PrepTask, type SessionPlan, type StepIngredient } from "./planner";
 import { currentPhase, liveTimer, passiveMin, phaseIds, phaseTimer, stepStatus, stepTimer } from "./state";
+import { waitAttention, type Attention } from "./attention";
+import type { Holder } from "./containers";
 import { parseGesture } from "./gestures";
 import { bowlParts, clip, stepTitleOf } from "./text";
 
-export type Attention = "mains" | "surveille" | "libre";
+export type { Attention };
 export const ATTENTION_LABELS: Record<Attention, string> = { mains: "mains prises", surveille: "à surveiller", libre: "libre" };
 
 /** Un rappel pendant une attente : toutes les `everyMin` minutes, ou une fois à `atMin`. */
@@ -67,6 +72,10 @@ export function passiveLabel(step: Pick<PlanStep, "kind">): string {
 const isAttention = (x: unknown): x is Attention => x === "mains" || x === "surveille" || x === "libre";
 const field = (o: unknown, k: string): unknown => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined);
 
+/** Le plan dit-il l'attention de ses étapes (moteur du 01/11/2026) ? */
+const planned = (step: PlanStep) => isAttention(step.attention);
+
+/** Plan d'avant : l'attention devinée au texte. */
 function guess(step: PlanStep, text: string, waiting: boolean): Attention {
   if (step.kind === "preheat") return "libre";
   if (!waiting) return /de temps en temps/i.test(text) ? "surveille" : "mains";
@@ -76,14 +85,23 @@ function guess(step: PlanStep, text: string, waiting: boolean): Attention {
   return "libre";
 }
 
+/** L'attente qui finit une étape (après ses sous-étapes) : la même règle que le planificateur. */
+function tail(step: PlanStep) {
+  return waitAttention(step.text, step, Boolean(step.hobId) && !step.oven && step.kind !== "sear");
+}
+
 /**
  * Niveau d'attention de la sous-étape `n` (ou, sans sous-étape, du geste ; `passive` : de l'attente
  * qui suit) : « mains » occupe, « surveille » laisse faire autre chose en jetant un œil, « libre » non.
  */
 export function attentionOf(step: PlanStep, n: number | null, passive = false): Attention {
   const ph = n != null ? step.phases?.[n] : undefined;
-  const given = ph ? field(ph, "attention") : passive ? (field(step, "passiveAttention") ?? undefined) : field(step, "attention");
-  if (isAttention(given)) return given;
+  if (ph && isAttention(ph.attention)) return ph.attention;
+  if (!ph && planned(step)) {
+    if (passive) return step.kind === "preheat" ? "libre" : tail(step).attention;
+    // Le geste d'une étape sans sous-étape : les mains, s'il y en a.
+    return step.hands?.length || step.activeMin > 0 ? "mains" : "libre";
+  }
   if (ph) return guess(step, ph.text, ph.wait === true);
   return guess(step, step.text, passive);
 }
@@ -102,16 +120,37 @@ function readReminders(raw: unknown): Reminder[] {
   });
 }
 
-/** Les rappels d'une attente : ceux du plan, sinon « remue » quand la consigne le demande ou qu'un mijotage est long. */
+/**
+ * Les rappels d'une attente. Plan du moteur : ceux de la sous-étape (`reminder`), ou pour l'attente qui
+ * finit l'étape, ceux de `reminders` qui la couvrent ; aucun, c'est qu'il n'y a rien à faire. Plan
+ * d'avant : « remue » quand la consigne le demande ou qu'un mijotage est long.
+ */
 export function remindersOf(step: PlanStep, n: number | null, minutes = 0): Reminder[] {
   const ph = n != null ? step.phases?.[n] : undefined;
-  const given = readReminders(ph ? field(ph, "reminders") : field(step, "reminders"));
+  if (ph && isAttention(ph.attention)) return ph.reminder ? readReminders(ph.reminder) : [];
+  if (!ph && planned(step) && Array.isArray(step.reminders)) {
+    const from = (step.phases ?? []).reduce((x, p) => x + p.min, 0);
+    const mine = step.reminders.filter((r) => r.untilMin > from + 0.5);
+    if (mine.length) return readReminders(mine);
+    // Les sous-étapes ne couvrent pas l'attente de la fin : la règle du planificateur pour elle.
+    const t = tail(step);
+    return t.attention === "surveille" && t.reminder && minutes >= t.reminder.everyMin ? [{ text: t.reminder.text, everyMin: t.reminder.everyMin }] : [];
+  }
+  const given = readReminders(ph ? (field(ph, "reminders") ?? field(ph, "reminder")) : field(step, "reminders"));
   if (given.length) return given;
   const text = ph?.text ?? step.text;
   if (/ne touche pas|sans ouvrir|couvert(?!e)/i.test(text)) return [];
   if (/(remue|mélange).*(temps en temps|souvent|régulièrement)|de temps en temps/i.test(text)) return [{ text: "Remue", everyMin: 4 }];
   if (attentionOf(step, n, n == null) === "surveille" && step.kind === "braise" && minutes >= 8) return [{ text: "Remue, vérifie le feu", everyMin: 5 }];
   return [];
+}
+
+/** Ce que l'attention laisse faire, en une phrase (sous le bouton) : « à surveiller : remue la sauce toutes les 5 min ». */
+export function attentionHint(a: Attention, rems: Reminder[]): string {
+  const r = rems.find((x) => x.everyMin);
+  if (a === "mains") return "Tes mains y sont.";
+  if (a === "surveille") return r ? `À surveiller : ${r.text.charAt(0).toLocaleLowerCase("fr")}${r.text.slice(1)} toutes les ${r.everyMin} min, tu peux faire autre chose entre-temps.` : "À surveiller : tu peux faire autre chose en y jetant un œil.";
+  return "Rien à faire d’ici la sonnerie : tu peux faire autre chose.";
 }
 
 /** Le rappel qui tombe maintenant (dans la minute qui suit son heure) et le prochain, comptés depuis `since`. */
@@ -162,6 +201,202 @@ export const bowlsIn = (plan: Pick<SessionPlan, "bowls">, text: string) => bowlP
 
 /** Une sous-étape chronométrée : une attente, ou un geste d'au moins 2 min (« 3 min sans toucher »). */
 export const timedPhase = (ph: { min: number; wait?: boolean | null }) => ph.wait === true || ph.min >= 2;
+
+// ─── Ce qu'une étape demande : les bols, ce qui se pèse au moment, le placard ───
+
+/** Un ingrédient à l'écran, quantité mise à l'échelle ; d'une cuisson commune, la part de chaque recette. */
+export interface TakeItem {
+  item: string;
+  /** Le nom sans le geste (« Oignons »). */
+  name: string;
+  food: string | null;
+  qty: string | null;
+  optional: boolean;
+  recipeSlug: string;
+  bowl: string | null;
+  /** Rang de la sous-étape où il entre (null : dès le début). */
+  phase: number | null;
+  parts?: { recipeSlug: string; bowl: string | null; qty: string | null }[];
+}
+
+/** Un bol (ou une boîte, une assiette) à prendre pour l'étape : sa lettre, son contenant, son contenu. */
+export interface TakeBowl {
+  letter: string;
+  recipeSlug: string;
+  holder: Exclude<Holder, "moment">;
+  /** Le contenant de la cuisine (« Grand bol », « Boîte »), s'il est connu. */
+  container: string | null;
+  items: TakeItem[];
+  phase: number | null;
+}
+
+export interface Take {
+  /** Préparés d'avance : à prendre (ou, pour un geste glissé, à remplir). */
+  bowls: TakeBowl[];
+  /** Rien à préparer : à peser et verser au moment (« Pèse et verse : pulpe de tomate 800 g »). */
+  moment: TakeItem[];
+  /** Hors bol, au placard (l'huile pour saisir). */
+  loose: TakeItem[];
+}
+
+const bowlOfPlan = (plan: Pick<SessionPlan, "bowls">, l: string | null) => (l ? plan.bowls.find((b) => b.letter === l) : undefined);
+const holderOf = (plan: Pick<SessionPlan, "bowls">, i: Pick<StepIngredient, "bowl" | "holder">): Holder | null => (i.bowl ? (i.holder ?? bowlOfPlan(plan, i.bowl)?.holder ?? "bol") : null);
+const fromIngredient = (i: StepIngredient): TakeItem => ({ item: i.item, name: i.name, food: i.food, qty: i.qty, optional: Boolean(i.optional), recipeSlug: i.recipeSlug, bowl: i.bowl, phase: i.phase });
+const fromBowlItem = (b: PlanBowl, i: PlanBowlItem, phase: number | null): TakeItem => ({ item: i.item, name: parseGesture(i.item).base, food: i.food ?? null, qty: i.qty, optional: i.optional, recipeSlug: b.recipeSlug, bowl: b.letter, phase });
+
+/** Un même aliment de plusieurs recettes (le riz d'une cuisson commune) : une ligne, la somme, et la part de chacune. */
+function mergeSame(list: StepIngredient[]): TakeItem[] {
+  const out: (TakeItem & { g: number | null; u: number | null })[] = [];
+  for (const i of list) {
+    const key = `${i.food ?? ""}|${i.name.toLowerCase()}`;
+    const same = out.find((x) => `${x.food ?? ""}|${x.name.toLowerCase()}` === key && x.recipeSlug !== i.recipeSlug);
+    if (!same) {
+      out.push({ ...fromIngredient(i), g: i.grams, u: i.units });
+      continue;
+    }
+    same.parts ??= [{ recipeSlug: same.recipeSlug, bowl: same.bowl, qty: same.qty }];
+    same.parts.push({ recipeSlug: i.recipeSlug, bowl: i.bowl, qty: i.qty });
+    same.g = same.g != null && i.grams != null ? same.g + i.grams : (same.g ?? i.grams);
+    same.u = same.u != null && i.units != null ? same.u + i.units : (same.u ?? i.units);
+    same.qty = formatQty(same.g, same.u);
+    same.phase = same.phase == null ? i.phase : i.phase == null ? same.phase : Math.min(same.phase, i.phase);
+  }
+  return out.map(({ g: _g, u: _u, ...x }) => x);
+}
+
+/**
+ * Ce que demande l'étape : ses bols (avec leur contenant), ce qui se pèse et se verse au moment, et
+ * ce qui vient du placard. Plan d'avant (sans `ingredients`) : les bols de l'étape, en entier.
+ */
+export function takeOf(plan: Pick<SessionPlan, "bowls">, step: Pick<PlanStep, "bowls" | "ingredients">): Take {
+  const take: Take = { bowls: [], moment: [], loose: [] };
+  const ings = step.ingredients;
+  if (!ings) {
+    for (const l of step.bowls) {
+      const b = bowlOfPlan(plan, l);
+      if (!b) continue;
+      if (b.holder === "moment") take.moment.push(...b.items.map((i) => fromBowlItem(b, i, null)));
+      else take.bowls.push({ letter: b.letter, recipeSlug: b.recipeSlug, holder: b.holder ?? "bol", container: b.containerLabel ?? null, items: b.items.map((i) => fromBowlItem(b, i, null)), phase: null });
+    }
+    return take;
+  }
+  const order = (l: string | null) => (l ? step.bowls.indexOf(l) : -1);
+  const byBowl = new Map<string, StepIngredient[]>();
+  const moment: StepIngredient[] = [];
+  for (const i of ings) {
+    const h = holderOf(plan, i);
+    if (h == null) take.loose.push(fromIngredient(i));
+    else if (h === "moment") moment.push(i);
+    else byBowl.set(i.bowl!, [...(byBowl.get(i.bowl!) ?? []), i]);
+  }
+  take.bowls = [...byBowl.entries()]
+    .sort(([a], [b]) => order(a) - order(b))
+    .map(([l, list]) => {
+      const b = bowlOfPlan(plan, l);
+      const h = holderOf(plan, list[0]) as Exclude<Holder, "moment">;
+      const phases = list.map((i) => i.phase).filter((x): x is number => x != null);
+      return { letter: l, recipeSlug: b?.recipeSlug ?? list[0].recipeSlug, holder: h, container: b?.containerLabel ?? null, items: list.map(fromIngredient), phase: phases.length ? Math.min(...phases) : null };
+    });
+  // Les bols cités que les ingrédients n'ont pas vus (un plan qui ne les relie pas) : en entier.
+  for (const l of step.bowls) {
+    const b = bowlOfPlan(plan, l);
+    if (!b || byBowl.has(l) || ings.some((i) => i.bowl === l)) continue;
+    if (b.holder === "moment") take.moment.push(...b.items.map((i) => fromBowlItem(b, i, null)));
+    else take.bowls.push({ letter: l, recipeSlug: b.recipeSlug, holder: b.holder ?? "bol", container: b.containerLabel ?? null, items: b.items.map((i) => fromBowlItem(b, i, null)), phase: null });
+  }
+  take.moment.push(...mergeSame(moment));
+  return take;
+}
+
+/** « Pèse et verse : pulpe de tomate 800 g, concentré de tomate 30 g, miel 15 g » : la phrase d'une liste du moment. */
+export function weighLine(items: Pick<TakeItem, "name" | "qty" | "optional">[]): string {
+  return items.map((i) => `${i.name.charAt(0).toLocaleLowerCase("fr")}${i.name.slice(1)}${i.qty ? ` ${i.qty}` : ""}${i.optional ? " (facultatif)" : ""}`).join(", ");
+}
+
+/** Ce qui entre à la sous-étape `n` (pour la mettre en avant pendant qu'elle est en cours). */
+export function takeAt(take: Take, n: number | null): { bowls: string[]; moment: TakeItem[]; loose: TakeItem[] } {
+  if (n == null) return { bowls: [], moment: [], loose: [] };
+  return { bowls: take.bowls.filter((b) => b.phase === n).map((b) => b.letter), moment: take.moment.filter((i) => i.phase === n), loose: take.loose.filter((i) => i.phase === n) };
+}
+
+// ─── Une cuisson commune, des fournées ───
+
+export interface ShareLine {
+  recipeSlug: string;
+  name: string;
+  color: string;
+  bowl: string | null;
+  /** « 1 kg cuit » */
+  qty: string;
+  cookedG: number;
+  rawG: number;
+  share: number;
+}
+
+/**
+ * Le partage d'une cuisson commune (le riz de deux recettes cuit une fois) : ce qui cuit, le total, et
+ * la part cuite de chaque recette, dans l'ordre du plan. null : l'étape n'est pas partagée.
+ */
+export function shareOf(plan: Pick<SessionPlan, "recipes">, step: Pick<PlanStep, "shared" | "base">): { label: string; the: string; total: string; lines: ShareLine[] } | null {
+  if (!step.shared || step.shared.length < 2) return null;
+  const label = step.base ?? "base";
+  const lines = step.shared.map((p) => {
+    const r = plan.recipes.find((x) => x.slug === p.recipeSlug);
+    return { recipeSlug: p.recipeSlug, name: r?.name ?? p.recipeSlug, color: r?.color ?? "", bowl: p.bowl, qty: `${formatQty(p.cookedG, null)} cuit`, cookedG: p.cookedG, rawG: p.rawG, share: p.share };
+  });
+  const the = label === "riz" ? "le riz" : /^[aeéiouyh]/i.test(label) ? `l’${label}` : label.endsWith("s") ? `les ${label}` : `le ${label}`;
+  return { label, the, total: `${formatQty(lines.reduce((x, l) => x + l.rawG, 0), null)} cru`, lines };
+}
+
+/** Les cuissons communes du plan (pour la pesée de fin) : l'étape, ce qui a cuit, la part de chaque recette. */
+export function sharedBases(plan: Pick<SessionPlan, "recipes" | "steps">): { stepId: string; equipment: string | null; label: string; the: string; lines: ShareLine[] }[] {
+  return plan.steps.flatMap((s) => {
+    const sh = shareOf(plan, s);
+    return sh ? [{ stepId: s.id, equipment: s.equipmentName, label: sh.label, the: sh.the, lines: sh.lines }] : [];
+  });
+}
+
+/** Les fournées de l'étape, en clair : « en 3 fournées » (poêle), « en 2 fois, dans la même eau » (base à l'eau). */
+export function batchesLabel(step: Pick<PlanStep, "batches" | "base">): string | null {
+  const n = step.batches ?? 0;
+  if (n < 2) return null;
+  return step.base ? `En ${n} fois, dans la même eau` : `En ${n} fournées`;
+}
+
+// ─── Les contenants de la session ───
+
+export interface ContainerNote {
+  /** Il manque des bols : combien, lesquels, et quoi faire. */
+  missing: { count: number; letters: string[]; peak: number; owned: number; liters: number[] } | null;
+  /** Des bols se remplissent quand un autre se vide : l'ordre. */
+  order: { letter: string; after: string }[];
+  /** Les groupes du moment : pas de bol, l'étape dira quoi peser. */
+  moment: { letter: string; recipeSlug: string; names: string[] }[];
+}
+
+/** Ce que la session dit des contenants avant de commencer (plan du moteur ; null pour un plan d'avant). */
+export function containerNote(plan: Pick<SessionPlan, "bowls" | "containers">): ContainerNote | null {
+  const c = plan.containers;
+  if (!c) return null;
+  const missing = c.missing.length ? { count: c.missing.length, letters: c.missing, peak: c.peak, owned: c.owned, liters: c.missing.map((l) => plan.bowls.find((b) => b.letter === l)?.liters ?? 0) } : null;
+  const order = plan.bowls.filter((b) => b.fillAfter).map((b) => ({ letter: b.letter, after: b.fillAfter! }));
+  const moment = plan.bowls.filter((b) => b.holder === "moment").map((b) => ({ letter: b.letter, recipeSlug: b.recipeSlug, names: b.items.map((i) => parseGesture(i.item).base.replace(/\s*\(.*$/, "")) }));
+  if (!missing && !order.length && !moment.length) return null;
+  return { missing, order, moment };
+}
+
+/** « Il te faut 2 bols de plus » et la phrase qui suit (taille, ce qui fera l'affaire). */
+export function missingText(m: NonNullable<ContainerNote["missing"]>): { title: string; body: string } {
+  const big = Math.max(...m.liters);
+  const size = big > 0 ? ` (jusqu’à ${String(Math.round(big * 10) / 10).replace(".", ",")} L)` : "";
+  return {
+    title: `Il te faut ${m.count} bol${m.count > 1 ? "s" : ""} de plus`,
+    body: `La session en demande ${m.peak} en même temps, ta cuisine en a ${m.owned}${size}. Une boîte, un plat ou une casserole propre fera l’affaire, sinon remplis les bols ${m.letters.join(", ")} quand un autre se vide.`,
+  };
+}
+
+/** L'avertissement du planificateur qui redit les bols manquants (l'écran le dit déjà, en clair). */
+export const isContainerWarning = (w: string) => /^Il manque \d+ bols? \(bol/.test(w);
 
 // ─── Le fil : en cours (mains), en fond (surveille, libre), ensuite ───
 
@@ -244,13 +479,17 @@ export function mainAction(plan: SessionPlan, state: SessionState, step: PlanSte
     const raw = phaseTimer(state, step.id, n);
     const then = nxt ? `Ensuite : ${clip(nxt.text, 60)}.` : passiveMin(step) >= 3 ? `Dernière sous-étape ; puis ${passiveLabel(step)} (${Math.round(passiveMin(step))} min).` : "Dernière sous-étape : l’étape sera finie.";
     if (raw) return { kind: "phase", label: `${ph.wait ? "C’est prêt" : "Fait"} : ${clip(ph.text, 34)}`, hint: `Arrête son minuteur. ${then}` };
-    if (timedPhase(ph)) return { kind: "phase-timer", label: `Lance ${fmtMin(ph.min)} : ${clip(ph.text, 30)}`, hint: `Le minuteur sonnera à la fin, rien d’autre ne démarre. ${then}`, minutes: ph.min, alt: { kind: "phase", label: "Fait, sans minuteur" } };
+    if (timedPhase(ph)) {
+      const a = attentionOf(step, n);
+      const free = a === "mains" ? "" : ` ${attentionHint(a, remindersOf(step, n, ph.min))}`;
+      return { kind: "phase-timer", label: `Lance ${fmtMin(ph.min)} : ${clip(ph.text, 30)}`, hint: `Le minuteur sonnera à la fin, rien d’autre ne démarre.${free} ${then}`, minutes: ph.min, alt: { kind: "phase", label: "Fait, sans minuteur" } };
+    }
     return { kind: "phase", label: `Fait : ${clip(ph.text, 34)}`, hint: then };
   }
   const later = after ? ` Ensuite, à commencer quand tu veux : ${stepTitleOf(after, 50)}.` : "";
   if (stepTimer(state, step.id)) return { kind: "finish", label: `Fini : ${title}`, hint: `Arrête son minuteur, l’étape est finie.${later}` };
   const wait = Math.round(passiveMin(step));
-  if (wait >= 3) return { kind: "passive", label: `Lance ${wait} min : ${passiveLabel(step)}`, hint: `Le minuteur sonnera à la fin ; l’étape passe en fond.`, minutes: wait, alt: { kind: "finish", label: "Déjà fini" } };
+  if (wait >= 3) return { kind: "passive", label: `Lance ${wait} min : ${passiveLabel(step)}`, hint: `Le minuteur sonnera à la fin ; l’étape passe en fond. ${attentionHint(attentionOf(step, null, true), remindersOf(step, null, wait))}`, minutes: wait, alt: { kind: "finish", label: "Déjà fini" } };
   return { kind: "finish", label: `Fait : ${title}`, hint: `L’étape est finie.${later}` };
 }
 
