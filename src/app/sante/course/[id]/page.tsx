@@ -125,7 +125,8 @@ function HrSection({ r }: { r: RunView }) {
   const hr = r.hr;
   if (!hr.length && !total) return null;
   const end = hr.length ? hr[hr.length - 1][0] : 0;
-  const every = end > 5400 ? 1800 : end > 2400 ? 600 : 300;
+  // Six repères au plus : « 5 min » tous les cinq ne tient pas sur un téléphone au-delà d'une demi-heure.
+  const every = [300, 600, 900, 1800, 3600].find((s) => end / s <= 6) ?? 3600;
   const ticks = Array.from({ length: Math.floor(end / every) + 1 }, (_, i) => ({ x: i * every, label: i ? durText(i * every) : "0" }));
   const easy = easyShareOf(a.seiler);
   return (

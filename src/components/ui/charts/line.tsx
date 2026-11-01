@@ -93,7 +93,7 @@ export function LineChart({
                 <div key={z.label} aria-hidden className="absolute inset-x-0" style={{ top: `${(1 - fy(Math.min(z.to, d.hi))) * 100}%`, bottom: `${fy(Math.max(z.from, d.lo)) * 100}%` }}>
                   <span className="absolute inset-0 opacity-(--viz-zone-wash)" style={{ background: z.color }} />
                   <span className="absolute inset-x-0 top-0 h-px opacity-(--viz-zone-rule)" style={{ background: z.color }} />
-                  <span className="label absolute right-1 top-1 text-ink-2">{z.label}</span>
+                  <span className="label absolute right-1 top-1 text-ink">{z.label}</span>
                 </div>
               ))}
               <YGrid ticks={ticks} pos={fy} />
