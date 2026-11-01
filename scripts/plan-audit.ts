@@ -138,6 +138,7 @@ for (const k of KITCHENS)
         "bases à part": counts.get("bases_apart") ?? 0,
         "sans quantité": counts.get("no_quantities") ?? 0,
         "mains doubles": counts.get("hands") ?? 0,
+        "avant prérequis": counts.get("before_need") ?? 0,
         s: Math.round((Date.now() - t0) / 100) / 10,
       });
     }
