@@ -7,7 +7,9 @@ import { randomUUID } from "crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/lib/db/open";
-import { healthSamples, weighIns, type HealthKind } from "@/lib/db/schema";
+import { healthSamples, weighIns, workoutDetails, type HealthKind } from "@/lib/db/schema";
+import { emptyDetails, encodeHr, parseDetails, type Details } from "@/lib/running/details";
+import { clean, peak30, resample } from "@/lib/running/series";
 import { activityLabel } from "./ingest";
 import { todayParis } from "./store";
 
@@ -79,13 +81,15 @@ const Workout = z.object({
   hrMax: opt(20, 250),
   sourceName: source,
   meta,
+  // v2.1 : le détail (série de FC, temps au kilomètre…), lu à part par src/lib/running/details.ts.
+  details: z.unknown().optional(),
 });
 const Sleep = z.object({ uuid, stage: z.enum(SLEEP_STAGES), start: when, end: when, sourceName: source });
 const Deleted = z.object({ uuid, type: z.string().optional() });
 
 export interface V2Sample { uuid: string; type: string; start: string; end: string | null; value: number; meta: Record<string, unknown> | null }
 export interface V2Daily { type: string; date: string; value: number }
-export interface V2Workout { uuid: string; label: string; start: string; end: string | null; minutes: number; meta: Record<string, unknown> }
+export interface V2Workout { uuid: string; label: string; start: string; end: string | null; minutes: number; meta: Record<string, unknown>; details: Details | null }
 export interface V2Sleep { uuid: string; stage: SleepStage; start: string; end: string; minutes: number; source: string | null }
 
 export interface ParsedV2 {
@@ -99,7 +103,8 @@ export interface ParsedV2 {
   skipped: number;
 }
 
-export type AcceptedV2 = { samples: number; daily: number; workouts: number; sleep: number; deleted: number };
+/** `details` (v2.1) : séances dont le détail a été rangé (ajouté au contrat, les autres clés ne bougent pas). */
+export type AcceptedV2 = { samples: number; daily: number; workouts: number; sleep: number; deleted: number; details: number };
 
 const iso = (s: string) => new Date(s).toISOString();
 const within = (v: number, b: Bounds) => v >= b.min && v <= b.max && (!b.integer || Number.isInteger(v));
@@ -157,6 +162,7 @@ export function parseV2(body: unknown, now = new Date()): ParsedV2 | { error: st
     const minutes = w.durationMin ?? (end != null ? (end - start) / 60_000 : null);
     if (minutes == null || minutes > 1440) return null;
     const m = { ...(w.meta && JSON.stringify(w.meta).length <= 2000 ? w.meta : {}) };
+    const details = parseDetails(w.details, Math.round(minutes * 60));
     return {
       uuid: w.uuid,
       label: activityLabel(w.activity),
@@ -164,6 +170,7 @@ export function parseV2(body: unknown, now = new Date()): ParsedV2 | { error: st
       end: w.end ? iso(w.end) : null,
       minutes: Math.round(minutes * 10) / 10,
       meta: { ...m, type: activityLabel(w.activity), activity: w.activity, kcal: w.kcal ?? null, distanceM: w.distanceM ?? null, hrAvg: w.hrAvg ?? null, hrMax: w.hrMax ?? null, ...(w.sourceName ? { source: w.sourceName } : {}) },
+      details: details && !emptyDetails(details) ? details : null,
     };
   });
   const sleep = each(e.sleep, Sleep, (s) => {
@@ -189,12 +196,36 @@ export function parseV2(body: unknown, now = new Date()): ParsedV2 | { error: st
 
 const hk = (uuid: string) => `hk:${uuid}`;
 
+/** La ligne de workout_details d'une séance : série en binaire, pic de 30 s et « FC douteuse » (sans les zones). */
+function detailsRow(personId: string, sampleId: string, w: V2Workout) {
+  const d = w.details!;
+  const cleaned = d.hr ? clean(resample(d.hr, Math.round(w.minutes * 60)), d.cadenceAvg) : null;
+  const { hr, effort, weather, indoor, plannedId, ...rest } = d;
+  const data = Object.fromEntries(Object.entries(rest).filter(([, v]) => v != null));
+  return {
+    sampleId,
+    personId,
+    date: todayParis(new Date(w.start)),
+    hr: hr ? encodeHr(hr) : null,
+    hrPoints: hr?.length ?? 0,
+    data,
+    effort,
+    tempC: weather?.tempC ?? null,
+    humidityPct: weather?.humidityPct ?? null,
+    indoor,
+    plannedId,
+    peak: cleaned && !cleaned.doubtful ? peak30(cleaned.hr) : null,
+    doubtful: !!cleaned?.doubtful,
+    analysis: null,
+  };
+}
+
 /**
  * Range un paquet vérifié pour une personne. Une pesée ou une séance déjà reçue de l'ancien Raccourci ou de
  * l'export (même instant) est reprise sous son uuid plutôt que doublée. Les suppressions passent en dernier.
  */
 export function ingestV2(db: Db, personId: string, p: ParsedV2): { accepted: AcceptedV2; skipped: number } {
-  const accepted: AcceptedV2 = { samples: 0, daily: 0, workouts: 0, sleep: 0, deleted: 0 };
+  const accepted: AcceptedV2 = { samples: 0, daily: 0, workouts: 0, sleep: 0, deleted: 0, details: 0 };
   db.transaction((tx) => {
     for (const s of p.samples) {
       const t = SAMPLE_TYPES[s.type];
@@ -227,10 +258,16 @@ export function ingestV2(db: Db, personId: string, p: ParsedV2): { accepted: Acc
       const values = { start: w.start, end: w.end, value: w.minutes, meta: w.meta, externalId: hk(w.uuid) };
       const mine = tx.select({ id: healthSamples.id }).from(healthSamples).where(and(eq(healthSamples.personId, personId), eq(healthSamples.kind, "workout"), eq(healthSamples.externalId, hk(w.uuid)))).get();
       const old = mine ? null : tx.select({ id: healthSamples.id }).from(healthSamples).where(and(eq(healthSamples.personId, personId), eq(healthSamples.kind, "workout"), eq(healthSamples.externalId, `workout:${w.start}`))).get();
-      const id = mine?.id ?? old?.id;
+      let id = mine?.id ?? old?.id;
       if (id) tx.update(healthSamples).set(values).where(eq(healthSamples.id, id)).run();
-      else tx.insert(healthSamples).values({ id: randomUUID(), personId, kind: "workout", unit: "min", ...values }).run();
+      else tx.insert(healthSamples).values({ id: (id = randomUUID()), personId, kind: "workout", unit: "min", ...values }).run();
       accepted.workouts++;
+      // Complétion par uuid : un détail reçu remplace le précédent ; une séance renvoyée sans détail garde le sien.
+      if (w.details) {
+        const row = detailsRow(personId, id, w);
+        tx.insert(workoutDetails).values(row).onConflictDoUpdate({ target: workoutDetails.sampleId, set: { ...row, analysis: null, updatedAt: new Date().toISOString() } }).run();
+        accepted.details++;
+      }
     }
     for (const s of p.sleep) {
       const meta = { stage: s.stage, ...(s.source ? { source: s.source } : {}) };
