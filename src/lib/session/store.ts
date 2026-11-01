@@ -127,6 +127,30 @@ export function createSession(db: Db, input: CreateSessionInput): string {
   return id;
 }
 
+/**
+ * Relancer une session (plan refait avec les mêmes plats, unités, liste et mode), pour de vrai ou en
+ * test. L’ancienne, si elle n’était pas finie, est abandonnée (rien n’en est appris) et ses écrans
+ * passent à la nouvelle (note « next »).
+ */
+export function restartSession(db: Db, id: string, opts: { test?: boolean } = {}): string | null {
+  const s = getSession(db, id);
+  if (!s) return null;
+  const scales = Object.fromEntries(s.plan.recipes.map((r) => [r.slug, r.scale]));
+  const next = createSession(db, { slugs: s.plan.recipes.map((r) => r.slug), shoppingListId: s.shoppingListId, scales, extras: s.plan.extras ?? {}, mode: s.mode === "duo" || s.mode === "veille" ? s.mode : "solo", test: Boolean(opts.test) });
+  if (s.status !== "done" && s.status !== "abandoned") addEvent(db, id, { kind: "note", payload: { status: "abandoned", next } });
+  return next;
+}
+
+/** Les sessions lancées depuis une liste de courses, la plus récente d’abord. */
+export function sessionsOfList(db: Db, listId: string) {
+  return db
+    .select({ id: cookSessions.id, status: cookSessions.status, mode: cookSessions.mode, test: cookSessions.test, startedAt: cookSessions.startedAt })
+    .from(cookSessions)
+    .where(eq(cookSessions.shoppingListId, listId))
+    .orderBy(desc(cookSessions.startedAt))
+    .all();
+}
+
 /** Les anciennes sessions test s'effacent quand on en lance une autre (finies, ou lancées il y a plus de 12 h). */
 export function clearTestSessions(db: Db, now = Date.now()): number {
   const old = db

@@ -5,6 +5,13 @@
 // (.nextstep), bol à prendre, puces de l'étape, schéma des foyers et du four (.hob/.burner/.ovenbox),
 // minuteurs, alarme plein écran, relais (.handoff), QR, toasts, Wake Lock.
 import { typo } from "@/lib/typo";
+import { stepTitleOf } from "@/lib/session/text";
+import { hobName } from "@/lib/session/guide";
+import { BowlChip, BowlItems, RingDetails } from "./guide";
+import { ringInfo } from "@/lib/session/guide";
+import type { Controls } from "./SessionApp";
+
+const ringInfoOf = (plan: SessionPlan, c: Controls, t: TimerState) => ringInfo(plan, c.state, t);
 import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Person, PlanBowl, PlanStep, SessionPlan } from "@/lib/session/planner";
 import type { SessionState, TimerState } from "@/lib/session/state";
@@ -50,33 +57,10 @@ export const shortName = (name: string | undefined) => {
 };
 const rc = (color: string) => ({ "--rc": color }) as CSSProperties;
 
-/**
- * Les fiches ont des étapes longues (jusqu’à 370 signes) : la première phrase se lit en très
- * grand, le reste en dessous. Une première phrase trop longue se coupe aux deux-points.
- */
-export function splitStep(text: string): { head: string; rest: string } {
-  const t = text.trim();
-  const m = t.match(/^(.{12,}?[.!?])\s+(?=[A-ZÀ-Ý0-9«(])/u);
-  let head = m ? m[1] : t;
-  let rest = m ? t.slice(m[0].length) : "";
-  if (head.length > 120) {
-    const c = head.indexOf(" : ");
-    if (c > 15 && c < 100) {
-      rest = `${head.slice(c + 3)} ${rest}`.trim();
-      head = head.slice(0, c);
-    }
-  }
-  // Affichage : micro-typographie (apostrophe courbe, espaces insécables) appliquée après le découpage.
-  return { head: typo(head.replace(/\.$/, "")), rest: typo(rest) };
-}
-
-/** Titre court d’une étape pour le fil (« Cocotte · Chasseur » ou la première phrase raccourcie). */
-export function stepTitle(plan: SessionPlan, s: PlanStep): string {
-  const h = splitStep(s.text).head;
-  if (h.length <= 64) return h;
-  const cut = h.slice(0, 60);
-  return `${cut.slice(0, cut.lastIndexOf(" ") > 30 ? cut.lastIndexOf(" ") : 60)}…`;
-}
+// Découpage et titres des consignes : src/lib/session/text.ts (pur, testé).
+export { splitStep } from "@/lib/session/text";
+/** Titre court d’une étape pour le fil : la consigne de tête, jamais coupée au milieu d’une parenthèse. */
+export const stepTitle = (_plan: SessionPlan, s: PlanStep): string => stepTitleOf(s);
 
 /** Repère d’une étape : la première phrase en citation, le reste en explication, et le sens qui le perçoit. */
 export function cueParts(cue: string): { sense: "ear" | "eye" | "nose"; quote: string; rest: string } {
@@ -258,12 +242,7 @@ export function SessionHead({ title, sub, online, phase, onPhase, right, lead, c
 
 // ─── Puces d’une étape ───
 
-const HOB_NAMES = ["grand foyer", "foyer moyen", "petit foyer"];
-export const hobName = (plan: SessionPlan, id: string) => {
-  const i = plan.hobs.findIndex((x) => x.id === id);
-  const h = plan.hobs[i];
-  return `${HOB_NAMES[i] ?? h?.name ?? id}${h?.diameterCm ? ` · ${String(h.diameterCm).replace(".", ",")}` : ""}`;
-};
+export { hobName };
 
 /** Récipient, foyer et niveau (Induction), four (gradin et température), fournées, durée. */
 export function StepSpecs({ plan, step, timeLabel }: { plan: SessionPlan; step: PlanStep; timeLabel?: string | null }) {
@@ -299,14 +278,21 @@ export function StepCue({ cue, className = "" }: { cue: string; className?: stri
 // ─── Étape suivante (.nextstep) et bol à prendre ───
 
 export function NextCard({ plan, step, at, eyebrow }: { plan: SessionPlan; step: PlanStep; at?: number; eyebrow?: ReactNode }) {
-  const bits = [step.bowls.length ? `bol${step.bowls.length > 1 ? "s" : ""} ${step.bowls.join(", ")}` : null, shortName(recipeOf(plan, step.recipeSlug)?.name) || null, step.equipmentName].filter(Boolean);
+  const bits = [recipeOf(plan, step.recipeSlug)?.name || null, step.equipmentName].filter(Boolean);
   return (
     <div className="flex items-center gap-3 rounded-[14px] border border-dashed border-line-strong px-4 py-4">
       <StepIllu kind={step.kind} text={step.text} size="m" className="shrink-0" />
       <div className="grid min-w-0 content-start gap-1">
         <Eyebrow>{eyebrow ?? <>Ensuite · étape {step.no}{at ? ` · ${clock(at)}` : ""}</>}</Eyebrow>
         <b className="font-display text-[18px] leading-snug [font-stretch:100%]">{stepTitle(plan, step)}</b>
-        {bits.length > 0 && <span className="text-[14px] text-ink-2">{bits.join(" · ")}</span>}
+        {(bits.length > 0 || step.bowls.length > 0) && (
+          <span className="flex flex-wrap items-center gap-2 text-[14px] text-ink-2">
+            {bits.join(" · ")}
+            {step.bowls.map((l) => (
+              <BowlChip key={l} plan={plan} letter={l} size="sm" />
+            ))}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -317,11 +303,9 @@ export function TakeBowl({ bowl, ready, label = "Bol à prendre" }: { bowl: Plan
   return (
     <div className="flex items-center gap-4 rounded-[14px] border border-line bg-surface p-4">
       <Bowl bowl={bowl} size="xl" ready={ready} />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <Eyebrow>{label}</Eyebrow>
-        <b className="block font-display text-[20px] leading-tight [font-stretch:100%]">{bowlName(bowl)}</b>
-        {bowlQty(bowl) && <span className="num block text-[14px] text-ink-2">{bowlQty(bowl)}</span>}
-        <BowlFoods bowl={bowl} live className="mt-2" />
+        <BowlItems bowl={bowl} className="mt-1" />
         {ordered && (
           <span className="mt-1 flex items-center gap-2 text-[12px] text-ink-2">
             <Icon name="basket" size="s" />
@@ -419,7 +403,7 @@ export function Resources({ plan, state, now, cookingStart, scale = 1 }: { plan:
 
 /** Minuteurs du kit, à l’heure du serveur (tous les écrans sonnent à la même seconde) : pause, +1 min et arrêter. */
 export function TimerList({ plan, timers, now, onAdd, onStop, onAdjust, onReset, onPause, big, empty = true }: { plan?: SessionPlan; timers: TimerState[]; now: number; onAdd: (t: TimerState, min: number) => void; onStop: (t: TimerState) => void; /** Ordinateur : appui long puis glisser sur les chiffres. */ onAdjust?: (t: TimerState, deltaSec: number) => void; /** Ordinateur : ↺ revient à la durée d’origine. */ onReset?: (t: TimerState) => void; /** Pause ou reprise (sur tous les écrans). */ onPause?: (t: TimerState) => void; big?: boolean; empty?: boolean }) {
-  if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[14px] text-ink-2">Aucun minuteur en cours : « Suivant » les lance.</p> : null;
+  if (!timers.length) return empty ? <p className="rounded-[14px] border border-dashed border-line-strong px-4 py-3 text-[14px] text-ink-2">Aucun minuteur en cours. Ils se lancent d’un geste, sur l’étape (« Lance 8 min »), jamais tout seuls.</p> : null;
   return (
     <div className="grid gap-2">
       {timers.map((t) => {
@@ -520,47 +504,40 @@ export function useRingAlarm(on: boolean) {
 
 /**
  * Minuteur fini, plein écran (DA « Minuteur fini ») : l’inverse de l’écran autour (clair sur le
- * téléphone sombre, encre sur l’ordinateur), sonne et vibre tant qu’il n’est pas arrêté ;
- * l’arrêter l’arrête sur tous les écrans. Seul propriétaire du son (le Timer du kit reste muet).
+ * téléphone sombre, encre sur l’ordinateur), sonne et vibre tant qu’il n’est pas arrêté ; l’arrêter
+ * l’arrête sur tous les écrans. Il dit de quoi il s’agit (recette, récipient, foyer, bols), quoi faire
+ * maintenant et ce qui suit (guide.ts, ringInfo). Seul propriétaire du son (le Timer du kit reste muet).
  */
-export function TimerAlert({ plan, ringing, now, onStop, kitchen = false }: { plan: SessionPlan; ringing: TimerState[]; now: number; onStop: (t: TimerState) => void; kitchen?: boolean }) {
-  const any = ringing.length > 0;
+export function TimerAlert({ plan, c, kitchen = false }: { plan: SessionPlan; c: Controls; kitchen?: boolean }) {
+  const any = c.ringing.length > 0;
   useRingAlarm(any);
   if (!any) return null;
-  const [t, ...others] = ringing;
-  const step = t.stepId ? plan.steps.find((s) => s.id === t.stepId) : undefined;
-  const recipe = step ? recipeOf(plan, step.recipeSlug) : undefined;
-  // Fin d’une attente : le titre est le geste qui suit (« Hors du feu, repos 5 min »).
-  const after = t.phase != null && step?.phases?.[t.phase]?.wait ? step.phases[t.phase + 1] : undefined;
+  const [t, ...others] = c.ringing;
+  const info = ringInfoOf(plan, c, t);
   return (
     <div className={`fixed inset-0 z-50 ${kitchen ? "kitchen-dark" : ""}`} role="alertdialog" aria-modal="true" aria-label="Minuteur terminé">
       <div className="sx-ring flex h-full flex-col gap-6 overflow-y-auto bg-hot px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1.25rem)] text-on-hot">
-        <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4">
-          <div className="flex justify-between text-[14px] opacity-70">
-            <span className="flex items-center gap-2">
-              <Icon name="bell" size="s" />
-              {after ? `fini : ${t.label}` : "minuteur fini"}
+        <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6">
+          <div className="flex items-center justify-between text-[17px]">
+            <span className="flex items-center gap-2 font-bold">
+              <Icon name="bell" className="sx-bell" />
+              Ça sonne
             </span>
-            <span className="num">il y a {mmss(now - t.endsAt)}</span>
+            <span className="num opacity-80">fini il y a {mmss(c.now - t.endsAt)}</span>
           </div>
-          <h1 className="sx-consigne">{after ? after.text : t.label}</h1>
-          {step && (
-            <p className="text-[18px] opacity-75">
-              {recipe ? `${recipe.name} · ` : ""}étape {step.no} · {stepTitle(plan, step)}
-            </p>
-          )}
-          <div className="my-auto grid place-items-center py-4">
-            <span className="sx-giant" aria-hidden>+{mmss(now - t.endsAt)}</span>
+          <RingDetails plan={plan} c={c} t={t} />
+          <div className="mt-auto grid gap-3">
+            {others.map((o) => (
+              <button key={o.id} type="button" onClick={() => c.stopTimer(o)} className="flex min-h-14 items-center justify-between gap-3 rounded-[14px] border border-[color-mix(in_srgb,currentColor_35%,transparent)] px-4 text-left text-[17px] font-semibold">
+                <span className="min-w-0">Aussi fini : {ringInfoOf(plan, c, o).finished}</span>
+                <span className="shrink-0 text-[14px] opacity-75">arrêter</span>
+              </button>
+            ))}
+            <Button variant="ink" size="kitchen" block icon="check" onClick={() => c.stopTimer(t)} className="!min-h-24 !whitespace-normal text-[22px] leading-tight">
+              {info.stop}
+            </Button>
+            <span className="text-center text-[14px] opacity-80">Sur tous les écrans · espace</span>
           </div>
-          {others.map((o) => (
-            <button key={o.id} type="button" onClick={() => onStop(o)} className="flex min-h-14 items-center justify-between gap-3 rounded-[14px] border border-[color-mix(in_srgb,currentColor_35%,transparent)] px-4 text-left text-[17px] font-semibold">
-              <span className="min-w-0 truncate">Aussi fini : {o.label}</span>
-              <span className="shrink-0 text-[14px] opacity-75">arrêter</span>
-            </button>
-          ))}
-          <Button variant="ink" size="kitchen" block icon="check" onClick={() => onStop(t)} className="!min-h-24 text-[24px]">
-            {after ? "C’est parti, sur tous les écrans" : "Arrêter, sur tous les écrans"}
-          </Button>
         </div>
       </div>
     </div>

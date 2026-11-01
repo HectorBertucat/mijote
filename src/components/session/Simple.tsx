@@ -10,22 +10,26 @@
 // Sur téléphone (ou ?vue=telephone), la vue couvre la navigation ; sombre pendant la cuisson.
 // Barre espace : le bouton principal de l’écran ([data-main]) ; flèche gauche : retour.
 import Link from "next/link";
-import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type PrepTask, type SessionPlan } from "@/lib/session/planner";
-import { backgroundSteps, batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
-import { prepBowls, prepExtras, soonTimers, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
-import { Button, Check, Icon, Tape, type ButtonVariant, type IconName } from "@/components/ui";
+import { batchOf, currentPhase, liveTimer, phaseTimer, stepStatus, stepTimer, type TimerState } from "@/lib/session/state";
+import { prepBowls, prepExtras, stageOf, storageLine, TEMPS, tempsProgress, type RecipeStorage, type Stage, type Temps } from "@/lib/session/flow";
+import { Button, Check, Icon, type ButtonVariant, type IconName } from "@/components/ui";
 import { FoodIllu, StepIllu } from "@/components/illus/Illu";
 import { BoxGlyph } from "@/components/boxes/BoxGlyph";
 import type { Controls, DayChoice } from "./SessionApp";
-import { Issues, progressLine, ResumeChoice, timerMinutes } from "./blocks";
+import { Issues, progressLine, ResumeChoice } from "./blocks";
 import { DropGuide, wantsDropGuide } from "./DropGuide";
 import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
-import { Bowl, bowlName, bowlOf, clock, DishArts, dur, hobName, mmss, PauseAll, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
+import { attentionOf, fmtMin, ringInfo, timedPhase } from "@/lib/session/guide";
+import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, TakeBowls, TimerBar } from "./guide";
+import { PhaseNext } from "./blocks";
+import { restartSession } from "@/app/session/actions";
 
 export interface SimpleProps {
   id: string;
@@ -113,7 +117,7 @@ export function SimpleView(p: SimpleProps) {
   } else if (stage === "cook") {
     if (plan.steps.every((s) => stepStatus(c.state, s.id) === "todo") && !seen.has("cook")) {
       tone = "ink";
-      body = <Interlude n={2} title="Cuisine" lines={[`${plan.steps.length} étapes, une à la fois. L’écran dit quoi faire et sonne quand c’est prêt.`, progressLine(plan, c)]} art={<StepIllu kind="sear" text="Poêle" size={120} live />} />;
+      body = <Interlude n={2} title="Cuisine" lines={[`${plan.steps.length} étapes, une à la fois. Le bouton du bas dit ce qu’il fait ; rien ne se lance tout seul, pas même un minuteur.`, progressLine(plan, c)]} art={<StepIllu kind="sear" text="Poêle" size={120} live />} />;
       bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("cook")}>Première étape</MainButton>;
     } else {
       body = <CookScreen plan={plan} c={c} />;
@@ -213,7 +217,7 @@ export function Shell({ overlay, dark, tone = "paper", wakeOn, onWake, bar, chil
       data-simple
       data-tone={tone}
     >
-      <div className={`flex min-h-full flex-col pt-[env(safe-area-inset-top)] ${bar ? "pb-[calc(env(safe-area-inset-bottom)+8rem)]" : "pb-12"} ${overlay ? "" : "md:min-h-[calc(100dvh-8rem)]"}`}>{children}</div>
+      <div className={`flex min-h-full flex-col pt-[env(safe-area-inset-top)] ${bar ? "pb-[calc(env(safe-area-inset-bottom)+11rem)]" : "pb-12"} ${overlay ? "" : "md:min-h-[calc(100dvh-8rem)]"}`}>{children}</div>
       {bar && (
         <div className={`${overlay ? "fixed" : "max-md:fixed md:sticky"} inset-x-0 bottom-0 z-30 border-t border-[color-mix(in_srgb,currentColor_14%,transparent)] bg-[var(--shell-bg)] pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-float`}>
           <div className={COLUMN}>
@@ -226,15 +230,16 @@ export function Shell({ overlay, dark, tone = "paper", wakeOn, onWake, bar, chil
 }
 
 /** Le bouton principal de l’écran (barre espace). `who` : à deux, le bouton de A ou de B (touches A et B). */
-export function MainButton({ children, icon, onClick, who, variant = "ink", className = "" }: { children: ReactNode; icon?: IconName; onClick: () => void; who?: Person; variant?: ButtonVariant; className?: string }) {
+export function MainButton({ children, icon, onClick, who, variant = "ink", className = "", title }: { children: ReactNode; icon?: IconName; onClick: () => void; who?: Person; variant?: ButtonVariant; className?: string; title?: string }) {
   return (
-    <Button variant={variant} size="kitchen" block icon={icon} onClick={onClick} data-main={who ?? "1"} className={`min-h-[72px] text-[21px] ${className}`}>
+    <Button variant={variant} size="kitchen" block icon={icon} onClick={onClick} data-main={who ?? "1"} title={title} className={`min-h-[72px] py-3 text-[21px] ${className}`}>
       {children}
     </Button>
   );
 }
 
-function Head({ plan, c, stage, wake, detail, overlay, onEnd, lead, title, tone = "paper" }: { plan: SessionPlan; c: Controls; stage: Stage; wake: Wake; detail: string; overlay: boolean; onEnd?: () => void; lead?: ReactNode; title?: ReactNode; tone?: Tone }) {
+function Head({ plan, c, stage, wake, detail, overlay, onEnd, lead, title, tone = "paper", person = null }: { plan: SessionPlan; c: Controls; stage: Stage; wake: Wake; detail: string; overlay: boolean; onEnd?: () => void; lead?: ReactNode; title?: ReactNode; tone?: Tone; person?: Person | null }) {
+  const restart = useRestart(c.id);
   const progress = tempsProgress(plan, c.state);
   const temps: Temps | null = stage === "prep" || stage === "cook" || stage === "store" ? stage : null;
   const flat = tone !== "paper";
@@ -253,8 +258,18 @@ function Head({ plan, c, stage, wake, detail, overlay, onEnd, lead, title, tone 
               <span className="num truncate">{c.online ? headSub(plan, c, stage) : "reconnexion…"}</span>
             </span>
           </div>
-          <Menu wake={wake} detail={detail} onEnd={onEnd} toCook={stage === "prep" && c.mode !== "duo" ? () => c.setStatus(c.mode === "veille" && !c.state.eveDone ? "fridge" : "cooking") : undefined} evening={c.mode === "veille" && !c.state.eveDone} />
+          {stage === "cook" && tone === "paper" && (
+            <div className="hidden min-w-0 max-w-[60%] md:block">
+              <TimerBar plan={plan} c={c} person={person} />
+            </div>
+          )}
+          <Menu wake={wake} detail={detail} onEnd={onEnd} toCook={stage === "prep" && c.mode !== "duo" ? () => c.setStatus(c.mode === "veille" && !c.state.eveDone ? "fridge" : "cooking") : undefined} evening={c.mode === "veille" && !c.state.eveDone} restart={restart} />
         </div>
+        {stage === "cook" && tone === "paper" && (
+          <div className="md:hidden">
+            <TimerBar plan={plan} c={c} person={person} />
+          </div>
+        )}
         {stage !== "fridge" && stage !== "done" && (
           <ol className="grid grid-cols-3 gap-2" aria-label="Les trois temps de la session">
             {TEMPS.map((t, i) => {
@@ -299,7 +314,17 @@ function headSub(plan: SessionPlan, c: Controls, stage: Stage): string {
 }
 
 /** Le menu : vue détaillée, écran allumé, passer à la cuisine, terminer. Un <details> : clavier et lecteur d’écran sans script. */
-function Menu({ wake, detail, onEnd, toCook, evening }: { wake: Wake; detail: string; onEnd?: () => void; toCook?: () => void; evening: boolean }) {
+/** Relancer la session (plan refait, mêmes plats), pour de vrai ou en test ; l’ancienne s’arrête sur tous les écrans. */
+export function useRestart(id: string) {
+  const [pending, start] = useTransition();
+  const run = (test: boolean) => {
+    const ask = test ? "Recommencer en session test ? Celle-ci s’arrête ; rien n’est compté (durées, frigo)." : "Recommencer la session de zéro ? Celle-ci s’arrête sur tous les écrans.";
+    if (window.confirm(ask)) start(() => restartSession(id, test));
+  };
+  return { run, pending };
+}
+
+function Menu({ wake, detail, onEnd, toCook, evening, restart }: { wake: Wake; detail: string; onEnd?: () => void; toCook?: () => void; evening: boolean; restart?: ReturnType<typeof useRestart> }) {
   const ref = useRef<HTMLDetailsElement>(null);
   const close = () => ref.current?.removeAttribute("open");
   useEffect(() => {
@@ -332,6 +357,21 @@ function Menu({ wake, detail, onEnd, toCook, evening }: { wake: Wake; detail: st
         <div className="px-2 py-1">
           <WakePill wake={wake} onInk={false} />
         </div>
+        {restart && (
+          <>
+            <button type="button" className={`${item} border-t border-line`} disabled={restart.pending} onClick={() => (close(), restart.run(false))}>
+              <Icon name="refresh" size="s" />
+              {restart.pending ? "Je refais le plan…" : "Recommencer de zéro"}
+            </button>
+            <button type="button" className={item} disabled={restart.pending} onClick={() => (close(), restart.run(true))}>
+              <Icon name="refresh" size="s" />
+              <span className="grid">
+                Recommencer en test
+                <span className="text-[14px] text-ink-2">rien n’est compté (durées, frigo)</span>
+              </span>
+            </button>
+          </>
+        )}
         {onEnd && (
           <button type="button" className={`${item} border-t border-line`} onClick={() => (close(), onEnd())}>
             <Icon name="check" size="s" />
@@ -538,16 +578,13 @@ function PrepBar({ plan, c }: { plan: SessionPlan; c: Controls }) {
 function CookScreen({ plan, c }: { plan: SessionPlan; c: Controls }) {
   const { focus } = c;
   if (!focus) return null;
-  // Sur téléphone, ce qui sonne dans moins de 2 min passe au-dessus de la consigne.
-  const close = soonTimers(c.timers, c.now, focus.id).some((t) => t.pausedAt == null && t.endsAt - c.now < 120_000);
   return (
     <div className={`${COLUMN} grid gap-12 pt-6 md:grid-cols-12 md:gap-6`}>
       <div className="min-w-0 md:col-span-7">
         <StepNow plan={plan} c={c} step={focus} />
       </div>
-      <aside className={`grid min-w-0 content-start gap-8 md:col-span-5 md:sticky md:top-32 md:self-start ${close ? "max-md:order-first" : ""}`}>
-        <Soon plan={plan} c={c} exclude={focus.id} />
-        {c.upcoming && <Later plan={plan} step={c.upcoming} at={c.cookingStart + c.upcoming.startMin * 60000} />}
+      <aside className="grid min-w-0 content-start gap-8 md:col-span-5 md:sticky md:top-40 md:self-start">
+        <Lanes plan={plan} c={c} focus={focus} />
       </aside>
     </div>
   );
@@ -557,7 +594,6 @@ function CookScreen({ plan, c }: { plan: SessionPlan; c: Controls }) {
 export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; step: PlanStep }) {
   const { state, now, cookingStart } = c;
   const st = stepStatus(state, step.id);
-  const recipe = recipeOf(plan, step.recipeSlug);
   const n = st === "active" ? currentPhase(state, step) : null;
   const phase = n != null ? step.phases![n] : null;
   const { head, rest } = splitStep(step.text);
@@ -568,43 +604,22 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
     <article key={`${step.id}:${n ?? "-"}`} className="sx-swap grid gap-6" aria-live="polite">
       <header className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={phase?.text ?? step.text} size={80} live={st === "active"} className="illu-tile shrink-0" style={{ "--tile": stepColor(plan, step) }} />
-        <div className="grid min-w-0 justify-items-start gap-2">
-          {recipe && (
-            <Tape tint={recipe.color} seed={recipe.slug}>
-              {recipe.name}
-            </Tape>
-          )}
-          <p className={`label num ${st === "todo" ? "text-ink-2" : "text-accent"}`}>{`${st === "todo" ? "À lancer" : "Maintenant"} · étape ${step.no} sur ${plan.steps.length}${batch ? ` · fournée ${batch.at} sur ${batch.of}` : ""}${late > 2 ? ` · ${late} min de retard` : ""}`}</p>
-        </div>
+        <RecipeContext plan={plan} step={step} status={st} extra={[batch ? `fournée ${batch.at} sur ${batch.of}` : null, late > 2 ? `${late} min de retard` : null].filter(Boolean).join(" · ") || null} />
       </header>
       <div className="grid gap-3">
-        {phase && <p className="text-[17px] leading-snug text-ink-2">{head}</p>}
-        <h1 className="sx-consigne">{consigne}</h1>
+        {phase && <p className="text-[17px] leading-snug text-ink-2"><BowlText plan={plan} text={head} ready={state.bowlsReady} /></p>}
+        {n != null && <p className="label text-accent">Sous-étape {n + 1} sur {step.phases!.length} · <AttentionTag a={attentionOf(step, n)} className="!text-current" /></p>}
+        <h1 className="sx-consigne">
+          <BowlText plan={plan} text={consigne} ready={state.bowlsReady} />
+        </h1>
         {phase?.wait && <p className="text-lead text-ink-2">Attente : fais autre chose, ça sonnera.</p>}
-        {!phase && rest && !step.phases?.length && <p className="text-lead">{rest}</p>}
-        {step.phases && step.phases.length > 1 && st === "todo" && <p className="text-lead text-ink-2">{step.phases.length} sous-étapes, l’écran les enchaîne.</p>}
+        {!phase && rest && !step.phases?.length && <p className="text-lead"><BowlText plan={plan} text={rest} ready={state.bowlsReady} /></p>}
+        {step.phases && step.phases.length > 1 && st === "todo" && <p className="text-lead text-ink-2">{step.phases.length} sous-étapes, une à la fois. Aucun minuteur ne part tout seul.</p>}
       </div>
       {step.phases && step.phases.length > 1 && st === "active" && <PhaseTrack step={step} n={n} c={c} />}
+      {n != null && <PhaseNext step={step} n={n} running={Boolean(phaseTimer(state, step.id, n))} />}
       <Dials plan={plan} c={c} step={step} level={phase?.hobLevel ?? null} />
-      {step.bowls.length > 0 && (
-        <section className="grid gap-3" aria-label={step.tasks ? "Bols à remplir" : "Bols à prendre"}>
-          <h2 className="label text-ink-2">{step.tasks ? "Remplis" : "Prends"}</h2>
-          {step.bowls.map((l) => {
-            const b = bowlOf(plan, l);
-            return b ? (
-              <span key={l} className="flex items-center gap-4">
-                <Bowl bowl={b} size="lg" ready={state.bowlsReady.has(l)} />
-                <span className="flex flex-wrap items-center gap-1">
-                  {b.items.slice(0, 4).map((i, k) => (
-                    <FoodIllu key={k} food={i.food} item={i.item} size={40} live={st === "active"} label={i.item.split(/[,(]/)[0].trim()} />
-                  ))}
-                </span>
-                <span className="min-w-0 truncate text-[17px] text-ink-2">{bowlName(b)}</span>
-              </span>
-            ) : null;
-          })}
-        </section>
-      )}
+      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} />
       {wantsDropGuide(step, n, st === "active") && <DropGuide onInk />}
       {step.notes.map((x) => (
         <p key={x} className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">
@@ -688,12 +703,14 @@ function Dials({ plan, c, step, level }: { plan: SessionPlan; c: Controls; step:
         </span>
       </Dial>
     );
-  } else if (n != null) {
+  } else if (n != null && !(step.phases![n].min < 1 && !timedPhase(step.phases![n]))) {
     dials.push(
-      <Dial key="t" label={<><Icon name="clock" size="s" />Minuteur arrêté</>}>
-        <Button size="kitchen" variant="secondary" icon="clock" onClick={() => c.startPhase(step)} className="w-fit">
-          Lancer {fmtMin(step.phases![n].min)}
-        </Button>
+      <Dial key="t" label={<><Icon name="clock" size="s" />{timedPhase(step.phases![n]) ? "Minuteur pas lancé" : "Sans minuteur"}</>}>
+        {timedPhase(step.phases![n]) ? (
+          <span className="sx-giant text-ink-2">{fmtMin(step.phases![n].min).replace(" min", "")}<span className="text-[0.4em]">&nbsp;{step.phases![n].min < 1 ? "" : "min"}</span></span>
+        ) : (
+          <span className="text-lead text-ink-2">« Fait » quand c’est fait</span>
+        )}
       </Dial>
     );
   }
@@ -737,121 +754,39 @@ function LevelBars({ level }: { level: number }) {
   );
 }
 
-const fmtMin = (m: number) => (m < 1 ? `${Math.round(m * 60)} s` : `${Number.isInteger(m) ? m : m.toFixed(1).replace(".", ",")} min`);
-
-/** Ce qui sonne bientôt (minuteurs hors de l’étape montrée) et ce qui tourne en fond sans minuteur. */
-export function Soon({ plan, c, exclude, person }: { plan: SessionPlan; c: Controls; exclude: string | null; person?: Person }) {
-  const mine = (stepId: string | null) => !person || (plan.steps.find((s) => s.id === stepId)?.person ?? "A") === person;
-  const timers = soonTimers(c.timers, c.now, exclude).filter((t) => mine(t.stepId));
-  const idle = backgroundSteps(plan, c.state, c.focus).filter((s) => s.id !== exclude && mine(s.id) && !c.timers.some((t) => t.stepId === s.id));
-  const [open, setOpen] = useState<string | null>(null);
-  if (!timers.length && !idle.length) return null;
-  const name = (st: PlanStep | undefined) => (st ? shortName(recipeOf(plan, st.recipeSlug)?.name) || `Étape ${st.no}` : "Minuteur");
-  const labelOf = (t: TimerState) => {
-    const st = plan.steps.find((x) => x.id === t.stepId);
-    return st?.phases?.[t.phase ?? -1]?.text ?? (st ? stepTitle(plan, st) : t.label);
-  };
-  const row = "sx-row grid min-h-16 w-full grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left md:-mx-3 md:w-[calc(100%+24px)]";
-  return (
-    <section className="grid gap-3" aria-labelledby="sonne-bientot">
-      <div className="flex items-center justify-between gap-3">
-        <h2 id="sonne-bientot" className="label text-ink-2">
-          Ça sonne bientôt
-        </h2>
-        <PauseAll timers={c.timers} now={c.now} allPaused={c.allPaused} onClick={c.pauseAll} />
-      </div>
-      <ul className="grid border-b border-line">
-        {timers.map((t) => {
-          const st = plan.steps.find((x) => x.id === t.stepId);
-          const on = open === t.id;
-          const paused = t.pausedAt != null;
-          return (
-            <li key={t.id} className="border-t border-line">
-              <button type="button" onClick={() => setOpen(on ? null : t.id)} aria-expanded={on} aria-label={`${name(st)} : ${labelOf(t)}, ${paused ? "en pause, reste" : "dans"} ${mmss(t.endsAt - c.now)}`} className={row}>
-                {st ? <StepIllu kind={st.kind} text={labelOf(t)} size={40} live /> : <Icon name="clock" />}
-                <span className="grid min-w-0">
-                  <b className="truncate text-[17px]">{name(st)}</b>
-                  <span className="truncate text-[14px] text-ink-2">{labelOf(t)}</span>
-                </span>
-                <span className={`num-tight text-[2rem] leading-none ${paused ? "text-ink-2" : ""}`}>
-                  {paused && <Icon name="pause" size="s" className="mr-1 inline align-middle" />}
-                  {mmss(t.endsAt - c.now)}
-                </span>
-              </button>
-              {on && (
-                <div className="sx-swap flex flex-wrap items-center gap-3 pb-4">
-                  <span className="w-full text-[14px] text-ink-2">{paused ? "En pause : la fin repart à la reprise." : `Fin à ${clock(t.endsAt)}`}</span>
-                  <Button size="kitchen" variant={paused ? "primary" : "secondary"} icon={paused ? "play" : "pause"} onClick={() => c.pauseTimer(t)} aria-pressed={paused}>
-                    {paused ? "Reprendre" : "Pause"}
-                  </Button>
-                  <Button size="kitchen" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)}>
-                    1 min
-                  </Button>
-                  <Button size="kitchen" variant="quiet" icon="x" onClick={() => (setOpen(null), c.stopTimer(t))}>
-                    Arrêter
-                  </Button>
-                </div>
-              )}
-            </li>
-          );
-        })}
-        {idle.map((st) => {
-          const on = open === st.id;
-          return (
-            <li key={st.id} className="border-t border-line">
-              <button type="button" onClick={() => setOpen(on ? null : st.id)} aria-expanded={on} className={row}>
-                <StepIllu kind={st.kind} text={st.text} size={40} live />
-                <span className="grid min-w-0">
-                  <b className="truncate text-[17px]">{name(st)}</b>
-                  <span className="truncate text-[14px] text-ink-2">{stepTitle(plan, st)}</span>
-                </span>
-                <span className="label text-ink-2">En cours</span>
-              </button>
-              {on && (
-                <div className="sx-swap pb-4">
-                  <Button size="kitchen" variant="secondary" icon="check" onClick={() => (setOpen(null), c.toggleStep(st))}>
-                    Étape {st.no} finie
-                  </Button>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function Later({ plan, step, at }: { plan: SessionPlan; step: PlanStep; at: number }) {
-  return (
-    <section className="grid gap-3" aria-labelledby="ensuite">
-      <h2 id="ensuite" className="label text-ink-2">
-        Ensuite · <span className="num">{clock(at)}</span>
-      </h2>
-      <p className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 border-y border-line py-3 text-[17px] text-ink-2">
-        <StepIllu kind={step.kind} text={step.text} size={40} />
-        <span className="min-w-0">{stepTitle(plan, step)}</span>
-      </p>
-    </section>
-  );
-}
 
 function CookBar({ plan, c }: { plan: SessionPlan; c: Controls }) {
-  const { focus, state } = c;
+  const { focus } = c;
   if (!focus) return null;
-  const st = stepStatus(state, focus.id);
-  const n = st === "active" ? currentPhase(state, focus) : null;
-  const more = n != null && n < focus.phases!.length - 1;
-  const auto = st === "active" && !stepTimer(state, focus.id) && passiveMin(focus) >= 3;
-  const last = !c.upcoming && !more && plan.steps.every((s) => s.id === focus.id || stepStatus(state, s.id) === "done");
+  return <ActionBar plan={plan} c={c} step={focus} person={null} />;
+}
+
+/**
+ * La barre du bas d’une étape : le bouton principal (espace) dit ce qu’il fait (« Lance 8 min : … »,
+ * « Fait : bol G versé »), sa conséquence en dessous ; le retour dit ce qu’il défait (←) ; le geste de
+ * rechange (« Fait, sans minuteur »). `who` : à deux sur grand écran, le bouton de A ou de B.
+ */
+export function ActionBar({ plan, c, step, person, who }: { plan: SessionPlan; c: Controls; step: PlanStep; person: Person | null; who?: Person }) {
+  const a = c.actionOf(step);
+  const u = c.undo(person);
+  const last = a.kind === "finish" && plan.steps.every((s) => s.id === step.id || stepStatus(c.state, s.id) === "done");
+  const icon: IconName = a.kind === "start" ? "play" : a.kind === "phase-timer" || a.kind === "passive" ? "clock" : "check";
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-      <Button size="kitchen" variant="secondary" onClick={c.back} aria-label="Retour à la consigne d’avant (flèche gauche)" title="Retour (flèche gauche)" className="min-h-[72px] w-[72px] !px-0">
-        <Icon name="chev" size="l" className="rotate-180" />
-      </Button>
-      <MainButton icon={st === "todo" ? "play" : "check"} onClick={c.next}>
-        {st === "todo" ? "Commencer" : more ? "Suivant" : auto ? `Suivant · minuteur ${timerMinutes(focus)} min` : last ? "C’est cuit" : "Suivant"}
+    <div className="grid gap-2">
+      <MainButton icon={icon} who={who} onClick={() => c.act(step, person)} className="!whitespace-normal leading-tight" title={a.hint}>
+        {last ? `C’est cuit : ${a.label.replace(/^Fait : /, "")}` : a.label}
       </MainButton>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => c.back(person)} disabled={!u} title={u ? `${u.detail} (flèche gauche)` : "Rien à défaire"} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-[8px] px-2 text-left text-[15px] leading-tight opacity-85 hover:opacity-100 disabled:opacity-35">
+          <Icon name="chev" size="s" className="shrink-0 rotate-180" />
+          <span className="min-w-0">{u ? u.label : "Rien à défaire"}</span>
+        </button>
+        {a.alt && (
+          <button type="button" onClick={() => c.act(step, person, true)} className="min-h-11 shrink-0 rounded-[8px] border border-[color-mix(in_srgb,currentColor_30%,transparent)] px-3 text-[15px] font-bold hover:border-current">
+            {a.alt.label}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -865,37 +800,24 @@ export const personOf = (plan: SessionPlan, t: TimerState): Person | null => {
 
 export function Ringing({ plan, c, timers }: { plan: SessionPlan; c: Controls; timers: TimerState[] }) {
   const [t, ...others] = timers;
-  const step = t.stepId ? plan.steps.find((s) => s.id === t.stepId) : undefined;
-  const after = t.phase != null && step?.phases?.[t.phase]?.wait ? step.phases[t.phase + 1] : undefined;
-  const recipe = step ? recipeOf(plan, step.recipeSlug) : undefined;
   return (
     <section key={t.id} className={`${COLUMN} sx-ring grid flex-1 content-start gap-8 pt-8 md:grid-cols-12 md:gap-6`} role="alert" aria-label="Minuteur terminé">
       <div className="grid content-start gap-6 md:col-span-8">
-        <p className="label flex items-center gap-3">
-          <Icon name="bell" className="sx-bell" />
-          {after ? `Fini : ${t.label}` : "Ça sonne"}
+        <p className="label flex items-center justify-between gap-3">
+          <span className="flex items-center gap-3">
+            <Icon name="bell" className="sx-bell" />
+            Ça sonne
+          </span>
+          <span className="num" aria-label={`Fini il y a ${mmss(c.now - t.endsAt)}`}>+{mmss(c.now - t.endsAt)}</span>
         </p>
-        <p className="sx-giant" aria-label={`Fini il y a ${mmss(c.now - t.endsAt)}`}>
-          +{mmss(c.now - t.endsAt)}
-        </p>
-        <h1 className="sx-consigne">{after ? after.text : t.label}</h1>
-        {step && (
-          <p className="text-lead opacity-85">
-            {recipe ? `${recipe.name} · ` : ""}étape {step.no} · {stepTitle(plan, step)}
-          </p>
-        )}
+        <RingDetails plan={plan} c={c} t={t} />
       </div>
-      {step && (
-        <div className="md:col-span-4 md:justify-self-end">
-          <StepIllu kind={step.kind} text={after?.text ?? t.label} size={128} live className="illu-tile" style={{ "--tile": "var(--c-on-hot)" } as CSSProperties} />
-        </div>
-      )}
       {others.length > 0 && (
         <ul className="grid border-b border-[color-mix(in_srgb,currentColor_30%,transparent)] md:col-span-8">
           {others.map((o) => (
             <li key={o.id} className="border-t border-[color-mix(in_srgb,currentColor_30%,transparent)]">
               <button type="button" onClick={() => c.stopTimer(o)} className="flex min-h-16 w-full items-center justify-between gap-3 text-left text-[17px] font-bold">
-                <span className="min-w-0 truncate">Aussi fini : {o.label}</span>
+                <span className="min-w-0">Aussi fini : {ringInfo(plan, c.state, o).finished}</span>
                 <span className="label shrink-0 opacity-80">Arrêter</span>
               </button>
             </li>
@@ -907,11 +829,9 @@ export function Ringing({ plan, c, timers }: { plan: SessionPlan; c: Controls; t
 }
 
 export function RingBar({ plan, c, t, who }: { plan: SessionPlan; c: Controls; t: TimerState; who?: Person }) {
-  const step = t.stepId ? plan.steps.find((s) => s.id === t.stepId) : undefined;
-  const after = t.phase != null && step?.phases?.[t.phase]?.wait;
   return (
-    <MainButton icon="check" who={who} onClick={() => c.stopTimer(t)}>
-      {after ? "C’est parti" : "Arrêter, sur tous les écrans"}
+    <MainButton icon="check" who={who} onClick={() => c.stopTimer(t)} className="!whitespace-normal leading-tight">
+      {ringInfo(plan, c.state, t).stop}
     </MainButton>
   );
 }

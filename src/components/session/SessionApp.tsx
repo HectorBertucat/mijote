@@ -10,15 +10,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
 import { LETTERS, type DuoNames } from "@/lib/session/people";
 import {
-  backgroundSteps,
   bowlsCompletedBy,
   currentPhase,
   focusStep,
-  isWaitTimer,
   nextTodo,
-  passiveMin,
   personFocus,
-  personNext,
   phaseIds,
   phaseTimer,
   liveTimer,
@@ -27,17 +23,17 @@ import {
   randomId,
   runningTimers,
   storedEnd,
-  timerEnd,
   stepStatus,
   stepTimer,
   type SessionEvent,
   type SessionState,
   type TimerState,
 } from "@/lib/session/state";
+import { fillBowls, mainAction, mainEvents, stopEvents, undoFor } from "@/lib/session/guide";
 import { resumeSession } from "@/app/session/actions";
 import { buttonClass, Icon } from "@/components/ui";
 import { useNow, useSession } from "./useSession";
-import { chime, clock, DishArts, dur, Eyebrow, kindLabel, QrCard, recipeOf, People, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
+import { clock, DishArts, dur, kindLabel, QrCard, recipeOf, People, SessionHead, SessionTest, TimerAlert, ToastView, unlockAudio, useWakeLock, WakePill, type Phase } from "./parts";
 import { DoneView, Issues, PlanDetails, progressLine, recipesLine, ResumeChoice, sessionTitle } from "./blocks";
 import { PrepBowlRow, PrepPhase, Tomorrow } from "./Prep";
 import { CookPhase } from "./Cook";
@@ -93,128 +89,27 @@ function useControls(p: SessionProps) {
   const upcoming = nextTodo(plan, state, focus);
   // En pause, un minuteur est montré avec la fin qu’il aurait s’il repartait maintenant : son reste ne bouge pas, il ne sonne pas.
   const timers = [...state.timers.values()].filter((t) => t.doneAt == null).map((t) => liveTimer(t, now)).sort((a, b) => a.endsAt - b.endsAt);
-  // Les minuteurs de sous-étape ne sonnent pas en plein écran : la sous-étape suivante démarre (bip, voir plus bas).
-  // Sauf la fin d’une attente (le riz a cuit) : on faisait autre chose, ça sonne comme un minuteur d’étape.
-  const ringing = timers.filter((t) => t.endsAt <= now && (t.phase == null || isWaitTimer(plan, t)));
-
-  const startTimer = useCallback(
-    (label: string, minutes: number, stepId: string | null, auto = false) =>
-      ({ kind: "timer_start" as const, ref: randomId(), payload: { label, minutes, stepId, auto, endsAt: new Date(now + minutes * 60000).toISOString() } }),
-    [now]
-  );
+  // Tout minuteur fini sonne : il a été lancé d’un geste, l’écran dit de quoi il s’agit et quoi faire (guide.ts, ringInfo).
+  const ringing = timers.filter((t) => t.endsAt <= now);
   type Ev = Parameters<typeof send>[0][number];
-  /** Minuteur de la sous-étape `n` (ids stables : un seul écran l’écrit). */
-  const phaseStart = useCallback(
-    (st: PlanStep, n: number, person?: Person): Ev[] => {
-      const ph = st.phases?.[n];
-      if (!ph) return [];
-      const ids = phaseIds(p.id, st.id, n);
-      return [{ id: ids.start, kind: "timer_start", ref: ids.timer, payload: { label: ph.text, minutes: ph.min, stepId: st.id, phase: n, endsAt: new Date(now + ph.min * 60000).toISOString(), ...(person ? { person } : {}) } }];
-    },
-    [p.id, now]
-  );
-  /** Sous-étape `n` faite : son minuteur s’arrête, la suivante démarre. */
-  const phaseDone = useCallback(
-    (st: PlanStep, n: number, person?: Person): Ev[] => {
-      const ids = phaseIds(p.id, st.id, n);
+  const opts = useCallback((person?: Person | null) => ({ sessionId: p.id, person: person ?? null, id: randomId }), [p.id]);
+
+  /** Le bouton principal d’une étape : une seule chose, nommée (guide.ts, mainAction). `alt` : finir sans minuteur. */
+  const act = useCallback(
+    (st: PlanStep, person?: Person | null, alt = false) => {
       const out: Ev[] = [];
-      const t = phaseTimer(state, st.id, n);
-      if (t) out.push({ id: ids.stop, kind: "timer_done", ref: t.id });
-      out.push({ id: ids.done, kind: "step_done", ref: `phase:${n}:${st.id}`, payload: person ? { person } : null });
-      return [...out, ...phaseStart(st, n + 1, person)];
-    },
-    [p.id, state, phaseStart]
-  );
-  /** Lancer une étape : avec des sous-étapes, le minuteur de la première part tout de suite. */
-  const startStep = useCallback(
-    (st: PlanStep, person?: Person): Ev[] => [{ kind: "step_start", ref: st.id, payload: person ? { person } : null }, ...(currentPhase(state, st) === 0 ? phaseStart(st, 0, person) : [])],
-    [state, phaseStart]
-  );
-  /** Ce qui reste des sous-étapes quand on finit l’étape d’un coup. */
-  const closePhases = useCallback((st: PlanStep, person?: Person): Ev[] => {
-    const n = currentPhase(state, st);
-    if (n == null) return [];
-    const out: Ev[] = [];
-    for (let i = n; i < st.phases!.length; i++) {
-      const ids = phaseIds(p.id, st.id, i);
-      const t = phaseTimer(state, st.id, i);
-      if (t) out.push({ id: ids.stop, kind: "timer_done", ref: t.id });
-      out.push({ id: ids.done, kind: "step_done", ref: `phase:${i}:${st.id}`, payload: person ? { person } : null });
-    }
-    return out;
-  }, [p.id, state]);
-
-  // Un minuteur de sous-étape fini : la suivante démarre toute seule (chaque écran le voit, le serveur garde le premier).
-  // Une attente finie sonne à la place (ringing) : on l’arrête, et la suite démarre.
-  useEffect(() => {
-    const out: Ev[] = [];
-    for (const st of plan.steps) {
-      if (stepStatus(state, st.id) !== "active") continue;
-      const n = currentPhase(state, st);
-      if (n == null || st.phases![n].wait) continue;
-      const t = phaseTimer(state, st.id, n);
-      if (t && timerEnd(t, now) <= now) out.push(...phaseDone(st, n));
-    }
-    if (out.length) send(out);
-  }, [plan, state, now, send, phaseDone]);
-  // Bip quand l’étape montrée passe à la sous-étape suivante.
-  const phaseKey = focus && stepStatus(state, focus.id) === "active" ? `${focus.id}|${currentPhase(state, focus) ?? "fin"}` : null;
-  const lastPhaseKey = useRef<string | null>(null);
-  useEffect(() => {
-    const prev = lastPhaseKey.current;
-    lastPhaseKey.current = phaseKey;
-    if (prev && phaseKey && prev !== phaseKey && prev.split("|")[0] === phaseKey.split("|")[0]) {
-      chime();
-      navigator.vibrate?.([200, 100, 200]);
-    }
-  }, [phaseKey]);
-
-  /** Seul, geste glissé dans la cuisson : fait, il finit ses bols (quand leurs autres gestes du fil sont faits). */
-  const fillBowls = useCallback(
-    (st: PlanStep): Ev[] =>
-      st.tasks
-        ? st.bowls
-            .filter((l) => !state.bowlsReady.has(l) && (plan.bowls.find((b) => b.letter === l)?.during ?? []).every((d) => d.stepId === st.id || state.done.has(d.stepId)))
-            .map((l) => ({ kind: "bowl_ready" as const, ref: l, payload: { ready: true } }))
-        : [],
-    [plan, state]
-  );
-
-  const stepLabel = (st: PlanStep) => `${st.kind === "preheat" ? "Four" : (st.equipmentName ?? kindLabel(st.kind))}${recipeOf(plan, st.recipeSlug) ? ` · ${recipeOf(plan, st.recipeSlug)!.name.split(" ")[0]}` : ""} (ét. ${st.no})`;
-
-  const next = useCallback(() => {
-    const out: Parameters<typeof send>[0] = [];
-    const f = focusStep(plan, state, now);
-    const ph = f ? currentPhase(state, f) : null;
-    if (f && stepStatus(state, f.id) === "todo") {
-      out.push(...startStep(f));
-    } else if (f && ph != null && ph < f.phases!.length - 1) {
-      // Sous-étape faite plus tôt que le minuteur : on passe à la suivante.
-      out.push(...phaseDone(f, ph));
-    } else if (f) {
-      out.push(...closePhases(f));
-      const hasTimer = Boolean(stepTimer(state, f.id));
-      if (!hasTimer && passiveMin(f) >= 3) out.push(startTimer(stepLabel(f), Math.round(passiveMin(f)), f.id, true));
-      else if (!hasTimer) out.push({ kind: "step_done", ref: f.id }, ...fillBowls(f));
-      const n = nextTodo(plan, state, f);
-      if (n) out.push(...startStep(n));
-    }
-    send(out);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, state, now, send, startTimer, startStep, phaseDone, closePhases, fillBowls]);
-
-  const stopTimer = useCallback(
-    (t: TimerState) => {
-      // Arrêter le minuteur d’une sous-étape, c’est la finir : la suivante démarre.
-      const ps = t.phase != null && t.stepId ? plan.steps.find((x) => x.id === t.stepId) : undefined;
-      if (ps && currentPhase(state, ps) === t.phase) return send(phaseDone(ps, t.phase!));
-      const out: Parameters<typeof send>[0] = [{ kind: "timer_done", ref: t.id }];
-      const auto = s.events.some((e) => e.kind === "timer_start" && e.ref === t.id && e.payload?.auto === true);
-      if (auto && t.endsAt <= now && t.stepId && stepStatus(state, t.stepId) === "active") out.push({ kind: "step_done", ref: t.stepId });
+      if (mode === "duo" && state.status !== "cooking") out.push({ kind: "note", payload: { status: "cooking", ...(person ? { person } : {}) } });
+      out.push(...mainEvents(plan, state, st, now, opts(person), alt));
       send(out);
     },
-    [plan, now, s.events, send, state, phaseDone]
+    [plan, state, now, send, opts, mode]
   );
+  const next = useCallback(() => {
+    if (focus) act(focus);
+  }, [focus, act]);
+
+  const auto = useCallback((t: TimerState) => s.events.some((e) => e.kind === "timer_start" && e.ref === t.id && e.payload?.auto === true), [s.events]);
+  const stopTimer = useCallback((t: TimerState) => send(stopEvents(plan, state, t, now, { ...opts(), auto: auto(t) })), [plan, state, now, send, opts, auto]);
   /** Régler un minuteur (+1, glisser sur l’ordinateur) : nouvelle fin, lancement et durée d’origine gardés ; en pause, il y reste. */
   const setTimerEnd = useCallback(
     (t: TimerState, liveEnd: number) => {
@@ -237,15 +132,31 @@ function useControls(p: SessionProps) {
     else send(pausedTimers(state).map((t) => ({ kind: "timer_resume" as const, ref: t.id })));
   }, [state, now, send]);
   const allPaused = runningTimers(state, now).length === 0 && pausedTimers(state).length > 0;
+  /** Toucher une étape dans le fil : la commencer (sans minuteur), la finir, ou la remettre à faire. */
   const toggleStep = useCallback(
     (st: PlanStep) => {
       const status = stepStatus(state, st.id);
-      if (status === "todo") send(startStep(st));
-      else if (status === "active") send([...closePhases(st), { kind: "step_done", ref: st.id }, ...fillBowls(st)]);
+      if (status === "todo") send([{ kind: "step_start", ref: st.id }]);
+      else if (status === "active") send(finishAll(st));
       else send([{ kind: "step_start", ref: st.id, payload: { undo: true } }]);
     },
-    [send, state, startStep, closePhases, fillBowls]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [send, state, plan]
   );
+  /** Finir une étape d’un coup (« Finie ») : sous-étapes restantes, minuteurs, l’étape. */
+  const finishAll = (st: PlanStep): Ev[] => {
+    const out: Ev[] = [];
+    const n = currentPhase(state, st);
+    if (n != null)
+      for (let i = n; i < st.phases!.length; i++) {
+        const t = phaseTimer(state, st.id, i);
+        if (t) out.push({ kind: "timer_done", ref: t.id });
+        out.push({ kind: "step_done", ref: `phase:${i}:${st.id}` });
+      }
+    const t = stepTimer(state, st.id);
+    if (t) out.push({ kind: "timer_done", ref: t.id });
+    return [...out, { kind: "step_done", ref: st.id }, ...fillBowls(plan, state, st)];
+  };
   const toggleBowl = useCallback((letter: string) => send([{ kind: "bowl_ready", ref: letter, payload: { ready: !state.bowlsReady.has(letter) } }]), [send, state]);
   const togglePrep = useCallback(
     (taskId: string, person?: Person) => {
@@ -260,43 +171,26 @@ function useControls(p: SessionProps) {
     },
     [plan, send, state]
   );
-  /** À deux : « Fait » dans le fil d’une personne (geste de prep ou étape), puis on lance son étape suivante. */
+  /** À deux : le bouton principal du fil d’une personne (geste de prep fait, ou l’action de son étape). Rien d’autre ne démarre. */
   const nextFor = useCallback(
     (person: Person) => {
       const f = personFocus(plan, state, person, now);
       if (!f) return;
+      if (f.type === "step") return act(f.step, person);
       const out: Parameters<typeof send>[0] = [];
       if (state.status !== "cooking") out.push({ kind: "note", payload: { status: "cooking", person } });
-      let finished = false;
-      if (f.type === "prep") {
-        out.push({ kind: "step_done", ref: f.id, payload: { person } });
-        const done = new Set(state.prepDone).add(f.task.id);
-        for (const l of bowlsCompletedBy(plan, done)) if (!state.bowlsReady.has(l)) out.push({ kind: "bowl_ready", ref: l, payload: { ready: true, person } });
-        finished = true;
-      } else if (stepStatus(state, f.id) === "todo") {
-        out.push(...startStep(f.step, person));
-      } else if (currentPhase(state, f.step) != null && currentPhase(state, f.step)! < f.step.phases!.length - 1) {
-        out.push(...phaseDone(f.step, currentPhase(state, f.step)!, person));
-      } else {
-        out.push(...closePhases(f.step, person));
-        const hasTimer = Boolean(stepTimer(state, f.id));
-        if (!hasTimer && passiveMin(f.step) >= 3) {
-          const t = startTimer(stepLabel(f.step), Math.round(passiveMin(f.step)), f.id, true);
-          out.push({ ...t, payload: { ...t.payload, person } });
-        } else if (!hasTimer) out.push({ kind: "step_done", ref: f.id, payload: { person } });
-        finished = true;
-      }
-      if (finished) {
-        const n = personNext(plan, state, person, f);
-        if (n?.type === "step") out.push(...startStep(n.step, person));
-      }
+      out.push({ kind: "step_done", ref: f.id, payload: { person } });
+      const done = new Set(state.prepDone).add(f.task.id);
+      for (const l of bowlsCompletedBy(plan, done)) if (!state.bowlsReady.has(l)) out.push({ kind: "bowl_ready", ref: l, payload: { ready: true, person } });
       send(out);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [plan, state, now, send, startTimer, startStep, phaseDone, closePhases]
+    [plan, state, now, send, act]
   );
   const setStatus = useCallback((status: SessionState["status"]) => send([{ kind: "note", payload: { status } }]), [send]);
-  const timerFor = useCallback((st: PlanStep, minutes: number) => send([startTimer(stepLabel(st), minutes, st.id)]), [send, startTimer]); // eslint-disable-line react-hooks/exhaustive-deps
+  const timerFor = useCallback(
+    (st: PlanStep, minutes: number) => send([{ kind: "timer_start", ref: randomId(), payload: { label: `${st.kind === "preheat" ? "Four" : (st.equipmentName ?? kindLabel(st.kind))} · étape ${st.no}`, minutes, stepId: st.id, endsAt: new Date(now + minutes * 60000).toISOString() } }]),
+    [send, now]
+  );
 
   // Reprise d’une prep la veille : seul, le plan de la veille continue ; à deux, le serveur
   // refait le plan du jour J et chaque écran le recharge (note « replan »).
@@ -321,54 +215,36 @@ function useControls(p: SessionProps) {
     [send, p.id, router, s]
   );
 
-  /** Relancer le minuteur de la sous-étape en cours (étape lancée avant les sous-étapes, minuteur arrêté). */
-  const startPhase = useCallback((st: PlanStep) => {
-    const n = currentPhase(state, st);
-    if (n != null) send(phaseStart(st, n).map((e) => ({ ...e, id: randomId() })));
-  }, [state, send, phaseStart]);
-  /**
-   * Retour (ordinateur) : défait le dernier « Suivant ». Dans une étape à sous-étapes, revient à la
-   * sous-étape d’avant (son minuteur repart) ; sinon l’étape montrée redevient « à lancer » et
-   * l’étape d’avant (la dernière lancée) redevient celle en cours, son minuteur d’attente arrêté.
-   */
-  const back = useCallback(() => {
-    const f = focusStep(plan, state, now);
-    const out: Ev[] = [];
-    if (f && stepStatus(state, f.id) === "active") {
-      const len = f.phases?.length ?? 0;
-      const n = currentPhase(state, f);
-      const reached = n ?? len;
-      if (len && reached > 0) {
-        if (n != null) {
-          const t = phaseTimer(state, f.id, n);
-          if (t) out.push({ kind: "timer_done", ref: t.id });
-        }
-        out.push({ kind: "step_done", ref: `phase:${reached - 1}:${f.id}`, payload: { undo: true } });
-        out.push(...phaseStart(f, reached - 1).map((e) => ({ ...e, id: randomId() })));
-        return send(out);
-      }
-      if (n === 0) {
-        const t = phaseTimer(state, f.id, 0);
-        if (t) out.push({ kind: "timer_done", ref: t.id });
-      }
-      out.push({ kind: "step_start", ref: f.id, payload: { undo: true } });
-    }
-    const prev = plan.steps
-      .filter((x) => x.id !== f?.id && state.started.has(x.id))
-      .sort((a, b) => (state.done.get(b.id) ?? state.started.get(b.id)!) - (state.done.get(a.id) ?? state.started.get(a.id)!))[0];
-    if (prev) {
-      if (state.done.has(prev.id)) out.push({ kind: "step_start", ref: prev.id, payload: { undo: true } }, { kind: "step_start", ref: prev.id });
-      const t = stepTimer(state, prev.id);
-      if (t) out.push({ kind: "timer_done", ref: t.id });
-    }
-    if (out.length) send(out);
-  }, [plan, state, now, send, phaseStart]);
-  const skipPhase = useCallback((st: PlanStep) => {
-    const n = currentPhase(state, st);
-    if (n != null) send(phaseDone(st, n));
-  }, [state, send, phaseDone]);
-
-  return { ...s, id: p.id, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer, pauseTimer, pauseAll, allPaused };
+  /** Lancer le minuteur de la sous-étape en cours (geste explicite : « Lance 8 min »). */
+  const startPhase = useCallback(
+    (st: PlanStep, person?: Person | null) => {
+      const n = currentPhase(state, st);
+      const ph = n != null ? st.phases![n] : null;
+      if (!ph) return;
+      send([{ kind: "timer_start", ref: phaseIds(p.id, st.id, n!).timer, payload: { label: ph.text, minutes: ph.min, stepId: st.id, phase: n, endsAt: new Date(now + ph.min * 60000).toISOString(), ...(person ? { person } : {}) } }]);
+    },
+    [state, send, p.id, now]
+  );
+  /** Le retour : défait la dernière action encore visible (à deux : celle de cette personne). */
+  const undo = useCallback((person?: Person | null) => undoFor(plan, state, s.events, mode === "duo" ? (person ?? null) : null), [plan, state, s.events, mode]);
+  const back = useCallback(
+    (person?: Person | null) => {
+      const u = undo(person);
+      if (u) send(u.events);
+    },
+    [undo, send]
+  );
+  /** La sous-étape en cours faite tout de suite (sans attendre son minuteur). */
+  const skipPhase = useCallback(
+    (st: PlanStep, person?: Person | null) => {
+      const a = mainAction(plan, state, st, now);
+      if (a.kind === "phase" || a.kind === "phase-timer") act(st, person, a.kind === "phase-timer");
+    },
+    [plan, state, now, act]
+  );
+  /** Ce que fait le bouton principal sur une étape (libellé, conséquence). */
+  const actionOf = useCallback((st: PlanStep) => mainAction(plan, state, st, now), [plan, state, now]);
+  return { ...s, id: p.id, plan, mode, now, cookingStart, focus, upcoming, timers, ringing, next, nextFor, act, actionOf, undo, stopTimer, addMinutes, toggleStep, toggleBowl, togglePrep, setStatus, resume, resuming: resuming ? resumingAs : null, timerFor, startPhase, skipPhase, back, adjustTimer, resetTimer, pauseTimer, pauseAll, allPaused };
 }
 
 export function SessionApp(props: SessionProps) {
@@ -382,7 +258,8 @@ export function SessionApp(props: SessionProps) {
   // Flèche gauche (ordinateur) : retour à la sous-étape ou à l’étape d’avant, pendant la cuisson.
   const backRef = useRef<() => void>(() => {});
   backRef.current = () => {
-    if (state.status === "cooking") c.back();
+    // À deux, le retour d’un écran est celui de sa personne (?personne=A ou B) ; sans personne, les boutons de chaque fil.
+    if (state.status === "cooking" && (c.mode !== "duo" || props.person)) c.back(props.person ?? null);
   };
   modeRef.current = c.mode;
   const simpleRef = useRef(props.view !== "full");
@@ -392,6 +269,11 @@ export function SessionApp(props: SessionProps) {
       // Vue simple : le bouton principal de l’écran (à deux, celui de A ou de B).
       const who = key === "KeyA" ? "A" : key === "KeyB" ? "B" : null;
       document.querySelector<HTMLButtonElement>(who ? `[data-main="${who}"]` : "[data-main]")?.click();
+      return;
+    }
+    // Ce qui sonne passe avant : l’espace l’arrête (le bouton de l’alerte dit ce qui suit).
+    if (c.ringing.length) {
+      c.stopTimer(c.ringing[0]);
       return;
     }
     if (c.mode === "duo") {
@@ -410,7 +292,7 @@ export function SessionApp(props: SessionProps) {
     const onKey = (e: KeyboardEvent) => {
       unlockAudio();
       const duoKey = modeRef.current === "duo" && (e.code === "KeyA" || e.code === "KeyB");
-      const backKey = e.code === "ArrowLeft" && modeRef.current !== "duo";
+      const backKey = e.code === "ArrowLeft";
       if ((e.code !== "Space" && !duoKey && !backKey) || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
@@ -459,7 +341,7 @@ export function SessionApp(props: SessionProps) {
         <FullView {...props} c={c} />
       )}
       {/* Vue simple : ce qui sonne revient au premier plan dans l’écran lui-même. */}
-      {props.view === "full" && <TimerAlert plan={plan} ringing={c.ringing} now={c.now} onStop={c.stopTimer} />}
+      {props.view === "full" && <TimerAlert plan={plan} c={c} />}
       <ToastView toast={c.toast} onDone={() => c.setToast(null)} raised={props.view !== "full"} />
       </People.Provider>
       </DishArts.Provider>

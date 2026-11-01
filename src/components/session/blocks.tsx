@@ -7,12 +7,14 @@ import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { modeOf, type Person, type PlanStep, type SessionPlan } from "@/lib/session/planner";
 import { handoffLine } from "@/lib/session/people";
-import { batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus, stepTimer } from "@/lib/session/state";
+import { batchOf, currentPhase, liveTimer, passiveMin, phaseTimer, stepStatus } from "@/lib/session/state";
+import { fmtMin, timedPhase } from "@/lib/session/guide";
+import { BackButton, BowlText, RecipeContext, TakeBowls } from "./guide";
 import { applyScales } from "@/app/session/actions";
 import { Alert, Button, Icon, Induction } from "@/components/ui";
 import type { Controls, DayChoice } from "./SessionApp";
 import { DurationOrigin, DurationReport } from "./Durations";
-import { Bowl, BowlFoods, bowlName, bowlOf, clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, usePeople, RecipeMark, recipeOf, SessionTest, shortName, splitStep, StepCue, StepSpecs } from "./parts";
+import { clock, dur, Eyebrow, HandoffRow, mmss, PersonMono, usePeople, recipeOf, SessionTest, splitStep, StepCue, StepSpecs } from "./parts";
 import { StepIllu } from "@/components/illus/Illu";
 import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
@@ -65,41 +67,24 @@ export function NowCard({ plan, c, step, size = "lg", actions }: { plan: Session
       style={{ "--rc": recipe?.color ?? "var(--c-ink)" } as CSSProperties}
       aria-live="polite"
     >
-      <div className="flex flex-wrap items-center gap-2 label text-ink-2">
-        <RecipeMark plan={plan} slug={step.recipeSlug} />
-        <span>
-          <span className={st === "todo" ? "" : "text-accent"}>{st === "todo" ? "À lancer" : "Maintenant"}</span> · étape {step.no}
-          {recipe ? ` · ${shortName(recipe.name)}` : ""}
-          {batch ? ` · fournée ${batch.at} sur ${batch.of}` : ""}
-        </span>
-        <span className="num ml-auto font-semibold tracking-normal normal-case">
-          {st === "todo" ? `prévue ${clock(cookingStart + step.startMin * 60000)}${late > 2 ? ` · ${late} min de retard` : ""}` : startedAt ? `lancée ${clock(startedAt)}` : ""}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <RecipeContext plan={plan} step={step} status={st} extra={batch ? `fournée ${batch.at} sur ${batch.of}` : null} />
+        <span className="num text-small font-semibold text-ink-2">
+          {st === "todo" ? `prévue ${clock(cookingStart + step.startMin * 60000)}${late > 2 ? ` · ${late} min de retard` : ""}` : startedAt ? `commencée ${clock(startedAt)}` : ""}
         </span>
       </div>
       <div className="flex items-center gap-4">
         <StepIllu kind={step.kind} text={step.text} size={size === "lg" ? "xl" : "l"} live={st === "active"} className="illu-tile shrink-0 max-sm:size-[72px]" style={{ "--tile": recipe?.color ?? "var(--c-ink-3)" }} />
-        <h2 className={`sx-consigne min-w-0 ${size === "lg" ? "sx-consigne-sm" : "!text-[26px]"}`}>{head}</h2>
+        <h2 className={`sx-consigne min-w-0 ${size === "lg" ? "sx-consigne-sm" : "!text-[26px]"}`}>
+          <BowlText plan={plan} text={head} ready={state.bowlsReady} />
+        </h2>
       </div>
       {/* Avec des sous-étapes, le texte complet passe au second plan : elles disent quoi faire. */}
-      {rest && <p className={`leading-snug ${step.phases?.length ? "text-[17px] text-ink-2" : size === "lg" ? "text-[19px]" : "text-[17px]"}`}>{rest}</p>}
+      {rest && <p className={`leading-snug ${step.phases?.length ? "text-[17px] text-ink-2" : size === "lg" ? "text-[19px]" : "text-[17px]"}`}><BowlText plan={plan} text={rest} ready={state.bowlsReady} /></p>}
       <PhasePanel c={c} step={step} />
       {wantsDropGuide(step, currentPhase(state, step), st === "active") && <DropGuide />}
       <StepSpecs plan={plan} step={step} />
-      {step.bowls.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Eyebrow>{step.tasks ? "Remplis" : "Prends"}</Eyebrow>
-          {step.bowls.map((l) => {
-            const b = bowlOf(plan, l);
-            return b ? (
-              <span key={l} className="inline-flex items-center gap-2">
-                <Bowl bowl={b} size={size === "lg" ? "lg" : "md"} ready={state.bowlsReady.has(l)} />
-                <BowlFoods bowl={b} size="s" max={3} live={st === "active"} />
-                <span className="text-[14px] text-ink-2">{bowlName(b).split(", ").slice(0, 3).join(", ")}</span>
-              </span>
-            ) : null;
-          })}
-        </div>
-      )}
+      <TakeBowls plan={plan} step={step} ready={state.bowlsReady} />
       {step.cue && <StepCue cue={step.cue} />}
       {step.notes.map((n) => (isHandoff(n) ? <Alert key={n} tone="info" icon="swap">{n}</Alert> : <Alert key={n} tone="warn">{n}</Alert>))}
       {actions ?? <StepActions c={c} step={step} />}
@@ -148,11 +133,11 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
                     {i + 1} sur {step.phases!.length}
                     {ph.wait ? " · attente, fais autre chose" : ""}
                   </span>
-                  <b className="text-[clamp(1.25rem,2.4vw,1.6rem)] leading-tight">{ph.text}</b>
+                  <b className="text-[clamp(1.25rem,2.4vw,1.6rem)] leading-tight"><BowlText plan={c.plan} text={ph.text} ready={state.bowlsReady} /></b>
                   {ph.hobLevel != null && <Induction level={ph.hobLevel} />}
                 </div>
                 <span className={`num-tight shrink-0 text-[clamp(2.6rem,7vw,3.6rem)] leading-none font-extrabold text-ink`} aria-live="off">
-                  {t ? mmss(Math.max(0, t.endsAt - now)) : `${fmtMin(ph.min)}`}
+                  {t ? mmss(Math.max(0, t.endsAt - now)) : timedPhase(ph) ? fmtMin(ph.min) : ""}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -160,23 +145,19 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
                   <Button size="sm" variant="secondary" icon="plus" onClick={() => c.addMinutes(t, 1)}>
                     1 min
                   </Button>
-                ) : (
-                  <Button size="sm" variant="secondary" icon="clock" onClick={() => c.startPhase(step)}>
-                    Lancer {fmtMin(ph.min)}
+                ) : timedPhase(ph) ? (
+                  <Button size="sm" variant="secondary" icon="clock" onClick={() => c.startPhase(step, step.person ?? null)}>
+                    Lance {fmtMin(ph.min)}
                   </Button>
-                )}
-                {i < step.phases!.length - 1 && (
-                  <Button size="sm" variant="quiet" onClick={() => c.skipPhase(step)}>
-                    Suivante maintenant
-                  </Button>
-                )}
+                ) : null}
               </div>
+              <PhaseNext step={step} n={i} running={Boolean(t)} />
             </li>
           );
         return (
           <li key={i} className={`flex items-center gap-3 px-1 text-[17px] ${done ? "opacity-55" : onInk ? "" : "text-ink-2"}`}>
             <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[12px] font-bold ${done ? "bg-accent text-on-accent" : "border border-line-strong"}`}>{done ? <Icon name="check" size="s" /> : i + 1}</span>
-            <span className={`min-w-0 flex-1 ${done ? "line-through decoration-1" : ""} ${ph.wait ? "italic" : ""}`}>{ph.text}</span>
+            <span className={`min-w-0 flex-1 ${done ? "line-through decoration-1" : ""} ${ph.wait ? "italic" : ""}`}><BowlText plan={c.plan} text={ph.text} ready={state.bowlsReady} /></span>
             <span className="num shrink-0">
               {ph.wait && <Icon name="clock" size="s" className="mr-1 inline align-[-2px]" />}
               {fmtMin(ph.min)}
@@ -186,36 +167,59 @@ export function PhasePanel({ c, step, onInk = false }: { c: Controls; step: Plan
   }
 }
 
-const fmtMin = (m: number) => (m < 1 ? `${Math.round(m * 60)} s` : `${Number.isInteger(m) ? m : m.toFixed(1).replace(".", ",")} min`);
+/** Ce qui vient après la sous-étape en cours, et ce qui la déclenche. */
+export function PhaseNext({ step, n, running, onInk = false }: { step: PlanStep; n: number; running: boolean; onInk?: boolean }) {
+  const nxt = step.phases?.[n + 1];
+  const ph = step.phases![n];
+  const when = running ? (ph.wait ? "quand le minuteur sonne" : "quand le minuteur sonne, ou « Fait » avant") : timedPhase(ph) ? "lance le minuteur, ou touche « Fait » quand c’est fait" : "quand tu touches « Fait »";
+  return (
+    <p className={`flex flex-wrap items-baseline gap-x-2 text-[17px] leading-snug ${onInk ? "" : "text-ink-2"}`}>
+      <span className="label">Puis</span>
+      {nxt ? (
+        <>
+          <b className={onInk ? "" : "text-ink"}>
+            {n + 2}. {nxt.text}
+          </b>
+          <span>· {when}</span>
+        </>
+      ) : (
+        <span>l’étape {step.no} est finie · {when}</span>
+      )}
+    </p>
+  );
+}
 
 /** Minutes d’un minuteur proposé pour une étape : l’attente s’il y en a, sinon la durée. */
 export const timerMinutes = (step: PlanStep) => Math.round(passiveMin(step) >= 3 ? passiveMin(step) : step.durationMin);
 
-/** « Fait, étape suivante » (espace), minuteur de l’étape, « Finie » sans lancer la suivante. */
-export function StepActions({ c, step, compact }: { c: Controls; step: PlanStep; compact?: boolean }) {
+/** Le bouton principal (espace) : il dit ce qu’il fait ; son geste de rechange ; le retour qui dit ce qu’il défait (←). */
+export function StepActions({ c, step, compact, person }: { c: Controls; step: PlanStep; compact?: boolean; person?: Person | null }) {
   const st = stepStatus(c.state, step.id);
-  const timer = stepTimer(c.state, step.id);
-  const auto = st === "active" && !timer && passiveMin(step) >= 3;
-  const ph = st === "active" ? currentPhase(c.state, step) : null;
-  const morePhases = ph != null && ph < step.phases!.length - 1;
+  const a = c.actionOf(step);
+  const u = c.undo(person);
   return (
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <Button variant="primary" size="kitchen" icon={st === "todo" ? "play" : "check"} onClick={c.next} data-action="fait" className="w-full">
-        {st === "todo" ? "Commencer" : morePhases ? "Sous-étape suivante" : auto ? `Fait · minuteur ${timerMinutes(step)} min` : "Fait, étape suivante"}
-      </Button>
-      <div className="flex gap-3">
-        {/* Retour : ordinateur seulement (le téléphone garde deux boutons). */}
-        <Button size="kitchen" variant="secondary" onClick={c.back} className="hidden flex-1 lg:inline-flex" title="Revenir à la sous-étape ou à l’étape d’avant (flèche gauche)">
-          <Icon name="chev" className="rotate-180" /> Retour
+    <div className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <Button variant="primary" size="kitchen" icon={a.kind === "start" ? "play" : a.kind === "phase-timer" || a.kind === "passive" ? "clock" : "check"} onClick={() => c.act(step, person)} data-action="fait" className="w-full !whitespace-normal py-3 text-left leading-tight" title={a.hint}>
+          {a.label}
         </Button>
-        {st === "active" && (
-          <Button size="kitchen" variant="quiet" onClick={() => c.toggleStep(step)} className="flex-1" title="Marquer l’étape finie sans lancer la suivante">
-            Finie
+        {a.alt && (
+          <Button size="kitchen" variant="quiet" onClick={() => c.act(step, person, true)} title="Sans lancer de minuteur">
+            {a.alt.label}
+          </Button>
+        )}
+      </div>
+      <p className="text-[14px] text-ink-2">{a.hint}</p>
+      <div className="flex flex-wrap gap-3">
+        <BackButton undo={u} onBack={() => c.back(person)} className="min-h-tap" />
+        {st === "active" && a.kind !== "finish" && (
+          <Button size="md" variant="quiet" onClick={() => c.toggleStep(step)} title="Marquer toute l’étape finie, sous-étapes et minuteurs compris">
+            Finir l’étape d’un coup
           </Button>
         )}
       </div>
       {!compact && (
-        <p className="hidden text-small text-ink-2 sm:col-span-2 lg:block">
+        <p className="hidden text-small text-ink-2 lg:block">
           <kbd className="rounded-[8px] border border-line bg-surface-2 px-2 font-sans text-[12px]">espace</kbd> = bouton principal ·{" "}
           <kbd className="rounded-[8px] border border-line bg-surface-2 px-2 font-sans text-[12px]">←</kbd> = retour
         </p>

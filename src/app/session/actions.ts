@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db/client";
-import { createSession, rescaleSession, resumeSession as resume } from "@/lib/session/store";
+import { createSession, rescaleSession, restartSession as restart, resumeSession as resume } from "@/lib/session/store";
 import { parseSelection } from "@/lib/week/selection";
 
 export async function startSession(formData: FormData) {
@@ -29,4 +29,10 @@ export async function applyScales(sessionId: string, scales: Record<string, numb
 /** Prep la veille : reprise le jour J, seul (le plan de la veille) ou à deux (plan refait). */
 export async function resumeSession(sessionId: string, dayMode: "solo" | "duo", eventId?: string) {
   return Boolean(resume(db, sessionId, dayMode === "duo" ? "duo" : "solo", eventId));
+}
+
+/** Relancer la session (mêmes plats, unités, liste et mode), pour de vrai ou en test : l’ancienne s’arrête sur tous les écrans. */
+export async function restartSession(sessionId: string, test: boolean) {
+  const id = restart(db, sessionId, { test });
+  if (id) redirect(`/session/${id}`);
 }

@@ -31,15 +31,20 @@ function describeKind(e: SessionEvent, plan: SessionPlan, step: (id: string | nu
     case "bowl_ready":
       return e.payload?.ready === false ? `Bol ${e.ref} décoché` : `Bol ${e.ref} prêt`;
     case "step_start":
-      return undo ? `Étape ${step(e.ref)?.no ?? ""} remise à faire` : `Étape ${step(e.ref)?.no ?? ""} lancée`;
+      return undo ? `Étape ${step(e.ref)?.no ?? ""} remise à faire` : `Étape ${step(e.ref)?.no ?? ""} commencée`;
     case "step_done":
       if (e.ref?.startsWith("prep:")) {
         const t = plan.prep.tasks.find((x) => x.id === e.ref!.slice(5));
         return undo ? `${t?.title ?? "Geste"} : à refaire` : `${t?.title ?? "Geste"} : fait`;
       }
-      return undo ? `Étape ${step(e.ref)?.no ?? ""} rouverte` : `Étape ${step(e.ref)?.no ?? ""} terminée`;
+      if (e.ref?.startsWith("phase:")) {
+        const [n, ...id] = e.ref.slice(6).split(":");
+        const ph = step(id.join(":"))?.phases?.[Number(n)];
+        return undo ? `Retour à : ${ph?.text ?? "la sous-étape"}` : `Fait : ${ph?.text ?? "sous-étape"}`;
+      }
+      return undo ? `Étape ${step(e.ref)?.no ?? ""} rouverte` : `Étape ${step(e.ref)?.no ?? ""} finie`;
     case "timer_start":
-      return `Minuteur « ${e.payload?.label ?? ""} » · ${e.payload?.minutes ?? ""} min`;
+      return e.payload?.adjust === true ? `Minuteur réglé : ${e.payload?.label ?? ""}` : `Minuteur lancé : ${e.payload?.label ?? ""} · ${String(e.payload?.minutes ?? "").replace(".", ",")} min`;
     case "timer_done":
       return "Minuteur arrêté";
     case "timer_pause":
@@ -56,6 +61,7 @@ function describeKind(e: SessionEvent, plan: SessionPlan, step: (id: string | nu
       if (e.payload?.status === "prep")
         return e.payload?.resume === true ? (e.payload?.dayMode === "duo" ? "Session reprise à deux : plan du jour J refait" : "Session reprise") : "Retour à la prep";
       if (e.payload?.replan === true) return "Plan refait";
+      if (e.payload?.status === "abandoned") return typeof e.payload?.next === "string" ? "Session relancée : on passe à la nouvelle" : "Session arrêtée";
       return e.payload?.status === "done" ? "Session terminée" : "Note";
   }
 }
@@ -114,6 +120,8 @@ export function useSession(opts: { id: string; plan: SessionPlan; initialEvents:
       if (!local.current.has(ev.id) && !(ev.kind === "note" && ev.payload?.person)) show({ text: describe(ev, planRef.current, namesRef.current), remote: true });
       // Le plan a changé (reprise à deux, réduction des unités) : chaque écran le recharge.
       if (ev.kind === "note" && ev.payload?.replan === true) routerRef.current.refresh();
+      // Relancée (depuis un autre écran) : chaque écran passe à la nouvelle session, même vue.
+      if (ev.kind === "note" && ev.payload?.status === "abandoned" && typeof ev.payload?.next === "string") routerRef.current.replace(`/session/${ev.payload.next}${window.location.search}`);
     };
     return () => es.close();
   }, [id, show]);
