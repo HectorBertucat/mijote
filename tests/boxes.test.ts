@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import { and, eq } from "drizzle-orm";
-import { freshness, limitOf, mealAt, placeFor, sideRatio, sideWords, splitPot, type PotModel, type PotPerson } from "@/lib/boxes/core";
+import { fillUp, freshness, limitOf, mealAt, placeFor, sideRatio, sideWords, splitNote, splitPot, type PotModel, type PotPerson } from "@/lib/boxes/core";
 import { eatBox, freezeBox, listStock, potModel, sessionPots, storeBoxes, thawBox, throwBox } from "@/lib/boxes/store";
 import { openDb } from "@/lib/db/open";
 import { cookSessions, foodLog, mealBoxes, mealSlots, recipeIngredients, recipes, weekPlans } from "@/lib/db/schema";
@@ -67,18 +67,82 @@ test("marmite pas encore pesée : le nombre de boîtes et leurs macros, sans gra
   assert.equal(s.byPerson[0].kcal, 1000);
 });
 
-test("garniture à part : le rapport riz / plat vise kcal et protéines, dans ses bornes", () => {
+test("garniture à part : la proportion de la marmite tant que les protéines suffisent, moins de riz s'il en manque", () => {
   const dish = { kcalG: 1.2, proteinG: 0.15 };
   const rice = { kcalG: 1.3, proteinG: 0.03 };
-  // 700 kcal et 50 g : t = (0,15 − 0,0714 × 1,2) / (0,0714 × 1,3 − 0,03) ≈ 1,02
-  const r = sideRatio({ kcal: 700, protein: 50 }, dish, rice, 0.8);
+  // À 0,8 (la marmite), 700 kcal donnent 700 × (0,15 + 0,8 × 0,03) / (1,2 + 0,8 × 1,3) ≈ 54 g.
+  assert.deepEqual(sideRatio({ kcal: 700, protein: 50, proteinMin: 45 }, dish, rice, 0.8), { ratio: 0.8, mode: "simple" });
+  // Peu de protéines visées : jamais plus de riz que la marmite (un surplus de protéines ne se compense pas).
+  assert.deepEqual(sideRatio({ kcal: 700, protein: 5, proteinMin: 4 }, dish, rice, 0.8), { ratio: 0.8, mode: "simple" });
+  // Il en manque : t = (0,15 − (60/700) × 1,2) / ((60/700) × 1,3 − 0,03) ≈ 0,58, entre 0,4 et 0,8.
+  const r = sideRatio({ kcal: 700, protein: 60, proteinMin: 56 }, dish, rice, 0.8);
   assert.equal(r.mode, "cible");
   const d = 700 / (dish.kcalG + r.ratio * rice.kcalG);
-  assert.ok(Math.abs(d * dish.proteinG + r.ratio * d * rice.proteinG - 50) < 0.01);
+  assert.ok(Math.abs(d * dish.proteinG + r.ratio * d * rice.proteinG - 60) < 0.01);
   // Plus de protéines que le plat seul n'en donne : le moins de riz permis (la moitié de la marmite).
-  assert.deepEqual(sideRatio({ kcal: 700, protein: 120 }, dish, rice, 0.8), { ratio: 0.4, mode: "borne" });
-  // Presque pas de protéines : le plus de riz permis (le double).
-  assert.deepEqual(sideRatio({ kcal: 700, protein: 5 }, dish, rice, 0.8), { ratio: 1.6, mode: "borne" });
+  assert.deepEqual(sideRatio({ kcal: 700, protein: 120, proteinMin: 110 }, dish, rice, 0.8), { ratio: 0.4, mode: "borne" });
+});
+
+test("surplus : chaque boîte grossit du même facteur jusqu'à son plafond, le reste va aux autres", () => {
+  // 10 + 5 unités, 3 de plus : facteur 1,2 → 12 et 6 ; la première plafonnée à 11 laisse 7 à la seconde.
+  assert.deepEqual(fillUp([{ units: 10, cap: Infinity }, { units: 5, cap: Infinity }], 3), { units: [12, 6], over: 0 });
+  assert.deepEqual(fillUp([{ units: 10, cap: 11 }, { units: 5, cap: Infinity }], 3), { units: [11, 7], over: 0 });
+  // Tout le monde au plafond : ce qui ne tient nulle part.
+  assert.deepEqual(fillUp([{ units: 10, cap: 11 }, { units: 5, cap: 5.5 }], 3), { units: [11, 5.5], over: 1.5 });
+});
+
+// Un grand et un petit gabarit, une marmite de poulet laqué et son riz cuit à part (chiffres fictifs).
+const laque = (people: PotPerson[]) =>
+  pot({
+    cookedUnits: 26,
+    dish: { kcal: 2270, protein: 262 },
+    side: { label: "riz", kcal: 1580, protein: 34 },
+    people,
+  });
+const days = (n: number) => Array.from({ length: n }, (_, i) => ({ date: `2026-11-0${i + 2}`, meal: "dinner" as const }));
+
+test("petit gabarit : jamais plus de riz que le grand gabarit, repères tenus, le surplus en boîte de reste", () => {
+  const alex = person("alex", "Alex", 5, { planned: days(3), ref: { kcalMin: 700, kcalMax: 760, proteinMin: 52, proteinMax: 68 } });
+  // Petit gabarit qui mange peu de protéines hors batch : un repère de protéines bas pour ses kcal.
+  const sam = person("sam", "Sam", 4, { planned: days(2), ref: { kcalMin: 555, kcalMax: 705, proteinMin: 34, proteinMax: 43 } });
+  const m = laque([alex, sam]);
+  const s = splitPot(m, { dishG: 1180, sideG: 1020 });
+  const a = s.byPerson.find((p) => p.personId === "alex")!;
+  const b = s.byPerson.find((p) => p.personId === "sam")!;
+  assert.ok(b.sideG! <= a.sideG!, `riz : Sam ${b.sideG} g, Alex ${a.sideG} g`);
+  assert.ok(b.dishG! <= a.dishG!);
+  assert.ok(a.kcal! <= 760 * 1.03, `Alex ${a.kcal} kcal`);
+  assert.ok(b.kcal! <= 705 * 1.03, `Sam ${b.kcal} kcal`);
+  // Les deux repères ensemble (3 × 760 + 2 × 705) ne prennent pas toute la marmite : une petite boîte, pour qui veut.
+  assert.ok(s.rest && s.rest.personId == null && s.rest.kcal! > 0 && s.rest.kcal! < b.kcal!);
+  assert.equal(s.boxes.length, 6);
+  const sum = (k: "dishG" | "sideG") => s.boxes.reduce((x, y) => x + y[k]!, 0);
+  assert.ok(Math.abs(sum("dishG") - 1180) <= 5 * s.boxes.length);
+  assert.ok(Math.abs(sum("sideG") - 1020) <= 5 * s.boxes.length);
+  assert.equal(splitNote(m, s), null);
+});
+
+test("surplus de moins de 3 % : réparti sur les boîtes, sans boîte de reste", () => {
+  const alex = person("alex", "Alex", 5, { planned: days(3), ref: { kcalMin: 700, kcalMax: 760, proteinMin: 52, proteinMax: 68 } });
+  const sam = person("sam", "Sam", 4, { planned: days(2), ref: { kcalMin: 600, kcalMax: 740, proteinMin: 34, proteinMax: 43 } });
+  const s = splitPot(laque([alex, sam]), { dishG: 1180, sideG: 1020 });
+  assert.equal(s.rest, null);
+  assert.equal(s.boxes.length, 5);
+  for (const p of s.byPerson) assert.ok(p.kcal! <= (p.personId === "alex" ? 760 : 740) * 1.03, `${p.name} ${p.kcal} kcal`);
+});
+
+test("plus de riz pour la petite part seulement si la grande manque de protéines, et on le dit", () => {
+  // Alex vise beaucoup de protéines : moins de riz, plus de plat ; Sam garde la proportion de la marmite.
+  const alex = person("alex", "Alex", 5, { planned: days(3), ref: { kcalMin: 700, kcalMax: 780, proteinMin: 80, proteinMax: 95 } });
+  const sam = person("sam", "Sam", 4, { planned: days(2), ref: { kcalMin: 600, kcalMax: 700, proteinMin: 34, proteinMax: 43 } });
+  const m = laque([alex, sam]);
+  const s = splitPot(m, { dishG: 1180, sideG: 1020 });
+  const a = s.byPerson.find((p) => p.personId === "alex")!;
+  const b = s.byPerson.find((p) => p.personId === "sam")!;
+  assert.notEqual(s.modes.alex, "simple");
+  assert.equal(s.modes.sam, "simple");
+  assert.ok(b.sideG! > a.sideG!);
+  assert.equal(splitNote(m, s), "Plus de riz pour Sam que pour Alex : la boîte d'Alex vise 88 g de protéines, il y faut plus de plat.");
 });
 
 test("garniture à part : plat et riz de chacun, la marmite et le riz entièrement répartis", () => {
