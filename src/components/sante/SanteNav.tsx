@@ -25,7 +25,7 @@ export function SanteNav() {
   return (
     <nav aria-label="Santé" className="k-noscroll -mx-5 flex gap-6 overflow-x-auto border-b border-line px-5 sm:mx-0 sm:px-0">
       {SANTE_PAGES.map((p) => {
-        const on = current === p.href;
+        const on = current === p.href || (p.href !== "/sante" && current.startsWith(`${p.href}/`));
         return (
           <Link
             key={p.href}

@@ -161,6 +161,7 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
       <div className="grid min-w-0 content-start gap-12 lg:col-span-5 lg:border-l lg:border-line lg:pl-8">
         {tour.showSteps && <FirstSteps view={tour.steps} />}
         {h.todayMeals.length > 0 && h.lead && <Today h={h} />}
+        {h.run && <RunToday run={h.run} />}
         <Fridge h={h} />
         <Shopping h={h} />
       </div>
@@ -220,6 +221,26 @@ function limitWord(g: HomeBoxGroup, today: string) {
 }
 
 /** Le frigo : combien de boîtes, celles à manger en premier ; le congélo complète s’il reste de la place. */
+/** La séance de course du jour, une ligne vers la page Course. */
+function RunToday({ run }: { run: NonNullable<HomeView["run"]> }) {
+  return (
+    <section aria-labelledby="course-titre">
+      <h2 id="course-titre" className="text-h2">
+        Course
+      </h2>
+      <div className="mt-6 border-t border-line-strong">
+        <Link href="/sante/course" className="group -mx-3 flex items-center gap-4 rounded-[8px] border-b border-line px-3 py-4 hover:bg-surface-2">
+          <span className="grid min-w-0 flex-1 gap-1">
+            <span className="font-semibold text-pretty">{run.title}</span>
+            <span className="text-small text-ink-2">{run.done ? "Faite aujourd’hui" : `Aujourd’hui, ${run.minutes}${NBSP}min en tout`}</span>
+          </span>
+          <Icon name="chev" className="text-ink-3" />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
 function Fridge({ h }: { h: HomeView }) {
   const shown = h.fridge.slice(0, 4);
   const frozen = h.freezer.slice(0, 4 - shown.length);

@@ -6,6 +6,7 @@ import { QuickLog } from "@/components/sante/QuickLog";
 import { Evolution } from "@/components/sante/overview/Evolution";
 import { KeyTiles } from "@/components/sante/overview/KeyTiles";
 import { RecentActivity } from "@/components/sante/overview/RecentActivity";
+import { RunningSection } from "@/components/sante/overview/Running";
 import { db } from "@/lib/db/client";
 import { activePerson } from "@/lib/health/active";
 import { missingForEstimate, rateOf, type Confidence } from "@/lib/health/core";
@@ -13,6 +14,8 @@ import { currentMonday, goalSummary, listSessions } from "@/lib/health/objective
 import { overview } from "@/lib/health/overview";
 import { DEFAULT_PERIOD, isPeriod } from "@/lib/health/series";
 import { currentReview, listWaist, todayParis, toProfile } from "@/lib/health/store";
+import { courseView } from "@/lib/running/page";
+import { getRunProfile } from "@/lib/running/store";
 import { typo } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +49,7 @@ export default async function Sante({ searchParams }: { searchParams: Promise<{ 
   const monday = currentMonday();
   const isMonday = new Date(`${today}T12:00:00Z`).getUTCDay() === 1;
   const tone = review ? CONFIDENCE[review.confidence] : null;
+  const running = getRunProfile(db, person.id)?.enabled ? courseView(db, person.id) : null;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
@@ -115,6 +119,7 @@ export default async function Sante({ searchParams }: { searchParams: Promise<{ 
       </section>
 
       <KeyTiles o={o} />
+      {running && <RunningSection v={running} />}
       <RecentActivity o={o} />
       <Evolution o={o} />
 

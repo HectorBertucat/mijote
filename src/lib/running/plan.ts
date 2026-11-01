@@ -76,7 +76,7 @@ export const GOALS = ["reprendre", "plus_longtemps", "sortie_longue", "semi"] as
 export type RunGoal = (typeof GOALS)[number];
 export const GOAL_LABEL: Record<RunGoal, string> = { reprendre: "Reprendre", plus_longtemps: "Courir plus longtemps", sortie_longue: "Une vraie sortie longue", semi: "Un semi-marathon un jour" };
 /** Phase la plus haute et sortie longue la plus longue (minutes de course) selon l'objectif (choix de Mijote, § 4.5). */
-const GOAL_LIMIT: Record<RunGoal, { phase: Phase; long: number }> = {
+export const GOAL_LIMIT: Record<RunGoal, { phase: Phase; long: number }> = {
   reprendre: { phase: 1, long: LONG_CAP.p1 },
   plus_longtemps: { phase: 2, long: LONG_CAP.p2 },
   sortie_longue: { phase: 2, long: LONG_CAP.p2Long },

@@ -57,6 +57,13 @@
       "when": 1793493298111,
       "tag": "0007_course",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793494898197,
+      "tag": "0008_course_plaisir",
+      "breakpoints": true
     }
   ]
 }

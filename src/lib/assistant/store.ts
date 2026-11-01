@@ -264,6 +264,8 @@ export function dismissAssistantAction(db: Db, personId: string, id: string, ind
 
 export interface AssistantActionView extends Partial<ActionCard> {
   index: number;
+  /** Le type d'action (les cartes de course ont leur repère). */
+  kind: string;
   why: string;
   status: AssistantAction["status"];
   reason: string | null;
@@ -285,6 +287,7 @@ export function toView(r: AssistantRow): AssistantView {
     text: r.text,
     actions: actionsOf(r).map((a, index) => ({
       index,
+      kind: a.input.kind,
       why: a.why,
       status: a.status,
       ...(a.check.ok ? { title: a.check.title, lines: a.check.lines, notes: a.check.notes } : { title: KIND_LABEL[a.input.kind] }),
