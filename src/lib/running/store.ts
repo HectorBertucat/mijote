@@ -15,7 +15,7 @@ import { analyzeRun, type RunAnalysis, type RunDetails } from "./analysis";
 import { LONGEST_WINDOW_DAYS, RUNNING_VERSION, WATCH_DAYS } from "./constants";
 import { addDays, daysBetween, isHm, isYmd, mondayOfDay, parisDay, weekday } from "./dates";
 import { decodeHr } from "./details";
-import { fitness, fitPace, isRunKind, sessionLoad, type LoadKind, type LoadRefs, type PaceFit } from "./load";
+import { fitness, fitPace, sessionLoad, type LoadKind, type LoadRefs, type PaceFit } from "./load";
 import { buildPlan, GOALS, type DoneRun, type Feedback, type FixedKind, type Pause, type PlanOutput, type PlanSettings, type RunGoal, type WeekOverride } from "./plan";
 import { morning, type Morning } from "./signals";
 import { intensityShare } from "./trends";
@@ -130,7 +130,7 @@ export function setWeekOverride(db: Db, personId: string, o: WeekOverride) {
 export function editSession(db: Db, personId: string, sessionId: string, edit: SessionEdit) {
   const row = db.select().from(runSessions).where(and(eq(runSessions.id, sessionId), eq(runSessions.personId, personId))).get();
   if (!row) throw new Error("Séance introuvable.");
-  db.update(runSessions).set({ edit: { ...(row.edit ?? {}), ...edit } }).where(eq(runSessions.id, sessionId)).run();
+  db.update(runSessions).set({ edit: { ...row.edit, ...edit } }).where(eq(runSessions.id, sessionId)).run();
 }
 
 // ─── Ressenti ───

@@ -26,7 +26,8 @@ export function keyOf(headers: Headers) {
 /** Corps annoncé trop gros : la route ne le lit même pas. */
 export const tooLarge = (headers: Headers) => Number(headers.get("content-length") ?? 0) > MAX_BYTES;
 
-function byKey(db: Db, headers: Headers) {
+/** La personne de la clé, ou la réponse 401 (aussi pour /api/sante/import/plans). */
+export function byKey(db: Db, headers: Headers) {
   const key = keyOf(headers);
   const link = key ? linkForKey(db, key) : null;
   return link ? { link } : { error: fail(key ? "clé inconnue : recopie le code depuis Santé › Apple Santé" : "clé manquante", 401) };

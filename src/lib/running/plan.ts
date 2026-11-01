@@ -43,7 +43,6 @@ import {
   P2_MIN_WEEKS,
   P2_PAIN_DAYS,
   P2_QUALITY_FROM_WEEK,
-  P2_REGULAR_WEEKS,
   P3_DECOUPLING_MAX,
   P3_LONG_MIN,
   P3_MIN_WEEKS,
@@ -65,7 +64,7 @@ import {
   WALK_RUN_LEVELS,
   WEEK_CAP_MIN,
 } from "./constants";
-import { addDays, clamp, daysBetween, median, mondayOfDay, round5, weekday } from "./dates";
+import { addDays, clamp, daysBetween, median, mondayOfDay, round5 } from "./dates";
 import type { Morning } from "./signals";
 import { aerobicTest, fartlek, footing, frielTest, hills, longRun, PLANNED_EFFORT, QUALITY, sessionMinutes, shorten, tempo, walkRun, type RunSession, type SessionKind } from "./workout";
 import type { Zones } from "./zones";
