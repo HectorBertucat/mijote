@@ -93,7 +93,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
       {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids {sw.of}, {sw.it} à l’œil, dans la même proportion.</p>}
       {split.fill < 0.97 && (
         <Alert tone="warn" title="Moins que prévu">
-          La marmite ne couvre pas les {planned} repas prévus : chaque boîte est plus petite que la part visée.
+          La marmite ne couvre pas {planned ? `les ${planned} repas prévus` : "toutes les parts visées"} : chaque boîte est plus petite que la part visée.
         </Alert>
       )}
       {split.rest && (

@@ -41,7 +41,7 @@ export const stepColor = (plan: SessionPlan, s: PlanStep) => recipeOf(plan, s.re
  * distingue rien : « One pot » saute (« Orzo »), et une viande ou un mot générique prend le mot suivant (« Poulet
  * basquaise », « Porc au caramel », « Pasta al forno ») plutôt que trois « Poulet » dans la même session.
  */
-const GENERIC = new Set(["poulet", "porc", "bœuf", "boeuf", "pasta", "sauté", "saute"]);
+const GENERIC = new Set(["poulet", "butter", "porc", "bœuf", "boeuf", "pasta", "sauté", "saute"]);
 const LINK = new Set(["de", "du", "des", "d’", "au", "aux", "à", "la", "le", "les", "al", "et"]);
 export const shortName = (name: string | undefined) => {
   const words = (name ?? "").split(",")[0].split(/\s+/).filter(Boolean);

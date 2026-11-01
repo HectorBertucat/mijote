@@ -11,7 +11,7 @@
 // recette d'une cuisson commune (`shared`). Un plan d'avant ne les porte pas : l'attention et les
 // rappels se déduisent alors du texte, et les bols de l'étape tiennent lieu d'ingrédients.
 import type { EventKind, SessionEvent, SessionState, TimerState } from "./state";
-import { formatQty, type Person, type PlanBowl, type PlanBowlItem, type PlanStep, type PrepTask, type SessionPlan, type StepIngredient } from "./planner";
+import { article, formatQty, type Person, type PlanBowl, type PlanBowlItem, type PlanStep, type PrepTask, type SessionPlan, type StepIngredient } from "./planner";
 import { currentPhase, liveTimer, passiveMin, phaseIds, phaseTimer, stepStatus, stepTimer } from "./state";
 import { waitAttention, type Attention } from "./attention";
 import type { Holder } from "./containers";
@@ -308,9 +308,11 @@ export function takeOf(plan: Pick<SessionPlan, "bowls">, step: Pick<PlanStep, "b
   return take;
 }
 
+const lowerFirst = (s: string) => s.charAt(0).toLocaleLowerCase("fr") + s.slice(1);
+
 /** « Pèse et verse : pulpe de tomate 800 g, concentré de tomate 30 g, miel 15 g » : la phrase d'une liste du moment. */
 export function weighLine(items: Pick<TakeItem, "name" | "qty" | "optional">[]): string {
-  return items.map((i) => `${i.name.charAt(0).toLocaleLowerCase("fr")}${i.name.slice(1)}${i.qty ? ` ${i.qty}` : ""}${i.optional ? " (facultatif)" : ""}`).join(", ");
+  return items.map((i) => `${lowerFirst(i.name)}${i.qty ? ` ${i.qty}` : ""}${i.optional && !/facultatif/i.test(i.name) ? " (facultatif)" : ""}`).join(", ");
 }
 
 /** Ce qui entre à la sous-étape `n` (pour la mettre en avant pendant qu'elle est en cours). */
@@ -352,8 +354,14 @@ export function shareOf(plan: Pick<SessionPlan, "recipes">, step: Pick<PlanStep,
 export function sharedBases(plan: Pick<SessionPlan, "recipes" | "steps">): { stepId: string; equipment: string | null; label: string; the: string; lines: ShareLine[] }[] {
   return plan.steps.flatMap((s) => {
     const sh = shareOf(plan, s);
-    return sh ? [{ stepId: s.id, equipment: s.equipmentName, label: sh.label, the: sh.the, lines: sh.lines }] : [];
+    return sh ? [{ stepId: s.id, equipment: s.equipmentName ? article(s.equipmentName).toLocaleLowerCase("fr") : null, label: sh.label, the: sh.the, lines: sh.lines }] : [];
   });
+}
+
+/** La consigne d'une sous-étape en grand : le partage d'une cuisson commune se dit court (les parts sont listées dessous). */
+export function phaseText(step: Pick<PlanStep, "phases" | "shared">, n: number): string {
+  const text = step.phases?.[n]?.text ?? "";
+  return step.shared?.length && n === step.phases!.length - 1 ? text.split(" : ")[0] : text;
 }
 
 /** Les fournées de l'étape, en clair : « en 3 fournées » (poêle), « en 2 fois, dans la même eau » (base à l'eau). */
@@ -371,7 +379,7 @@ export interface ContainerNote {
   /** Des bols se remplissent quand un autre se vide : l'ordre. */
   order: { letter: string; after: string }[];
   /** Les groupes du moment : pas de bol, l'étape dira quoi peser. */
-  moment: { letter: string; recipeSlug: string; names: string[] }[];
+  moment: { letters: string[]; names: string[] }[];
 }
 
 /** Ce que la session dit des contenants avant de commencer (plan du moteur ; null pour un plan d'avant). */
@@ -380,7 +388,14 @@ export function containerNote(plan: Pick<SessionPlan, "bowls" | "containers">): 
   if (!c) return null;
   const missing = c.missing.length ? { count: c.missing.length, letters: c.missing, peak: c.peak, owned: c.owned, liters: c.missing.map((l) => plan.bowls.find((b) => b.letter === l)?.liters ?? 0) } : null;
   const order = plan.bowls.filter((b) => b.fillAfter).map((b) => ({ letter: b.letter, after: b.fillAfter! }));
-  const moment = plan.bowls.filter((b) => b.holder === "moment").map((b) => ({ letter: b.letter, recipeSlug: b.recipeSlug, names: b.items.map((i) => parseGesture(i.item).base.replace(/\s*\(.*$/, "")) }));
+  // Un même contenu dans plusieurs recettes (le riz de trois recettes) : une ligne, toutes ses lettres.
+  const moment: ContainerNote["moment"] = [];
+  for (const b of plan.bowls.filter((x) => x.holder === "moment")) {
+    const names = b.items.map((i) => lowerFirst(parseGesture(i.item).base.replace(/\s*\(.*$/, "")));
+    const same = moment.find((m) => m.names.join("|") === names.join("|"));
+    if (same) same.letters.push(b.letter);
+    else moment.push({ letters: [b.letter], names });
+  }
   if (!missing && !order.length && !moment.length) return null;
   return { missing, order, moment };
 }

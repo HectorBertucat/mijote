@@ -125,7 +125,7 @@ export function BowlItems({ bowl, items, size = "md", className = "" }: { bowl?:
           <FoodIllu food={i.food ?? null} item={i.item} size={32} label={i.item.split(/[,(]/)[0].trim()} />
           <span className="min-w-0">
             {typo(i.item)}
-            {i.optional && <span className="text-ink-2"> (facultatif)</span>}
+            {i.optional && !/facultatif/i.test(i.item) && <span className="text-ink-2"> (facultatif)</span>}
           </span>
           <b className="num-tight text-right">{i.qty ?? ""}</b>
         </li>
@@ -197,8 +197,6 @@ export function BowlText({ plan, text, ready }: { plan: SessionPlan; text: strin
   );
 }
 
-const lower = (s: string) => s.charAt(0).toLocaleLowerCase("fr") + s.slice(1);
-
 /**
  * Ce que demande l’étape, quantités mises à l’échelle : les bols à prendre (ou à remplir, pour un geste
  * glissé) avec leur contenant, ce qui se pèse et se verse au moment, et le placard. Pendant une
@@ -242,7 +240,7 @@ export function TakeBowls({ plan, step, ready, title, phase = null }: { plan: Se
                 <span className="grid min-w-0">
                   <span>
                     {typo(i.item)}
-                    {i.optional && <span className="text-ink-2"> (facultatif)</span>}
+                    {i.optional && !/facultatif/i.test(i.item) && <span className="text-ink-2"> (facultatif)</span>}
                     {at(i.phase)}
                   </span>
                   {i.parts && (
@@ -277,11 +275,11 @@ export function SharedSplit({ plan, step, now = false }: { plan: SessionPlan; st
   const sh = shareOf(plan, step);
   if (!sh) return null;
   return (
-    <section className={`grid gap-3 ${now ? "rounded-[14px] border-2 border-accent p-4" : ""}`} aria-label={`Partage de ${sh.the}`}>
+    <section className={`grid gap-3 ${now ? "rounded-[14px] border-2 border-accent p-4" : ""}`} aria-label={`Partage : ${sh.the}`}>
       <h2 className={`label ${now ? "text-accent" : "text-ink-2"}`}>
         Une cuisson pour {sh.lines.length} recettes · {sh.total}
       </h2>
-      <p className="text-[17px]">Partage {sh.the}, pèse chaque part :</p>
+      <p className="text-[17px]">{now ? "Pèse chaque part :" : `Puis partage ${sh.the}, chaque part pesée :`}</p>
       <ul className="grid border-b border-line">
         {sh.lines.map((l) => (
           <li key={l.recipeSlug} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-2" style={rc(l.color || "var(--c-ink-3)")}>
@@ -331,9 +329,12 @@ export function ContainersNote({ plan }: { plan: SessionPlan }) {
           <span>
             Sans bol, au moment :{" "}
             {note.moment.map((x, k) => (
-              <span key={x.letter}>
-                {k ? ", " : ""}
-                {lower(x.names.join(", "))} <BowlChip plan={plan} letter={x.letter} />
+              <span key={x.letters[0]}>
+                {k ? " ; " : ""}
+                {x.names.join(", ")}{" "}
+                {x.letters.map((l) => (
+                  <BowlChip key={l} plan={plan} letter={l} />
+                ))}
               </span>
             ))}
             . L’étape dira quoi peser.

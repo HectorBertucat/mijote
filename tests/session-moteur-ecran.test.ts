@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { planSession, type PlannerResources, type PlanStep, type SessionMode, type SessionPlan } from "@/lib/session/planner";
 import { reduce, type SessionEvent } from "@/lib/session/state";
-import { attentionOf, batchesLabel, containerNote, isContainerWarning, lanesOf, mainAction, mainEvents, missingText, remindersOf, sharedBases, shareOf, takeAt, takeOf, weighLine, type Ev } from "@/lib/session/guide";
+import { attentionOf, batchesLabel, containerNote, isContainerWarning, lanesOf, mainAction, mainEvents, missingText, phaseText, remindersOf, sharedBases, shareOf, takeAt, takeOf, weighLine, type Ev } from "@/lib/session/guide";
 import { momentBowls, prepBowls } from "@/lib/session/flow";
 import { stepHead, stepTitleOf } from "@/lib/session/text";
 import { splitShared } from "@/lib/boxes/core";
@@ -118,6 +118,9 @@ test("base commune : le riz de deux recettes en une ligne, le partage par recett
   assert.deepEqual(sh.lines.map((l) => l.recipeSlug), rice.shared!.map((p) => p.recipeSlug));
   assert.ok(sh.lines.every((l) => l.qty.endsWith("cuit") && l.color));
   assert.equal(sharedBases(plan).length, 1);
+  assert.match(sharedBases(plan)[0].equipment ?? "", /^(le|la|l') /, "« dans le faitout »");
+  assert.equal(phaseText(rice, rice.phases!.length - 1), "Partage le riz");
+  assert.equal(phaseText(rice, 0), rice.phases![0].text);
   // 2,1 kg de riz cuit pesés d'un coup : chaque recette sa part, à 5 g près, rien de perdu.
   const parts = splitShared(2130, sh.lines.map((l) => ({ key: l.recipeSlug, share: l.share })));
   assert.equal(Object.values(parts).reduce((x, y) => x + y, 0), 2130);
@@ -190,7 +193,8 @@ test("contenants : ce qui manque se dit avant de commencer, une seule fois", () 
   const few: KitchenConfig = { ...KITCHEN, containers: { bowls: { petit: { count: 1, liters: 0.5 }, moyen: { count: 1, liters: 1.5 }, grand: { count: 1, liters: 3 } }, prepBoxes: { count: 0, liters: 1 }, storageBoxes: { count: 6, liters: 1 }, ovenTrays: 1 } };
   const plan = planOf("solo", few);
   const note = containerNote(plan)!;
-  assert.ok(note.moment.some((m) => m.names.some((n) => /Pulpe/.test(n))), "la pulpe se pèse au moment");
+  assert.ok(note.moment.some((m) => m.names.includes("pulpe de tomate")), "la pulpe se pèse au moment");
+  assert.ok(note.moment.some((m) => m.names.join() === "riz basmati" && m.letters.length === 3), "le riz des trois recettes en une ligne");
   assert.ok(note.missing || note.order.length, "trois bols ne suffisent pas : il en manque, ou un ordre de remplissage");
   if (note.missing) {
     const m = missingText(note.missing);

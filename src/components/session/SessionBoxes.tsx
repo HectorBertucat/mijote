@@ -9,7 +9,7 @@ import { DishArts } from "./parts";
 import { PotSplit } from "@/components/boxes/PotSplit";
 import { Field, Input } from "@/components/ui";
 import { loadSessionPots } from "@/app/frigo/actions";
-import { gramsLabel, splitShared } from "@/lib/boxes/core";
+import { splitShared } from "@/lib/boxes/core";
 import { sharedBases } from "@/lib/session/guide";
 import type { SessionPlan } from "@/lib/session/planner";
 
@@ -40,7 +40,7 @@ export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: 
   for (const b of bases) {
     const total = grams(common[b.stepId] ?? "");
     const parts = total != null ? splitShared(total, b.lines.map((l) => ({ key: l.recipeSlug, share: l.share }))) : null;
-    for (const l of b.lines) sideOf.set(l.recipeSlug, { grams: parts?.[l.recipeSlug] ?? null, note: `${Math.round(l.share * 100)} % ${b.the.replace(/^le |^les |^l’/, (m) => ({ "le ": "du ", "les ": "des ", "l’": "de l’" })[m] ?? m)} commun${parts ? ` (${gramsLabel(parts[l.recipeSlug])})` : ""}` });
+    for (const l of b.lines) sideOf.set(l.recipeSlug, { grams: parts?.[l.recipeSlug] ?? null, note: `${Math.round(l.share * 100)} % ${b.the.replace(/^le |^les |^l’/, (m) => ({ "le ": "du ", "les ": "des ", "l’": "de l’" })[m] ?? m)} commun${parts ? ` : ${parts[l.recipeSlug].toLocaleString("fr-FR")} g` : ""}` });
   }
   return (
     <section className="grid gap-6 md:grid-cols-12 md:gap-6" aria-labelledby="boites-titre">
@@ -55,7 +55,7 @@ export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: 
           <li key={b.stepId} className="grid gap-3 border-t border-line-strong py-6 first:pt-6" data-commun={b.label}>
             <h3 className="text-h3">{b.the.charAt(0).toLocaleUpperCase("fr") + b.the.slice(1)} commun</h3>
             <p className="text-[17px] text-ink-2">
-              Cuit ensemble{b.equipment ? ` dans ${b.equipment.toLocaleLowerCase("fr")}` : ""} pour {b.lines.map((l) => l.name).join(" et ")}. Si tu l’as déjà partagé, pèse chaque part plus bas ; sinon pèse tout ici, chaque recette reçoit sa part.
+              Cuit ensemble{b.equipment ? ` dans ${b.equipment}` : ""} pour {b.lines.map((l) => l.name).join(" et ")}. Si tu l’as déjà partagé, pèse chaque part plus bas ; sinon pèse tout ici, chaque recette reçoit sa part.
             </p>
             <div className="max-w-[280px]">
               <Field label={`${b.label.charAt(0).toLocaleUpperCase("fr") + b.label.slice(1)} cuit, en tout`}>

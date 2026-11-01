@@ -2273,6 +2273,7 @@ function ofArticle(name: string) {
   return a.startsWith("le ") ? `du ${a.slice(3)}` : `de ${a}`;
 }
 
-function article(name: string) {
+/** « le faitout », « la cocotte », « l'air fryer » : le nom d'un récipient avec son article. */
+export function article(name: string) {
   return /^(Poêle|Cocotte|Casserole|Petite|Grande|Planche|Seconde|Plaque)/.test(name) ? `la ${name}` : /^[AEIOUYÉ]/.test(name) ? `l'${name}` : `le ${name}`;
 }

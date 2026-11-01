@@ -26,7 +26,7 @@ import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
 import { Bowl, bowlName, clock, DishArts, dur, hobName, mmss, PersonMono, QrCard, recipeOf, SessionTest, shortName, stepHead, stepColor, useRingAlarm, useWakeLock, WakePill } from "./parts";
 import { typo } from "@/lib/typo";
-import { attentionOf, batchesLabel, fmtMin, ringInfo, timedPhase } from "@/lib/session/guide";
+import { attentionHint, attentionOf, batchesLabel, fmtMin, phaseText, remindersOf, ringInfo, timedPhase } from "@/lib/session/guide";
 import { AttentionTag, BowlText, Lanes, RecipeContext, RingDetails, SharedSplit, TakeBowls, TimerBar, RestartButtons, useRestart } from "./guide";
 import { PhaseNext } from "./blocks";
 
@@ -469,7 +469,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
                   <Bowl bowl={b} size="lg" ready={ready} />
                   <span className="grid min-w-0 gap-2">
                     <span className="flex items-baseline justify-between gap-3">
-                      <span className="label truncate text-ink-2">{recipeOf(plan, b.recipeSlug)?.name}</span>
+                      <span className="label truncate text-ink-2">{[b.containerLabel, recipeOf(plan, b.recipeSlug)?.name].filter(Boolean).join(" · ")}</span>
                       <span className={`label shrink-0 ${now ? "text-accent" : "text-ink-2"}`}>{ready ? "Prêt" : now ? "Maintenant" : ""}</span>
                     </span>
                     <span className="grid">
@@ -478,7 +478,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
                           <FoodIllu food={i.food} item={i.item} size={40} live={now} label={i.item.split(/[,(]/)[0].trim()} />
                           <span className="min-w-0">
                             {typo(i.item)}
-                            {i.optional && <span className="text-ink-2"> (facultatif)</span>}
+                            {i.optional && !/facultatif/i.test(i.item) && <span className="text-ink-2"> (facultatif)</span>}
                           </span>
                           <b className="num-tight text-right text-[20px]">{i.qty}</b>
                         </span>
@@ -588,7 +588,7 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
   const { head, rest } = stepHead(step);
   const batch = st === "active" ? batchOf(state, step) : null;
   const late = st === "todo" ? Math.round((now - (cookingStart + step.startMin * 60000)) / 60000) : 0;
-  const consigne = phase?.text ?? head;
+  const consigne = phase ? phaseText(step, n!) : head;
   return (
     <article key={`${step.id}:${n ?? "-"}`} className="sx-swap grid gap-6" aria-live="polite">
       <header className="flex items-center gap-4">
@@ -601,7 +601,7 @@ export function StepNow({ plan, c, step }: { plan: SessionPlan; c: Controls; ste
         <h1 className="sx-consigne">
           <BowlText plan={plan} text={consigne} ready={state.bowlsReady} />
         </h1>
-        {phase?.wait && <p className="text-lead text-ink-2">Attente : fais autre chose, ça sonnera.</p>}
+        {phase && n != null && attentionOf(step, n) !== "mains" && <p className="text-lead text-ink-2">{attentionHint(attentionOf(step, n), remindersOf(step, n, phase.min))}</p>}
         {!phase && rest && !step.phases?.length && <p className="text-lead"><BowlText plan={plan} text={rest} ready={state.bowlsReady} /></p>}
         {step.phases && step.phases.length > 1 && st === "todo" && <p className="text-lead text-ink-2">{step.phases.length} sous-étapes, une à la fois. Aucun minuteur ne part tout seul.</p>}
       </div>

@@ -73,6 +73,16 @@ Champs ajoutés le 01/11/2026 (tous facultatifs : un plan enregistré avant rest
 
 Les gestes de pesée (« Pèse et verse : … ») donnent maintenant les quantités. `PLAN_VERSION` passe à 5 : les sessions ouvertes refont leur plan au réimport.
 
+## Ce que l'écran en fait
+
+`src/lib/session/guide.ts` (pur, `tests/session-moteur-ecran.test.ts`) lit ces champs ; un plan d'avant qui ne les porte pas reste lisible (texte découpé, attention devinée, bols de l'étape) :
+- `stepHead` (`text.ts`) : `title` et `detail`, sinon la première phrase du texte ;
+- `takeOf` : les bols à prendre avec leur contenant, ce qui se pèse au moment (un même aliment de plusieurs recettes en une ligne, la part de chacune), le placard ; `takeAt` : ce qui entre à la sous-étape en cours ;
+- `prepBowls` (`flow.ts`) n'attend jamais un groupe `moment` ;
+- `attentionOf`, `remindersOf`, `attentionHint` : l'attention et les rappels de la sous-étape, ou de l'attente qui finit l'étape (la même règle que le planificateur, `waitAttention`) ;
+- `shareOf`, `sharedBases` : la part cuite de chaque recette d'une cuisson commune ; en fin de session, la base commune se pèse une fois et `splitShared` (`src/lib/boxes/core.ts`) donne à chaque recette sa part, à 5 g près ;
+- `batchesLabel`, `containerNote`, `missingText` : fournées, bols qui manquent, ordre de remplissage, groupes du moment.
+
 ## Audit
 
 `pnpm plan:audit` planifie toutes les paires dans trois cuisines fictives (standard, petite, grande) et tous les triplets dans la cuisine standard (`--tout` : dans chaque cuisine), seul et à deux, et vérifie avec `auditPlan` : aucun récipient trop petit en silence, pas plus de bols que l'inventaire (ou le plan le dit), bases regroupées, quantités sur chaque étape qui prend des bols, jamais deux tâches « mains » à la fois, aucune erreur. `--paires` affiche l'ancien tableau (durée face à la borne basse). Les tests de paires (`tests/planner-pairs.ts`) passent chaque paire à `auditPlan`.
