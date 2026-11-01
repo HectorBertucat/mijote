@@ -5,6 +5,7 @@ import { buttonClass } from "@/components/ui";
 import { GOAL_LABEL } from "@/lib/health/core";
 import { frDate } from "@/lib/health/goal-format";
 import { projection, SPORTS, weekAgainstPlan, weeklyCounts, type Session, type SportPlanItem } from "@/lib/health/goals";
+import { typo } from "@/lib/typo";
 import { NB, Row, Section, signed, Verdict } from "./carnet";
 
 const fr = (x: number, d = 1) => x.toFixed(d).replace(".", ",");
@@ -21,7 +22,7 @@ export interface GoalSummary {
   constraints: string | null;
 }
 
-export function GoalCard({ g, sessions, monday, today, coachLink = true, className = "" }: { g: GoalSummary; sessions: Session[]; monday: string; today: string; coachLink?: boolean; className?: string }) {
+export function GoalCard({ g, sessions, monday, today, coachLink = true, ai = true, className = "" }: { g: GoalSummary; sessions: Session[]; monday: string; today: string; coachLink?: boolean; ai?: boolean; className?: string }) {
   const eta = g.targetWeightKg != null && g.trendKg != null ? projection(g.trendKg, g.targetWeightKg, g.ratePct, today) : null;
   const late = eta && g.targetDate && eta.date > g.targetDate;
   const week = weekAgainstPlan(sessions, g.plan, monday);
@@ -50,8 +51,7 @@ export function GoalCard({ g, sessions, monday, today, coachLink = true, classNa
           {g.goal && (
             <Row k="Rythme">
               <span className="num">
-                {signed(g.ratePct, 2)}
-                {NB}% du poids par semaine
+                {Math.abs(g.ratePct) < 0.005 ? "poids stable" : `${signed(g.ratePct, 2)}${NB}% du poids par semaine`}
               </span>
             </Row>
           )}
@@ -75,13 +75,13 @@ export function GoalCard({ g, sessions, monday, today, coachLink = true, classNa
           )}
           {g.constraints && (
             <Row k="Ce que tu peux faire">
-              <span className="whitespace-pre-wrap text-small">{g.constraints}</span>
+              <span className="whitespace-pre-wrap">{typo(g.constraints)}</span>
             </Row>
           )}
         </dl>
       )}
       <div className="flex flex-wrap gap-2">
-        {coachLink && (
+        {coachLink && (empty || ai) && (
           <Link href="/sante/objectifs" className={buttonClass({ size: "sm", variant: empty ? "primary" : "secondary" })}>
             {empty ? "Fixer mes objectifs" : "En parler au coach"}
           </Link>

@@ -528,7 +528,7 @@ function criteria(st: State, w: string, x: PlanInput, runs: DoneRun[], planned: 
         { label: "3 dernières semaines : 2 sorties au moins, 80 % des séances faites", ok: last3.every((s) => s.runs >= 2 && s.runs >= P2_DONE_SHARE * s.planned) },
         { label: `Une sortie longue de ${P2_LONG_MIN} min ou plus, facile`, ok: longs.length > 0 },
         { label: "Aucune douleur depuis 14 jours", ok: pains(P2_PAIN_DAYS) },
-        { label: "Découplage de la dernière sortie longue sous 8 %", ok: lastLong?.decoupling == null || lastLong.decoupling < P2_DECOUPLING_MAX },
+        { label: "Cœur stable sur la dernière sortie longue (découplage sous 8 %)", ok: lastLong?.decoupling == null || lastLong.decoupling < P2_DECOUPLING_MAX },
       ],
     };
   }
@@ -538,7 +538,7 @@ function criteria(st: State, w: string, x: PlanInput, runs: DoneRun[], planned: 
     phase: 3,
     criteria: [
       { label: `${P3_MIN_WEEKS} semaines d’endurance`, ok: st.weekInPhase >= P3_MIN_WEEKS },
-      { label: `Deux sorties de ${P3_LONG_MIN} min ou plus, découplage sous 5 %`, ok: longs.length >= 2 },
+      { label: `Deux sorties de ${P3_LONG_MIN} min ou plus, le cœur stable (découplage sous 5 %)`, ok: longs.length >= 2 },
       { label: "3 sorties par semaine sur 6 semaines", ok: six.every((c) => c >= 3) },
       { label: "Aucune douleur depuis 21 jours", ok: pains(P3_PAIN_DAYS) },
     ],

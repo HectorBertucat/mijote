@@ -89,13 +89,13 @@ export default async function Demarrer({ searchParams }: { searchParams: Promise
                   {examples.map(({ r, part }) => (
                     <li key={r.id} className="grid gap-1 border-b border-line py-3">
                       <span className="flex items-baseline justify-between gap-4">
-                        <Link href={`/recettes/${r.slug}`} className="min-w-0 font-bold hover:underline hover:underline-offset-4">
+                        <Link href={`/recettes/${r.slug}`} className="-my-2.5 min-w-0 py-2.5 font-bold hover:underline hover:underline-offset-4">
                           {r.name}
                         </Link>
                         <b className="num whitespace-nowrap">{unitsLabel(part.units)}</b>
                       </span>
                       <span className="flex flex-wrap items-baseline justify-between gap-x-4 text-small text-ink-2">
-                        <span className="num">{`${part.kcal}${NB}kcal · ${part.protein}${NB}g`}</span>
+                        <span className="num">{`${part.kcal == null ? "—" : fr(part.kcal)}${NB}kcal · ${part.protein}${NB}g`}</span>
                         {part.verdict && <Verdict tone={verdictTone(part.verdict.protein === "low" ? "low" : part.verdict.kcal)}>{part.verdict.protein === "low" ? "peu de protéines" : WORD[part.verdict.kcal]}</Verdict>}
                       </span>
                     </li>

@@ -71,6 +71,8 @@ export function LineChart({
   const main = layers.find((l): l is Extract<LineLayer, { type: "line" }> => l.type === "line");
   const lastI = main ? main.values.findLastIndex((v) => v != null) : -1;
   const xs = x.map(fx);
+  const endText = main && lastI >= 0 ? format(main.values[lastI]!) : "";
+  const endSide = main && lastI >= 0 ? labelSide(py(main.values[lastI]!)!, endText.length, layers, xs, py, height) : "above";
   const tips: Tip[] = x.map((_, i) => ({
     title: titles[i] ?? "",
     rows: layers.flatMap((l): TipRow[] => {
@@ -89,8 +91,9 @@ export function LineChart({
             <div className="relative" style={{ height }}>
               {zones?.map((z) => (
                 <div key={z.label} aria-hidden className="absolute inset-x-0" style={{ top: `${(1 - fy(Math.min(z.to, d.hi))) * 100}%`, bottom: `${fy(Math.max(z.from, d.lo)) * 100}%` }}>
-                  <span className="absolute inset-0 opacity-[0.16]" style={{ background: z.color }} />
-                  <span className="label absolute right-1 top-1 text-ink-2">{z.label}</span>
+                  <span className="absolute inset-0 opacity-(--viz-zone-wash)" style={{ background: z.color }} />
+                  <span className="absolute inset-x-0 top-0 h-px opacity-(--viz-zone-rule)" style={{ background: z.color }} />
+                  <span className="label absolute right-1 top-1 text-ink">{z.label}</span>
                 </div>
               ))}
               <YGrid ticks={ticks} pos={fy} />
@@ -103,8 +106,8 @@ export function LineChart({
                 })}
               </svg>
               {endLabel && main && lastI >= 0 && (
-                <span aria-hidden className="pointer-events-none absolute right-0 -translate-y-[calc(100%+6px)] whitespace-nowrap rounded-[4px] bg-bg px-1 text-small font-bold text-ink" style={{ top: `${(1 - fy(main.values[lastI]!)) * 100}%` }}>
-                  {format(main.values[lastI]!)}
+                <span aria-hidden className={`pointer-events-none absolute right-0 ${endSide === "above" ? "-translate-y-[calc(100%+6px)]" : "translate-y-[6px]"} whitespace-nowrap rounded-[4px] bg-bg px-1 text-small font-bold text-ink`} style={{ top: `${(1 - fy(main.values[lastI]!)) * 100}%` }}>
+                  {endText}
                 </span>
               )}
             </div>
@@ -115,4 +118,18 @@ export function LineChart({
       <ChartTable caption={label} tips={tips} />
     </div>
   );
+}
+
+/**
+ * Au-dessus ou au-dessous du dernier point, l'étiquette de fin ? Du côté où aucune courbe ni aucun point ne passe
+ * sous elle : sa largeur estimée sur un tracé de téléphone (≈ 320 px), la hauteur d'une ligne ; dans le cadre avant tout.
+ */
+function labelSide(yEnd: number, chars: number, layers: LineLayer[], xs: number[], py: (v: number | null) => number | null, height: number): "above" | "below" {
+  const box = 26;
+  const from = 1 - Math.min(0.5, Math.max(0.12, (chars * 8 + 12) / 320));
+  const hits = (lo: number, hi: number) =>
+    layers.reduce((n, l) => (l.type === "band" ? n : n + l.values.filter((v, i) => xs[i] >= from && v != null && py(v)! > lo && py(v)! < hi).length), 0);
+  const above = yEnd - box < 0 ? Infinity : hits(yEnd - box, yEnd - 2);
+  const below = yEnd + box > height ? Infinity : hits(yEnd + 2, yEnd + box);
+  return below < above ? "below" : "above";
 }

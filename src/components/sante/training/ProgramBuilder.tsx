@@ -133,9 +133,9 @@ export function ProgramBuilder({ personId, personName, templates, aiReady, onDon
         </div>
       </section>
 
-      {result && !result.ok && <Alert tone="ko" title="Pas de programme">{result.error}</Alert>}
+      {result && !result.ok && <Alert tone="ko" role="alert" title="Pas de programme">{result.error}</Alert>}
       {result?.ok && (result.explanation || result.warnings.length > 0) && (
-        <Alert tone={result.warnings.length ? "warn" : "ok"} title={`« ${result.name} » est prêt`} action={onDone && <Button onClick={onDone}>Voir</Button>}>
+        <Alert tone={result.warnings.length ? "warn" : "ok"} role="status" title={`« ${result.name} » est prêt`} action={onDone && <Button onClick={onDone}>Voir</Button>}>
           {result.explanation && <p>{result.explanation}</p>}
           {result.warnings.map((w) => (
             <p key={w}>{w}</p>

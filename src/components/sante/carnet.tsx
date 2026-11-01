@@ -3,6 +3,7 @@
 // utilisables dans une page serveur.
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui";
+import { bigNum } from "@/components/ui/charts/core";
 
 /** Espace insécable (avant une unité, « : », « ? ») et fine insécable (dans « »). */
 export const NB = " ";
@@ -22,7 +23,7 @@ export function KeyFigure({ label, value, unit, sub, size = "xl", tone, classNam
     <div className={`grid min-w-0 content-start gap-3 ${className}`}>
       <span className="label text-ink-2">{label}</span>
       <b className={`num-tight block whitespace-nowrap ${big} ${tone ? TONE_TEXT[tone] : "text-ink"}`}>
-        {value}
+        {bigNum(value)}
         {unit && <span className="ml-2 align-baseline text-[0.3em] font-[650] tracking-normal text-ink-2 [font-stretch:100%]">{unit}</span>}
       </b>
       {sub != null && <span className="text-small text-ink-2">{sub}</span>}

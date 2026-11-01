@@ -66,7 +66,7 @@ function Proposal({ m, last }: { m: CoachView; last: boolean }) {
           </Button>
         </div>
       )}
-      {error && <p className="text-small text-ko-ink">{error}</p>}
+      {error && <p role="alert" className="text-small text-ko-ink">{error}</p>}
     </div>
   );
 }
@@ -149,7 +149,7 @@ export function Coach({ personId, personName, messages, starters }: { personId: 
           ))}
         </ul>
       )}
-      {error && <p className="text-small text-ko-ink">{error}</p>}
+      {error && <p role="alert" className="text-small text-ko-ink">{error}</p>}
 
       <form
         className="grid gap-3"

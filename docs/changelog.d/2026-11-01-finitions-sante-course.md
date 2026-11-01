@@ -1,0 +1,11 @@
+## 2026-11-01 : Santé et Course, passe de finition
+- Bandeau de la démo : une seule ligne au téléphone (« Démo · s’efface après 2 h », Recommencer en icône, Installer), la phrase entière plus large.
+- Sous-menu de Santé : le bord coupé s’estompe quand la rangée défile (`.k-edge-fade` du kit), et l’onglet en cours est ramené dans le cadre au téléphone.
+- Gros chiffres : séparateur des milliers lisible en Archivo serrée (`bigNum`, « 9 472 » et non « 9472 ») ; vrai moins sur les axes (« −50 »).
+- Zones cardiaques derrière la courbe de FC lisibles en clair comme en sombre : lavis par mode (`--viz-zone-wash`), filet à chaque limite, nom à l’encre (AA) ; la marche au trait dans « Temps par zone » ; six repères au plus sous la courbe.
+- Étiquette de fin de courbe (« 81,6 kg », « 17 ») posée du côté libre, sans chevaucher la ligne ni les points.
+- Tableaux pour lecteurs d’écran : chaque valeur sous sa colonne même quand une série manque un jour ; messages des formulaires annoncés (`role="status"` / `alert`).
+- Cibles de 44 px : choix de la période, liens isolés (Annuler, Mes habitudes, recettes de la mise en route).
+- Mots : la forme dite simplement sur la vue d’ensemble (« Travail et repos s’équilibrent »), critères de phase sans jargon (« le cœur stable »), « sur ta montre » partout, « poids stable » plutôt que « 0,00 % », kettlebell en entier hors téléphone ; apostrophes et guillemets typographiques, milliers dans les parts de la mise en route.
+- Sans IA, la vue d’ensemble ne propose plus « En parler au coach ».
+- Squelettes de chargement fidèles pour Course › Sorties et Course › Réglages.

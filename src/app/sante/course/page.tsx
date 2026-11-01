@@ -115,7 +115,7 @@ function Settings({ v }: { v: CourseView }) {
     >
       <p className="max-w-[62ch] text-body text-ink-2">
         {`${p.perWeek} sorties par semaine, ${days} ; objectif : ${GOAL_LABEL[p.goal as RunGoal].toLowerCase()}`}
-        {p.goalNote ? ` (« ${p.goalNote} »)` : ""}.
+        {p.goalNote ? typo(` (« ${p.goalNote} »)`) : ""}.
       </p>
       <form className="flex flex-wrap items-center gap-4">
         {v.plan.paused ? (

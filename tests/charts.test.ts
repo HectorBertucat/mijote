@@ -2,7 +2,7 @@
 // coupés aux trous, point le plus proche du pointeur, niveaux du calendrier, textes à la française.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bandPath, dateTicks, dayNum, dotsPath, fmt, fmtDay, hmin, levelOf, linePath, nearest, niceDomain, niceStep, NO_DATA, shiftDay, tableRows, tickText, tipText } from "@/components/ui/charts/core";
+import { bandPath, bigNum, dateTicks, dayNum, dotsPath, fmt, fmtDay, hmin, levelOf, linePath, nearest, niceDomain, niceStep, NO_DATA, shiftDay, tableRows, tickText, tipText } from "@/components/ui/charts/core";
 
 test("pas ronds et domaines : zéro en bas pour des barres, une série plate s'ouvre", () => {
   assert.equal(niceStep(10, 4), 2.5);
@@ -20,6 +20,7 @@ test("pas ronds et domaines : zéro en bas pour des barres, une série plate s'o
 test("textes : chiffres français, « 12 k », heures et minutes", () => {
   assert.equal(fmt(8412), "8 412");
   assert.equal(fmt(81.24, 1), "81,2");
+  assert.equal(tickText(-50), "−50", "un vrai moins sur les repères");
   assert.equal(tickText(15_000), "15 k");
   assert.equal(tickText(5000), "5 000");
   assert.equal(tickText(2.5, 1), "2,5");
@@ -99,7 +100,7 @@ test("tableau des lecteurs d'écran : une suite sans mesure en une ligne, les me
 
 test("formats : les formateurs gardés rendent la même chose que toLocaleString", () => {
   for (const [v, d] of [[8400, 0], [81.25, 1], [-0.5, 2], [1234567.891, 1]] as const) {
-    assert.equal(fmt(v, d), v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }));
+    assert.equal(fmt(v, d), v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/^-/, "−"), "au vrai moins près");
     assert.equal(fmt(v, d), fmt(v, d), "deuxième appel, même formateur");
   }
   assert.equal(fmtDay("2026-11-03", "weekday"), new Date("2026-11-03T12:00:00Z").toLocaleDateString("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }));

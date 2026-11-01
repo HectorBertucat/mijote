@@ -9,8 +9,9 @@ import { dayLabel } from "@/lib/running/dates";
 import { NB, Section } from "../carnet";
 import { hourText } from "./Today";
 
+/** Au téléphone, une colonne fait 45 px : le mot court ; plus large, le mot entier. */
 const SHORT: Record<OtherKind, string> = { natation: "nage", kettlebell: "kb", renfo: "renfo", velo: "vélo", marche: "marche", autre: "autre" };
-export const STATUS_TEXT: Record<PlannedRow["status"], string> = { prevue: "prévue", programmee: "sur la montre", faite: "faite", manquee: "manquée", annulee: "annulée" };
+export const STATUS_TEXT: Record<PlannedRow["status"], string> = { prevue: "prévue", programmee: "sur ta montre", faite: "faite", manquee: "manquée", annulee: "annulée" };
 
 /** La marque d'un jour : la course (minutes) pleine si faite, au trait si prévue, barrée si manquée. */
 function DayMark({ d }: { d: WeekDay }) {
@@ -55,7 +56,8 @@ export function WeekStrip({ v }: { v: CourseView }) {
               <span aria-hidden className="grid gap-0.5 text-[12px] leading-tight text-ink-2">
                 {others.map((k, i) => (
                   <span key={`${k}-${i}`} className={`truncate ${d.fixed.includes(k as OtherKind) && i >= d.others.length ? "text-ink-3" : ""}`}>
-                    {SHORT[k as OtherKind]}
+                    <span className="sm:hidden">{SHORT[k as OtherKind]}</span>
+                    <span className="max-sm:hidden">{OTHER_LABEL[k as OtherKind].toLowerCase()}</span>
                   </span>
                 ))}
               </span>

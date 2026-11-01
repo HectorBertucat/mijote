@@ -57,7 +57,7 @@ export function FixedRefForm({ personId, value }: { personId: string; value: Ref
           </Button>
         )}
       </div>
-      {msg && <Alert tone={msg.ok ? "ok" : "ko"}>{msg.message}</Alert>}
+      {msg && <Alert tone={msg.ok ? "ok" : "ko"} role={msg.ok ? "status" : "alert"}>{msg.message}</Alert>}
     </section>
   );
 }

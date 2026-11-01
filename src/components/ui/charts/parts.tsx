@@ -1,7 +1,7 @@
 // Les pièces communes des graphiques, sans état (rendu serveur) : le cadre (titre, chiffre de tête, légende,
 // tableau pour les lecteurs d'écran), la grille horizontale, l'axe des dates, l'état vide.
 import type { ReactNode } from "react";
-import { tableRows, type Tip } from "./core";
+import { bigNum, tableRows, type Tip } from "./core";
 
 /** Un graphique dans la page : un repère, une lecture à droite (la valeur qui compte), le dessin, la légende. */
 export function ChartFigure({ title, value, aside, legend, table, children, className = "" }: { title: ReactNode; value?: ReactNode; aside?: ReactNode; legend?: ReactNode; table?: ReactNode; children: ReactNode; className?: string }) {
@@ -25,7 +25,7 @@ export function ChartFigure({ title, value, aside, legend, table, children, clas
 export function ChartValue({ value, unit, sub }: { value: ReactNode; unit?: ReactNode; sub?: ReactNode }) {
   return (
     <>
-      <b className="num-tight text-[28px] leading-none text-ink">{value}</b>
+      <b className="num-tight text-[28px] leading-none text-ink">{bigNum(value)}</b>
       {unit && <span className="ml-1 text-small text-ink-2">{unit}</span>}
       {sub && <span className="block pt-1 text-small text-ink-2">{sub}</span>}
     </>
@@ -56,7 +56,8 @@ export function Legend({ items, className = "" }: { items: LegendItem[]; classNa
 /** Les mêmes chiffres en tableau, pour les lecteurs d'écran (le dessin, lui, est muet). Dans une boîte masquée :
  * un tableau ne se laisse pas réduire à 1 px et allongerait la page. Les suites sans mesure tiennent en une ligne (`tableRows`). */
 export function ChartTable({ caption, tips }: { caption: string; tips: Tip[] }) {
-  const cols = tips[0]?.rows.map((r) => r.label ?? "Valeur") ?? [];
+  // Les colonnes de toutes les lignes (un jour sans pesée n'a pas de ligne « pesée »), chaque valeur sous la sienne.
+  const cols = [...new Set(tips.flatMap((t) => t.rows.map((r) => r.label ?? "Valeur")))];
   return (
     <div className="sr-only">
       <table>
@@ -75,8 +76,8 @@ export function ChartTable({ caption, tips }: { caption: string; tips: Tip[] }) 
           {tableRows(tips).map((t, i) => (
             <tr key={i}>
               <th scope="row">{t.title}</th>
-              {cols.map((c, k) => (
-                <td key={c}>{t.rows[k]?.value ?? "—"}</td>
+              {cols.map((c) => (
+                <td key={c}>{t.rows.find((r) => (r.label ?? "Valeur") === c)?.value ?? "—"}</td>
               ))}
             </tr>
           ))}

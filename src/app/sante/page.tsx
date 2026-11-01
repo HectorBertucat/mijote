@@ -7,6 +7,7 @@ import { Evolution } from "@/components/sante/overview/Evolution";
 import { KeyTiles } from "@/components/sante/overview/KeyTiles";
 import { RecentActivity } from "@/components/sante/overview/RecentActivity";
 import { RunningSection } from "@/components/sante/overview/Running";
+import { aiEnabled } from "@/lib/ai";
 import { db } from "@/lib/db/client";
 import { activePerson } from "@/lib/health/active";
 import { missingForEstimate, rateOf, type Confidence } from "@/lib/health/core";
@@ -124,7 +125,7 @@ export default async function Sante({ searchParams }: { searchParams: Promise<{ 
       <Evolution o={o} />
 
       <div className="grid gap-12 lg:grid-cols-12 lg:gap-6">
-        <GoalCard g={goals} sessions={sessions} monday={monday} today={today} className="lg:col-span-7" />
+        <GoalCard g={goals} sessions={sessions} monday={monday} today={today} ai={aiEnabled()} className="lg:col-span-7" />
         <Section title="Tour de taille" id="taille" className="lg:col-span-5" aside={isMonday && <span className="label text-accent">C’est lundi</span>}>
           {waist.length > 0 ? (
             <div className="grid grid-cols-2 gap-6">

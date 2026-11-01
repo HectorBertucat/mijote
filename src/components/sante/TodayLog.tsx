@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, buttonClass, Check, Field, Input, RecipeTile, Segmented, Sheet, Stepper, Tabs, Textarea } from "@/components/ui";
+import { bigNum } from "@/components/ui/charts/core";
 import { HowCalc, NB, Note, qty, Section, Verdict } from "./carnet";
 import { useToast } from "@/components/cart/Toast";
 import { changeUnits, eatFree, eatRecipe, eatTemplate, estimateFree, markComplete, removeEntry } from "@/app/sante/actions";
@@ -103,7 +104,7 @@ export function TodayLog(p: TodayProps) {
           id="acocher"
           aside={
             p.hasHabits && (
-              <Link href="/sante/habitudes" className="text-small font-bold text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
+              <Link href="/sante/habitudes" className="inline-flex min-h-tap items-center text-small font-bold text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink hover:decoration-ink">
                 Mes habitudes
               </Link>
             )
@@ -284,7 +285,7 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
             <Button icon="sparkdraft" state={estimating ? "loading" : "idle"} loadingLabel="Estimation…" disabled={text.trim().length < 3} onClick={estimate}>
               Estimer avec l’IA
             </Button>
-            {err && <p className="text-small text-ko-ink">{err}</p>}
+            {err && <p role="alert" className="text-small text-ko-ink">{err}</p>}
             {est && <p className="text-small text-ink-2">{est.note}</p>}
             <div className="grid grid-cols-[minmax(0,1fr)_88px_76px] items-end gap-2">
               <Field label="Nom">{(id) => <Input id={id} value={manual.label} onChange={(e) => setManual({ ...manual, label: e.target.value })} placeholder="Resto" />}</Field>
@@ -354,8 +355,8 @@ function Eaten({ label, value, unit, target, tone, word, sub, className = "" }: 
     <div className={`grid min-w-0 content-start gap-3 ${className}`}>
       <span className="label text-ink-2">{label}</span>
       <b className="num-tight text-num-xl whitespace-nowrap">
-        {Math.round(value).toLocaleString("fr-FR")}
-        <span className="ml-2 text-[0.3em] font-[650] text-ink-2 [font-stretch:100%]">{target ? `/ ${target.toLocaleString("fr-FR")}${NB}${unit}` : unit}</span>
+        {bigNum(Math.round(value))}
+        <span className="ml-2 text-[0.3em] font-[650] text-ink-2 [font-stretch:100%]">{target ? `/${NB}${bigNum(target)}${NB}${unit}` : unit}</span>
       </b>
       {target != null && (
         <span className="relative block h-1 bg-surface-2" aria-hidden>

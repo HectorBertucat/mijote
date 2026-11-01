@@ -168,7 +168,7 @@ export function SetupForm({
                 <li key={h}>{h}</li>
               ))}
             </ul>
-            <Link href={`/sante/habitudes?p=${personId}`} className="font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
+            <Link href={`/sante/habitudes?p=${personId}`} className="inline-flex min-h-tap items-center justify-self-start font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
               Modifier mes habitudes
             </Link>
           </div>

@@ -89,7 +89,7 @@ export function CloudflareForm({ saved }: { saved: string | null }) {
           </Button>
         )}
       </div>
-      {message && <p className={`text-small ${message.ok ? "text-ok-ink" : "text-ko-ink"}`}>{message.text}</p>}
+      {message && <p role={message.ok ? "status" : "alert"} className={`text-small ${message.ok ? "text-ok-ink" : "text-ko-ink"}`}>{message.text}</p>}
     </form>
   );
 }
@@ -113,7 +113,7 @@ export function LinkTools({ personId }: { personId: string }) {
           Changer la clé
         </Button>
       </div>
-      {message && <p className="text-small text-ink-2">{message}</p>}
+      {message && <p role="status" className="text-small text-ink-2">{message}</p>}
     </div>
   );
 }

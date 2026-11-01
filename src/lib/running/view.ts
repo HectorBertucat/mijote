@@ -299,6 +299,8 @@ export interface FormWords {
   band: FormBand | null;
   /** Variation de la forme sur 4 semaines. */
   delta28: number | null;
+  /** Ce que dit la fraîcheur, sans chiffre (« travail et repos s’équilibrent »), null sans fraîcheur. */
+  words: string | null;
   sentence: string;
 }
 
@@ -316,7 +318,7 @@ export function formWords(days: FitnessDay[]): FormWords | null {
   parts.push(`Fatigue ${fatigue}.`);
   if (band && last.tsbPct != null) parts.push(`Fraîcheur ${signedInt(last.tsbPct)}${NB}% : ${FORM_WORDS[band]}.`);
   else parts.push("Pas encore assez de séances pour parler de fraîcheur.");
-  return { forme, fatigue, fraicheur: last.tsbPct != null ? Math.round(last.tsbPct) : null, band, delta28, sentence: parts.join(" ") };
+  return { forme, fatigue, fraicheur: last.tsbPct != null ? Math.round(last.tsbPct) : null, band, delta28, words: band ? FORM_WORDS[band] : null, sentence: parts.join(" ") };
 }
 export { FORM_LABEL };
 

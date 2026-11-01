@@ -119,13 +119,14 @@ function HrSection({ r }: { r: RunView }) {
   const zoneRows = [
     ...([5, 4, 3, 2, 1] as const).map((k) => ({ label: `Z${k} ${ZONE_NAMES[k]}`, value: a.zoneSec[k] ?? 0, color: VIZ_ZONE[k - 1] })),
     { label: "sous les zones", value: a.zoneSec[0] ?? 0, color: "var(--c-viz-soft)" },
-    ...(a.walkSec >= 30 ? [{ label: "marche", value: a.walkSec, color: "var(--c-surface-2)" }] : []),
+    ...(a.walkSec >= 30 ? [{ label: "marche", value: a.walkSec, color: "var(--c-viz-soft)", hollow: true }] : []),
   ];
   const total = zoneRows.reduce((s, x) => s + x.value, 0);
   const hr = r.hr;
   if (!hr.length && !total) return null;
   const end = hr.length ? hr[hr.length - 1][0] : 0;
-  const every = end > 5400 ? 1800 : end > 2400 ? 600 : 300;
+  // Six repères au plus : « 5 min » tous les cinq ne tient pas sur un téléphone au-delà d'une demi-heure.
+  const every = [300, 600, 900, 1800, 3600].find((s) => end / s <= 6) ?? 3600;
   const ticks = Array.from({ length: Math.floor(end / every) + 1 }, (_, i) => ({ x: i * every, label: i ? durText(i * every) : "0" }));
   const easy = easyShareOf(a.seiler);
   return (
@@ -153,7 +154,7 @@ function HrSection({ r }: { r: RunView }) {
         )}
         {total > 0 && (
           <ChartFigure className={hr.length > 1 ? "lg:col-span-4" : "lg:col-span-6"} title="Temps par zone" value={easy != null ? `${fmt(easy * 100)}${NB}% du temps de course en facile` : null}>
-            <HBarChart rows={zoneRows.filter((x) => x.value > 0).map((x) => ({ label: x.label, value: x.value, color: x.color, text: `${durText(x.value)} · ${fmt((100 * x.value) / total)}${NB}%` }))} label="Temps passé dans chaque zone cardiaque" />
+            <HBarChart rows={zoneRows.filter((x) => x.value > 0).map((x) => ({ label: x.label, value: x.value, color: x.color, hollow: "hollow" in x, text: `${durText(x.value)} · ${fmt((100 * x.value) / total)}${NB}%` }))} label="Temps passé dans chaque zone cardiaque" />
           </ChartFigure>
         )}
       </div>
