@@ -17,7 +17,7 @@ function Scale({ name, legend, from, to, value, words, hint }: { name: string; l
   return (
     <fieldset className="grid gap-2">
       <legend className="label pb-2 text-ink-2">{legend}</legend>
-      <div className={`grid gap-1 ${xs.length > 6 ? "grid-cols-6 sm:grid-cols-11" : "grid-cols-5"}`}>
+      <div className={`grid gap-1 ${xs.length === 10 ? "grid-cols-5 sm:grid-cols-10" : xs.length > 10 ? "grid-cols-6 sm:grid-cols-11" : "grid-cols-5"}`}>
         {xs.map((x) => (
           <label key={x} className={`${CELL} ${words && xs.length <= 5 ? "px-1 text-small" : "num"}`} title={words?.[x]}>
             <input type="radio" name={name} value={x} defaultChecked={value === x} className="sr-only" aria-label={words?.[x] ? `${x}, ${words[x]}` : String(x)} />

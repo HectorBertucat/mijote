@@ -48,8 +48,8 @@ export function FormChart({ v }: { v: CourseView }) {
             xTicks={ticks}
             titles={titles}
             layers={[
-              { type: "line", label: "fatigue", values: days.map((d) => Math.round(d.atl)), color: VIZ_CAT[0] },
               { type: "line", label: "forme", values: days.map((d) => Math.round(d.ctl)), width: 2.5 },
+              { type: "line", label: "fatigue", values: days.map((d) => Math.round(d.atl)), color: VIZ_CAT[0] },
             ]}
             format={(v) => fmt(v)}
             zero
@@ -60,7 +60,7 @@ export function FormChart({ v }: { v: CourseView }) {
         <ChartFigure
           className="lg:col-span-5"
           title="Fraîcheur du matin"
-          value={f.fraicheur != null ? <ChartValue value={signed(f.fraicheur, 0)} unit="% de la forme" sub={`entre −10 et −30${NB}% on progresse ; sous −30${NB}%, trop de fatigue`} /> : "à partir de quelques semaines de séances"}
+          value={f.fraicheur != null ? <ChartValue value={signed(f.fraicheur, 0)} unit="% de la forme" sub={`dans la bande grise (−10 à −30${NB}%), on progresse ; dessous, trop de fatigue`} /> : "à partir de quelques semaines de séances"}
         >
           {pct.some((p) => p != null) ? (
             <LineChart
@@ -68,7 +68,7 @@ export function FormChart({ v }: { v: CourseView }) {
               xTicks={ticks}
               titles={titles}
               layers={[{ type: "line", label: "fraîcheur", values: pct }]}
-              zones={[{ from: -30, to: -10, label: "on progresse", color: "var(--c-viz-mark)" }]}
+              zones={[{ from: -30, to: -10, label: "", color: "var(--c-viz-mark)" }]}
               format={(v) => `${signed(v, 0)}${NB}%`}
               unit="%"
               height={200}
