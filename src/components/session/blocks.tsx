@@ -17,12 +17,13 @@ import { StepIllu } from "@/components/illus/Illu";
 import { FridgeDone } from "./FridgeDone";
 import { SessionBoxes } from "./SessionBoxes";
 import { DropGuide, wantsDropGuide } from "./DropGuide";
+import { firstOfMonth } from "@/lib/typo";
 
 // ─── En-tête : titre, avancement, fin prévue ───
 
 const DAY = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", timeZone: "Europe/Paris" });
 export function sessionTitle(startedAt: string | null, plan: SessionPlan) {
-  const d = startedAt ? DAY.format(new Date(startedAt)) : null;
+  const d = startedAt ? firstOfMonth(DAY.format(new Date(startedAt))) : null;
   return modeOf(plan) === "duo" ? `Session à deux${d ? ` · ${d}` : ""}` : d ? `Session du ${d}` : "Session de cuisine";
 }
 export const recipesLine = (plan: SessionPlan) => plan.recipes.map((r) => `${r.name}${r.scale !== 1 ? ` ×${String(r.scale).replace(".", ",")}` : ""}`).join(" + ");
@@ -436,7 +437,7 @@ export function ResumeChoice({ plan, c, choice, big }: { plan: SessionPlan; c: C
 export function DoneView({ plan, c, startedAt }: { plan: SessionPlan; c: Controls; startedAt: string | null }) {
   const test = useContext(SessionTest) != null;
   return (
-    <div className="grid gap-12">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-12">
       <FridgeDone plan={plan} events={c.events} test={test} />
       {!test && <SessionBoxes id={c.id} plan={plan} />}
       <div className="flex flex-wrap items-center gap-4 border-t border-line pt-6">

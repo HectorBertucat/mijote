@@ -175,10 +175,11 @@ export function StampFaitMaison({ date, ...p }: P & { date: Date }) {
   const { day, month } = dayMonth(date);
   return <Stamp shape="round" label="Fait maison" center={day} sub={month} color="var(--c-recipe-2)" seed={`fm${date.toDateString()}`} {...p} />;
 }
-/** Liste de courses validée. */
-export function StampCommande({ date, ...p }: P & { date?: Date | null }) {
-  const sub = date ? `drive · ${date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" })} · ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).replace(":", "h")}` : "drive";
-  return <Stamp shape="rect" label="Commandé" sub={sub} color="var(--c-accent)" {...p} />;
+/** Liste de courses validée ; `drive` : commandée sur le catalogue (sinon, courses en magasin). */
+export function StampCommande({ date, drive = true, ...p }: P & { date?: Date | null; drive?: boolean }) {
+  const when = date ? `${date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Paris" })} · ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).replace(":", "h")}` : "";
+  const sub = drive ? (when ? `drive · ${when}` : "drive") : when;
+  return <Stamp shape="rect" label={drive ? "Commandé" : "Acheté"} sub={sub} color="var(--c-accent)" {...p} />;
 }
 export const StampSaison = (p: P) => <Stamp shape="badge" label="De saison" icon="leaf" color="var(--c-sec-semaine)" {...p} />;
 export const StampCongele = (p: P) => <Stamp shape="badge" label="Se congèle" icon="snow" color="var(--c-recipe-3)" {...p} />;

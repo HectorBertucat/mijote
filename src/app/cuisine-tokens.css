@@ -37,7 +37,7 @@
   /* Encre : fonte bleutée */
   --c-ink: #15161a;
   --c-ink-2: #4a4e57;
-  --c-ink-3: #878a92;
+  --c-ink-3: #696c75; /* 4,6:1 sur le papier (AA) */
   --c-line: #dcd8cf;
   --c-line-strong: #bbb6ab;
   --c-inverse: #15161a;
@@ -67,10 +67,10 @@
   --c-sec-frigo: #6a4fc2;
 
   /* États réservés */
-  --c-ok: #17803f;
+  --c-ok: #157a3c;
   --c-ok-soft: #e2f2e7;
   --c-ok-ink: #0f5a2c;
-  --c-warn: #b65d00;
+  --c-warn: #a65400;
   --c-warn-soft: #fbeedb;
   --c-warn-ink: #7c3f00;
   --c-ko: #c8322a;
@@ -153,7 +153,7 @@
     --c-scrim: rgb(0 0 0 / 0.6);
     --c-ink: #f2f0eb;
     --c-ink-2: #b4b7bf;
-    --c-ink-3: #80858f;
+    --c-ink-3: #8e939d;
     --c-line: #2d3139;
     --c-line-strong: #454b55;
     --c-inverse: #f2f0eb;
@@ -173,7 +173,6 @@
     --c-sec-composer: #7d93ff;
     --c-sec-courses: #e0b53c;
     --c-sec-sante: #4cc9c2;
-  --c-sec-frigo: #a993ff;
     --c-sec-frigo: #a993ff;
     --c-ok: #46c073;
     --c-ok-soft: #13301f;
@@ -235,7 +234,7 @@
   --c-scrim: rgb(0 0 0 / 0.6);
   --c-ink: #f2f0eb;
   --c-ink-2: #b4b7bf;
-  --c-ink-3: #80858f;
+  --c-ink-3: #8e939d;
   --c-line: #2d3139;
   --c-line-strong: #454b55;
   --c-inverse: #f2f0eb;

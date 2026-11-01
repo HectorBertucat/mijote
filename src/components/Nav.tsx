@@ -19,6 +19,9 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/sante", label: "Santé", icon: "pulse" },
 ];
 
+/** Mise en route et connexion : pas encore de rubriques où aller (elles y ramèneraient), seulement le thème. */
+const BARE = /^\/(bienvenue|connexion)(\/|$)/;
+
 /**
  * Rubrique ouverte, mise à jour dès le tap (sans attendre la page) : l’onglet visé s’allume tout de suite, puis le
  * chemin prend le relais quand la page arrive. Un clic avec modificateur (nouvel onglet) ne change rien.
@@ -37,6 +40,7 @@ function useActiveTab() {
 /** `motif` : gardé pour compatibilité (le dessin de saison n’est plus affiché : le mot-symbole suffit). */
 export function TopNav({ profiles, active, search, assistant, home }: { profiles: ProfileOption[]; active: string; motif?: React.ReactNode; search?: React.ReactNode; assistant?: React.ReactNode; home?: string | null }) {
   const { current, pick } = useActiveTab();
+  const bare = BARE.test(usePathname());
   // Trait d’encre qui glisse d’une rubrique à l’autre : mesuré après l’hydratation (les rubriques n’ont pas la même
   // largeur) ; avant, chaque rubrique ouverte porte son propre trait, au même endroit.
   const nav = useRef<HTMLElement>(null);
@@ -57,10 +61,10 @@ export function TopNav({ profiles, active, search, assistant, home }: { profiles
   return (
     <header className="vt-site-header sticky top-0 z-20 border-b border-line bg-bg pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-8 px-5 sm:px-10">
-        <Link href="/" title={home ?? undefined} className="group -mx-1 rounded-[4px] px-1">
+        <Link href="/" title={home ?? undefined} className="group -mx-1 grid h-tap items-center rounded-[4px] px-1">
           <Wordmark />
         </Link>
-        <nav ref={nav} className="relative hidden h-full flex-1 items-stretch gap-7 sm:flex" aria-label="Rubriques">
+        <nav ref={nav} className={`relative hidden h-full flex-1 items-stretch gap-7 ${bare ? "" : "sm:flex"}`} aria-label="Rubriques">
           {TABS.map((t) => {
             const on = current === t.href;
             return (
@@ -85,13 +89,17 @@ export function TopNav({ profiles, active, search, assistant, home }: { profiles
             />
           )}
         </nav>
-        <div className="ml-auto flex items-center gap-2 sm:ml-0">
-          {search}
-          {assistant}
-          <ProfileSwitch profiles={profiles} active={active} />
-          <Link href="/reglages" aria-label="Réglages" title="Réglages" className="grid size-tap place-items-center rounded-[8px] text-ink-2 hover:bg-surface-2 hover:text-ink">
-            <Icon name="sliders" />
-          </Link>
+        <div className={`ml-auto flex items-center gap-2 ${bare ? "" : "sm:ml-0"}`}>
+          {!bare && (
+            <>
+              {search}
+              {assistant}
+              <ProfileSwitch profiles={profiles} active={active} />
+              <Link href="/reglages" aria-label="Réglages" title="Réglages" className="grid size-tap place-items-center rounded-[8px] text-ink-2 hover:bg-surface-2 hover:text-ink">
+                <Icon name="sliders" />
+              </Link>
+            </>
+          )}
           <ThemeToggle />
         </div>
       </div>
@@ -101,6 +109,7 @@ export function TopNav({ profiles, active, search, assistant, home }: { profiles
 
 export function TabBar() {
   const { current, pick, moved } = useActiveTab();
+  const bare = BARE.test(usePathname());
   const i = TABS.findIndex((t) => t.href === current);
   // Le trait reste à la dernière rubrique ouverte quand aucune ne l’est (accueil, réglages) : il réapparaît sans traverser la barre.
   const [last, setLast] = useState(i);
@@ -108,6 +117,7 @@ export function TabBar() {
     if (i >= 0) setLast(i);
   }, [i]);
   const at = i >= 0 ? i : last;
+  if (bare) return null;
   return (
     <nav className="vt-site-tabs fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] sm:hidden" aria-label="Rubriques">
       <div className="relative mx-auto grid max-w-md grid-cols-5">

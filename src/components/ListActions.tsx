@@ -163,7 +163,8 @@ export function BuildProgress({ done, total, lines, error }: { done: number; tot
   );
 }
 
-export function CopyButton({ text, size = "md" }: { text: string; size?: "sm" | "md" }) {
+/** `links` : la liste copiée porte les liens des produits (catalogue relié) ; sinon, le texte seul. */
+export function CopyButton({ text, size = "md", links = true }: { text: string; size?: "sm" | "md"; links?: boolean }) {
   const [done, setDone] = useState(false);
   return (
     <Button
@@ -186,7 +187,7 @@ export function CopyButton({ text, size = "md" }: { text: string; size?: "sm" | 
         setTimeout(() => setDone(false), 2000);
       }}
     >
-      Copier avec les liens
+      {links ? "Copier avec les liens" : "Copier la liste"}
     </Button>
   );
 }

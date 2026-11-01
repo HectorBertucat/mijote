@@ -4,6 +4,8 @@
 // personne cuisine, ses gestes actifs s'enchaînent, et les attentes (mijotage,
 // four) se recouvrent avec le travail sur les autres recettes.
 
+import { joinFr } from "@/lib/week/tastes";
+
 export interface StepLike {
   kind: "prep" | "sear" | "braise" | "boil" | "bake" | "rest" | "cool";
   durationMin: number | null;
@@ -108,7 +110,7 @@ export function estimateSession(recipes: RecipeLike[]): SessionEstimate {
     const extra = Math.min(...ovenUsers.map((p) => p.ovenMin));
     conflicts.push({
       kind: "oven_temp",
-      message: `Le four est demandé à ${temps.join(" °C et ")} °C : les cuissons au four s'enchaînent, elles ne peuvent pas se faire en même temps.`,
+      message: `Le four est demandé à ${joinFr(temps.map((t) => `${t}\u00a0°C`))} : les cuissons au four s'enchaînent, elles ne peuvent pas se faire en même temps.`,
       extraMin: extra,
     });
   }
@@ -120,7 +122,7 @@ export function estimateSession(recipes: RecipeLike[]): SessionEstimate {
       const names = users.map((u) => recipes.find((r) => r.slug === u.slug)!.name);
       conflicts.push({
         kind: "single_equipment",
-        message: `${capitalize(EQUIPMENT_NAMES[eq])} sert longtemps à ${names.join(" et ")} : il faut les enchaîner (ou la laver entre les deux).`,
+        message: `${capitalize(EQUIPMENT_NAMES[eq])} sert longtemps à ${joinFr(names)} : il faut les enchaîner (ou la laver entre ${names.length > 2 ? "chaque plat" : "les deux"}).`,
         extraMin: Math.min(...users.map((u) => u.equipmentMin[eq])),
       });
     }

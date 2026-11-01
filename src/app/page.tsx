@@ -18,6 +18,7 @@ import { Tour } from "@/components/tour/Tour";
 import { tourView } from "@/lib/tour/store";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { listPeople } from "@/lib/health/store";
+import { firstOfMonth } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ const MEALS: Meal[] = ["lunch", "dinner"];
 const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const and = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} et ${names.at(-1)}` : (names[0] ?? ""));
 const boxes = (n: number) => `${n}${NBSP}boîte${n > 1 ? "s" : ""}`;
-const dateLong = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
+const dateLong = (ymd: string) => firstOfMonth(new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" }));
 
 /** La phrase sous le titre : où en est la semaine, avec des chiffres. */
 function sentence(h: HomeView): string {

@@ -7,7 +7,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { BoxGlyph } from "./BoxGlyph";
-import { gramsLabel, placeFor, splitPot, type PotModel, type Weights } from "@/lib/boxes/core";
+import { gramsLabel, placeFor, sideWords, splitPot, type PotModel, type Weights } from "@/lib/boxes/core";
 import type { StoredPot } from "@/lib/boxes/store";
 import { storeSessionBoxes } from "@/app/frigo/actions";
 
@@ -25,6 +25,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
   const weights: Weights = { dishG: num(dish), sideG: model.side ? num(side) : null };
   const split = splitPot(model, weights);
   const sideName = model.side?.label ?? "garniture";
+  const sw = sideWords(sideName);
   const weighed = weights.dishG != null;
   const places = split.boxes.map((b) => placeFor(model.cookedOn ?? "", b.plannedFor?.date ?? null, model.fridgeDays, model.freezerOk));
   const inFridge = places.filter((p) => p === "fridge").length;
@@ -52,7 +53,7 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
             {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={dish} onChange={(e) => setDish(e.target.value)} data-field="plat" />}
           </Field>
           {model.side && (
-            <Field label={`${sideName[0].toUpperCase()}${sideName.slice(1)} cuit`}>
+            <Field label={`${sideName[0].toUpperCase()}${sideName.slice(1)} ${sw.cooked}`}>
               {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder="g" value={side} onChange={(e) => setSide(e.target.value)} data-field="garniture" />}
             </Field>
           )}
@@ -85,14 +86,14 @@ export function PotSplit({ model, color, session, stored, head = true, kitchen =
           </li>
         ))}
       </ul>
-      {!weighed && <p className="text-small text-ink-2">Pèse {model.side ? `le plat et le ${sideName}` : "la marmite"} pour avoir les grammes de chaque boîte.</p>}
-      {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids du {sideName}, il se partage à l’œil, dans la même proportion.</p>}
+      {!weighed && <p className="text-small text-ink-2">Pèse {model.side ? `le plat et ${sw.the}` : "la marmite"} pour avoir les grammes de chaque boîte.</p>}
+      {weighed && model.side && weights.sideG == null && <p className="text-small text-ink-2">Sans le poids {sw.of}, {sw.it} à l’œil, dans la même proportion.</p>}
       {split.fill < 0.97 && (
         <Alert tone="warn" title="Moins que prévu">
           La marmite ne couvre pas les {planned} repas prévus : chaque boîte est plus petite que la part visée.
         </Alert>
       )}
-      {bounded && weighed && <p className="text-small text-ink-2">Le {sideName} reste entre la moitié et le double de la proportion de la marmite : la part vise les calories, les protéines au plus près.</p>}
+      {bounded && weighed && <p className="text-small text-ink-2">{sw.the.charAt(0).toUpperCase() + sw.the.slice(1)} {sw.stays} entre la moitié et le double de la proportion de la marmite : la part vise les calories, les protéines au plus près.</p>}
 
       {session && (
         <div className="flex flex-wrap items-center gap-4">

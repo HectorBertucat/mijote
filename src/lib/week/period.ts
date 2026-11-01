@@ -2,6 +2,7 @@
 // week_plans.days jours (7 par défaut, 14 au plus). La session de cuisine a lieu la veille du
 // premier jour (COOK_DAY) ; meal_slots.day va de 0 au nombre de jours − 1. Module pur.
 import { addDays, defaultWeek } from "./propose";
+import { firstOfMonth } from "@/lib/typo";
 
 /** Plafond de la période : au-delà, même le congélateur ne suit plus (et la session déborde). */
 export const MAX_DAYS = 14;
@@ -142,7 +143,7 @@ export function remapPlaces<P extends string, M extends string>(
 /** Libellé court : « semaine du 2 novembre » pour une semaine classique, « du 5 au 15 novembre » sinon. */
 export function periodLabel(start: string, days: number, month: "long" | "short" = "long"): string {
   const end = endOf(start, days);
-  const f = (ymd: string, withMonth: boolean) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", ...(withMonth ? { month } : {}), timeZone: "UTC" });
+  const f = (ymd: string, withMonth: boolean) => firstOfMonth(new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", ...(withMonth ? { month } : {}), timeZone: "UTC" }));
   if (isClassicWeek(start, days)) return `semaine du ${f(start, true)}`;
   if (days === 1) return `le ${f(start, true)}`;
   return `du ${f(start, start.slice(0, 7) !== end.slice(0, 7))} au ${f(end, true)}`;

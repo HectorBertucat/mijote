@@ -63,8 +63,9 @@ export function ListsManager({ lists, archived }: { lists: ListRowData[]; archiv
   const row = "grid min-w-0 grid-cols-[72px_minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-line py-4";
   const text = (l: ListRowData) => (
     <span className="grid min-w-0">
-      <span className="truncate font-semibold">{l.title}</span>
-      <span className="truncate text-small text-ink-2">{l.sub}</span>
+      {/* Deux lignes plutôt qu’un titre coupé au téléphone (« Colombo de porc + … »). */}
+      <span className="line-clamp-2 font-semibold">{l.title}</span>
+      <span className="text-small text-ink-2">{l.sub}</span>
     </span>
   );
 

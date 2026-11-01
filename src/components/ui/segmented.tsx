@@ -20,7 +20,7 @@ export function Segmented<T extends string>({ options, value, defaultValue, onCh
           tone === "inverse"
             ? on ? "bg-on-inverse text-inverse" : "text-[color-mix(in_srgb,var(--c-on-inverse)_70%,transparent)]"
             : on ? "bg-surface text-ink ring-1 ring-line-strong" : "text-ink-2 hover:text-ink";
-        const shape = size === "icon" ? "h-7 w-[30px] justify-center rounded-[6px]" : "min-h-9 gap-2 rounded-[6px] px-3 text-[14px] font-bold";
+        const shape = size === "icon" ? "h-7 w-[30px] justify-center rounded-[6px]" : "relative min-h-9 gap-2 rounded-[6px] px-3 text-[14px] font-bold before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']";
         return (
           <button
             key={o.value}

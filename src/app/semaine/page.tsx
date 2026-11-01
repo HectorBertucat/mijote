@@ -4,6 +4,7 @@ import { buttonClass, ChipLink, Chips, Icon, StampSemainePrete } from "@/compone
 import { DishBox } from "@/components/ui/dish";
 import { dishRecipes } from "@/components/semaine/dishes";
 import { db } from "@/lib/db/client";
+import { catalogEnabled } from "@/lib/chronocatalog";
 import { addDays, COOK_DAY, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
 import { clampDays, defaultPeriod, isDay, neighbour, periodDays, periodHeading, periodLabel, weekdayOf } from "@/lib/week/period";
 import { periodPlans, weekView } from "@/lib/week/store";
@@ -31,6 +32,7 @@ import { dayRefOf, weekNutrition } from "@/lib/week/nutrition";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PendingMark } from "@/components/PendingMark";
 import { addAction, clearAction, extraAction, factorAction, proposeAction, removeAction, weekListAction } from "./actions";
+import { ofName } from "@/lib/session/people";
 
 export const dynamic = "force-dynamic";
 
@@ -197,10 +199,11 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
         <div className="min-w-0 lg:col-span-8">
           <div className="flex flex-wrap items-center gap-x-6">
             <h1 className="text-display">{title}</h1>
-            {ready && <StampSemainePrete seed={w} size={118} className="-my-4" />}
+            {/* Sans marge négative : quand le titre prend la largeur, le cachet passe dessous sans mordre sur le texte. */}
+            {ready && <StampSemainePrete seed={w} size={104} />}
           </div>
           <p className="mt-4 max-w-[46ch] text-lead text-ink">
-            Coche 1 à 3&nbsp;plats, je calcule les quantités et je répartis les {toEat}&nbsp;repas{people.length > 1 ? ` de ${joinFr(people.map((p) => p.name))}` : ""}.
+            Coche 1 à 3&nbsp;plats, je calcule les quantités et je répartis les {toEat}&nbsp;repas{people.length > 1 ? ` ${ofName(joinFr(people.map((p) => p.name)))}` : ""}.
           </p>
           <p className="mt-2 text-small text-ink-2">
             Cuisine le {longDate(cookDate)}
@@ -342,7 +345,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                       </Link>
                     }
                   >
-                    Part de {e.name} à la taille habituelle&nbsp;: il manque {joinFr(e.missing)}.
+                    Part {ofName(e.name)} à la taille habituelle&nbsp;: il manque {joinFr(e.missing)}.
                   </Notice>
                 ))}
               </ul>
@@ -380,7 +383,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                       on={on}
                       disabled={!on && full}
                       name={r.name}
-                      visual={box(r.slug, "md", "sm:!h-32 sm:!w-full sm:!rounded-none")}
+                      visual={box(r.slug, "md", "max-sm:!h-[72px] max-sm:!w-24 max-sm:[&>svg]:!w-[84px] sm:!h-32 sm:!w-full sm:!rounded-none")}
                       facts={
                         <>
                           {facts}
@@ -522,7 +525,7 @@ function dockSub({ n, missing, minutes, cookDay, list }: { n: number; missing: n
   if (n === 0) return "Coche des plats, ou laisse-moi choisir";
   const time = minutes != null ? `${fmtMin(minutes)} en cuisine ${cookDay}` : null;
   const state = missing ? `${missing} à prévoir à part` : "tout est couvert";
-  const shop = !list ? null : list.changed ? "la semaine a changé depuis la liste" : list.building ? "liste en préparation" : list.ordered ? "courses commandées" : "liste en brouillon";
+  const shop = !list ? null : list.changed ? "la semaine a changé depuis la liste" : list.building ? "liste en préparation" : list.ordered ? (catalogEnabled() ? "courses commandées" : "courses faites") : "liste en brouillon";
   return [state, shop ?? time].filter(Boolean).join(" · ");
 }
 

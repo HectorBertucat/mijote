@@ -252,3 +252,16 @@ export function mealAt(hour: number): "lunch" | "dinner" | "snack" {
 
 /** « 480 g », « 1,2 kg ». */
 export const gramsLabel = (g: number) => (g >= 1000 ? `${(Math.round(g / 100) / 10).toLocaleString("fr-FR")} kg` : `${Math.round(g)} g`);
+
+/**
+ * Les mots de l'accompagnement, accordés : « le riz cuit », « la semoule cuite », « les pâtes cuites ». Le libellé
+ * vient du premier mot des ingrédients (sideLabelOf) ; deux accompagnements (« riz et lentilles ») font un pluriel.
+ */
+const SIDE_FEM = /^(semoule|polenta|purée|pâte|patate|pomme|lentille|frite)/;
+export function sideWords(label: string): { the: string; of: string; cooked: string; it: string; stays: string } {
+  const plural = / et /.test(label) || /s$|x$/.test(label.split(" ")[0]);
+  const fem = !/ et /.test(label) && SIDE_FEM.test(label);
+  if (plural) return { the: `les ${label}`, of: `des ${label}`, cooked: fem ? "cuites" : "cuits", it: fem ? "elles se partagent" : "ils se partagent", stays: "restent" };
+  if (fem) return { the: `la ${label}`, of: `de la ${label}`, cooked: "cuite", it: "elle se partage", stays: "reste" };
+  return { the: `le ${label}`, of: `du ${label}`, cooked: "cuit", it: "il se partage", stays: "reste" };
+}

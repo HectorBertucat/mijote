@@ -25,6 +25,7 @@ import { SessionBoxes } from "./SessionBoxes";
 import { DuoPick } from "./DuoView";
 import { SimpleDuo } from "./SimpleDuo";
 import { Bowl, bowlName, bowlOf, clock, DishArts, dur, hobName, mmss, PauseAll, PersonMono, QrCard, recipeOf, SessionTest, shortName, splitStep, stepColor, stepTitle, useRingAlarm, useWakeLock, WakePill } from "./parts";
+import { typo } from "@/lib/typo";
 
 export interface SimpleProps {
   id: string;
@@ -95,7 +96,7 @@ export function SimpleView(p: SimpleProps) {
         <Interlude
           n={1}
           title={evening ? "Prépare, ce soir" : "Prépare"}
-          lines={[`${bowls.length} bol${bowls.length > 1 ? "s" : ""} à remplir, environ ${dur(evening ? (plan.prep.eveMin ?? 0) : plan.prep.minutes)}.`, evening ? "Ce soir, ce qui se garde au frigo ; demain, le reste puis la cuisson." : "Sors tout, coupe, remplis. Ensuite, une consigne à la fois."]}
+          lines={[`${bowls.length ? `${bowls.length} bol${bowls.length > 1 ? "s" : ""} à remplir` : "Pas de bol à remplir avant de commencer"}, environ ${dur(evening ? (plan.prep.eveMin ?? 0) : plan.prep.minutes)}.`, evening ? "Ce soir, ce qui se garde au frigo ; demain, le reste puis la cuisson." : "Sors tout, coupe, remplis. Ensuite, une consigne à la fois."]}
           art={<FoodsArt plan={plan} />}
           qr={p.qr}
         />
@@ -288,6 +289,8 @@ function headSub(plan: SessionPlan, c: Controls, stage: Stage): string {
   if (stage === "prep") {
     const b = prepBowls(plan, c.state);
     const ready = b.filter((x) => c.state.bowlsReady.has(x.letter)).length;
+    // Tous les bols remplis pendant la cuisson : pas de « 0 bol prêt sur 0 ».
+    if (!b.length) return "les bols, pendant la cuisson";
     return `${ready} bol${ready > 1 ? "s" : ""} prêt${ready > 1 ? "s" : ""} sur ${b.length}`;
   }
   if (stage === "cook") return progressLine(plan, c) || `${plan.steps.length} étapes`;
@@ -411,12 +414,12 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
     <div className={`${COLUMN} grid gap-8 pt-6 md:grid-cols-12 md:gap-6`}>
       <div className="grid content-start gap-4 md:col-span-4 md:sticky md:top-32 md:self-start">
         <h1 className="text-h1">Tout sur le plan de travail</h1>
-        <p className="text-lead text-ink-2">Remplis chaque bol, touche-le quand il est prêt. Les lettres reviennent dans les consignes.</p>
+        <p className="text-lead text-ink-2">{bowls.length ? "Remplis chaque bol, touche-le quand il est prêt. Les lettres reviennent dans les consignes." : "Sors ce qui attend sur le plateau. Les bols se remplissent plus tard, pendant la cuisson : l’écran le dira."}</p>
         <Issues plan={plan} sessionId={id} />
         {!evening && plan.prep.notes.map((n) => (
           <p key={n} className="flex items-start gap-3 border-t border-line pt-3 text-[17px]">
             <Icon name="flame" size="s" className="mt-1 shrink-0 text-ink-2" />
-            {n}
+            {typo(n)}
           </p>
         ))}
       </div>
@@ -445,7 +448,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
                         <span key={k} className={`grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 py-1 text-[17px] leading-snug ${k ? "border-t border-line" : ""}`}>
                           <FoodIllu food={i.food} item={i.item} size={40} live={now} label={i.item.split(/[,(]/)[0].trim()} />
                           <span className="min-w-0">
-                            {i.item}
+                            {typo(i.item)}
                             {i.optional && <span className="text-ink-2"> (facultatif)</span>}
                           </span>
                           <b className="num-tight text-right text-[20px]">{i.qty}</b>
@@ -470,7 +473,7 @@ function PrepScreen({ id, plan, c }: { id: string; plan: SessionPlan; c: Control
                   <span key={k} className={`grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 py-2 text-[17px] leading-snug ${k ? "border-t border-line" : ""}`}>
                     <FoodIllu food={i.food} item={i.item} size={40} label={i.item} />
                     <span className="min-w-0">
-                      {i.item}, {i.gesture} <span className="text-ink-2">· {shortName(recipeOf(plan, i.recipeSlug)?.name)}</span>
+                      {typo(`${i.item}, ${i.gesture}`)} <span className="text-ink-2">· {shortName(recipeOf(plan, i.recipeSlug)?.name)}</span>
                     </span>
                     <b className="num-tight text-right text-[20px]">{i.qty}</b>
                   </span>

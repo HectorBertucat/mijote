@@ -8,6 +8,8 @@ import { db } from "@/lib/db/client";
 import { DishBox } from "@/components/ui/dish";
 import { listDishRecipes } from "@/lib/recipes/queries";
 import { allRecipeCosts, listLots, pantryTotals } from "@/lib/costs";
+import { plural } from "@/components/semaine/format";
+import { catalogEnabled } from "@/lib/chronocatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,8 @@ export default function Placard() {
   const lots = listLots(db, "ok");
   const closed = listLots(db, "closed");
   const t = pantryTotals(db);
-  const costs = allRecipeCosts(db).filter((c) => c.kind !== "none");
+  // Sans catalogue, un coût sans aucun prix connu vaut 0 € partout : on ne l’affiche pas.
+  const costs = allRecipeCosts(db).filter((c) => c.kind !== "none" && (catalogEnabled() || c.coverage > 0));
   const parts = costs.map((c) => c.partLead?.practical).filter((v): v is number => v != null);
   const avg = parts.length ? parts.reduce((s, v) => s + v, 0) / parts.length : null;
   const toLot = (l: (typeof lots)[number]) => ({
@@ -37,11 +40,12 @@ export default function Placard() {
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
       <AutoRefresh />
       <PageHead back={<BackLink href="/courses">Courses</BackLink>} title="Placard" lead="Ce qui reste des paquets achetés. Un reste a servi ailleurs ou part à la poubelle : un tap.">
-        <Figures className="mt-6">
-          <Figure value={num(t.okValue)} unit="€" label={`au placard, ${t.okCount ?? 0} restes`} />
+        {/* Sans prix (pas de catalogue) ni reste : pas de rangée de « 0,00 € ». */}
+        {(t.okValue > 0 || t.lostValue > 0 || (t.okCount ?? 0) > 0 || avg != null) && <Figures className="mt-6">
+          <Figure value={num(t.okValue)} unit="€" label={`au placard, ${plural(t.okCount ?? 0, "reste")}`} />
           <Figure value={num(t.lostValue)} unit="€" label="jeté, compté aux recettes" />
           {avg != null && <Figure value={num(avg)} unit="€" label="la part, en moyenne" />}
-        </Figures>
+        </Figures>}
       </PageHead>
       <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-x-6">
         <section className="grid gap-6 lg:col-span-7" aria-labelledby="restes-titre">
@@ -85,7 +89,7 @@ export default function Placard() {
               </Link>
             }
           />
-          {costs.length ? <CostTable costs={costs} compact dishes={dishes} /> : <p className="text-small text-ink-2">Pas encore de coût : il faut une liste de courses avec la recette.</p>}
+          {costs.length ? <CostTable costs={costs} compact dishes={dishes} /> : <p className="text-small text-ink-2">{catalogEnabled() ? "Pas encore de coût : il faut une liste de courses avec la recette." : "Pas encore de prix : note le prix payé à côté d’un article de la liste de courses."}</p>}
         </section>
       </div>
     </div>

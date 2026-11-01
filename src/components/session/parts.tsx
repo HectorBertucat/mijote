@@ -29,7 +29,25 @@ export const kindLabel = (k: PlanStep["kind"]) => (k === "preheat" ? "Four" : ST
 export const recipeOf = (plan: SessionPlan, slug: string | null | undefined) => plan.recipes.find((r) => r.slug === slug);
 /** Couleur d’une étape : celle de sa recette (var(--c-recipe-N)), encre douce pour une action commune. */
 export const stepColor = (plan: SessionPlan, s: PlanStep) => recipeOf(plan, s.recipeSlug)?.color ?? "var(--c-ink-3)";
-export const shortName = (name: string | undefined) => (name ?? "").split(/\s+/)[0] ?? "";
+/**
+ * Nom court d’un plat dans une puce ou un titre serré : le premier mot (« Colombo », « Dahl »), sauf quand il ne
+ * distingue rien : « One pot » saute (« Orzo »), et une viande ou un mot générique prend le mot suivant (« Poulet
+ * basquaise », « Porc au caramel », « Pasta al forno ») plutôt que trois « Poulet » dans la même session.
+ */
+const GENERIC = new Set(["poulet", "porc", "bœuf", "boeuf", "pasta", "sauté", "saute"]);
+const LINK = new Set(["de", "du", "des", "d’", "au", "aux", "à", "la", "le", "les", "al", "et"]);
+export const shortName = (name: string | undefined) => {
+  const words = (name ?? "").split(",")[0].split(/\s+/).filter(Boolean);
+  if (words[0]?.toLowerCase() === "one" && words[1]?.toLowerCase() === "pot" && words.length > 2) words.splice(0, 2);
+  const first = words[0] ?? "";
+  if (!GENERIC.has(first.toLowerCase())) return first.charAt(0).toUpperCase() + first.slice(1);
+  const out = [first];
+  for (const w of words.slice(1)) {
+    out.push(w);
+    if (!LINK.has(w.toLowerCase())) break;
+  }
+  return out.join(" ");
+};
 const rc = (color: string) => ({ "--rc": color }) as CSSProperties;
 
 /**
@@ -164,7 +182,7 @@ export function WakePill({ wake, onInk = true }: { wake: { on: boolean; request:
     <button
       type="button"
       onClick={() => void wake.request()}
-      className={`inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-small font-semibold ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
+      className={`relative inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-small font-semibold before:absolute before:inset-x-0 before:-inset-y-1.5 before:content-[''] ${onInk ? "border-[color-mix(in_srgb,var(--c-on-inverse)_45%,transparent)]" : "border-line-strong text-ink-2"} ${wake.on ? "" : "opacity-75"}`}
       title={wake.on ? "L’écran reste allumé pendant la session" : "Toucher pour garder l’écran allumé"}
     >
       <Icon name={wake.on ? "lock" : "sun"} size="s" />
@@ -208,7 +226,8 @@ export function SessionHead({ title, sub, online, phase, onPhase, right, lead, c
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${plain ? "border-b border-line bg-surface text-ink" : "bg-inverse text-on-inverse"} ${compact ? "px-4 py-3" : "px-4 py-3 sm:px-6"}`} data-session-head>
       {lead ?? <span className={`size-2.5 shrink-0 rounded-full bg-current ${online ? "k-live" : "opacity-40"}`} title={online ? "en direct" : "reconnexion…"} aria-label={online ? "En direct" : "Reconnexion"} />}
-      <div className="min-w-0 flex-1">
+      {/* Au moins 12 rem pour le titre : au téléphone, les boutons passent dessous plutôt que de le réduire à « Sessio… ». */}
+      <div className="min-w-0 flex-1 basis-[12rem]">
         <b className={`block truncate font-display [font-stretch:100%] text-[17px]`}>{title}</b>
         {compact ? (
           <div className="flex min-w-0 items-center gap-2 text-small">

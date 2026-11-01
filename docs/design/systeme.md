@@ -83,12 +83,12 @@ Rapport fort entre deux niveaux voisins (au moins ×1,5 entre `h1` et `h2`). Une
 | `hollow` (`--c-surface-2`) | `#E8E5DE` | Creux : piste des curseurs, survol de ligne, zones repliées. |
 | `ink` | `#15161A` | Texte, boutons principaux (plein encre), filets forts. |
 | `ink-2` | `#4A4E57` | Texte secondaire. |
-| `ink-3` | `#878A92` | Repères, légendes ; jamais pour un texte à lire en entier. |
+| `ink-3` | `#696C75` | Repères, légendes ; jamais pour un texte à lire en entier. Assez sombre pour un contraste AA (4,5:1) sur le papier. |
 | `rule` (`--c-line`) | `#DCD8CF` | Filets de 1 px entre lignes et sections. |
 | `rule-strong` | `#BBB6AB` | Contours de champ, filet sous un titre de section. |
 | `cocotte` (`--c-accent`) | `#2342C4` | Parcimonieux : la sélection, l’étape en cours, la progression, le focus, un lien dans un texte. Jamais pour décorer. |
 | `tomate` (`--c-hot`) | `#E4572E` | Une seule chose presse par écran : le minuteur qui sonne, une rupture au panier. |
-| `ok` / `warn` / `ko` | `#17803F` / `#B65D00` / `#C8322A` | Réservés aux verdicts (cible, fiabilité d’un produit), toujours avec une forme ou un mot. |
+| `ok` / `warn` / `ko` | `#157A3C` / `#A65400` / `#C8322A` | Réservés aux verdicts (cible, fiabilité d’un produit), toujours avec une forme ou un mot. |
 | `recipe-1…8` | inchangés | L’identité d’un plat : sa nappe vichy, son étiquette, ses bols. Jamais pour un état. |
 
 Le menu n’a plus de couleur par rubrique. La couleur, c’est le plat.

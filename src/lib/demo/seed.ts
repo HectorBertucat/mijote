@@ -15,6 +15,7 @@ import { createSession } from "@/lib/session/store";
 import type { SessionPlan } from "@/lib/session/planner";
 import { setSetting, SETTING } from "@/lib/settings";
 import { buildShoppingList } from "@/lib/shopping/build";
+import { validateOrder } from "@/lib/shopping/cart";
 import { KB_TEMPLATE } from "@/lib/training/program";
 import { RENFO_TEMPLATE } from "@/lib/training/renfo";
 import { assignProgram } from "@/lib/training/programs";
@@ -50,6 +51,8 @@ async function cookedWeek(db: Db, h: DemoHousehold, week: { start: string; cooke
   const { planId, sel } = planWeek(db, week.start, slugs);
   const scales = Object.fromEntries(sel.map((x) => [x.slug, x.factor]));
   const listId = await buildShoppingList(db, sel.map((x) => x.slug), { weekPlanId: planId, scales });
+  // Validée comme dans l'appli (tout au panier), sinon la liste payée montrerait un ticket vide.
+  validateOrder(db, listId, at(week.listOn, "10:30").toISOString());
   db.update(shoppingLists)
     .set({ status: "paid", createdAt: at(week.listOn, "09:00").toISOString(), orderedAt: at(week.listOn, "10:30").toISOString(), archivedAt: opts.archive ? at(week.cookedOn, "18:00").toISOString() : null })
     .where(eq(shoppingLists.id, listId))

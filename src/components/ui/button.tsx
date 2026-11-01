@@ -26,8 +26,9 @@ const VARIANT: Record<ButtonVariant, string> = {
   // Plein, posé sur un fond d’encre (minuteur fini en plein écran).
   "on-inverse": "border-transparent bg-on-inverse text-inverse hover:bg-[color-mix(in_srgb,var(--c-on-inverse)_88%,var(--c-inverse))]",
 };
+// sm : 36 px dessinés, 44 px touchables (zone invisible de 4 px au-dessus et au-dessous).
 const SIZE: Record<ButtonSize, string> = {
-  sm: "min-h-9 rounded-[8px] px-3 text-[14px]",
+  sm: "min-h-9 rounded-[8px] px-3 text-[14px] before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
   md: "min-h-tap rounded-[8px] px-4 text-[16px]",
   kitchen: "min-h-kitchen rounded-[8px] px-6 text-[20px]",
 };

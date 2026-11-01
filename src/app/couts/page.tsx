@@ -6,6 +6,8 @@ import { db } from "@/lib/db/client";
 import { DishBox } from "@/components/ui/dish";
 import { listDishRecipes } from "@/lib/recipes/queries";
 import { allRecipeCosts, pantryTotals, spendingTotals } from "@/lib/costs";
+import { plural } from "@/components/semaine/format";
+import { catalogEnabled } from "@/lib/chronocatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -15,23 +17,30 @@ export default function Couts() {
   const costs = allRecipeCosts(db);
   const spent = spendingTotals(db);
   const pantry = pantryTotals(db);
-  const known = costs.filter((c) => c.kind !== "none");
+  // Sans catalogue, un coût sans aucun prix connu vaut 0 € partout : on ne l’affiche pas.
+  const unpriced = catalogEnabled() ? [] : costs.filter((c) => c.kind !== "none" && c.coverage === 0);
+  const known = costs.filter((c) => c.kind !== "none" && !unpriced.includes(c));
   const unknown = costs.filter((c) => c.kind === "none");
+  const anyMoney = spent.spent > 0 || pantry.okValue > 0 || pantry.lostValue > 0 || known.length > 0;
   const waste = known.reduce((s, c) => s + (c.waste ?? 0), 0);
   const slugs = new Set(known.map((c) => c.slug));
   const dishes = Object.fromEntries([...listDishRecipes(db).values()].filter((d) => slugs.has(d.slug)).map((d) => [d.slug, <DishBox key={d.slug} recipe={d} size="sm" />]));
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
       <PageHead back={<BackLink href="/courses">Courses</BackLink>} title="Coûts" lead="Ce que coûte une part de chaque plat, et ce qui part à la poubelle.">
-        <Figures className="mt-6">
-          <Figure value={num(spent.spent)} unit="€" label={`dépensés, ${spent.purchases} achats`} />
+        {anyMoney && <Figures className="mt-6">
+          <Figure value={num(spent.spent)} unit="€" label={`dépensés, ${plural(spent.purchases, "achat")}`} />
           <Figure href="/placard" value={num(pantry.okValue)} unit="€" label="au placard" />
           <Figure value={num(pantry.lostValue)} unit="€" label="perdus au placard" />
           {known.length > 0 && <Figure value={num(waste)} unit="€" label="gaspillés, toutes fournées" />}
-        </Figures>
+        </Figures>}
       </PageHead>
 
-      {known.length === 0 ? (
+      {known.length === 0 && unpriced.length > 0 ? (
+        <EmptyState icon="basket" title="Pas de prix">
+          Tes listes n’ont pas encore de prix. Note le prix payé à côté d’un article de la liste : le coût par part se calcule à partir de là.
+        </EmptyState>
+      ) : known.length === 0 ? (
         <EmptyState
           icon="basket"
           title="Pas encore de coût"
@@ -58,7 +67,7 @@ export default function Couts() {
           </details>
         </section>
       )}
-      {unknown.length > 0 && <p className="text-small text-ink-2">Sans liste de courses, donc sans coût : {unknown.map((c) => c.name).join(", ")}.</p>}
+      {unknown.length > 0 && known.length > 0 && <p className="text-small text-ink-2">Sans liste de courses, donc sans coût : {unknown.map((c) => c.name).join(", ")}.</p>}
     </div>
   );
 }

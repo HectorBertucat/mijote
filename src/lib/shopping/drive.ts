@@ -21,6 +21,7 @@ import { accountJob, accountJobs, effectivePrice, resolve, type CartAddResult, t
 import { packsFor, usable } from "@/lib/products/core";
 import { rejudge } from "./build";
 import { validateOrder } from "./cart";
+import { firstOfMonth } from "@/lib/typo";
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -375,7 +376,7 @@ export function applyOrder(db: Db, listId: string, order: ChronoOrder, at = new 
   });
   const eur = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
   const gap = round2(after - before);
-  return `Commande du ${order.createdAt ? new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" }) : "?"} relue : ${updates.size} achats au prix payé (${eur(after)}, ${gap === 0 ? "comme estimé" : `${gap > 0 ? "+" : "−"}${eur(Math.abs(gap))} sur l'estimation`})${missing.length ? `, ${missing.length} absent${missing.length > 1 ? "s" : ""} de la commande` : ""}.`;
+  return `Commande du ${order.createdAt ? firstOfMonth(new Date(order.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })) : "?"} relue : ${updates.size} achats au prix payé (${eur(after)}, ${gap === 0 ? "comme estimé" : `${gap > 0 ? "+" : "−"}${eur(Math.abs(gap))} sur l'estimation`})${missing.length ? `, ${missing.length} absent${missing.length > 1 ? "s" : ""} de la commande` : ""}.`;
 }
 
 /** Les achats de la liste : estimé, payé, et si la commande a été relue. */

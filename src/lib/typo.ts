@@ -26,3 +26,11 @@ export function typo(text: string | null | undefined) {
       .replace(new RegExp(`(\\d) (?=${UNITS}(?![\\p{L}]))`, "gu"), `$1${NBSP}`)
   );
 }
+
+/**
+ * « 1 novembre » → « 1er novembre » dans une date déjà formatée par `toLocaleDateString` (qui ne le fait pas) :
+ * « dim. 1er nov. », « du 1er au 15 novembre ». Seul le chiffre 1 isolé change (pas 11, 21, 31).
+ */
+export function firstOfMonth(date: string): string {
+  return date.replace(/(^|\s)1(?=\s|$)/g, "$11er");
+}

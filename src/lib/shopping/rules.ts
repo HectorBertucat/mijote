@@ -2,6 +2,7 @@
 // Charte : docs/vision.md §4.5.
 import { catalogEnabled, type MatchedType, type ResolvedProduct } from "@/lib/chronocatalog";
 import { isCounterProduct, packsFor, rankForNeed, usable, type Prefs } from "@/lib/products/core";
+import { buyName } from "./label";
 
 export const AISLES = ["Boucherie", "Crèmerie", "Fruits et légumes", "Épicerie", "Surgelés", "Boissons", "Placard"] as const;
 export type Aisle = (typeof AISLES)[number];
@@ -36,9 +37,9 @@ const GUESS: [RegExp, Aisle][] = [
   [/\bvin\b|bi[èe]re|\bjus\b|cidre/, "Boissons"],
 ];
 
-/** Rayon deviné au nom (sans catalogue relié) ; Épicerie par défaut. */
+/** Rayon deviné au nom (sans catalogue relié), sans la préparation (« Gingembre, râpé » n'est pas du fromage) ; Épicerie par défaut. */
 export function guessAisle(label: string): Aisle {
-  const s = label.toLowerCase();
+  const s = buyName(label).toLowerCase();
   return GUESS.find(([re]) => re.test(s))?.[1] ?? "Épicerie";
 }
 

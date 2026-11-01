@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { addNote } from "@/app/recettes/[slug]/actions";
 import { Button, Chip, Chips, List, ListRow, Segmented, Textarea } from "@/components/ui";
 import { NOTE_CATEGORIES, NOTE_LABELS } from "@/lib/recipes/format";
+import { firstOfMonth } from "@/lib/typo";
 
 type Category = (typeof NOTE_CATEGORIES)[number];
 const PERSON_KEY = "mijote.personId";
@@ -14,7 +15,7 @@ const PERSON_KEY = "mijote.personId";
 export type NoteView = { id: string; category: Category; text: string; personName: string | null; createdAt: string };
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+  return firstOfMonth(new Date(iso).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }));
 }
 
 /** Liste filtrable par catégorie, puis le formulaire. */

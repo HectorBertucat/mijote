@@ -33,10 +33,13 @@ export function Notice({ icon = "alert", tone = "warn", children, action }: { ic
 export function Fold({ id, title, aside, children, open = false }: { id: string; title: string; aside?: ReactNode; children: ReactNode; open?: boolean }) {
   return (
     <details id={id} className="group scroll-mt-24 border-t border-line" open={open}>
-      <summary className="flex min-h-tap cursor-pointer list-none flex-wrap items-baseline gap-x-6 gap-y-1 py-6 [&::-webkit-details-marker]:hidden">
-        <h2 className="text-h3 font-bold tracking-[-0.015em] [font-stretch:100%]">{title}</h2>
-        {aside && <span className="min-w-0 flex-1 text-small text-ink-2">{aside}</span>}
-        <Icon name="chev" className="ml-auto self-center text-ink-3 transition-[transform,color] duration-[var(--dur-2)] ease-[var(--ease-out)] group-hover:text-ink group-open:rotate-90" />
+      <summary className="flex min-h-tap cursor-pointer list-none items-center gap-4 py-6 [&::-webkit-details-marker]:hidden">
+        {/* Au téléphone, le résumé passe sous le titre (sinon chaque ligne le commence à une hauteur différente). */}
+        <span className="grid min-w-0 flex-1 gap-1 sm:flex sm:flex-wrap sm:items-baseline sm:gap-x-6">
+          <h2 className="text-h3 font-bold tracking-[-0.015em] [font-stretch:100%]">{title}</h2>
+          {aside && <span className="min-w-0 text-small text-ink-2 sm:flex-1">{aside}</span>}
+        </span>
+        <Icon name="chev" className="shrink-0 text-ink-3 transition-[transform,color] duration-[var(--dur-2)] ease-[var(--ease-out)] group-hover:text-ink group-open:rotate-90" />
       </summary>
       <div className="animate-pop pb-12 motion-reduce:animate-none">{children}</div>
     </details>
@@ -66,8 +69,9 @@ export function Dock({ title, sub, children, wide = true }: { title: ReactNode; 
     <div className={`sticky bottom-[calc(72px+env(safe-area-inset-bottom))] z-10 mt-12 sm:bottom-6 ${wide ? "lg:ml-[calc(33.333%+8px)]" : ""}`}>
       <div className="flex items-center gap-4 rounded-[14px] border border-line bg-surface py-3 pl-4 pr-3 shadow-float sm:pl-6">
         <div className="min-w-0 flex-1" aria-live="polite">
-          <p className="num-tight truncate text-h3 leading-[1.2] text-ink">{title}</p>
-          {sub && <p className="truncate text-small text-ink-2">{sub}</p>}
+          {/* Au téléphone, le bouton prend la moitié de la barre : le texte passe à la ligne plutôt que d’être coupé. */}
+          <p className="num-tight text-body leading-[1.2] text-ink sm:truncate sm:text-h3">{title}</p>
+          {sub && <p className="line-clamp-2 text-small leading-[1.3] text-ink-2 sm:truncate">{sub}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">{children}</div>
       </div>

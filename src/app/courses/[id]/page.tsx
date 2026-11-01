@@ -20,14 +20,16 @@ import { recipeIngredients, recipes, shoppingItems, shoppingLists, weekPlans } f
 import { periodHeading } from "@/lib/week/period";
 import { factorLabel } from "@/lib/week/selection";
 import { AISLES } from "@/lib/shopping/rules";
+import { buyName } from "@/lib/shopping/label";
 import { accountEnabled, catalogEnabled, type ResolvedProduct } from "@/lib/chronocatalog";
 import { storeLabel } from "@/lib/settings";
 import { DrivePanel } from "@/components/cart/DrivePanel";
 import { cartPayload, orderSummary } from "@/lib/shopping/drive";
+import { firstOfMonth } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
 
-const day = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" });
+const day = (iso: string) => firstOfMonth(new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" }));
 
 const eur = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2).replace(".", ",")} €`);
 const grams = (g: number | null) => (g == null ? null : g >= 1000 ? `${(g / 1000).toLocaleString("fr-FR")}\u00a0kg` : `${Math.round(g)}\u00a0g`);
@@ -123,7 +125,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
       ...rows.map((i) => {
         if (i.pantry) return `- ${i.item} (placard, à vérifier)`;
         const p = i.productJson as ResolvedProduct | null;
-        return p ? `- ${i.packs} × ${p.name} ${p.quantityLabel ?? ""} · ${eur(i.totalPrice)} · ${p.productUrl}` : catalogEnabled() ? `- ${i.item} : introuvable, à chercher` : `- ${i.item}${i.needG ? ` (${Math.round(i.needG)} g)` : ""}`;
+        return p ? `- ${i.packs} × ${p.name} ${p.quantityLabel ?? ""} · ${eur(i.totalPrice)} · ${p.productUrl}` : catalogEnabled() ? `- ${buyName(i.item)} : introuvable, à chercher` : `- ${buyName(i.item)}${i.needG ? ` (${Math.round(i.needG)} g)` : ""}`;
       }),
     ]),
   ].join("\n");
@@ -144,27 +146,35 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
         size="display"
         aside={
           total > 0 ? (
-            <Figure big value={total.toFixed(2).replace(".", ",")} unit="€" label={`${buy.length} articles${ordered ? ", commandés" : catalogEnabled() ? ", estimé" : ", prix saisis"}`} />
+            <Figure big value={total.toFixed(2).replace(".", ",")} unit="€" label={`${buy.length} articles${ordered ? (catalogEnabled() ? ", commandés" : ", achetés") : catalogEnabled() ? ", estimé" : ", prix saisis"}`} />
           ) : (
-            <Figure big value={buy.length} label={`articles${ordered ? " commandés" : " à prendre"}`} />
+            <Figure big value={buy.length} label={`articles${ordered ? (catalogEnabled() ? " commandés" : " achetés") : " à prendre"}`} />
           )
         }
       >
-        {dishes.length > 0 && <p className="max-w-[60ch] text-lead text-ink-2">{dishes.join(" · ")}</p>}
-        {(week || scaledRecipes.length > 0 || Object.keys(list.recipeExtras).length > 0) && (
+        {/* Les plats une seule fois, avec leur multiplicateur (« Colombo de porc ×2 ») plutôt que redits dessous. */}
+        {dishes.length > 0 && (
+          <p className="max-w-[60ch] text-lead text-ink-2">
+            {dishes.map((d, i) => {
+              const scaled = scaledRecipes.find((r) => r.name === d);
+              return (
+                <span key={d}>
+                  {i > 0 && " · "}
+                  {d}
+                  {scaled && <span className="num whitespace-nowrap">{`\u00a0${factorLabel(list.recipeScales[scaled.slug])}`}</span>}
+                </span>
+              );
+            })}
+          </p>
+        )}
+        {(week || Object.keys(list.recipeExtras).length > 0) && (
           <p className="text-small text-ink-2">
             {week && (
               <Link href={`/semaine?w=${week.weekStart}`} className="font-semibold text-accent underline-offset-4 hover:underline">
                 {periodHeading(week.weekStart, week.days)}
               </Link>
             )}
-            {scaledRecipes.map((r) => (
-              <span key={r.slug}>
-                {" "}
-                · {r.name} {factorLabel(list.recipeScales[r.slug])}
-              </span>
-            ))}
-            {Object.keys(list.recipeExtras).length > 0 && <span> · {Object.keys(list.recipeExtras).length === 1 ? "1 paquet fini" : `${Object.keys(list.recipeExtras).length} paquets finis`} (grammes ajoutés)</span>}
+            {Object.keys(list.recipeExtras).length > 0 && <span>{week && " · "}{Object.keys(list.recipeExtras).length === 1 ? "1 paquet fini" : `${Object.keys(list.recipeExtras).length} paquets finis`} (grammes ajoutés)</span>}
           </p>
         )}
       </PageHead>
@@ -212,7 +222,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
         )}
 
         <div className="min-w-0 lg:col-span-8 lg:col-start-1 lg:row-span-2 lg:row-start-1">
-          <CartList catalog={catalogEnabled()} listId={id} title={title} ordered={ordered} orderedAt={list.orderedAt} groups={groups} copy={<CopyButton text={copy} />} />
+          <CartList catalog={catalogEnabled()} listId={id} title={title} ordered={ordered} orderedAt={list.orderedAt} groups={groups} copy={<CopyButton text={copy} links={catalogEnabled()} />} />
         </div>
 
         {catalogEnabled() && (
@@ -242,7 +252,7 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
             <SubmitButton pendingText="Je planifie la session…" variant={ordered ? undefined : "soft"}>
               {ordered ? "Lancer la session avec ma commande" : "Lancer la session avec cette liste"}
             </SubmitButton>
-            {ordered && <CopyButton text={copy} />}
+            {ordered && <CopyButton text={copy} links={catalogEnabled()} />}
           </div>
         </form>
       </section>
@@ -253,6 +263,8 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
 /** Ce que la commande couvre, recette par recette : manques (et unités conseillées) et restes. */
 function Coverage({ listId, ordered }: { listId: string; ordered: boolean }) {
   const recs = orderedIngredientsFor(db, listId);
+  // Sans aucun produit choisi (pas de catalogue), on ne sait pas ce que la liste couvre : tout serait « manquant ».
+  if (!recs.some((r) => r.ingredients.some((i) => i.product))) return null;
   const rows = recs.map((r) => ({
     r,
     short: r.ingredients.filter((i) => i.status === "short" || i.status === "missing"),
@@ -299,7 +311,7 @@ function Coverage({ listId, ordered }: { listId: string; ordered: boolean }) {
                 </table>
                 {r.suggestedUnits < r.servingsUnits && (
                   <p className="text-small text-ink">
-                    Fais <b className="num">{r.suggestedUnits}</b> unités au lieu de <span className="num">{r.servingsUnits}</span>, ou ajoute un paquet.
+                    Fais <b className="num">{r.suggestedUnits}</b> {r.suggestedUnits > 1 ? "unités" : "unité"} au lieu de <span className="num">{r.servingsUnits}</span>, ou ajoute un paquet.
                   </p>
                 )}
               </>

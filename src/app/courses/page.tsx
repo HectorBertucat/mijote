@@ -9,6 +9,8 @@ import { periodLabel } from "@/lib/week/period";
 import { pantryTotals, spendingTotals } from "@/lib/costs";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { storeLabel } from "@/lib/settings";
+import { plural } from "@/components/semaine/format";
+import { firstOfMonth } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,7 @@ export default function Listes() {
     const [label, tone] = STATUS[l.status] ?? [l.status, "idle" as PillTone];
     const wk = l.weekPlanId ? weekOf.get(l.weekPlanId) : null;
     const at = new Date(l.createdAt);
-    const day = at.toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
+    const day = firstOfMonth(at.toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }));
     const time = at.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }).replace(":", "\u00a0h\u00a0");
     const week = wk ? `${periodLabel(wk.weekStart, wk.days, "short")} · ` : "";
     return { id: l.id, title: l.title ?? "Liste de courses", day, sub: `${week}faite à ${time}`, label, tone, ordered: l.status === "ordered" || l.status === "paid", archived: Boolean(l.archivedAt) };
@@ -48,10 +50,13 @@ export default function Listes() {
           </Link>
         }
       >
-        <Figures className="mt-6">
-          <Figure href="/placard" value={num(pantry.okValue)} unit="€" label={`au placard, ${pantry.okCount ?? 0} restes`} />
-          <Figure href="/couts" value={num(spent.spent)} unit="€" label={`dépensés, ${spent.purchases} achats`} />
-        </Figures>
+        {/* Sans aucun prix (pas de catalogue, rien d’acheté encore) : pas de rangée de « 0,00 € ». */}
+        {(pantry.okValue > 0 || spent.spent > 0 || (pantry.okCount ?? 0) > 0) && (
+          <Figures className="mt-6">
+            <Figure href="/placard" value={num(pantry.okValue)} unit="€" label={`au placard, ${plural(pantry.okCount ?? 0, "reste")}`} />
+            <Figure href="/couts" value={num(spent.spent)} unit="€" label={`dépensés, ${plural(spent.purchases, "achat")}`} />
+          </Figures>
+        )}
       </PageHead>
 
       {lists.length === 0 ? (

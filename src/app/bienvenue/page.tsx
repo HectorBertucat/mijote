@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { aiEnabled } from "@/lib/ai";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { db } from "@/lib/db/client";
 import { listPeople } from "@/lib/health/store";
@@ -12,5 +13,5 @@ export const dynamic = "force-dynamic";
 export default function Bienvenue() {
   if (isSetupDone(db)) redirect("/");
   const people = listPeople(db).map((p) => ({ id: p.id, name: p.name, portionUnits: p.portionUnits }));
-  return <Onboarding people={people} kitchen={loadKitchen(db)} home={getSetting(db, SETTING.homeName) ?? ""} store={getSetting(db, SETTING.storeLabel) ?? ""} catalog={catalogEnabled()} />;
+  return <Onboarding people={people} kitchen={loadKitchen(db)} home={getSetting(db, SETTING.homeName) ?? ""} store={getSetting(db, SETTING.storeLabel) ?? ""} catalog={catalogEnabled()} ai={aiEnabled()} />;
 }
