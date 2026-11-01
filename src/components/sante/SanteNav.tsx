@@ -12,6 +12,7 @@ export const SANTE_PAGES = [
   { href: "/sante/aujourdhui", label: "Aujourd’hui" },
   { href: "/sante/habitudes", label: "Hors batch" },
   { href: "/sante/entrainement", label: "Entraînement" },
+  { href: "/sante/course", label: "Course" },
   { href: "/sante/demarrer", label: "Mise en route" },
   { href: "/sante/profil", label: "Profil" },
   { href: "/sante/apple", label: "Apple Santé" },
