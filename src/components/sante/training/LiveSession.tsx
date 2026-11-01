@@ -15,7 +15,7 @@ import { createContext, useContext, useEffect, useRef, useState, useTransition }
 import { beep, Button, Check, Field, formatClock, Sheet, Stepper, Textarea } from "@/components/ui";
 import { de, Verdict } from "../carnet";
 import { guideMotion, motionOf } from "@/lib/training/figures";
-import { AUTO_NEXT_MS, clockOf, entriesOf, guideAt, OPTS_BOUNDS, optsOf, suggestedReps, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
+import { AUTO_NEXT_MS, autoDue, clockOf, entriesOf, guideAt, OPTS_BOUNDS, optsOf, suggestedReps, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
 import { cycleDuration, sample } from "@/lib/training/motion";
 import { heightAt } from "@/lib/training/rhythm";
 import { lastFor, levelFor, ready, type Exercise, type LiveStep, type Program, type Workout } from "@/lib/training/program";
@@ -389,7 +389,8 @@ function SetScreen({ p, live, workouts, dispatch, offset, sound, remote, step, l
   });
 
   // Rythme guidé terminé : la série est notée toute seule (correction possible pendant le repos).
-  useOnce(!paused && g?.phase === "done" && elapsed >= (ex.uni ? 2 * dur + SWITCH_SEC : dur) + AUTO_NEXT_MS / 1000, () => dispatch({ k: "record", at, ex: step.ex, set: step.set, value: reps, level }));
+  const autoAt = (ex.uni ? 2 * dur + SWITCH_SEC : dur) + AUTO_NEXT_MS / 1000;
+  useOnce(!paused && g?.phase === "done" && autoDue(autoAt * 1000, elapsed * 1000), () => dispatch({ k: "record", at, ex: step.ex, set: step.set, value: reps, level }));
 
   const running = g != null && g.phase !== "done";
   const partial = g?.phase === "run" && g.side === 1 && count > 0 ? count : reps;
@@ -594,7 +595,7 @@ function Rest({ p, live, workouts, dispatch, now, sound, remote, levelOf, onDeta
     if (shown > 0 && shown <= 3) sound(660, 0.1);
     if (shown === 0) sound(990, 0.4);
   }, [shown, sound]);
-  useOnce(left <= 0 && !paused, () => dispatch({ k: "go", at, n: 1 }));
+  useOnce(!paused && autoDue(end, clockOf(live, now())), () => dispatch({ k: "go", at, n: 1 }));
   const skip = () => dispatch({ k: "go", at, n: 1 });
   const plus = () => dispatch({ k: "rest+", at, sec: 15 });
   const pause = () => dispatch({ k: paused ? "resume" : "pause", at });
@@ -720,7 +721,7 @@ function Emom({ p, live, dispatch, offset, sound, remote, step }: Common & { ste
     lastRound.current = round;
     if (!late) sound(990, 0.25);
   }, [started, paused, round, finished, inRound, sound]);
-  useOnce(finished && !paused, () => {
+  useOnce(finished && !paused && autoDue(step.rounds * step.every * 1000, clock * 1000), () => {
     sound(990, 0.5);
     dispatch({ k: "record", at, ex: step.ex, set: 1, value: step.rounds * step.reps });
   });

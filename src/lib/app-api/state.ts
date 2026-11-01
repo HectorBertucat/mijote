@@ -2,7 +2,7 @@
 // elle finit (l'app décompte en local), et ses gestes nommés (`start`, `pause`, `next`…) traduits en gestes
 // de live.ts. Plus le nettoyage des réponses (une valeur absente = clé absente). Module pur.
 import { cycleDuration, type Motion } from "@/lib/training/motion";
-import { guideAt, optsOf, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
+import { AUTO_LATE_MS, AUTO_NEXT_MS, guideAt, optsOf, SWITCH_SEC, type Live, type LiveAction } from "@/lib/training/live";
 import type { Exercise } from "@/lib/training/program";
 
 export type Phase = "warmup" | "setup" | "work" | "switch" | "rest" | "bonus" | "paused" | "done";
@@ -18,6 +18,12 @@ export interface LiveState {
   /** Série en cours : côté (unilatéral), objectif, durée d'un côté en secondes. */
   side?: 1 | 2;
   auto: boolean;
+  /** Geste qu'un écran envoie seul à la fin de la phase (`record` d'une série guidée ou du finisher, `go` d'un
+   * repos), à partir de `autoAt` et seulement avant `autoUntil` (ms, heure du serveur) : passé ce délai, la
+   * séance a été oubliée, on attend un geste de la personne. */
+  autoGesture?: "record" | "go";
+  autoAt?: number;
+  autoUntil?: number;
 }
 
 /** La phase d'une séance à l'instant `now` (heure du serveur). `ex`, `motion`, `reps` : l'exercice en cours. */
@@ -26,15 +32,17 @@ export function phaseOf(l: Live, ended: boolean, version: number, now: number, c
   const step = l.steps[l.i];
   if (ended || !step || step.k === "end") return { ...base, phase: "done" };
   const at = l.cur.paused ?? now;
+  const auto = (gesture: "record" | "go", from: number) => ({ autoGesture: gesture, autoAt: from, autoUntil: from + AUTO_LATE_MS });
   const inner = ((): Omit<LiveState, "revision" | "serverTime" | "auto"> => {
     if (step.k === "warm") return { phase: "warmup" };
     if (step.k === "bonus") return { phase: "bonus" };
-    if (step.k === "rest") return { phase: "rest", ...(l.cur.restEnd != null ? { phaseEndsAt: l.cur.restEnd } : {}) };
+    if (step.k === "rest") return { phase: "rest", ...(l.cur.restEnd != null ? { phaseEndsAt: l.cur.restEnd, ...auto("go", l.cur.restEnd) } : {}) };
     if (step.k === "emom") {
       const t0 = l.cur.emom;
       if (t0 == null) return { phase: "work" };
       if (at < t0) return { phase: "setup", phaseEndsAt: t0 };
-      return { phase: "work", phaseEndsAt: t0 + step.rounds * step.every * 1000 };
+      const end = t0 + step.rounds * step.every * 1000;
+      return { phase: "work", phaseEndsAt: end, ...auto("record", end) };
     }
     // Une série : sans rythme guidé, elle attend « Série faite ».
     const t0 = l.cur.guide;
@@ -44,11 +52,12 @@ export function phaseOf(l: Live, ended: boolean, version: number, now: number, c
     const g = guideAt((at - t0) / 1000, dur, cur.ex.uni);
     if (g.phase === "ready") return { phase: "setup", phaseEndsAt: t0 };
     if (g.phase === "switch") return { phase: "switch", side: 1, phaseEndsAt: t0 + (dur + SWITCH_SEC) * 1000 };
-    if (g.phase === "run") return { phase: "work", side: g.side, phaseEndsAt: t0 + (g.side === 1 ? dur : 2 * dur + SWITCH_SEC) * 1000 };
-    return { phase: "work", side: g.side, phaseEndsAt: t0 + (cur.ex.uni ? 2 * dur + SWITCH_SEC : dur) * 1000 };
+    const last = t0 + (cur.ex.uni ? 2 * dur + SWITCH_SEC : dur) * 1000;
+    if (g.phase === "run") return { phase: "work", side: g.side, phaseEndsAt: t0 + (g.side === 1 ? dur : 2 * dur + SWITCH_SEC) * 1000, ...auto("record", last + AUTO_NEXT_MS) };
+    return { phase: "work", side: g.side, phaseEndsAt: last, ...auto("record", last + AUTO_NEXT_MS) };
   })();
   if (l.cur.paused != null) {
-    const { phaseEndsAt: _, ...rest } = inner;
+    const { phaseEndsAt: _, autoGesture: _g, autoAt: _a, autoUntil: _u, ...rest } = inner;
     return { ...base, ...rest, phase: "paused", pausedPhase: inner.phase };
   }
   return { ...base, ...inner };

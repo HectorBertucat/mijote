@@ -161,3 +161,17 @@ test("api app : gestes nommés, phase et fin de phase, révision périmée, renv
   assert.equal(r.live.live.i, 2);
   assert.equal(call(alex, "POST", `sport/seance/${id}/action`, { action: "voler" }).status, 400);
 });
+
+test("api app : un geste automatique ne part que dans les 5 minutes après la fin (séance oubliée)", () => {
+  const { alex, call } = setup();
+  const t0 = Date.parse("2026-10-20T08:00:00Z");
+  type S = { live: { state: { phase: string; autoGesture?: string; autoAt?: number; autoUntil?: number } } };
+  const id = (call(alex, "POST", "sport/seance", { type: "A" }, t0).body as { live: { id: string } }).live.id;
+  call(alex, "POST", `sport/seance/${id}/action`, { action: "next" }, t0);
+  call(alex, "POST", `sport/seance/${id}/geste`, { k: "guide", at: 1, on: true, reps: 12, lead: 0 }, t0);
+  const s = (call(alex, "GET", `sport/seance/${id}`, null, t0 + 10_000).body as S).live.state;
+  assert.equal(s.autoGesture, "record");
+  // goblet : 12 × 5,4 s, puis 1,2 s ; noté seul pendant 5 minutes, pas après.
+  assert.equal(s.autoAt, t0 + 12 * 5400 + 1200);
+  assert.equal(s.autoUntil, s.autoAt! + 5 * 60_000);
+});

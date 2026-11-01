@@ -17,7 +17,7 @@ import { openDb } from "@/lib/db/open";
 import { seedTest } from "./helpers";
 import { listWorkouts, saveWorkout } from "@/lib/training/store";
 import { sessionMap } from "@/components/sante/training/LiveSession";
-import { act, DEFAULT_OPTS, entriesOf, guideAt, leadFor, normOpts, startLive } from "@/lib/training/live";
+import { act, autoDue, DEFAULT_OPTS, entriesOf, guideAt, leadFor, normOpts, startLive } from "@/lib/training/live";
 import { musclesFromText, musclesOf, ranked } from "@/lib/training/muscles";
 import { drawFigure } from "@/lib/training/draw";
 
@@ -456,4 +456,11 @@ test("dessin : chaque figure a son corps, son matériel tenu et posé", () => {
     if (m.keys.some((k) => k.bell) || m.gear?.length) assert.ok(prims.some((p) => p.paint === "tool"), `${id} : matériel tenu`);
     if (m.props?.length) assert.ok(prims.some((p) => p.paint === "prop"), `${id} : matériel posé`);
   }
+});
+
+test("geste automatique : à la fin, pas une séance oubliée depuis des heures", () => {
+  assert.equal(autoDue(10_000, 9_999), false, "pas avant la fin");
+  assert.equal(autoDue(10_000, 10_000), true);
+  assert.equal(autoDue(10_000, 10_000 + 4 * 60_000), true);
+  assert.equal(autoDue(10_000, 10_000 + 3 * 3600_000), false, "rouverte des heures après : on attend un geste");
 });
