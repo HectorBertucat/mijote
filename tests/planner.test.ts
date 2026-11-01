@@ -11,22 +11,24 @@ const caramel = load("porc-caramel.json");
 const colombo = load("colombo-porc.json");
 const saute = load("saute-minute-gingembre-miel.json");
 const medaillons = load("medaillons-moutarde.json");
+const paprika = load("poulet-paprika-fume-patates-douces.json");
+const dahl = load("dahl-pois-casses-poulet.json");
 
 const overlaps = (a0: number, a1: number, b0: number, b1: number) => a0 < b1 - 1e-6 && b0 < a1 - 1e-6;
 
 function checkInvariants(plan: SessionPlan) {
   assert.deepEqual(plan.errors, [], plan.errors.map((e) => e.message).join("\n"));
   assert.deepEqual(validatePlan(plan, RES), []);
-  // Une seule personne (ou chaque personne, à deux) : les temps actifs ne se chevauchent pas.
-  const act = plan.steps.filter((s) => s.activeMin > 0);
+  // Une seule personne (ou chaque personne, à deux) : les moments « mains » ne se chevauchent pas.
+  const act = plan.steps.filter((s) => s.hands?.length);
   const same = (a: (typeof act)[number], b: (typeof act)[number]) => (a.person ?? "A") === (b.person ?? "A");
   for (let i = 0; i < act.length; i++)
     for (let j = i + 1; j < act.length; j++)
-      if (same(act[i], act[j])) assert.ok(!overlaps(act[i].startMin, act[i].startMin + act[i].activeMin, act[j].startMin, act[j].startMin + act[j].activeMin), `${act[i].id} et ${act[j].id} en même temps`);
-  // L'ordre de chaque recette est respecté (un à-côté « pendant le braisage » ne retient pas le fil principal).
+      if (same(act[i], act[j])) for (const [a0, a1] of act[i].hands!) for (const [b0, b1] of act[j].hands!) assert.ok(!overlaps(a0, a1, b0, b1), `${act[i].id} et ${act[j].id} en même temps`);
+  // L'ordre de chaque recette est respecté (un à-côté « pendant le braisage » ou une cuisson de base, le riz, ne retient pas le fil principal).
   const side = (t: string) => /\bpendant (?:le|la|les|l'|que|ce)\b/i.test(t);
   for (const r of plan.recipes) {
-    const mine = plan.steps.filter((s) => s.recipeSlug === r.slug && !s.tasks).sort((a, b) => a.order - b.order);
+    const mine = plan.steps.filter((s) => s.recipeSlug === r.slug && !s.tasks && !s.base).sort((a, b) => a.order - b.order);
     for (let i = 1; i < mine.length; i++) {
       const prev = [...mine.slice(0, i)].reverse().find((p) => !side(p.text)) ?? mine[i - 1];
       assert.ok(mine[i].startMin >= prev.startMin, `${mine[i].id} avant ${prev.id}`);
@@ -160,10 +162,14 @@ test("récipient de rechange : le colombo mijote au faitout quand la cocotte ser
 });
 
 test("seul : des gestes de prep se glissent dans les temps morts, la session raccourcit", () => {
-  const before = planSession([chasseur, colombo], RES, { interleave: false });
-  const plan = planSession([chasseur, colombo], RES);
+  const before = planSession([chasseur, dahl], RES, { interleave: false });
+  const plan = planSession([chasseur, dahl], RES);
   checkInvariants(plan);
-  assert.ok(plan.totalMin <= before.totalMin - 15, `${plan.totalMin} vs ${before.totalMin}`);
+  // Glisser ne rallonge jamais ; depuis que les mijotés se surveillent au lieu d'occuper les mains (01/11/2026),
+  // le plan sans gestes glissés est déjà plus court qu'avant ; glisser gagne encore.
+  assert.ok(plan.totalMin < before.totalMin - 5, `${plan.totalMin} vs ${before.totalMin}`);
+  const colombo2 = [planSession([chasseur, colombo], RES), planSession([chasseur, colombo], RES, { interleave: false })];
+  assert.ok(colombo2[0].totalMin <= colombo2[1].totalMin + 1e-6 && colombo2[0].totalMin <= 240, `${colombo2[0].totalMin} vs ${colombo2[1].totalMin}`);
   // La poêle préchauffée à vide n'attend pas qu'un geste finisse : la saisie suit le préchauffage.
   for (const p of [plan, planSession([chasseur, forno], RES), planSession([chasseur, forno], RES, { mode: "duo" })]) {
     const pre = p.steps.find((s) => s.id === `${chasseur.slug}#3`)!;
@@ -268,9 +274,9 @@ test("braisage au four qui continue : la cocotte reste au four, sans nouveau pr�
   assert.equal(champi.startMin, braise.endMin);
 });
 
-test("braiser sur la plaque : chasseur + forno, le four reste à 200 °C pour le forno, et le plan le dit", () => {
-  const oven = planSession([chasseur, forno], RES, { braiseOnHob: false });
-  const plan = planSession([chasseur, forno], RES);
+test("braiser sur la plaque : chasseur + paprika, le four reste à 220 °C pour le paprika, et le plan le dit", () => {
+  const oven = planSession([chasseur, paprika], RES, { braiseOnHob: false });
+  const plan = planSession([chasseur, paprika], RES);
   checkInvariants(plan);
   assert.ok(plan.totalMin < oven.totalMin, `${plan.totalMin} vs ${oven.totalMin}`);
   assert.match(plan.decisions?.[0] ?? "", /Chasseur de porc braise sur la plaque .* niveau 2-3/);
@@ -282,7 +288,11 @@ test("braiser sur la plaque : chasseur + forno, le four reste à 200 °C pour le
   assert.equal(champi.hobId, "hob-28", "même foyer, la cocotte ne bouge pas");
   assert.ok(braise.hobUntilMin! >= champi.startMin - 1e-6);
   assert.ok(braise.notes.some((n) => n.includes("couvercle")));
-  assert.ok(plan.steps.filter((s) => s.oven).every((s) => s.oven!.temp === 200));
+  assert.ok(plan.steps.filter((s) => s.oven).every((s) => s.oven!.temp === 220));
+  // À deux, chasseur + forno : le four reste à 200 °C pour le forno.
+  const duo = planSession([chasseur, forno], RES, { mode: "duo" });
+  assert.match(duo.decisions?.[0] ?? "", /Chasseur de porc braise sur la plaque/);
+  assert.ok(duo.steps.filter((s) => s.oven).every((s) => s.oven!.temp === 200));
   // Une seule recette au four : pas de braisage sur la plaque à décider.
   assert.ok(!(planSession([chasseur], RES).decisions ?? []).some((d) => d.includes("braise")));
 });
@@ -319,7 +329,7 @@ test("à deux : chasseur + forno nettement plus court que seul, sans conflit de 
   for (const p of ["A", "B"] as const) {
     const busy = [
       ...tasks.filter((t) => t.person === p).map((t) => [t.startMin!, t.endMin!, t.id] as const),
-      ...duo.steps.filter((s) => s.person === p && s.activeMin > 0).map((s) => [s.startMin, s.startMin + s.activeMin, s.id] as const),
+      ...duo.steps.filter((s) => s.person === p).flatMap((s) => (s.hands ?? []).map(([a, b]) => [a, b, s.id] as const)),
     ];
     for (let i = 0; i < busy.length; i++)
       for (let j = i + 1; j < busy.length; j++) assert.ok(!overlaps(busy[i][0], busy[i][1], busy[j][0], busy[j][1]), `${p} : ${busy[i][2]} et ${busy[j][2]}`);

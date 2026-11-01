@@ -13,7 +13,7 @@ import { EQUIPMENT, EQUIPMENT_FIT } from "@/seed/base";
 import { seedBase } from "@/seed/seed";
 
 export const RES: PlannerResources = {
-  equipment: EQUIPMENT.map((e) => ({ id: e.id, kind: e.kind, name: e.name, maxBatchG: e.maxBatchG ?? null, dimsJson: e.dimsJson ?? null, count: e.count ?? 1 })),
+  equipment: EQUIPMENT.map((e) => ({ id: e.id, kind: e.kind, name: e.name, maxBatchG: e.maxBatchG ?? null, dimsJson: e.dimsJson ?? null, count: e.count ?? 1, capacityL: e.capacityL ?? null })),
   fits: EQUIPMENT_FIT.map((f) => ({ equipmentId: f.equipmentId, hobId: f.hobId, preferred: f.preferred ?? true })),
 };
 
@@ -22,7 +22,7 @@ export function load(file: string): PlannerRecipe {
   return {
     slug: r.slug,
     name: r.name,
-    ingredients: r.ingredients.map((i, n) => ({ id: `${r.slug}-ing-${n}`, item: i.item, grams: i.grams, units: i.units, group: i.group, optional: i.optional, pantry: i.pantry, foodId: i.food })),
+    ingredients: r.ingredients.map((i, n) => ({ id: `${r.slug}-ing-${n}`, item: i.item, grams: i.grams, units: i.units, group: i.group, optional: i.optional, pantry: i.pantry, foodId: i.food, side: i.side })),
     steps: r.steps.map((s) => ({ ...s, bowls: s.bowls ?? [] })),
   };
 }

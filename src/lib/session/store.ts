@@ -10,7 +10,7 @@ import { cookedEnough, learn, measureSession, plannerInput, WINDOW, type Correct
 
 export function loadResources(db: Db): PlannerResources {
   return {
-    equipment: db.select({ id: equipment.id, kind: equipment.kind, name: equipment.name, maxBatchG: equipment.maxBatchG, dimsJson: equipment.dimsJson, count: equipment.count }).from(equipment).where(eq(equipment.owned, true)).all(),
+    equipment: db.select({ id: equipment.id, kind: equipment.kind, name: equipment.name, maxBatchG: equipment.maxBatchG, dimsJson: equipment.dimsJson, count: equipment.count, capacityL: equipment.capacityL }).from(equipment).where(eq(equipment.owned, true)).all(),
     fits: db.select().from(equipmentFit).all(),
   };
 }
@@ -35,7 +35,7 @@ export function loadPlannerRecipes(db: Db, slugs: string[], scales: Record<strin
       scale: scales[r.slug] ?? 1,
       ingredients: ings
         .filter((i) => i.recipeId === r.id)
-        .map((i) => ({ id: i.id, item: i.item, grams: i.grams != null && extras[i.id] ? i.grams + extras[i.id] / (scales[r.slug] ?? 1) : i.grams, units: i.units, group: i.group, optional: i.optional, pantry: i.pantry, foodId: i.foodId })),
+        .map((i) => ({ id: i.id, item: i.item, grams: i.grams != null && extras[i.id] ? i.grams + extras[i.id] / (scales[r.slug] ?? 1) : i.grams, units: i.units, group: i.group, optional: i.optional, pantry: i.pantry, foodId: i.foodId, side: i.side })),
       steps: steps
         .filter((s) => s.recipeId === r.id)
         .map((s) => ({
