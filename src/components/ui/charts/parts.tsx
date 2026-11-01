@@ -56,7 +56,8 @@ export function Legend({ items, className = "" }: { items: LegendItem[]; classNa
 /** Les mêmes chiffres en tableau, pour les lecteurs d'écran (le dessin, lui, est muet). Dans une boîte masquée :
  * un tableau ne se laisse pas réduire à 1 px et allongerait la page. Les suites sans mesure tiennent en une ligne (`tableRows`). */
 export function ChartTable({ caption, tips }: { caption: string; tips: Tip[] }) {
-  const cols = tips[0]?.rows.map((r) => r.label ?? "Valeur") ?? [];
+  // Les colonnes de toutes les lignes (un jour sans pesée n'a pas de ligne « pesée »), chaque valeur sous la sienne.
+  const cols = [...new Set(tips.flatMap((t) => t.rows.map((r) => r.label ?? "Valeur")))];
   return (
     <div className="sr-only">
       <table>
@@ -75,8 +76,8 @@ export function ChartTable({ caption, tips }: { caption: string; tips: Tip[] }) 
           {tableRows(tips).map((t, i) => (
             <tr key={i}>
               <th scope="row">{t.title}</th>
-              {cols.map((c, k) => (
-                <td key={c}>{t.rows[k]?.value ?? "—"}</td>
+              {cols.map((c) => (
+                <td key={c}>{t.rows.find((r) => (r.label ?? "Valeur") === c)?.value ?? "—"}</td>
               ))}
             </tr>
           ))}

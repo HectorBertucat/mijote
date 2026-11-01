@@ -285,7 +285,7 @@ function AddSheet({ open, onClose, initialMeal, personId, date, portionUnits, re
             <Button icon="sparkdraft" state={estimating ? "loading" : "idle"} loadingLabel="Estimation…" disabled={text.trim().length < 3} onClick={estimate}>
               Estimer avec l’IA
             </Button>
-            {err && <p className="text-small text-ko-ink">{err}</p>}
+            {err && <p role="alert" className="text-small text-ko-ink">{err}</p>}
             {est && <p className="text-small text-ink-2">{est.note}</p>}
             <div className="grid grid-cols-[minmax(0,1fr)_88px_76px] items-end gap-2">
               <Field label="Nom">{(id) => <Input id={id} value={manual.label} onChange={(e) => setManual({ ...manual, label: e.target.value })} placeholder="Resto" />}</Field>

@@ -728,7 +728,7 @@ function EndScreen({ p, live, id, now, onSaved, onBack }: { p: Program; live: Li
         </table>
       </div>
       <Field label="Une note\u00a0? Énergie, douleur, sensation">{(fid) => <Textarea id={fid} rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex.\u00a0: fente bulgare dure à gauche" />}</Field>
-      {error && <p className="text-small text-ko-ink">{error}</p>}
+      {error && <p role="alert" className="text-small text-ko-ink">{error}</p>}
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" size="kitchen" state={pending ? "loading" : "idle"} loadingLabel="Enregistrement…" onClick={save}>
           Enregistrer dans le carnet

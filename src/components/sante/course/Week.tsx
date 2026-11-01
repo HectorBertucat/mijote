@@ -11,7 +11,7 @@ import { hourText } from "./Today";
 
 /** Au téléphone, une colonne fait 45 px : le mot court ; plus large, le mot entier. */
 const SHORT: Record<OtherKind, string> = { natation: "nage", kettlebell: "kb", renfo: "renfo", velo: "vélo", marche: "marche", autre: "autre" };
-export const STATUS_TEXT: Record<PlannedRow["status"], string> = { prevue: "prévue", programmee: "sur la montre", faite: "faite", manquee: "manquée", annulee: "annulée" };
+export const STATUS_TEXT: Record<PlannedRow["status"], string> = { prevue: "prévue", programmee: "sur ta montre", faite: "faite", manquee: "manquée", annulee: "annulée" };
 
 /** La marque d'un jour : la course (minutes) pleine si faite, au trait si prévue, barrée si manquée. */
 function DayMark({ d }: { d: WeekDay }) {
