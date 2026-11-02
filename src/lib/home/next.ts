@@ -14,6 +14,8 @@ export interface HomeState {
   dishes: number;
   /** Repas de la période sans plat (hors absences). */
   missing: number;
+  /** Repas sans plat ignorés pour cette période (leur nombre quand on a ignoré), null : avertir. */
+  missingIgnored?: number | null;
   /** Une session de cette période est finie. */
   cooked: boolean;
   list: { id: string; ordered: boolean; changed: boolean; building: boolean } | null;
@@ -33,14 +35,20 @@ export type HomeStep =
   | { kind: "cook"; listId: string };
 
 /**
+ * Repas sans plat ignorés : c'est parfois un choix (un repas dehors pas noté). L'avertissement revient
+ * si d'autres repas se retrouvent sans plat que ceux qu'on a ignorés.
+ */
+export const coverIgnored = (missing: number, ignored: number | null | undefined) => missing > 0 && ignored != null && missing <= ignored;
+
+/**
  * Ce qu'il y a à faire maintenant, dans l'ordre du batch : reprendre une session lancée ;
- * choisir les plats ; couvrir les repas qui manquent ; une fois cuisiné, manger ; sinon la liste,
- * les courses, puis cuisiner.
+ * choisir les plats ; couvrir les repas qui manquent (sauf s'ils sont ignorés) ; une fois cuisiné,
+ * manger ; sinon la liste, les courses, puis cuisiner.
  */
 export function nextStep(s: HomeState): HomeStep {
   if (s.active) return { kind: "resume", sessionId: s.active.id };
   if (!s.dishes) return { kind: "choose" };
-  if (s.missing > 0) return { kind: "cover", missing: s.missing };
+  if (s.missing > 0 && !coverIgnored(s.missing, s.missingIgnored)) return { kind: "cover", missing: s.missing };
   if (s.cooked) return { kind: "eat" };
   if (!s.list || s.list.changed) return { kind: "list", changed: !!s.list?.changed };
   if (s.list.building) return { kind: "wait", listId: s.list.id };
@@ -94,7 +102,7 @@ export function stepLabel(step: HomeStep, cookDay: string, today: string): strin
     case "cover":
       return step.missing > 1 ? `Couvrir les ${step.missing} repas qui manquent` : "Couvrir le repas qui manque";
     case "eat":
-      return "Ouvrir le frigo";
+      return "Voir nos plats";
     case "list":
       return step.changed ? "Refaire la liste de courses" : "Faire la liste de courses";
     case "wait":

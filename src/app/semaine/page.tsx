@@ -7,7 +7,10 @@ import { db } from "@/lib/db/client";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { addDays, COOK_DAY, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
 import { clampDays, defaultPeriod, isDay, neighbour, periodDays, periodHeading, periodLabel, weekdayOf } from "@/lib/week/period";
-import { periodPlans, weekView } from "@/lib/week/store";
+import { missingIgnoredOf, periodPlans, weekView } from "@/lib/week/store";
+import { coverIgnored } from "@/lib/home/next";
+import { batchInPeriod } from "@/lib/reserve/batch";
+import { recentBatches } from "@/lib/reserve/store";
 import { composerHref } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
 import { estimateRecipe, estimateSession } from "@/lib/session/estimate";
@@ -31,7 +34,7 @@ import { WeekNutrition } from "@/components/WeekNutrition";
 import { dayRefOf, weekNutrition } from "@/lib/week/nutrition";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PendingMark } from "@/components/PendingMark";
-import { addAction, clearAction, extraAction, factorAction, proposeAction, removeAction, weekListAction } from "./actions";
+import { addAction, clearAction, extraAction, factorAction, ignoreMissingAction, proposeAction, removeAction, weekListAction } from "./actions";
 import { ofName } from "@/lib/session/people";
 
 export const dynamic = "force-dynamic";
@@ -181,6 +184,10 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   const cookDate = addDays(w, COOK_DAY);
   const cookDay = longDate(cookDate).split(" ")[0];
   const missing = missingText(a.uncovered, people.length, names, dayName);
+  // Repas sans plat ignorés depuis l’accueil (ou ici) : l’avertissement reste, en retrait, rétablissable.
+  const ignored = coverIgnored(a.uncovered.length, missingIgnoredOf(db, view.planId));
+  // Le batch cuit pour cette période : son bilan (plats, portions, pesées à faire).
+  const batch = recentBatches(db).find((b) => batchInPeriod(b.cookedOn, w, N)) ?? null;
   const full = selected.length >= MAX;
   // Sans plat choisi, rien à avertir : tout « manque » par définition.
   const hasNotices = selected.length > 0 && (a.uncovered.length > 0 || fitWarnings.length > 0 || (est?.conflicts.length ?? 0) > 0 || toSetup.length > 0);
@@ -205,6 +212,18 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
           <p className="mt-4 max-w-[46ch] text-lead text-ink">
             Coche 1 à 3&nbsp;plats, je calcule les quantités et je répartis les {toEat}&nbsp;repas{people.length > 1 ? ` ${ofName(joinFr(people.map((p) => p.name)))}` : ""}.
           </p>
+          {batch && (
+            <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-2" data-batch={batch.id}>
+              <Icon name="fridge" size="s" className="shrink-0 text-ink-3" />
+              <Link href={`/plats/batch/${batch.id}`} className="font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">
+                {batch.title}
+              </Link>
+              <span className="num">
+                {plural(batch.summary.dishes, "plat")}, {plural(batch.summary.portions, "portion")}
+                {batch.summary.toWeigh > 0 ? ` · ${batch.summary.toWeigh} à peser, portions estimées` : " · pesé"}
+              </span>
+            </p>
+          )}
           <p className="mt-2 text-small text-ink-2">
             Cuisine le {longDate(cookDate)}
             {officeMeals > 0 && ` · ${plural(officeMeals, "repas emporté", "repas emportés")}`}
@@ -303,16 +322,26 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
               <ul className="border-b border-line">
                 {a.uncovered.length > 0 && (
                   <Notice
+                    icon={ignored ? "check" : "alert"}
+                    tone={ignored ? "info" : "warn"}
                     action={
-                      !full && (
-                        <form action={proposeAction}>
-                          {keep()}
-                          <PendingButton loadingLabel="Je complète…">Compléter pour moi</PendingButton>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!full && !ignored && (
+                          <form action={proposeAction}>
+                            {keep()}
+                            <PendingButton loadingLabel="Je complète…">Compléter pour moi</PendingButton>
+                          </form>
+                        )}
+                        <form action={ignoreMissingAction}>
+                          {keep({ n: ignored ? "" : String(a.uncovered.length) })}
+                          <PendingButton variant="quiet" loadingLabel={ignored ? "Je rétablis…" : "J’ignore…"}>
+                            {ignored ? "Rétablir" : "Ignorer"}
+                          </PendingButton>
                         </form>
-                      )
+                      </div>
                     }
                   >
-                    <b>Il manque {plural(a.uncovered.length, "repas", "repas")}</b>&nbsp;: {missing}. {full ? "Quatre plats ne suffisent pas : prévois-les à part, ou note les absences." : null}
+                    <b>{ignored ? `${plural(a.uncovered.length, "repas", "repas")} sans plat, ignoré${a.uncovered.length > 1 ? "s" : ""}` : `Il manque ${plural(a.uncovered.length, "repas", "repas")}`}</b>&nbsp;: {missing}. {ignored ? "L’accueil ne le signale plus pour cette période." : full ? "Quatre plats ne suffisent pas : prévois-les à part, ou note les absences." : null}
                   </Notice>
                 )}
                 {est?.conflicts.map((c, i) => (
@@ -572,6 +601,8 @@ function flashText(done: string | undefined, bySlug: Map<string, { name: string 
   }
   if (kind === "swap") return b ? `${name(b)} remplace ${name(a)}.` : `Pas d’autre plat pour remplacer ${name(a)}.`;
   if (kind === "clear") return "Plats retirés : la semaine est vide.";
+  if (kind === "ignore") return "Repas sans plat ignorés pour cette période : l’accueil ne les signale plus.";
+  if (kind === "unignore") return "Avertissement rétabli : l’accueil signale à nouveau les repas sans plat.";
   if (kind === "period") return `Période réglée : ${a} jour${Number(a) > 1 ? "s" : ""}. Les quantités se sont recalées.`;
   if (kind === "add") return `Plat ajouté\u00a0: ${name(a)}.`;
   if (kind === "remove") return `Plat retiré\u00a0: ${name(a)}.`;

@@ -176,6 +176,9 @@ export const weekPlans = sqliteTable("week_plans", {
   notes: text("notes"),
   // Migration 0002 : nombre de jours de la période (7 = une semaine, 14 au plus, src/lib/week/period.ts).
   days: integer("days").notNull().default(7),
+  // Migration 0012 : repas sans plat ignorés par l'accueil (leur nombre au moment d'ignorer ; NULL = avertir).
+  // Un repas de plus sans plat fait revenir l'avertissement (src/lib/home/next.ts, coverIgnored).
+  missingIgnored: integer("missing_ignored"),
 });
 
 export const mealSlots = sqliteTable(

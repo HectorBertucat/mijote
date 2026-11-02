@@ -1,0 +1,1 @@
+ALTER TABLE `week_plans` ADD `missing_ignored` integer;

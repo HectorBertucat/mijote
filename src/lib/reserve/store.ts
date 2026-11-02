@@ -1,10 +1,11 @@
 // La réserve vue par la base : la marmite pesée en fin de session (groupes, portions de chacun, boîtes
 // du congélo), les portions mangées (avec leur ligne du journal), l'annulation, le réajustement, et
-// les anciennes boîtes reprises dans une réserve. Le calcul est dans ./core et ./groups (purs, testés).
+// les anciennes boîtes reprises dans une réserve, et le bilan d'un batch (les plats d'une session, estimés
+// tant qu'ils ne sont pas pesés). Le calcul est dans ./core, ./groups et ./batch (purs, testés).
 import { randomUUID } from "crypto";
-import { and, asc, desc, eq, gte, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { cookSessions, mealBoxes, mealSlots, people, recipeIngredients, recipes, reserves, reserveServings, weekPlans } from "@/lib/db/schema";
+import { cookEvents, cookSessions, mealBoxes, mealSlots, people, recipeIngredients, recipes, reserves, reserveServings, weekPlans } from "@/lib/db/schema";
 import { DEFAULT_FRIDGE_DAYS, daysBetween, freshness, limitOf, mealAt, type Place } from "@/lib/boxes/core";
 import { portionUnits } from "@/lib/eaters/core";
 import { loadEaters } from "@/lib/eaters/store";
@@ -18,6 +19,7 @@ import { addDays, mondayOf } from "@/lib/week/propose";
 import { periodPlans } from "@/lib/week/store";
 import { leftInPot, macrosOf, reserveState, reweigh, servingLabel, splitGroups, weighedGroups, type BoxIn, type CalcModel, type Grams, type ReserveGroup, type ServingIn, type ShareState, type Target } from "./core";
 import { serveGroups, type ServeDecl } from "./groups";
+import { batchSummary, batchTitle, ESTIMATE_WINDOW_DAYS, estimatedReserve, toEstimate, weighState, type BatchSummary, type WeighState } from "./batch";
 
 type ReserveRow = typeof reserves.$inferSelect;
 type BoxRow = typeof mealBoxes.$inferSelect;
@@ -107,12 +109,22 @@ export interface SavedReserve {
   counts: Record<string, number>;
   /** Boîtes du congélo de chacun, encore en stock. */
   freezer: Record<string, number>;
-  /** Portions déjà mangées : le calculateur renvoie alors au réajustement. */
+  /** Portions déjà mangées : le calculateur pèse alors ce qui reste. */
   eaten: number;
+  /** Estimé (rien de pesé), en partie pesé, pesé. */
+  weigh: WeighState;
+  /** Grammes restants dans le grand récipient, par groupe. */
+  leftG: Record<string, number>;
+  /** Reprise des boîtes d'avant la réserve : tout est déjà en boîtes, rien à repeser. */
+  legacy: boolean;
+  open: boolean;
+  /** Pour chacun : portions en tout, mangées, restantes. */
+  people: { id: string; name: string; total: number; eaten: number; left: number }[];
 }
 
 /** Fin de session : les marmites à peser, et les réserves déjà rangées. */
 export function sessionReserves(db: Db, sessionId: string, now = new Date()): { models: CalcModel[]; saved: Record<string, SavedReserve> } | null {
+  ensureEstimates(db, now);
   const s = db.select().from(cookSessions).where(eq(cookSessions.id, sessionId)).get();
   if (!s?.planJson) return null;
   const plan = s.planJson as SessionPlan;
@@ -121,13 +133,23 @@ export function sessionReserves(db: Db, sessionId: string, now = new Date()): { 
   const saved: Record<string, SavedReserve> = {};
   for (const row of db.select().from(reserves).where(eq(reserves.sessionId, sessionId)).all()) {
     if (!row.recipeId) continue;
-    const { servings, boxes } = loadParts(db, [row.id]);
-    const mine = boxes.filter((b) => b.reserveId === row.id);
+    const parts = loadParts(db, [row.id]);
+    const { servings, boxes, state } = stateOf(db, row, parts, now);
     const freezer: Record<string, number> = {};
-    for (const b of mine) if (b.status === "stock" && b.place === "freezer" && b.personId) freezer[b.personId] = (freezer[b.personId] ?? 0) + 1;
-    const served = servings.filter((x) => x.reserveId === row.id);
-    const left = Object.fromEntries(Object.entries(row.counts).map(([id, n]) => [id, Math.max(0, n - served.filter((x) => x.personId === id).length)]));
-    saved[row.recipeId] = { id: row.id, groups: row.groups, counts: left, freezer, eaten: served.length };
+    for (const b of boxes) if (b.status === "stock" && b.place === "freezer" && b.personId) freezer[b.personId] = (freezer[b.personId] ?? 0) + 1;
+    const left = Object.fromEntries(Object.entries(row.counts).map(([id, n]) => [id, Math.max(0, n - servings.filter((x) => x.personId === id).length)]));
+    saved[row.recipeId] = {
+      id: row.id,
+      groups: row.groups,
+      counts: left,
+      freezer,
+      eaten: servings.length,
+      weigh: weighState(row.groups),
+      leftG: Object.fromEntries(row.groups.map((g) => [g.key, Math.round(state.left[g.key] ?? 0)])),
+      legacy: row.cookedUnits == null,
+      open: row.status === "open",
+      people: state.shares.map((x) => ({ id: x.personId, name: x.name, total: x.total, eaten: x.eaten, left: x.left })),
+    };
   }
   return { models, saved };
 }
@@ -297,6 +319,10 @@ export interface DishView {
   boxes: DishBoxView[];
   /** Le récipient ne couvre pas les portions visées (fill < 0,97). */
   short: boolean;
+  /** La session qui l'a cuit : son bilan (/plats/batch/<id>). */
+  sessionId: string | null;
+  /** Un groupe au moins n'est pas pesé : les grammes sont estimés d'après le cru. */
+  estimated: boolean;
 }
 
 export interface ServingView {
@@ -364,6 +390,8 @@ function dishView(db: Db, row: ReserveRow, parts: ReturnType<typeof loadParts>, 
       .sort((a, b) => a.limit.localeCompare(b.limit))
       .map((b) => ({ id: b.id, personId: b.personId, place: b.place, thawed: b.thawed, limit: b.limit, freshness: freshness(b.limit, today), grams: lines(row.groups, b.grams), ...macrosOf(row.groups, b.grams) })),
     short: state.fill < 0.97,
+    sessionId: row.sessionId,
+    estimated: row.groups.some((g) => g.estimated),
     empty: state.empty,
   };
 }
@@ -404,6 +432,8 @@ function plannedDishes(db: Db, cooked: Set<string>, me: string | null, now: Date
     rest: null,
     boxes: [],
     short: false,
+    sessionId: null,
+    estimated: false,
   }));
 }
 
@@ -413,6 +443,7 @@ function plannedDishes(db: Db, cooked: Set<string>, me: string | null, now: Date
  */
 export function listDishes(db: Db, me: string | null, now = new Date()): DishView[] {
   adoptLegacyBoxes(db);
+  ensureEstimates(db, now);
   const today = todayParis(now);
   const rows = db.select().from(reserves).where(eq(reserves.status, "open")).all();
   const parts = loadParts(db, rows.map((r) => r.id));
@@ -611,3 +642,119 @@ export function adoptLegacyBoxes(db: Db) {
 
 /** Le journal d'une portion : pour savoir si une ligne vient d'une portion (annulable). */
 export const servingOfEntry = (db: Db, entryId: string) => db.select().from(reserveServings).where(eq(reserveServings.foodLogId, entryId)).get() ?? null;
+
+// ─── Le bilan du batch ───
+
+const planOf = (s: { planJson: unknown }) => (s.planJson as SessionPlan | null)?.recipes ?? [];
+
+/**
+ * Les sessions finies sans pesée mettent leurs plats en réserve, estimés (./batch, toEstimate) : chaque
+ * groupe d'après le cru, les portions de chacun par défaut. Idempotent ; appelé à chaque lecture.
+ */
+export function ensureEstimates(db: Db, now = new Date()): number {
+  const today = todayParis(now);
+  const since = addDays(today, -(ESTIMATE_WINDOW_DAYS + 1));
+  const rows = db
+    .select({ id: cookSessions.id, planJson: cookSessions.planJson, startedAt: cookSessions.startedAt, endedAt: cookSessions.endedAt })
+    .from(cookSessions)
+    .where(and(eq(cookSessions.status, "done"), eq(cookSessions.test, false), isNotNull(cookSessions.endedAt), gte(cookSessions.endedAt, since), lte(cookSessions.endedAt, now.toISOString())))
+    .all();
+  if (!rows.length) return 0;
+  const cooked = new Set(
+    db
+      .selectDistinct({ id: cookEvents.sessionId })
+      .from(cookEvents)
+      .where(and(inArray(cookEvents.sessionId, rows.map((r) => r.id)), eq(cookEvents.kind, "step_done")))
+      .all()
+      .map((r) => r.id)
+  );
+  const slugs = [...new Set(rows.flatMap((r) => planOf(r).map((x) => x.slug)))];
+  const ids = new Map(slugs.length ? db.select({ id: recipes.id, slug: recipes.slug }).from(recipes).where(inArray(recipes.slug, slugs)).all().map((r) => [r.slug, r.id]) : []);
+  const sessions = rows.map((r) => ({ id: r.id, cookedOn: cookedOnOf(r), endedAt: r.endedAt!, cooked: cooked.has(r.id), recipeIds: planOf(r).map((x) => ids.get(x.slug)).filter((x): x is string => !!x) }));
+  const existing = db.select({ recipeId: reserves.recipeId, cookedOn: reserves.cookedOn }).from(reserves).where(gte(reserves.cookedOn, addDays(since, -1))).all();
+  const todo = toEstimate(sessions, existing, today);
+  if (!todo.length) return 0;
+  const at = now.toISOString();
+  db.transaction((tx) => {
+    const t = tx as unknown as Db;
+    for (const { sessionId, recipeId } of todo) {
+      const s = rows.find((r) => r.id === sessionId)!;
+      const r = t.select().from(recipes).where(eq(recipes.id, recipeId)).get();
+      const inPlan = r && planOf(s).find((x) => x.slug === r.slug);
+      if (!r || !inPlan) continue;
+      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true }, now);
+      if (!model) continue;
+      const { groups, counts } = estimatedReserve(model, at);
+      t.insert(reserves)
+        .values({ id: randomUUID(), sessionId, recipeId, name: r.name, cookedOn: model.cookedOn, fridgeDays: model.fridgeDays, freezerOk: model.freezerOk, cookedUnits: model.cookedUnits, kcalUnit: model.kcalUnit, proteinUnit: model.proteinUnit, groups, counts, createdAt: at, updatedAt: at })
+        .run();
+    }
+  });
+  return todo.length;
+}
+
+/** Un plat du bilan : ses groupes (pesés ou estimés), les portions de chacun. */
+export interface BatchDish {
+  reserveId: string;
+  recipeId: string | null;
+  slug: string | null;
+  name: string;
+  open: boolean;
+  weigh: WeighState;
+  groups: { key: string; label: string; kind: ReserveGroup["kind"]; g: number; leftG: number; estimated: boolean }[];
+  people: { personId: string; name: string; total: number; eaten: number; left: number }[];
+}
+
+export interface BatchView {
+  /** La session. */
+  id: string;
+  cookedOn: string;
+  title: string;
+  summary: BatchSummary;
+  dishes: BatchDish[];
+}
+
+function batchOf(db: Db, sessionId: string, rows: ReserveRow[], now: Date): BatchView {
+  const parts = loadParts(db, rows.map((r) => r.id));
+  const slugs = new Map(db.select({ id: recipes.id, slug: recipes.slug }).from(recipes).all().map((r) => [r.id, r.slug]));
+  const dishes: BatchDish[] = rows.map((row) => {
+    const { state } = stateOf(db, row, parts, now);
+    return {
+      reserveId: row.id,
+      recipeId: row.recipeId,
+      slug: row.recipeId ? (slugs.get(row.recipeId) ?? null) : null,
+      name: row.name,
+      open: row.status === "open",
+      weigh: weighState(row.groups),
+      groups: row.groups.map((g) => ({ key: g.key, label: g.label, kind: g.kind, g: Math.round(g.g), leftG: Math.round(state.left[g.key] ?? 0), estimated: !!g.estimated })),
+      people: state.shares.map((x) => ({ personId: x.personId, name: x.name, total: x.total, eaten: x.eaten, left: x.left })),
+    };
+  });
+  const cookedOn = rows.map((r) => r.cookedOn).sort()[0];
+  const summary = batchSummary(dishes.map((d) => ({ open: d.open, weigh: d.weigh, total: d.people.reduce((s, p) => s + p.total, 0), left: d.open ? d.people.reduce((s, p) => s + p.left, 0) : 0 })));
+  return { id: sessionId, cookedOn, title: batchTitle(cookedOn), summary, dishes };
+}
+
+/** Le bilan d'une session : ses plats en réserve (estimés tant qu'ils ne sont pas pesés). */
+export function batchView(db: Db, sessionId: string, now = new Date()): BatchView | null {
+  ensureEstimates(db, now);
+  const rows = db.select().from(reserves).where(eq(reserves.sessionId, sessionId)).orderBy(asc(reserves.createdAt)).all();
+  return rows.length ? batchOf(db, sessionId, rows, now) : null;
+}
+
+/** Les batchs des 30 derniers jours, le plus récent d'abord. */
+export function recentBatches(db: Db, now = new Date()): BatchView[] {
+  ensureEstimates(db, now);
+  const rows = db
+    .select()
+    .from(reserves)
+    .where(and(isNotNull(reserves.sessionId), gte(reserves.cookedOn, addDays(todayParis(now), -30))))
+    .orderBy(asc(reserves.createdAt))
+    .all();
+  const bySession = new Map<string, ReserveRow[]>();
+  for (const r of rows) bySession.set(r.sessionId!, [...(bySession.get(r.sessionId!) ?? []), r]);
+  return [...bySession.entries()].map(([id, list]) => batchOf(db, id, list, now)).sort((a, b) => b.cookedOn.localeCompare(a.cookedOn));
+}
+
+/** Le batch du moment : le plus récent dont un plat est encore en réserve. */
+export const currentBatch = (db: Db, now = new Date()) => recentBatches(db, now).find((b) => b.dishes.some((d) => d.open)) ?? null;
