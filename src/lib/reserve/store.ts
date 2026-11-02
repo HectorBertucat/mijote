@@ -709,6 +709,8 @@ export interface BatchView {
   /** La session. */
   id: string;
   cookedOn: string;
+  /** Dernier rangement (ISO) : de deux batchs du même jour, le plus récent d'abord. */
+  at: string;
   title: string;
   summary: BatchSummary;
   dishes: BatchDish[];
@@ -732,7 +734,8 @@ function batchOf(db: Db, sessionId: string, rows: ReserveRow[], now: Date): Batc
   });
   const cookedOn = rows.map((r) => r.cookedOn).sort()[0];
   const summary = batchSummary(dishes.map((d) => ({ open: d.open, weigh: d.weigh, total: d.people.reduce((s, p) => s + p.total, 0), left: d.open ? d.people.reduce((s, p) => s + p.left, 0) : 0 })));
-  return { id: sessionId, cookedOn, title: batchTitle(cookedOn), summary, dishes };
+  const at = rows.map((r) => r.createdAt).sort().at(-1)!;
+  return { id: sessionId, cookedOn, at, title: batchTitle(cookedOn), summary, dishes };
 }
 
 /** Le bilan d'une session : ses plats en réserve (estimés tant qu'ils ne sont pas pesés). */
@@ -753,7 +756,7 @@ export function recentBatches(db: Db, now = new Date()): BatchView[] {
     .all();
   const bySession = new Map<string, ReserveRow[]>();
   for (const r of rows) bySession.set(r.sessionId!, [...(bySession.get(r.sessionId!) ?? []), r]);
-  return [...bySession.entries()].map(([id, list]) => batchOf(db, id, list, now)).sort((a, b) => b.cookedOn.localeCompare(a.cookedOn));
+  return [...bySession.entries()].map(([id, list]) => batchOf(db, id, list, now)).sort((a, b) => b.cookedOn.localeCompare(a.cookedOn) || b.at.localeCompare(a.at));
 }
 
 /** Le batch du moment : le plus récent dont un plat est encore en réserve. */
