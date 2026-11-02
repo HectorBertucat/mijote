@@ -210,3 +210,57 @@ test("api app : un exercice sans figure est rythmé par la figure de repli, serv
   assert.equal(f.figures[GUIDE_FALLBACK].cycle, e.cycle);
   assert.equal(f.figures[GUIDE_FALLBACK].keys, site.keys.length);
 });
+
+test("api app : les plats, manger une portion, annuler, réajuster", async () => {
+  const { db, alex, sam, call } = setup();
+  const fs = await import("fs");
+  const { upsertRecipe } = await import("@/lib/recipes/store");
+  const { saveReserve } = await import("@/lib/reserve/store");
+  const { cookSessions } = await import("@/lib/db/schema");
+  const { id: recipeId } = upsertRecipe(db, JSON.parse(fs.readFileSync("src/seed/recipes/poulet-teriyaki-riz.json", "utf8")));
+  db.insert(cookSessions).values({ id: "S", planJson: { version: 1, recipes: [{ slug: "poulet-teriyaki-riz", name: "Teriyaki", color: "x", scale: 1 }] }, status: "done", endedAt: "2026-10-18T17:00:00Z" }).run();
+  saveReserve(db, "S", recipeId, { weights: { plat: 1500, riz: 1100, "haricots-verts": 600 }, counts: { alex: 4, sam: 3 } }, new Date("2026-10-18T17:30:00Z"));
+  const now = Date.parse("2026-10-20T10:30:00Z");
+  type Dish = { id: string; status: string; groups: { key: string; leftG: number }[]; people: { personId: string; me: boolean; total: number; left: number; portion?: { grams: { key: string; g: number }[] }; next?: { source: string } }[] };
+  type Plats = { dishes: Dish[]; eaten: { id: string; entryId: string; kcal: number }[]; person: { id: string } };
+  const moi = call(alex, "GET", "moi").body as { features: string[] };
+  assert.ok(moi.features.includes("plats"));
+  const p0 = call(alex, "GET", "plats", null, now).body as unknown as Plats;
+  assert.equal(p0.person.id, "alex");
+  const dish = p0.dishes[0];
+  assert.equal(dish.status, "cooked");
+  assert.deepEqual(dish.people.map((x) => [x.personId, x.me, x.left]), [["alex", true, 4], ["sam", false, 3]]);
+  assert.deepEqual(dish.people[0].portion!.grams.map((g) => g.key), ["plat", "riz", "haricots-verts"]);
+  assert.equal(dish.people[0].next!.source, "recipient");
+  // JSON de bout en bout, sans null dans les objets.
+  assert.ok(!JSON.stringify(p0).includes(":null"));
+
+  const r = call(alex, "POST", "plats/manger", { dishId: dish.id }, now);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const body = r.body as unknown as { serving: { id: string; entryId: string; meal: string; kcal: number }; plats: Plats };
+  assert.equal(body.serving.meal, "lunch");
+  assert.equal(body.plats.dishes[0].people[0].left, 3);
+  assert.equal(body.plats.eaten[0].id, body.serving.id);
+  // Au journal du jour.
+  const jour = call(alex, "GET", "jour?date=2026-10-20", null, now).body as { entries: { id: string; kcal: number }[] };
+  assert.equal(jour.entries[0].id, body.serving.entryId);
+  // Ce que Sam a vraiment pris, puis une deuxième portion le même jour.
+  const s2 = call(sam, "POST", "plats/manger", { dishId: dish.id, grams: { plat: 150, riz: 120 }, meal: "dinner" }, now);
+  assert.equal(s2.status, 200);
+  assert.equal(call(alex, "POST", "plats/manger", { dishId: dish.id, meal: "dinner" }, now).status, 200);
+  assert.equal(call(alex, "POST", "plats/manger", { dishId: dish.id, date: "2026-10-21" }, now).status, 400);
+  assert.equal(call(alex, "POST", "plats/manger", { dishId: "inconnu" }, now).status, 404);
+  // Annuler : pas la portion d'une autre ; la sienne, oui.
+  const samServing = (s2.body as unknown as { serving: { id: string } }).serving.id;
+  assert.equal(call(alex, "POST", "plats/annuler", { servingId: samServing }, now).status, 404);
+  const u = call(alex, "POST", "plats/annuler", { servingId: body.serving.id }, now);
+  assert.equal(u.status, 200);
+  assert.equal((u.body as unknown as { plats: Plats }).plats.dishes[0].people[0].left, 3);
+  // Réglage : nouvelle pesée et une portion de plus pour Sam.
+  const g = call(alex, "POST", "plats/reglage", { dishId: dish.id, weights: { riz: 500 }, left: { sam: 3 } }, now);
+  assert.equal(g.status, 200, JSON.stringify(g.body));
+  const after = (g.body as unknown as { plats: Plats }).plats.dishes[0];
+  assert.equal(after.groups.find((x) => x.key === "riz")!.leftG, 500);
+  assert.equal(after.people.find((x) => x.personId === "sam")!.left, 3);
+  assert.equal(call(alex, "POST", "plats/reglage", { dishId: dish.id, left: { sam: 99 } }, now).status, 400);
+});

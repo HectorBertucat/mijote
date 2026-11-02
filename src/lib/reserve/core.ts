@@ -249,7 +249,8 @@ export interface ReserveState {
 export function leftInPot(groups: Pick<ReserveGroup, "key" | "g" | "at">[], servings: Pick<ServingIn, "at" | "source" | "grams">[], boxes: Pick<BoxIn, "createdAt" | "grams">[]): Grams {
   return Object.fromEntries(
     groups.map((g) => {
-      const out = sum(servings.filter((s) => s.source === "recipient" && s.at >= g.at).map((s) => s.grams[g.key] ?? 0)) + sum(boxes.filter((b) => b.createdAt >= g.at).map((b) => b.grams[g.key] ?? 0));
+      // Une boîte faite à l'instant de la pesée en sort (le rangement) ; une portion mangée à cet instant-là était déjà sortie.
+      const out = sum(servings.filter((s) => s.source === "recipient" && s.at > g.at).map((s) => s.grams[g.key] ?? 0)) + sum(boxes.filter((b) => b.createdAt >= g.at).map((b) => b.grams[g.key] ?? 0));
       return [g.key, Math.max(0, g.g - out)];
     })
   );
