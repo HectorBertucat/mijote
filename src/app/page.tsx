@@ -223,9 +223,9 @@ function WhatToEat({ h }: { h: HomeView }) {
       <div className="flex items-end justify-between gap-4 border-b border-line-strong pb-4">
         <h2 id="manger-titre" className="text-h2">
           <Link href="/plats" className="rounded-[4px] hover:underline hover:decoration-2 hover:underline-offset-[6px]">
-            Que manger{NBSP}?
+            Que manger{h.multiple ? <span className="text-faint">, {h.lead!.name}</span> : null}
+            {NBSP}?
           </Link>
-          {h.multiple && <span className="text-faint">, {h.lead!.name}</span>}
         </h2>
         <p className="flex items-baseline gap-2">
           <span className="num-tight text-num-xl">{left}</span>

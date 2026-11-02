@@ -107,8 +107,7 @@ export interface SavedReserve {
   counts: Record<string, number>;
   /** Boîtes du congélo de chacun, encore en stock. */
   freezer: Record<string, number>;
-  /** Grammes restants dans le grand récipient. */
-  left: Grams;
+  /** Portions déjà mangées : le calculateur renvoie alors au réajustement. */
   eaten: number;
 }
 
@@ -128,7 +127,7 @@ export function sessionReserves(db: Db, sessionId: string, now = new Date()): { 
     for (const b of mine) if (b.status === "stock" && b.place === "freezer" && b.personId) freezer[b.personId] = (freezer[b.personId] ?? 0) + 1;
     const served = servings.filter((x) => x.reserveId === row.id);
     const left = Object.fromEntries(Object.entries(row.counts).map(([id, n]) => [id, Math.max(0, n - served.filter((x) => x.personId === id).length)]));
-    saved[row.recipeId] = { id: row.id, groups: row.groups, counts: left, freezer, left: leftInPot(row.groups, servings.filter((x) => x.reserveId === row.id).map(servingIn), mine.map(boxIn)), eaten: servings.filter((x) => x.reserveId === row.id).length };
+    saved[row.recipeId] = { id: row.id, groups: row.groups, counts: left, freezer, eaten: served.length };
   }
   return { models, saved };
 }

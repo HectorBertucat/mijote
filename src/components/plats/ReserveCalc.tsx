@@ -23,12 +23,12 @@ const cap = (s: string) => s.charAt(0).toLocaleUpperCase("fr") + s.slice(1);
 const cookedLabel = (label: string, kind: string) => (kind === "other" && label.startsWith("sauce") ? cap(label) : `${cap(label)} ${/s$|x$/.test(label.split(" ")[0]) ? "cuits" : /^(semoule|polenta|purée)/.test(label) ? "cuite" : "cuit"}`);
 
 export function ReserveCalc({ model, color, session, saved, head = true, kitchen = false, art, shared }: { model: CalcModel; color: string; session?: string; saved?: SavedReserve | null; head?: boolean; /** Fin de session : bouton de cuisine (64 px). */ kitchen?: boolean; art?: ReactNode; /** Un féculent cuit pour plusieurs recettes : la part de celle-ci (grammes), tant qu’il n’est pas pesé à part. */ shared?: { key: string; grams: number | null; note: string } | null }) {
-  // Rouverte après un repas : on pèse ce qui reste ; sinon la marmite entière.
+  // Rouverte après un repas : elle renvoie au réajustement de la réserve (la fiche du plat).
   const reopened = !!saved && saved.eaten > 0;
-  const [w, setW] = useState<Record<string, string>>(() => Object.fromEntries(model.groups.map((g) => [g.key, saved && !reopened ? String(Math.round(saved.groups.find((x) => x.key === g.key && !x.estimated)?.g ?? 0) || "") : ""])));
+  const [w, setW] = useState<Record<string, string>>(() => Object.fromEntries(model.groups.map((g) => [g.key, saved ? String(Math.round(saved.groups.find((x) => x.key === g.key && !x.estimated)?.g ?? 0) || "") : ""])));
   const [counts, setCounts] = useState<Record<string, number>>(() => saved?.counts ?? defaultCounts(model));
   const [freezer, setFreezer] = useState<Record<string, number>>(() => saved?.freezer ?? defaultFreezer(model, saved?.counts ?? defaultCounts(model)));
-  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(saved ? { ok: true, message: reopened ? "En réserve ; des portions sont déjà mangées : pèse ce qui reste pour réajuster." : "En réserve." } : null);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(saved ? { ok: true, message: "En réserve." } : null);
   const [pending, setPending] = useState(false);
 
   const value = (key: string) => (w[key] ?? "").trim() === "" && shared?.key === key && shared.grams != null ? String(shared.grams) : (w[key] ?? "");
@@ -52,14 +52,29 @@ export function ReserveCalc({ model, color, session, saved, head = true, kitchen
     setPending(false);
   };
 
+  const title = head && (
+    <div className="flex items-center gap-4">
+      {art ?? <BoxGlyph color={color} size={48} />}
+      <h3 className="min-w-0 flex-1 text-h3">{model.name}</h3>
+    </div>
+  );
+  // Des portions sont déjà mangées : on ne repèse plus la marmite entière, on réajuste ce qui reste.
+  if (reopened)
+    return (
+      <div className="grid gap-4" data-calc={model.slug}>
+        {title}
+        <p className="text-[17px] text-ink-2">
+          En réserve, {plural(saved!.eaten, "portion mangée", "portions mangées")}.{" "}
+          <Link href={`/plats/${saved!.id}`} className="font-bold text-accent underline-offset-4 hover:underline">
+            Réajuster ce qui reste
+          </Link>
+        </p>
+      </div>
+    );
+
   return (
     <div className="grid gap-6" data-calc={model.slug}>
-      {head && (
-        <div className="flex items-center gap-4">
-          {art ?? <BoxGlyph color={color} size={48} />}
-          <h3 className="min-w-0 flex-1 text-h3">{model.name}</h3>
-        </div>
-      )}
+      {title}
 
       {/* Les pesées : un champ par groupe servi à part. */}
       <div className="grid gap-3">
@@ -71,7 +86,7 @@ export function ReserveCalc({ model, color, session, saved, head = true, kitchen
           ))}
         </div>
         {shared && <p className="text-small text-ink-2">{shared.note}{(w[shared.key] ?? "").trim() !== "" ? " · pesé à part ici" : ""}</p>}
-        <p className="text-small text-ink-2">{reopened ? "Pèse ce qui reste dans le grand récipient, sans les boîtes." : "Pèse chaque récipient plein, retire le poids du récipient vide."}</p>
+        <p className="text-small text-ink-2">Pèse chaque récipient plein, retire le poids du récipient vide.</p>
       </div>
 
       {/* Les portions de chacun : combien, et les grammes de chaque groupe d’une portion. */}
