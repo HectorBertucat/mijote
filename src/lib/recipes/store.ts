@@ -39,6 +39,7 @@ export function upsertRecipe(db: Db, raw: unknown, fixtureHash: string | null = 
       status: r.status,
       source: r.source ?? null,
       tips: r.tips ?? null,
+      serveJson: r.serve?.length ? r.serve : null,
     };
     const keepIds = new Map<number, string>();
     if (existing) {

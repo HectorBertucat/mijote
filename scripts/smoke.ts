@@ -14,8 +14,8 @@ import { setSetting, SETTING } from "@/lib/settings";
 import { authToken } from "@/lib/auth";
 import { buildShoppingList } from "@/lib/shopping/build";
 import { addEvent, createSession } from "@/lib/session/store";
-import { storeBoxes } from "@/lib/boxes/store";
-import { cookEvents, cookSessions, recipes, shoppingLists } from "@/lib/db/schema";
+import { saveReserve } from "@/lib/reserve/store";
+import { cookEvents, cookSessions, recipes, reserves, shoppingLists } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
 import { generateProgram } from "@/lib/training/generate";
@@ -117,7 +117,7 @@ async function main() {
     // La mise en route, comme si on avait rempli le formulaire (même code que les actions).
     const { db } = openDb(path.join(dataDir, "mijote.db"));
     const lea = addPerson(db, { name: "Léa", portionUnits: 4, sex: "f", birthDate: "1994-07-01", heightCm: 165, weightKg: 60, activity: "light", goal: "maintain" });
-    addPerson(db, { name: "Tom", portionUnits: 5 });
+    const tom = addPerson(db, { name: "Tom", portionUnits: 5 });
     setSetting(db, SETTING.setupDone, new Date().toISOString());
     assignProgram(db, lea, generateProgram({ gear: ["miniBande"], perWeek: 2, minutes: 30, level: 1, focus: "bas" }, ""), "generateur");
     const listId = await buildShoppingList(db, ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"]);
@@ -134,14 +134,20 @@ async function main() {
     check(launch.status === 200 && launch.headers.get("content-type") === "image/png", "image de démarrage iOS → PNG");
     check((await get("/lancement?w=4000&h=4000")).status === 404, "image de démarrage d’une taille inconnue → 404");
     await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
-    // Fin de session : la marmite pesée part en boîtes, au frigo et au congélo.
-    await page("/frigo", undefined, /Le frigo est vide/);
-    await page("/recettes/butter-chicken-express", undefined, /En boîtes/);
+    // Fin de session : la marmite pesée (plat et riz) part en réserve, une portion par repas de chacun.
+    await page("/plats", undefined, /Aucun plat pour l’instant/);
+    check((await get("/frigo")).status === 307, "/frigo renvoie à /plats");
+    await page("/recettes/butter-chicken-express", undefined, /En portions/);
     const done = createSession(db, { slugs: ["butter-chicken-express"], mode: "solo" });
     addEvent(db, done, { kind: "note", payload: { status: "done" } });
     const bc = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.slug, "butter-chicken-express")).get()!;
-    check(storeBoxes(db, done, bc.id, { dishG: 3800, sideG: 1350 }) > 0, "boîtes rangées en fin de session");
-    await page("/frigo", undefined, /Butter chicken/);
+    const people = db.select({ id: reserves.id }).from(reserves).all().length;
+    check(saveReserve(db, done, bc.id, { weights: { plat: 3800, riz: 1350 }, counts: Object.fromEntries([lea, tom].map((id) => [id, 3])), freezer: { [lea]: 1 } }).boxes === 1, "marmite en réserve en fin de session");
+    check(db.select({ id: reserves.id }).from(reserves).all().length === people + 1, "une réserve de plus");
+    await page("/plats", undefined, /Butter chicken[\s\S]*J’ai mangé une portion/);
+    const reserveId = db.select({ id: reserves.id }).from(reserves).all().at(-1)!.id;
+    await page(`/plats/${reserveId}`, undefined, /La portion de/);
+    await page("/", undefined, /Que manger/);
     await page(`/session/${done}`, undefined);
     await page("/sante/entrainement?vue=programme", "mijote.profil=lea", /Changer de programme/);
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
@@ -214,9 +220,13 @@ async function demo() {
     const { sqlite, db } = openDb(fileA);
     const session = db.select({ id: cookSessions.id }).from(cookSessions).where(eq(cookSessions.status, "done")).all().at(-1)!.id;
     const list = db.select({ id: shoppingLists.id }).from(shoppingLists).where(eq(shoppingLists.status, "draft")).get()!.id;
-    for (const p of ["/recettes", "/recettes/butter-chicken-express", "/semaine", "/composer", "/courses", `/courses/${list}`, "/couts", "/placard", "/frigo", `/session/${session}`, "/sante", "/sante/aujourdhui", "/sante/profil", "/sante/habitudes", "/sante/entrainement", "/reglages"])
+    for (const p of ["/recettes", "/recettes/butter-chicken-express", "/semaine", "/composer", "/courses", `/courses/${list}`, "/couts", "/placard", "/plats", `/session/${session}`, "/sante", "/sante/aujourdhui", "/sante/profil", "/sante/habitudes", "/sante/entrainement", "/reglages"])
       await page(p, cookieA);
-    await page("/frigo", cookieA, /Congélo|congélo/);
+    // La démo : un batch en cours, des portions déjà mangées (annulables), la fiche d’une portion.
+    await page("/plats", cookieA, /sur \d[\s\S]*Ce que tu as mangé/);
+    const dish = db.select({ id: reserves.id }).from(reserves).where(eq(reserves.status, "open")).all().at(-1)!.id;
+    await page(`/plats/${dish}`, cookieA, /La portion de/);
+    await page("/", cookieA, /Que manger/);
     await page("/semaine", cookieA, /Butter chicken/);
     await page("/sante", cookieA, /Alex/);
     await page("/atelier", cookieA, /besoin de l’IA/);

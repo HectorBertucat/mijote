@@ -39,9 +39,11 @@ function sentence(h: HomeView): string {
     case "cover":
       return `Il manque ${s.missing}${NBSP}repas${NBSP}: ajoute un plat ou augmente les quantités.`;
     case "eat":
-      return h.fridgeCount
-        ? `La cuisine est faite${NBSP}: ${boxes(h.fridgeCount)} au frigo${h.freezerCount ? `, ${h.freezerCount} au congélo` : ""}.`
-        : "La cuisine est faite, et tout est mangé.";
+      return h.portionsLeft
+        ? `La cuisine est faite${NBSP}: ${h.portionsLeft}${NBSP}portion${h.portionsLeft > 1 ? "s" : ""} en réserve, chacun mange les siennes quand il veut.`
+        : h.fridgeCount
+          ? `La cuisine est faite${NBSP}: ${boxes(h.fridgeCount)} au frigo${h.freezerCount ? `, ${h.freezerCount} au congélo` : ""}.`
+          : "La cuisine est faite, et tout est mangé.";
     case "list":
       return s.changed ? `La semaine a changé depuis la liste${NBSP}: refais-la avant de commander.` : "Tous les repas sont couverts. Reste la liste de courses.";
     case "wait":
@@ -70,7 +72,7 @@ function StepAction({ step, h }: { step: HomeStep; h: HomeView }) {
     case "cover":
       return go(`/semaine?w=${h.start}#recettes`);
     case "eat":
-      return go("/frigo");
+      return go("/plats");
     case "list":
       return (
         <form action={weekListAction} data-step={step.kind}>
@@ -161,9 +163,9 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
       {/* Le reste du foyer : aujourd’hui, le frigo, les courses. */}
       <div className="grid min-w-0 content-start gap-12 lg:col-span-5 lg:border-l lg:border-line lg:pl-8">
         {tour.showSteps && <FirstSteps view={tour.steps} />}
-        {h.todayMeals.length > 0 && h.lead && <Today h={h} />}
+        {h.toEatNow.length > 0 && h.lead ? <WhatToEat h={h} /> : h.todayMeals.length > 0 && h.lead && <Today h={h} />}
         {h.run && <RunToday run={h.run} />}
-        <Fridge h={h} />
+        {!h.toEatNow.length && <Fridge h={h} />}
         <Shopping h={h} />
       </div>
 
@@ -212,8 +214,55 @@ function Today({ h }: { h: HomeView }) {
   );
 }
 
+/** Que manger : les plats de la réserve du profil actif, ce qui lui reste (« 2 sur 4 ») et sa prochaine portion. */
+function WhatToEat({ h }: { h: HomeView }) {
+  const list = [...h.toEatNow].sort((a, b) => Number(b.left > 0) - Number(a.left > 0));
+  const left = list.reduce((s, d) => s + d.left, 0);
+  return (
+    <section aria-labelledby="manger-titre">
+      <div className="flex items-end justify-between gap-4 border-b border-line-strong pb-4">
+        <h2 id="manger-titre" className="text-h2">
+          <Link href="/plats" className="rounded-[4px] hover:underline hover:decoration-2 hover:underline-offset-[6px]">
+            Que manger{h.multiple ? <span className="text-faint">, {h.lead!.name}</span> : null}
+            {NBSP}?
+          </Link>
+        </h2>
+        <p className="flex items-baseline gap-2">
+          <span className="num-tight text-num-xl">{left}</span>
+          <span className="label text-faint">portion{left > 1 ? "s" : ""}</span>
+        </p>
+      </div>
+      <ul className="reveal">
+        {list.slice(0, 5).map((d) => (
+          <li key={d.id} className="border-b border-line">
+            <Link href={`/plats/${d.id}`} className="-mx-3 flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-4 hover:bg-surface-2">
+              <RecipeTile color={d.slug ? recipeColor(d.slug) : "var(--c-ink-3)"} name={d.name} size="sm" />
+              <span className="grid min-w-0 flex-1">
+                <span className="font-semibold text-pretty">{d.name}</span>
+                <span className="num text-small text-ink-2">
+                  {d.next ? `${d.frozen ? "au congélo · " : ""}${d.next.map((g) => (d.next!.length > 1 ? `${g.label} ${fr(g.g)}${NBSP}g` : `${fr(g.g)}${NBSP}g`)).join(" · ")}` : d.left ? "à l’œil" : "plus de portion pour toi"}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="num-tight block text-h3">
+                  {d.left}
+                  <span className="text-small font-normal text-ink-2"> sur {d.total}</span>
+                </span>
+                {d.limit && d.freshness && <span className={`block text-small ${d.freshness === "ok" ? "text-ink-2" : "font-bold text-hot-ink"}`}>{limitWord({ limit: d.limit, freshness: d.freshness }, h.today)}</span>}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Link href="/plats" className={`${QUIET_LINK} text-small`}>
+        Tous les plats
+      </Link>
+    </section>
+  );
+}
+
 /** Une boîte : jusqu’à quand, en un mot. */
-function limitWord(g: HomeBoxGroup, today: string) {
+function limitWord(g: Pick<HomeBoxGroup, "limit" | "freshness">, today: string) {
   if (g.freshness === "past") return "à jeter";
   if (g.limit === today) return "aujourd’hui";
   if (g.limit === addDays(today, 1)) return "demain";
@@ -251,7 +300,7 @@ function Fridge({ h }: { h: HomeView }) {
     <section aria-labelledby="frigo-titre">
       <div className="flex items-end justify-between gap-4 border-b border-line-strong pb-4">
         <h2 id="frigo-titre" className="text-h2">
-          <Link href="/frigo" className="rounded-[4px] hover:underline hover:decoration-2 hover:underline-offset-[6px]">
+          <Link href="/plats" className="rounded-[4px] hover:underline hover:decoration-2 hover:underline-offset-[6px]">
             Le frigo
           </Link>
         </h2>
@@ -301,7 +350,7 @@ function Fridge({ h }: { h: HomeView }) {
 function BoxRow({ g, h, trail, hot = false }: { g: HomeBoxGroup; h: HomeView; trail: React.ReactNode; hot?: boolean }) {
   return (
     <li className="border-b border-line">
-      <Link href="/frigo" className="-mx-3 flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-4 hover:bg-surface-2">
+      <Link href="/plats" className="-mx-3 flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-4 hover:bg-surface-2">
         <RecipeTile color={g.slug ? recipeColor(g.slug) : "var(--c-ink-3)"} name={g.name} size="sm" />
         <span className="grid min-w-0 flex-1">
           <span className="font-semibold text-pretty">
@@ -364,7 +413,7 @@ function Week({ h }: { h: HomeView }) {
     <section aria-labelledby="jours-titre" className="min-w-0 lg:col-span-12">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-b border-line-strong pb-4">
         <h2 id="jours-titre" className="text-h2">
-          Jour par jour
+          Jour par jour <span className="text-faint">(indicatif)</span>
         </h2>
         <p className="num text-ink-2">
           <b className="font-semibold text-ink">{h.covered}</b> sur {h.toEat}

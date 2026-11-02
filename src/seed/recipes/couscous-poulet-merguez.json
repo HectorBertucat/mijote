@@ -9,6 +9,7 @@
   "status": "to_try",
   "source": "Couscous maghrébin familial (poulet, merguez, sept légumes simplifiés à quatre), réécrit pour le batch cooking.",
   "tips": "Garde la semoule à part : elle se réchauffe avec une cuillère de bouillon. Les merguez grillées à part, leur gras reste dans la poêle (6 suffisent pour le goût, le poulet fait les protéines). Émincés de cuisse : rien à désosser ni à effilocher ; sinon des filets en gros morceaux, mis 10 min avant la fin seulement.",
+  "serve": [{ "label": "plat", "bowls": ["A", "B", "C", "D", "F"], "kind": "main" }, { "label": "semoule", "bowls": ["G"], "kind": "starch" }],
   "ingredients": [
     { "lineRaw": "1,2 kg émincés de cuisse de poulet", "item": "Émincés de cuisse de poulet (sans os ni peau)", "grams": 1200, "group": "B", "food": "haut_cuisse_poulet", "yield": { "trimPct": 3, "note": "sans os ni peau : presque rien à retirer" } },
     { "lineRaw": "6 merguez", "item": "Merguez (6)", "grams": 330, "units": 6, "group": "F", "food": "merguez", "yield": { "panLossPct": 35, "note": "grillées à part, le gras fondu reste dans la poêle" } },

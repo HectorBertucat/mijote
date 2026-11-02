@@ -71,9 +71,9 @@ export function tourSteps(ctx: TourContext): TourStep[] {
     },
     {
       id: "frigo",
-      anchor: "frigo",
-      title: "Range les boîtes",
-      body: "À la fin, pèse la marmite : je dis combien de grammes mettre dans la boîte de chacun, et ce qui part au congélo. Le Frigo dit quoi manger en premier.",
+      anchor: "plats",
+      title: "Pèse, puis sers-toi",
+      body: "À la fin, pèse le plat, le riz, les légumes : je dis les portions de chacun, au gramme. Dans Plats, chacun voit ce qui lui reste et se sert quand il veut.",
       art: [{ kind: "step", id: "portion" }, dish(1)],
     },
     {
@@ -147,7 +147,7 @@ export const FIRST_STEPS: { id: FirstStepId; label: string; hint: string; href: 
   { id: "dishes", label: "Choisir deux ou trois plats", hint: "Dans Semaine : je répartis les repas.", href: "/semaine#recettes" },
   { id: "list", label: "Faire la liste de courses", hint: "Depuis les plats, rangée par rayon.", href: "/courses" },
   { id: "session", label: "Lancer une session", hint: "Le téléphone à côté du feu.", href: "/composer" },
-  { id: "boxes", label: "Ranger les boîtes", hint: "Les grammes de chacun, au frigo ou au congélo.", href: "/frigo" },
+  { id: "boxes", label: "Peser et ranger", hint: "Les portions de chacun, au gramme près.", href: "/plats" },
 ];
 
 export interface FirstStepsView {

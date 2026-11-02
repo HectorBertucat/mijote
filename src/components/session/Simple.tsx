@@ -125,7 +125,7 @@ export function SimpleView(p: SimpleProps) {
   } else if (stage === "store") {
     if (c.state.boxed.size === 0 && !seen.has("store")) {
       tone = "ink";
-      body = <Interlude n={3} title="Range" lines={["Tout est cuit.", "Laisse tiédir, mets en boîtes, au frigo."]} art={<StepIllu id="portion" size={120} live />} />;
+      body = <Interlude n={3} title="Range" lines={["Tout est cuit.", "Laisse tiédir, pèse chaque récipient, au frigo."]} art={<StepIllu id="portion" size={120} live />} />;
       bar = <MainButton icon="play" variant="on-inverse" onClick={() => markSeen("store")}>On range</MainButton>;
     } else {
       body = <StoreScreen plan={plan} c={c} storage={p.storage} />;
@@ -897,16 +897,16 @@ function Done({ plan, c, detail }: { plan: SessionPlan; c: Controls; detail: str
   return (
     <div className={`${COLUMN} grid gap-12 pt-8`}>
       <FridgeDone plan={plan} events={c.events} test={test} />
-      {/* Peser les marmites : grammes par boîte de chacun, puis les boîtes rangées au frigo ou au congélo (pas en session test). */}
+      {/* Peser les marmites : portions de chacun et grammes de chaque groupe, puis la réserve (pas en session test). */}
       {!test && <SessionBoxes id={c.id} plan={plan} kitchen />}
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
         <Link href={detail} className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink hover:bg-surface">
           <Icon name="clock" size="s" />
           Voir le bilan
         </Link>
-        <Link href="/frigo" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink hover:bg-surface">
+        <Link href="/plats" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink hover:bg-surface">
           <Icon name="fridge" size="s" />
-          Voir le frigo
+          Voir nos plats
         </Link>
         <Button variant="quiet" icon="refresh" onClick={() => c.setStatus("cooking")}>
           Rouvrir la session

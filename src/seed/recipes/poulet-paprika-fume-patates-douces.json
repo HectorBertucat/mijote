@@ -9,6 +9,7 @@
   "status": "to_try",
   "source": "Classique « plaque au four » poulet paprika fumé et patates douces, réécrit pour le batch cooking.",
   "tips": "Le poulet va au four après les patates douces, pour ne pas sécher : 18 min suffisent. Sauce skyr à part, dans un petit pot, à ajouter après réchauffage.",
+  "serve": [{ "label": "plat", "bowls": ["A", "B"], "kind": "main" }, { "label": "riz", "bowls": ["D"], "kind": "starch" }, { "label": "sauce au skyr", "bowls": ["C"], "kind": "other" }],
   "ingredients": [
     { "lineRaw": "1,2 kg filets de poulet", "item": "Filets de poulet, en morceaux de 3 cm", "grams": 1200, "group": "B", "food": "filet_poulet" },
     { "lineRaw": "1 kg patates douces", "item": "Patates douces, en cubes de 2 cm", "grams": 1000, "group": "A", "food": "patate_douce" },

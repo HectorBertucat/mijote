@@ -7,7 +7,7 @@ import os from "os";
 import path from "path";
 import { and, eq, sql } from "drizzle-orm";
 import { openDb } from "@/lib/db/open";
-import { appSettings, cookSessions, foodLog, healthSamples, mealBoxes, mealSlots, people, shoppingLists, weekPlans, weekRecipes, weighIns, workoutDetails, workouts } from "@/lib/db/schema";
+import { appSettings, cookSessions, foodLog, healthSamples, mealSlots, reserveServings, people, shoppingLists, weekPlans, weekRecipes, weighIns, workoutDetails, workouts } from "@/lib/db/schema";
 import { syncPlan } from "@/lib/running/store";
 import { overview } from "@/lib/health/overview";
 import { basesToPurge, canCreate, demoEnabled, demoLimits, isVisitorId, maxPageCount, newVisitorId, visitorFile, visitorOfFile } from "@/lib/demo/core";
@@ -20,6 +20,7 @@ import { authEnabled } from "@/lib/auth";
 import { catalogEnabled } from "@/lib/chronocatalog";
 import { isSetupDone } from "@/lib/settings";
 import { listStock } from "@/lib/boxes/store";
+import { listDishes, recentServings } from "@/lib/reserve/store";
 import { homeView } from "@/lib/home/store";
 import { bootstrap } from "@/seed/bootstrap";
 import { KB_TEMPLATE } from "@/lib/training/program";
@@ -147,7 +148,7 @@ test("un an d'Apple Santé pour la démo : un paquet v2 que l'import accepte en 
   assert.ok(demoHealth("alex", today, 7).workouts.some((w) => w.activity === "running" && w.distanceM! > 4000));
 });
 
-test("la base modèle : foyer prêt, semaine répartie, courses, session finie, boîtes au frigo et au congélo", async () => {
+test("la base modèle : foyer prêt, semaine répartie, courses, session finie, réserve entamée, boîtes au congélo", async () => {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mijote-demo-"));
   const { sqlite, db } = openDb(path.join(dir, "modele.db"));
@@ -177,11 +178,15 @@ test("la base modèle : foyer prêt, semaine répartie, courses, session finie, 
     assert.equal(lists.filter((l) => l.status === "draft").length, 1, "la liste de la semaine suivante est à faire");
     const stock = listStock(db, today);
     assert.ok(stock.some((b) => b.place === "freezer"), "des boîtes au congélo");
-    if (weekdayOf(today) < 5) assert.ok(stock.some((b) => b.place === "fridge"), "des boîtes au frigo");
-    assert.ok(stock.every((b) => !b.plannedFor || b.plannedFor >= today), "les boîtes des repas passés sont mangées");
+    // Le batch en cours : des plats en réserve, des portions déjà mangées (le midi d'aujourd'hui au moins), d'autres qui restent.
+    const dishes = listDishes(db, "alex", new Date(`${today}T13:00:00Z`)).filter((d) => d.status === "cooked");
+    assert.ok(dishes.length >= 3, `${dishes.length} plats en réserve`);
+    assert.ok(dishes.some((d) => d.cookedOn === c.current.cookedOn && d.people.some((p) => p.eaten > 0 && p.left > 0)), "une réserve entamée");
+    assert.ok(recentServings(db, "alex", new Date(`${today}T13:00:00Z`)).some((s) => s.date === today), "Alex a mangé à midi");
     // Les repas mangés et les habitudes du matin remplissent le journal.
-    const eaten = db.select().from(mealBoxes).where(eq(mealBoxes.status, "eaten")).all();
+    const eaten = db.select().from(reserveServings).all();
     assert.ok(eaten.length > 10);
+    assert.ok(eaten.every((s) => s.foodLogId != null));
     assert.ok(db.select().from(foodLog).where(and(eq(foodLog.personId, "sam"), eq(foodLog.date, c.previous.start))).all().length >= 2);
     // La semaine en cours et la suivante couvrent tous les repas pris à la maison ou au bureau.
     for (const start of [c.current.start, c.next.start]) {

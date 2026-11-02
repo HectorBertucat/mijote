@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { dayLogs, foodLog, foodTemplates, mealSlots, people, recipes, weekPlans } from "@/lib/db/schema";
+import { dayLogs, foodLog, foodTemplates, mealBoxes, mealSlots, people, recipes, reserveServings, weekPlans } from "@/lib/db/schema";
 import { addDays } from "@/lib/week/propose";
 import { dayIndexIn, MAX_DAYS, weekdayOf } from "@/lib/week/period";
 import { listHabits } from "@/lib/eaters/setup";
@@ -150,7 +150,15 @@ export function setEntryUnits(db: Db, id: string, units: number) {
     .run();
 }
 
-export const deleteEntry = (db: Db, id: string) => db.delete(foodLog).where(eq(foodLog.id, id)).run();
+/**
+ * Retire une ligne du journal. Si elle venait d'une portion du batch (src/lib/reserve), la portion est
+ * annulée avec elle : ses grammes reviennent dans la réserve, la boîte mangée revient au frigo.
+ */
+export function deleteEntry(db: Db, id: string) {
+  db.update(mealBoxes).set({ status: "stock", closedAt: null, eatenBy: null, foodLogId: null }).where(and(eq(mealBoxes.foodLogId, id), eq(mealBoxes.status, "eaten"))).run();
+  db.delete(reserveServings).where(eq(reserveServings.foodLogId, id)).run();
+  db.delete(foodLog).where(eq(foodLog.id, id)).run();
+}
 
 export function isComplete(db: Db, personId: string, date: string) {
   return db.select({ c: dayLogs.complete }).from(dayLogs).where(and(eq(dayLogs.personId, personId), eq(dayLogs.date, date))).get()?.c ?? false;

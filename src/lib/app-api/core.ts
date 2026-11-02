@@ -25,12 +25,13 @@ import { programById, programFor } from "@/lib/training/programs";
 import { listWorkouts } from "@/lib/training/store";
 import { DRAWING, figureData, musclesData } from "./figures";
 import { ACTIONS, actionOf, clean, phaseOf } from "./state";
+import { adjustReserve, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
 import { healthSamples } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 
 export const API_VERSION = 1;
 /** Ce que sait faire ce Mijote : l'app n'affiche que ce qui est annoncé. */
-export const FEATURES = ["sante", "series", "jour", "pesee", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme"] as const;
+export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme"] as const;
 
 export interface AppRequest {
   method: "GET" | "POST";
@@ -155,6 +156,62 @@ function pesee(db: Db, p: Person, body: unknown, now: number): ApiReply {
     return fail(e instanceof Error ? e.message : "pesée refusée");
   }
   return ok({ message: `${parsed.data.kg.toFixed(1).replace(".", ",")} kg noté.`, weighIns: listWeighIns(db, p.id).slice(-60) });
+}
+
+// ─── Plats (la réserve du batch) ───
+
+/** Une portion mangée, sans la personne (c'est celle de la clé). */
+const withoutPerson = <T extends { personId: string }>(s: T): Omit<T, "personId"> => {
+  const out: Partial<T> = { ...s };
+  delete out.personId;
+  return out as Omit<T, "personId">;
+};
+
+/** Les plats et les portions restantes de chacun, la personne de la clé d'abord ; ses portions des trois derniers jours. */
+function plats(db: Db, p: Person, now: number) {
+  const at = new Date(now);
+  return {
+    today: todayParis(at),
+    person: { id: p.id, name: p.name },
+    dishes: listDishes(db, p.id, at).map((d) => ({ ...d, people: d.people.map((s) => ({ ...s, me: s.personId === p.id })) })),
+    eaten: recentServings(db, p.id, at).map(withoutPerson),
+  };
+}
+
+const Grams = z.record(z.string().max(40), z.number().min(0).max(3000));
+const MangerBody = z.object({ dishId: z.string().max(80), boxId: z.string().max(80).optional(), grams: Grams.optional(), date: z.string().optional(), meal: Meal.optional() });
+const ReglageBody = z.object({ dishId: z.string().max(80), weights: z.record(z.string().max(40), z.number().min(0).max(50_000)).optional(), left: z.record(z.string().max(80), z.number().int().min(0).max(30)).optional() });
+
+function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number): ApiReply {
+  const at = new Date(now);
+  const today = todayParis(at);
+  try {
+    let message: string;
+    let extra: Record<string, unknown> = {};
+    if (verb === "manger") {
+      const parsed = MangerBody.safeParse(body);
+      if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
+      const a = parsed.data;
+      if (a.date != null && (!isDate(a.date) || a.date > today)) return fail("date AAAA-MM-JJ attendue, pas dans le futur");
+      const serving = eatPortion(db, a.dishId, p.id, { boxId: a.boxId, grams: a.grams, date: a.date, meal: a.meal }, at);
+      message = `${serving.name.split(",")[0]} : ${serving.kcal} kcal, ${serving.protein} g de protéines.`;
+      extra = { serving: withoutPerson(serving) };
+    } else if (verb === "annuler") {
+      const parsed = z.object({ servingId: z.string().max(80) }).safeParse(body);
+      if (!parsed.success) return fail("{ servingId } attendu");
+      const r = undoServing(db, parsed.data.servingId, p.id);
+      message = `Portion de ${r.name.split(",")[0]} annulée.`;
+    } else if (verb === "reglage") {
+      const parsed = ReglageBody.safeParse(body);
+      if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
+      adjustReserve(db, parsed.data.dishId, { weights: parsed.data.weights, left: parsed.data.left }, at);
+      message = "Réserve réajustée.";
+    } else return fail("chemin inconnu", 404);
+    return ok({ message, ...extra, plats: plats(db, p, now) });
+  } catch (e) {
+    if (e instanceof ReserveError) return fail(e.message, e.status);
+    return fail(e instanceof Error ? e.message : "action impossible");
+  }
 }
 
 // ─── Sport ───
@@ -426,6 +483,12 @@ function route(db: Db, req: AppRequest, now: number): ApiReply {
       return jourPost(db, p, req.body, today);
     case "POST pesee":
       return pesee(db, p, req.body, now);
+    case "GET plats":
+      return ok(plats(db, p, now));
+    case "POST plats/manger":
+    case "POST plats/annuler":
+    case "POST plats/reglage":
+      return platsPost(db, p, b, req.body, now);
     case "GET course": {
       const enabled = !!getRunProfile(db, p.id)?.enabled;
       return ok({ enabled, view: enabled ? courseView(db, p.id, new Date(now)) : null });
