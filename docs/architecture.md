@@ -3,7 +3,7 @@
 ## Le principe : l'IA propose, le code vérifie
 
 Mijote n'est pas un chat qui écrit dans la base. Tout ce qui doit être juste est **déterministe, en code, testé** :
-- quantités, portions et macros par part (`src/lib/nutrition/`, `src/lib/eaters/`) ;
+- quantités, portions et macros par part (`src/lib/nutrition/`, `src/lib/eaters/`), grammes de chaque groupe d'une portion et réserve recalculée après chaque portion mangée (`src/lib/reserve/`) ;
 - coûts (`src/lib/costs/`) ;
 - planning de session sous contraintes de ressources (`src/lib/session/planner.ts`) ;
 - proposition de la semaine (`src/lib/week/propose.ts`) ;
@@ -32,7 +32,7 @@ src/
     semaine/ composer/     semaine de repas, sélection libre
     courses/ couts/ placard/
     session/               centre de contrôle (SSE)
-    frigo/                 boîtes du frigo et du congélo
+    plats/                 nos plats : la réserve de chacun, la fiche d'une portion (/frigo y renvoie)
     sante/                 santé, objectifs, Apple Santé, entraînement
     kit/                   démonstration vivante du kit de composants
   components/          composants (kit dans components/ui)
@@ -44,7 +44,8 @@ src/
     costs/             achats, lots du placard, coût par part
     db/                schéma Drizzle, migrations, ouverture
     demo/              mode démo : foyer fictif daté, une base par visiteur (docs/demo.md)
-    boxes/             la marmite pesée → les boîtes de chacun, stock du frigo et du congélo
+    reserve/           la marmite pesée → les groupes servis à part, les portions de chacun, manger, annuler, réajuster
+    boxes/             les boîtes (portions rangées) : stock du frigo et du congélo, dates limites
     eaters/            mangeurs, cible d'un repas, part de chacun
     health/            santé : tendance, dépense, cibles, journal, coach, Apple Santé
     household.ts       le foyer (personnes)
@@ -64,7 +65,7 @@ src/
 tests/                 node:test, un fichier par domaine
 ```
 
-Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `boxes/core.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `assistant/core.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
+Les modules « purs » (sans base ni réseau) portent le calcul et sont testés directement : `nutrition/compute.ts`, `eaters/core.ts`, `eaters/habits.ts`, `boxes/core.ts`, `reserve/core.ts`, `reserve/groups.ts`, `week/propose.ts`, `week/period.ts`, `session/planner.ts`, `health/core.ts`, `health/goals.ts`, `assistant/core.ts`, `training/generate.ts`, `training/motion-check.ts`, `illus/sanitize.ts`, `kitchen/presets.ts`… Les fichiers `store.ts` font le lien avec la base.
 
 ## Données
 

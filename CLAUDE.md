@@ -39,7 +39,7 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 ## Où regarder
 | Besoin | Fichier |
 |---|---|
-| Accueil (action du moment) | `src/app/page.tsx`, `src/lib/home/` (`next.ts` pur, `store.ts` : `homeView`) |
+| Accueil (action du moment, « Que manger ? ») | `src/app/page.tsx`, `src/lib/home/` (`next.ts` pur, `store.ts` : `homeView`) |
 | Écran de lancement, visite guidée, premiers pas | `src/components/tour/` (`LaunchSplash.tsx`, `Tour.tsx`), `src/lib/tour/` (`core.ts` pur, `store.ts`), `src/components/accueil/FirstSteps.tsx`, images de démarrage iOS `src/lib/launch.ts` et `src/app/lancement/` |
 | Mise en route, réglages, foyer | `src/app/bienvenue/`, `src/app/reglages/`, `src/lib/household.ts`, `src/lib/settings.ts` |
 | Cuisine → équipement | `src/lib/kitchen/` (`presets.ts` pur : récipients, bols et boîtes, plaques du four ; `store.ts`) |
@@ -49,7 +49,8 @@ Appli web auto-hébergée de batch cooking pour un foyer (N personnes) : recette
 | Semaine | `src/lib/week/` (`period.ts` : période du … au …, 14 jours au plus ; `fit.ts` pur : adéquation des recettes et de la sélection aux repères, pastilles, suggestion), `src/components/semaine/` (`Fit.tsx`) |
 | Courses | `src/lib/shopping/` (`merge.ts` pur : un même aliment en une ligne, unité commune, détail par recette), catalogue `src/lib/chronocatalog.ts` (`catalogEnabled()`) |
 | Session | `src/lib/session/` (`planner.ts` ; purs : `capacity.ts` volumes et bases communes, `attention.ts` mains/surveille/libre, `containers.ts` bols de prep, `audit.ts` ; `guide.ts` : bouton principal, retour par personne, fil en cours / en fond / ensuite, minuteur qui sonne, attention et rappels ; `text.ts` : titres, bols cités, ingrédients d'une étape ; `products.ts` : ce que fait et reprend chaque étape ; `sheet.ts` : reprises nommées, fenêtre d'une recette ; `flow.ts` pour la vue simple ; `state.ts` : journal, prérequis, prochaine étape), `src/components/session/` (`Simple.tsx` par défaut, vue détaillée `?vue=detail`, `guide.tsx` : pastilles de bol et de produit, fil, gestes des minuteurs ; `RecipeSheet.tsx` : la fenêtre d'une recette), docs/session.md (les règles, les champs du plan) |
-| Boîtes, frigo | `src/lib/boxes/` (`core.ts` pur : grammes par boîte, rangement ; `store.ts`), `src/app/frigo/`, `src/components/boxes/` |
+| Nos plats (la réserve : portions de chacun, manger, annuler) | `src/lib/reserve/` (`groups.ts` pur : groupes servis à part, déduits des étapes ou `serve` de la fiche ; `core.ts` pur : répartition sur N groupes, état après les portions mangées, calculateur ; `store.ts` : rangement, `eatPortion`, `undoServing`, `adjustReserve`, `listDishes`, reprise des boîtes d'avant), `src/app/plats/` (`/frigo` y renvoie), `src/components/plats/` (`ReserveCalc.tsx` : fin de session et fiche ; `PortionSheet.tsx` : les grammes à se servir) |
+| Boîtes (portions rangées) | `src/lib/boxes/` (`core.ts` pur : rapport féculent / plat, marge, dates limites ; `store.ts` : stock, congeler, sortir, jeter), `src/components/boxes/` |
 | Assistant (partout, ⌘I) | `src/lib/assistant/` (`core.ts` pur : contexte, outils, `checkAction` ; `store.ts` : instantané, conversation, exécution), `src/app/api/assistant/route.ts` (flux), `src/components/assistant/` |
 | Atelier IA, import d'un texte collé | `src/lib/atelier/` (`import.ts`) |
 | Santé | `src/lib/health/`, docs/sante.md ; vue d'ensemble : `src/app/sante/page.tsx`, sections `src/components/sante/overview/`, séries `src/lib/health/overview.ts` (SQL) et `series.ts` (pur : périodes, paquets, synthèse) |
