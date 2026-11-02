@@ -203,7 +203,7 @@ export function applyAssistantAction(db: Db, personId: string, id: string, index
       case "manger_boite": {
         const e = eatBox(db, x.boxId, x.personId, now);
         message = `Noté au journal : ${Math.round(e.kcal)} kcal.`;
-        href = "/frigo";
+        href = "/plats";
         break;
       }
       case "course_decaler":

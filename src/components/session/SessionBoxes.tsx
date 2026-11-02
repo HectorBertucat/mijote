@@ -1,14 +1,15 @@
 "use client";
 
-// Fin de session : on pèse chaque marmite, l’appli dit les grammes de chaque boîte et les range
-// au frigo ou au congélo (src/lib/boxes). Les marmites sont lues à l’ouverture de l’écran.
+// Fin de session : on pèse chaque groupe de chaque marmite (le plat, le riz, les haricots verts),
+// l’appli dit combien de portions pour chacun et leurs grammes, puis met la marmite en réserve
+// (src/lib/reserve ; les boîtes du congélo à part). Les marmites sont lues à l’ouverture de l’écran.
 // Une section de page (filets, pas de carte) : une marmite après l’autre. Une base cuite pour
 // plusieurs recettes (le riz commun) se pèse une fois, en tête : chaque recette en reçoit sa part.
 import { useContext, useEffect, useState } from "react";
 import { DishArts } from "./parts";
-import { PotSplit } from "@/components/boxes/PotSplit";
+import { ReserveCalc } from "@/components/plats/ReserveCalc";
 import { Field, Input } from "@/components/ui";
-import { loadSessionPots } from "@/app/frigo/actions";
+import { loadSessionReserves } from "@/app/plats/actions";
 import { splitShared } from "@/lib/boxes/core";
 import { sharedBases } from "@/lib/session/guide";
 import type { SessionPlan } from "@/lib/session/planner";
@@ -18,7 +19,7 @@ const grams = (v: string) => {
   return v.trim() === "" || !Number.isFinite(n) || n <= 0 ? null : n;
 };
 
-type Pots = Awaited<ReturnType<typeof loadSessionPots>>;
+type Pots = Awaited<ReturnType<typeof loadSessionReserves>>;
 
 export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: SessionPlan; kitchen?: boolean }) {
   const [data, setData] = useState<Pots | undefined>(undefined);
@@ -27,13 +28,13 @@ export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: 
   const bases = sharedBases(plan);
   useEffect(() => {
     let live = true;
-    loadSessionPots(id).then((d) => live && setData(d));
+    loadSessionReserves(id).then((d) => live && setData(d));
     return () => {
       live = false;
     };
   }, [id]);
-  if (data === undefined) return <p className="text-[17px] text-ink-2">Je prépare les boîtes…</p>;
-  if (!data?.pots.length) return null;
+  if (data === undefined) return <p className="text-[17px] text-ink-2">Je prépare les marmites…</p>;
+  if (!data?.models.length) return null;
   const colorOf = (slug: string) => plan.recipes.find((r) => r.slug === slug)?.color ?? "var(--c-ink-3)";
   // Le riz commun pesé : la part de chaque recette (au prorata du cru), qui remplit sa garniture.
   const sideOf = new Map<string, { grams: number | null; note: string }>();
@@ -48,7 +49,7 @@ export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: 
         <h2 id="boites-titre" className="text-h2">
           Peser, puis ranger
         </h2>
-        <p className="text-[17px] text-ink-2">Pèse chaque marmite : l’appli dit combien mettre dans chaque boîte. Une boîte par repas prévu, le reste au congélo.</p>
+        <p className="text-[17px] text-ink-2">Pèse chaque récipient : l’appli dit combien de portions pour chacun et les grammes de chaque portion. Ce qui ne tiendra pas au frigo part en boîtes au congélo.</p>
       </div>
       <ol className="grid content-start md:col-span-8">
         {bases.map((b) => (
@@ -64,11 +65,16 @@ export function SessionBoxes({ id, plan, kitchen = false }: { id: string; plan: 
             </div>
           </li>
         ))}
-        {data.pots.map((m) => (
-          <li key={m.recipeId} className="border-t border-line-strong py-6 first:pt-6">
-            <PotSplit model={m} color={colorOf(m.slug)} session={id} stored={data.stored[m.recipeId] ?? null} kitchen={kitchen} art={dishes[m.slug]} sharedSide={sideOf.get(m.slug)} />
-          </li>
-        ))}
+        {data.models.map((m) => {
+          // Le riz commun remplit le premier féculent de la recette.
+          const side = sideOf.get(m.slug);
+          const starch = m.groups.find((g) => g.kind === "starch");
+          return (
+            <li key={m.recipeId} className="border-t border-line-strong py-6 first:pt-6">
+              <ReserveCalc model={m} color={colorOf(m.slug)} session={id} saved={data.saved[m.recipeId] ?? null} kitchen={kitchen} art={dishes[m.slug]} shared={side && starch ? { key: starch.key, ...side } : null} />
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

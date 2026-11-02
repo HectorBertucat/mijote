@@ -5,6 +5,7 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { cookSessions, shoppingItems, shoppingLists } from "@/lib/db/schema";
 import { listStock, type StockBox } from "@/lib/boxes/store";
+import { listDishes, type GramLine } from "@/lib/reserve/store";
 import { adviceFor } from "@/lib/eaters/store";
 import { todayParis } from "@/lib/health/store";
 import { activeSession, buildPlan } from "@/lib/session/store";
@@ -42,6 +43,20 @@ export interface HomeBoxGroup {
   limit: string;
   freshness: StockBox["freshness"];
   plannedFor: string | null;
+}
+
+/** Un plat de la réserve, pour le profil actif : ce qui lui reste et sa prochaine portion. */
+export interface HomeDishLeft {
+  id: string;
+  slug: string | null;
+  name: string;
+  left: number;
+  total: number;
+  next: GramLine[] | null;
+  /** Sa prochaine portion est dans une boîte du congélo. */
+  frozen: boolean;
+  limit: string | null;
+  freshness: StockBox["freshness"] | null;
 }
 
 export interface HomeMeal {
@@ -167,6 +182,16 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
   }
   const advice = lead && todayMeals.length ? adviceFor(db, lead, now) : null;
 
+  // Que manger : les plats de la réserve, ce qui reste au profil actif (le jour est libre).
+  const reserve = lead ? listDishes(db, lead.id, now).filter((d) => d.status === "cooked") : [];
+  const toEatNow: HomeDishLeft[] = reserve.map((d) => {
+    const mine = d.people.find((p) => p.personId === lead!.id);
+    const box = mine?.next?.source === "boite" ? d.boxes.find((b) => b.id === mine.next!.boxId) : null;
+    const fridgeBox = d.boxes.find((b) => b.place === "fridge");
+    return { id: d.id, slug: d.slug, name: d.name, left: mine?.left ?? 0, total: mine?.total ?? 0, next: mine?.next?.grams ?? null, frozen: box?.place === "freezer", limit: d.limit ?? fridgeBox?.limit ?? null, freshness: d.freshness ?? fridgeBox?.freshness ?? null };
+  });
+  const portionsLeft = reserve.reduce((s, d) => s + d.people.reduce((x, p) => x + p.left, 0), 0);
+
   return {
     today,
     start: view.start,
@@ -189,6 +214,9 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
     multiple: personName.size > 1,
     todayMeals,
     advice: advice?.kind === "gap" ? advice.text : null,
+    /** Les plats de la réserve pour le profil actif, et les portions qui restent au foyer. */
+    toEatNow,
+    portionsLeft,
     /** La séance de course du jour du profil actif (module Course activé), sans recalcul du plan. */
     run: todayRun(db, profileId, today),
   };

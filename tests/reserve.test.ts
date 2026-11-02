@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import { eq } from "drizzle-orm";
-import { splitPot, type PotModel } from "@/lib/boxes/core";
+import { portionUnits } from "@/lib/eaters/core";
 import { eatBox, listStock } from "@/lib/boxes/store";
 import { defaultCounts, defaultFreezer, initialCounts, leftInPot, macrosOf, reserveState, reweigh, servingLabel, splitGroups, weighedGroups, type BoxIn, type CalcModel, type ReserveGroup, type ServingIn, type Target } from "@/lib/reserve/core";
 import { keyOf, serveGroups } from "@/lib/reserve/groups";
@@ -50,35 +50,43 @@ test("groupes déclarés par la fiche : le premier reçoit ce qui n'est dans auc
 // ─── La répartition ───
 
 const G = (key: string, kind: ReserveGroup["kind"], g: number, kcal: number, protein: number): ReserveGroup => ({ key, label: key, kind, g, at: "2026-11-01T17:00:00.000Z", kcalG: kcal / g, proteinG: protein / g });
-const ref = (kcal: number, protein: number) => ({ kcalMin: kcal - 150, kcalMax: kcal + 150, proteinMin: protein - 10, proteinMax: protein + 10 });
 const tgt = (id: string, name: string, kcal: number, protein: number | null, units = 5): Target => ({ id, name, units, kcal, kcalMax: protein != null ? kcal + 150 : null, protein, proteinMin: protein != null ? protein - 10 : null });
 const sumOf = (s: ReturnType<typeof splitGroups>, counts: Record<string, number>, key: string) => Object.entries(s.portions).reduce((x, [id, p]) => x + counts[id] * (p.grams[key] ?? 0), 0);
 
-test("deux groupes : la même portion que les boîtes (plat + féculent)", () => {
-  // La marmite de boxes.test.ts : 3000 g de plat (3600 kcal, 450 g de protéines), 1400 g de riz (1820 kcal, 42 g).
-  const m: PotModel = {
-    recipeId: "r",
-    slug: "r",
-    name: "R",
-    cookedUnits: 28,
-    dish: { kcal: 3600, protein: 450 },
-    side: { label: "riz", kcal: 1820, protein: 42 },
-    fridgeDays: 4,
-    freezerOk: true,
-    people: [
-      { id: "alex", name: "Alex", baseUnits: 5, ref: ref(750, 70), planned: [] },
-      { id: "sam", name: "Sam", baseUnits: 4, ref: ref(600, 35), planned: [] },
-    ],
-  };
-  const pot = splitPot(m, { dishG: 3000, sideG: 1400 });
-  const counts = Object.fromEntries(pot.byPerson.map((p) => [p.personId, p.count]));
-  const kcalUnit = 5420 / 28;
-  const people = m.people.map((p) => ({ id: p.id, name: p.name, units: p.baseUnits, kcal: Math.min(1.6 * p.baseUnits, Math.max(0.6 * p.baseUnits, Math.round(((p.ref!.kcalMin + p.ref!.kcalMax) / 2 / kcalUnit) * 2) / 2)) * kcalUnit, kcalMax: p.ref!.kcalMax, protein: (p.ref!.proteinMin + p.ref!.proteinMax) / 2, proteinMin: p.ref!.proteinMin }));
-  const s = splitGroups([G("plat", "main", 3000, 3600, 450), G("riz", "starch", 1400, 1820, 42)], { plat: 3000, riz: 1400 }, people, counts);
-  for (const p of pot.byPerson) {
-    assert.ok(Math.abs(s.portions[p.personId].grams.plat - p.dishG!) <= 10, `${p.name} plat ${s.portions[p.personId].grams.plat} / ${p.dishG}`);
-    assert.ok(Math.abs(s.portions[p.personId].grams.riz - p.sideG!) <= 10, `${p.name} riz`);
-  }
+// Une marmite de poulet laqué et son riz cuit à part (chiffres fictifs), 26 unités : les parts comme la Semaine.
+const LAQUE = [G("plat", "main", 1180, 2270, 262), G("riz", "starch", 1020, 1580, 34)];
+const kcalUnit = 3850 / 26;
+const person = (id: string, name: string, baseUnits: number, r: { kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number }): Target => {
+  const units = portionUnits({ baseUnits, ref: r }, { kcalUnit, proteinUnit: 296 / 26 });
+  return { id, name, units, kcal: units * kcalUnit, kcalMax: r.kcalMax, protein: (r.proteinMin + r.proteinMax) / 2, proteinMin: r.proteinMin };
+};
+
+test("petit gabarit : jamais plus de riz que le grand, repères tenus, le surplus pour qui veut", () => {
+  const alex = person("alex", "Alex", 5, { kcalMin: 700, kcalMax: 760, proteinMin: 52, proteinMax: 68 });
+  // Petit gabarit qui mange peu de protéines hors batch : un repère de protéines bas pour ses kcal.
+  const sam = person("sam", "Sam", 4, { kcalMin: 555, kcalMax: 705, proteinMin: 34, proteinMax: 43 });
+  const counts = { alex: 3, sam: 2 };
+  const s = splitGroups(LAQUE, { plat: 1180, riz: 1020 }, [alex, sam], counts);
+  const a = s.portions.alex;
+  const b = s.portions.sam;
+  assert.ok(b.grams.riz <= a.grams.riz, `riz : Sam ${b.grams.riz} g, Alex ${a.grams.riz} g`);
+  assert.ok(b.grams.plat <= a.grams.plat);
+  assert.ok(a.kcal! <= 760 * 1.03, `Alex ${a.kcal} kcal`);
+  assert.ok(b.kcal! <= 705 * 1.03, `Sam ${b.kcal} kcal`);
+  // Les deux repères ensemble ne prennent pas toute la marmite : un reste, pour qui veut, plus petit qu'une portion.
+  assert.ok(s.rest && s.rest.kcal! > 0 && s.rest.kcal! < b.kcal!);
+  const all = (k: string) => sumOf(s, counts, k) + (s.rest?.grams[k] ?? 0);
+  assert.ok(Math.abs(all("plat") - 1180) <= 5 * 6);
+  assert.ok(Math.abs(all("riz") - 1020) <= 5 * 6);
+});
+
+test("surplus de moins de 3 % : réparti sur les portions, sans reste", () => {
+  const alex = person("alex", "Alex", 5, { kcalMin: 700, kcalMax: 760, proteinMin: 52, proteinMax: 68 });
+  const sam = person("sam", "Sam", 4, { kcalMin: 600, kcalMax: 740, proteinMin: 34, proteinMax: 43 });
+  const s = splitGroups(LAQUE, { plat: 1180, riz: 1020 }, [alex, sam], { alex: 3, sam: 2 });
+  assert.equal(s.rest, null);
+  assert.ok(s.portions.alex.kcal! <= 760 * 1.03);
+  assert.ok(s.portions.sam.kcal! <= 740 * 1.03);
 });
 
 const TERIYAKI = [G("plat", "main", 1500, 2400, 270), G("riz", "starch", 1100, 1430, 33), G("haricots-verts", "veg", 600, 180, 12)];

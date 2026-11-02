@@ -432,7 +432,7 @@ export function pageLine(page: PageContext, s: Snapshot): string {
   const where: [RegExp, string][] = [
     [/^\/semaine/, "la semaine"],
     [/^\/courses/, "les courses"],
-    [/^\/frigo/, "le frigo"],
+    [/^\/(plats|frigo)/, "nos plats"],
     [/^\/sante\/objectifs/, "ses objectifs de Santé"],
     [/^\/sante\/habitudes/, "ses habitudes hors batch"],
     [/^\/sante\/course/, "sa page Course (plan de course à pied)"],
