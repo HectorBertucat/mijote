@@ -66,7 +66,7 @@ Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combi
 { today, person: { id, name },
   dishes: [{ id, recipeId, slug, name, status, cookedOn?, limit?, freshness?,
              groups: [{ key, label, kind, leftG?, estimated? }],
-             people: [Share], rest?: { grams: [Gram], kcal? }, boxes: [Box] }],
+             people: [Share], rest?: { grams: [Gram], kcal? }, boxes: [Box], short }],
   eaten: [Serving] }
 ```
 
@@ -82,12 +82,12 @@ Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combi
 ```
 
   `total` : portions de ce plat pour elle en tout ; `eaten` : déjà mangées ; `left` : restantes (`total − eaten`, jamais négatif) ; `inBoxes` : dont rangées en boîtes. `portion` : une portion à se servir dans le grand récipient (absente s'il n'y en a plus pour elle ou si le plat n'est pas cuisiné). `next` : ce que sert « manger » sans autre précision : `source: "recipient"` (le grand récipient, grammes de `portion`) ou `"boite"` (sa boîte au frigo la plus pressée, `boxId`) ; absent quand il ne lui reste rien.
-- **`rest`** : ce qui dépasse le haut des repères de tous, pour qui veut (absent le plus souvent).
+- **`rest`** : ce qui dépasse le haut des repères de tous, pour qui veut (absent le plus souvent). **`short`** : `true` quand le grand récipient ne couvre pas les portions visées (chacune est plus petite que sa part).
 - **`Box`** : `{ id, personId?, place: "fridge" | "freezer", thawed, limit, freshness, grams: [Gram], kcal?, protein? }` ; `personId` absent : pour qui veut.
 - **`eaten`** (`Serving`) : les portions mangées par la personne ces trois derniers jours, la plus récente d'abord, pour proposer « Annuler » :
 
 ```
-{ id, dishId, name, date, meal, at, source, boxId?, grams: [Gram], kcal, protein, entryId }
+{ id, dishId, name, slug?, date, meal, at, source, boxId?, grams: [Gram], kcal, protein, entryId }
 ```
 
   `at` : instant (ISO 8601) ; `meal` : `breakfast`, `lunch`, `dinner`, `snack` ; `entryId` : sa ligne du journal (`GET jour`).
