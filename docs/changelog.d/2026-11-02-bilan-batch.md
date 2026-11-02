@@ -6,4 +6,5 @@
 - Accueil : « Ignorer » sur les repas sans plat, retenu pour la période ; l'avertissement revient si d'autres repas se retrouvent sans plat ; « Rétablir » sur l'accueil et dans la Semaine.
 - Premiers pas : « Peser et ranger » mène au bilan du batch en attente de pesée, et n'est fait qu'une fois un plat pesé en entier (ou des boîtes rangées avant la réserve).
 - API de l'app iPhone (additif) : `dishes[].estimated` et `sessionId`, `batch` dans `GET plats` (docs/api-app.md).
+- Démo : le dernier plat de la semaine en cours n'est pas encore pesé (portions estimées).
 - Schéma : migration 0012 (`week_plans.missing_ignored`).
