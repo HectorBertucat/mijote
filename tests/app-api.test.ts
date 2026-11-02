@@ -3,7 +3,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { openDb } from "@/lib/db/open";
 import { appApi, type AppRequest } from "@/lib/app-api/core";
-import { JOINT_ORDER } from "@/lib/app-api/figures";
+import { JOINT_ORDER, figureData } from "@/lib/app-api/figures";
+import { GUIDE_FALLBACK, MOTIONS, guideMotion } from "@/lib/training/figures";
+import { KB_TEMPLATE } from "@/lib/training/program";
+import { assignProgram } from "@/lib/training/programs";
+import { keyLevel } from "@/lib/training/rhythm";
+import { cycleDuration } from "@/lib/training/motion";
 import { ensureLink } from "@/lib/health/link";
 import { seedTest } from "./helpers";
 
@@ -174,4 +179,34 @@ test("api app : un geste automatique ne part que dans les 5 minutes après la fi
   // goblet : 12 × 5,4 s, puis 1,2 s ; noté seul pendant 5 minutes, pas après.
   assert.equal(s.autoAt, t0 + 12 * 5400 + 1200);
   assert.equal(s.autoUntil, s.autoAt! + 5 * 60_000);
+});
+
+test("api app : keys de chaque figure, la même hauteur de bille que le site", () => {
+  for (const [id, m] of Object.entries(MOTIONS)) {
+    const { keys, steps } = figureData(m);
+    assert.equal(keys, m.keys.length, id);
+    // La formule de l'app (docs/api-app.md) donne la hauteur de rhythm.ts pour chaque pose visée.
+    for (const s of steps) assert.equal(keys <= 1 ? 1 : 1 - s.to / (keys - 1), keyLevel(m, s.to), id);
+  }
+});
+
+test("api app : un exercice sans figure est rythmé par la figure de repli, servie avec les autres", () => {
+  const { db, alex, call } = setup();
+  const sessions = structuredClone(KB_TEMPLATE.sessions);
+  const A = Object.keys(sessions)[0];
+  sessions[A].blocks[0].items.push("sansFigure");
+  assignProgram(db, "alex", { ...KB_TEMPLATE, sessions, exercises: { ...KB_TEMPLATE.exercises, sansFigure: { ...KB_TEMPLATE.exercises.goblet, name: "Sans figure" } } }, "generateur");
+  const s = call(alex, "GET", "sport").body as { program: { exercises: { id: string; hasFigure: boolean; cycle: number; guideFigure: string }[]; figureIds: Record<string, string[]> } };
+  const e = s.program.exercises.find((x) => x.id === "sansFigure")!;
+  assert.equal(e.hasFigure, false);
+  assert.equal(e.guideFigure, GUIDE_FALLBACK);
+  assert.equal(s.program.exercises.find((x) => x.id === "goblet")!.guideFigure, "goblet");
+  assert.ok(s.program.figureIds[A].includes(GUIDE_FALLBACK));
+  // La figure de repli est celle du site : même durée, mêmes poses.
+  const site = guideMotion(null, "sansFigure");
+  assert.equal(e.cycle, cycleDuration(site));
+  const f = call(alex, "GET", "sport/figures").body as { figures: Record<string, { cycle: number; keys: number }> };
+  assert.ok(!("sansFigure" in f.figures));
+  assert.equal(f.figures[GUIDE_FALLBACK].cycle, e.cycle);
+  assert.equal(f.figures[GUIDE_FALLBACK].keys, site.keys.length);
 });

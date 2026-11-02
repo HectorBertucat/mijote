@@ -28,8 +28,8 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 | `GET course` | `{ enabled, view? }` : la vue de Santé › Course (`view` absent si le plan n'est pas actif). Les séances de la semaine (`view.week`…) gardent les ids des `plans` de la v2.1 (`/api/sante/import/plans`) : la séance du plan et celle programmée sur la montre ont le même id. |
 | `GET course/sorties?before=&limit=` | `{ runs, more }` : les sorties, de la plus récente à la plus ancienne, avant le jour `before` (exclu), `limit` 20 par défaut (100 au plus) ; chacune avec `sampleId` et `uuid` (l'uuid HealthKit de la séance envoyée par l'app) ; `more` : il en reste |
 | `GET sport` | `{ today, program, workouts, apple, guide, live, partner }` |
-| `GET sport/figures?ex=a,b&programme=` | `{ drawing, figures }` : les figures animées (tous les exercices du programme si `ex` est vide) |
-| `GET sport/figures/<id>` | une figure seule : `{ id, version, loop, cycle, fps, steps, cues, frames, props, gear, accessories, muscles }` |
+| `GET sport/figures?ex=a,b&programme=` | `{ drawing, figures }` : les figures animées (tous les exercices du programme si `ex` est vide, plus la figure de repli `jPlank` si l'un d'eux n'a pas la sienne) |
+| `GET sport/figures/<id>` | une figure seule : `{ id, version, loop, cycle, fps, keys, steps, cues, frames, props, gear, accessories, muscles }` |
 | `POST sport/reglages` | `{ auto?, lead?, change? }` → `{ guide }` : réglages du rythme guidé de la personne ; une séance en cours les prend tout de suite |
 | `GET sport/seance` | `{ live }` : la séance en cours de la personne (moins de 6 h) ; `live` absent s'il n'y en a pas |
 | `POST sport/seance` | `{ type?, duo? }` → `{ live }` : lance une séance (`type` : `A`, `B`… ; par défaut la suivante du programme ; `duo: true` lance aussi celle de l'autre personne qui a un programme, côte à côte sur l'écran du site) |
@@ -54,7 +54,7 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 
 ## Sport
 
-`program.exercises[]` : la fiche (`name`, `short`, `reps: [min, max]`, `uni`, `unit: "s"` pour une tenue, `tempo`, `cues`, `errors`, `ladder`, `guide`), plus `gear` (`[{ id, label }]`), `pattern`, `muscles` (`[{ id, label, load }]`, `load` 3 = cible, 2 = aide, 1 = stabilise, du plus au moins sollicité), `level` (cran en cours), `last` (la dernière fois), `ready` (prêt à monter d'un cran), `hasFigure`, `cycle` (durée d'une répétition au rythme guidé, en secondes : celle de la figure, ou de la figure de planche si l'exercice n'en a pas, comme le site ; la série dure `reps × cycle`).
+`program.exercises[]` : la fiche (`name`, `short`, `reps: [min, max]`, `uni`, `unit: "s"` pour une tenue, `tempo`, `cues`, `errors`, `ladder`, `guide`), plus `gear` (`[{ id, label }]`), `pattern`, `muscles` (`[{ id, label, load }]`, `load` 3 = cible, 2 = aide, 1 = stabilise, du plus au moins sollicité), `level` (cran en cours), `last` (la dernière fois), `ready` (prêt à monter d'un cran), `hasFigure`, `cycle` (durée d'une répétition au rythme guidé, en secondes : celle de la figure, ou de la figure de planche si l'exercice n'en a pas, comme le site ; la série dure `reps × cycle`), `guideFigure` (l'id de la figure qui rythme la série : courbe du guide, mots de phase, `cycle` ; l'exercice lui-même s'il a sa figure, sinon `jPlank`, la planche, comme le site ; servie par `GET sport/figures` et comptée dans `figureIds`).
 
 `guide` : `{ auto, lead, change }` : enchaînement automatique, secondes de mise en place avant une série (0 à 30), secondes pour passer d'un exercice à l'autre dans un superset (0 à 90).
 
@@ -69,7 +69,7 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 
 - **`state`** : ce que l'app affiche sans recalculer : `{ revision, serverTime, phase, phaseEndsAt?, pausedPhase?, side?, auto }`. `revision` = `version` (monte à chaque changement). `phase` : `warmup` (échauffement, attend un geste), `setup` (mise en place avant une série ou le finisher), `work` (série ou finisher en cours ; sans rythme guidé, pas de `phaseEndsAt` : elle attend `log`), `switch` (changement de côté), `rest`, `bonus` (gainage proposé), `paused` (avec `pausedPhase`, sans `phaseEndsAt`), `done`. `phaseEndsAt` : fin de la phase en ms, heure du serveur. `side` : côté en cours d'un exercice unilatéral.
 - **Gestes automatiques** : `state.autoGesture` (`record` d'une série guidée ou du finisher, `go` d'un repos), `state.autoAt` et `state.autoUntil` (ms, heure du serveur). Un écran envoie ce geste seul quand l'heure du serveur est entre `autoAt` et `autoUntil` (5 minutes) ; après, la séance a été oubliée : il attend un geste de la personne (`log`, `next`). Absents en pause et quand la phase attend un geste. Le site applique la même règle.
-- **`figureIds`** : les figures dont la séance a besoin (à télécharger avant de commencer) ; `GET sport` les donne aussi par séance du programme (`program.figureIds.A`…).
+- **`figureIds`** : les figures dont la séance a besoin (à télécharger avant de commencer), la figure de repli comprise (le `guideFigure` de chaque exercice) ; `GET sport` les donne aussi par séance du programme (`program.figureIds.A`…).
 - `steps[i]` est l'étape affichée : `warm`, `ex` (`ex`, `set`, `sets`, `block`), `rest` (`sec`), `emom` (`ex`, `rounds`, `every`, `reps`, `block`), `bonus`, `end`. `view.exercise` est la fiche de l'exercice en cours (forme de `program.exercises[]`), `view.reps` l'objectif de la série.
 - **Rythme guidé** : `cur.guide` est l'heure de départ ; elle peut être dans le futur (la mise en place). Avec `T` = (`cur.paused` ?? heure du serveur) − `cur.guide`, en secondes, et `dur` = `reps × cycle` (ou `reps` secondes pour une tenue) :
   - `T < 0` : mise en place, `−T` secondes restantes (bips à 3, 2, 1) ;
@@ -120,12 +120,13 @@ Le serveur applique le geste à l'heure du serveur (le même `act` que le site, 
 `drawing.figure` : `{ viewBox: "0 -22 200 214", groundY: 187, joints }` ; `figures[ex]` :
 
 ```
-{ cycle, fps, steps: [{ to, dur, label, count }], frames: [{ j: [x0, y0, x1, y1, …], bell?: { hand, at: [x, y] }, step }],
+{ cycle, fps, keys, steps: [{ to, dur, label, count }], frames: [{ j: [x0, y0, x1, y1, …], bell?: { hand, at: [x, y] }, step }],
   props: [{ kind, x, y, w, h, back? }], gear: [...], muscles: [{ id, label, load }] }
 ```
 
 - `version` : change quand la figure ou son dessin change (l'app garde une figure tant que sa version ne bouge pas). `loop` : toujours `true` (une répétition qui boucle). `cues` : `[{ t, label }]`, le début de chaque étape du tempo dans la répétition, en secondes. `muscles[].role` : `primary` (cible, `load` 3), `secondary` (aide, 2), `stabilizer` (stabilise, 1).
 - `accessories` : le matériel à plat : `{ type: "kettlebell", attachedTo: [main], position: "frames[].bell.at" }` (la boule bouge par image), `{ type: "dumbbell", attachedTo: [mains] }`, `{ type: "band", from, attachedTo: [mains] }`, `{ type: "miniband", attachedTo: ["kneeN", "kneeF"] }`, `{ type: "bench" | "chair" | "sofa" | "counter", rect: { x, y, w, h }, back? }`. Même contenu que `props`, `gear` et `frames[].bell`, sous une seule forme.
+- `keys` : le nombre de poses clés de la figure (`steps[].to` va de 0 à `keys − 1`). Dans le guide du rythme, la pose `k` est à la hauteur `1 − k / (keys − 1)` (1 si `keys ≤ 1`) : en haut la pose de départ, en bas la dernière, comme `keyLevel` (`src/lib/training/rhythm.ts`). Ajouté sans changer `version` : une figure gardée d'avant peut ne pas l'avoir (repli : `max(steps[].to) + 1`).
 - `frames` : une répétition échantillonnée à `fps` images par seconde (`frames.length = ceil(cycle × fps)`) ; l'image à l'instant `t` est `frames[floor((t mod cycle) / cycle × length)]` (interpoler entre deux images est permis). `j` donne x, y pour chaque articulation dans l'ordre `drawing.figure.joints` : `hip, shoulder, neck, head, kneeN, ankleN, toeN, kneeF, ankleF, toeF, elbowN, handN, elbowF, handF`. Repère y vers le bas ; N = côté proche, F = côté éloigné. `step` : l'étape du tempo en cours (`steps[step].label` est le mot affiché).
 - **Dessin** (comme `src/lib/training/draw.ts`) : membres en capsules galbées, rayon au départ → à l'arrivée : cuisse (hip → knee) 6,6 → 5 ; tibia (knee → ankle) 5 → 3,6 ; pied (ankle → toe) 3,3 → 2,4 ; bras (shoulder → elbow) 4,4 → 3,6 ; avant-bras (elbow → hand) 3,6 → 3 ; main : disque de 3,5. Buste (hip → shoulder) 7,8 → 9,2, cou (shoulder → neck) 3,8 → 3,6, tête : disque de 11 centré sur `head`. Ordre : sol, tapis, ombre, matériel posé, côté F (en retrait), buste, cou, tête, côté N, matériel tenu.
 - **Kettlebell** (`bell`) : l'anse dans la main `hand`, la boule (rayon 7,6) à `at`.
