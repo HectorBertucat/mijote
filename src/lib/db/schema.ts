@@ -897,3 +897,19 @@ export const runFeedback = sqliteTable(
   },
   (t) => [uniqueIndex("uq_run_feedback_day").on(t.personId, t.date)]
 );
+
+// ─── 10. API de l'app iPhone (migration 0012, docs/api-app.md) ───
+// Les gestes déjà faits, par `actionId` : un renvoi (réponse perdue, même après un redémarrage) ne refait pas
+// le geste. `reply` : la réponse du premier envoi (ses `plats`, `jour`, `live` sont recalculés au renvoi).
+// Gardés 30 jours (src/lib/app-api/actions.ts).
+export const appActions = sqliteTable(
+  "app_actions",
+  {
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    actionId: text("action_id").notNull(),
+    route: text("route").notNull(), // « POST plats/manger »
+    at: integer("at").notNull(), // ms epoch, heure du serveur
+    reply: json<Record<string, unknown>>("reply").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.actionId] }), index("idx_app_actions_at").on(t.at)]
+);
