@@ -176,6 +176,18 @@ export function PortionSheet({ dish, who, me, today, art }: { dish: DishView; wh
             <p className="text-ink-2">Vide{dish.boxes.length ? " : ce qui reste est en boîtes." : "."}</p>
           )}
           {lim && <p className={`text-small ${lim.tone || "text-ink-2"}`}>{lim.label} {lim.big}</p>}
+          {dish.estimated && (
+            <p className="text-small text-ink-2">
+              Pas encore pesé : les grammes sont estimés d’après le cru.{" "}
+              {dish.sessionId ? (
+                <Link href={`/plats/batch/${dish.sessionId}`} className="font-bold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink" data-link="bilan">
+                  Peser depuis le bilan du batch
+                </Link>
+              ) : (
+                "Réajuster, pour peser ce qui reste."
+              )}
+            </p>
+          )}
           {dish.short && <p className="text-small text-warn-ink">Moins que prévu : chaque portion est plus petite que la part visée.</p>}
           {dish.rest && <p className="num text-small text-ink-2">Et un reste, pour qui veut : {dish.rest.grams.map((g) => `${gramsLabel(g.g)}${several ? ` de ${g.label}` : ""}`).join(", ")}.</p>}
           <Button variant="secondary" className="w-fit" icon="scale" onClick={() => setAdjust((x) => !x)} aria-expanded={adjust} data-action="reajuster">
