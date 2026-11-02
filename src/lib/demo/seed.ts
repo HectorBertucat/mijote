@@ -38,7 +38,8 @@ function planWeek(db: Db, start: string, slugs: string[]) {
 
 /**
  * Une semaine déjà cuisinée : la liste faite et payée le samedi, la session du dimanche terminée, chaque
- * marmite pesée (le poids cuit estimé du cru) et mise en réserve, avec les boîtes du congélo. Les portions
+ * marmite pesée (le poids cuit estimé du cru) et mise en réserve, avec les boîtes du congélo, sauf la dernière
+ * de la semaine en cours, pas encore pesée (estimée, comme une session finie sans pesée). Les portions
  * des repas passés sont mangées ; une boîte du congélo est sortie la veille. Une semaine archivée est finie.
  */
 async function cookedWeek(db: Db, h: DemoHousehold, week: { start: string; cookedOn: string; listOn: string }, slugs: string[], opts: { archive: boolean }) {
@@ -65,12 +66,14 @@ async function cookedWeek(db: Db, h: DemoHousehold, week: { start: string; cooke
   // (la Semaine reste un repère) ; le batch est entamé, même un lundi.
   const meals: { reserveId: string; personId: string; date: string; meal: "lunch" | "dinner" }[] = [];
   const reserveIds = new Set<string>();
-  for (const r of plan.recipes) {
+  for (const [k, r] of plan.recipes.entries()) {
     const recipeId = ids.get(r.slug);
     if (!recipeId) continue;
     const m = calcModel(db, r.slug, { scale: r.scale ?? 1, cookedOn: week.cookedOn, week: true }, weighed)!;
     const counts = defaultCounts(m);
-    const weights = Object.fromEntries(m.groups.map((g) => [g.key, Math.round(g.estG / 5) * 5]));
+    // Le dernier plat de la semaine en cours n'est pas encore pesé : ses portions sont estimées (le bilan du batch).
+    const unweighed = !opts.archive && k === plan.recipes.length - 1 && plan.recipes.length > 1;
+    const weights = unweighed ? {} : Object.fromEntries(m.groups.map((g) => [g.key, Math.round(g.estG / 5) * 5]));
     const { reserveId } = saveReserve(db, sessionId, recipeId, { weights, counts, freezer: defaultFreezer(m, counts) }, weighed);
     reserveIds.add(reserveId);
     for (const [personId, slots] of plannedSlots(db, recipeId, week.cookedOn)) for (const s of slots) if (s.date < today || (s.date === today && s.meal === "lunch") || opts.archive) meals.push({ reserveId, personId, date: s.date, meal: s.meal });

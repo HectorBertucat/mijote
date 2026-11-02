@@ -900,13 +900,15 @@ function Done({ plan, c, detail }: { plan: SessionPlan; c: Controls; detail: str
       {/* Peser les marmites : portions de chacun et grammes de chaque groupe, puis la réserve (pas en session test). */}
       {!test && <SessionBoxes id={c.id} plan={plan} kitchen />}
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6">
+        {!test && (
+          <Link href={`/plats/batch/${c.id}`} className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink hover:bg-surface" data-link="bilan">
+            <Icon name="fridge" size="s" />
+            Le bilan du batch
+          </Link>
+        )}
         <Link href={detail} className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink hover:bg-surface">
           <Icon name="clock" size="s" />
-          Voir le bilan
-        </Link>
-        <Link href="/plats" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] border border-line-strong px-4 font-bold hover:border-ink hover:bg-surface">
-          <Icon name="fridge" size="s" />
-          Voir nos plats
+          Prévu et réel
         </Link>
         <Button variant="quiet" icon="refresh" onClick={() => c.setStatus("cooking")}>
           Rouvrir la session

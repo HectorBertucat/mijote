@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { isDay, parsePeriod } from "@/lib/week/period";
-import { addRecipe, clearWeek, cyclePlace, loadSelection, loadWeek, proposeWeek, removeRecipe, setExtra, setFactor, setPeriod, swapRecipe } from "@/lib/week/store";
+import { addRecipe, clearWeek, cyclePlace, loadSelection, loadWeek, proposeWeek, removeRecipe, setExtra, setFactor, setMissingIgnored, setPeriod, swapRecipe } from "@/lib/week/store";
 import { startShoppingList } from "@/lib/shopping/build";
 
 function weekOf(formData: FormData): string {
@@ -30,6 +30,20 @@ export async function periodAction(formData: FormData) {
   const start = setPeriod(db, w, p);
   revalidatePath("/semaine");
   back(start, `period:${p.days}`);
+}
+
+/**
+ * « Ignorer » l'avertissement des repas sans plat, pour cette période (`n` : combien), ou le rétablir
+ * (`n` vide). Depuis l'accueil (`from=accueil`), on y reste.
+ */
+export async function ignoreMissingAction(formData: FormData) {
+  const w = weekOf(formData);
+  const n = Number(formData.get("n") ?? "");
+  setMissingIgnored(db, w, Number.isInteger(n) && n > 0 ? n : null);
+  revalidatePath("/");
+  revalidatePath("/semaine");
+  if (formData.get("from") === "accueil") redirect("/");
+  back(w, n > 0 ? "ignore" : "unignore");
 }
 
 export async function proposeAction(formData: FormData) {

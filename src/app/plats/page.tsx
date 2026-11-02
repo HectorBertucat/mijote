@@ -2,18 +2,19 @@
 // personne affichée (le profil de l’appareil, ou `?pour=`), chaque plat de la réserve avec ses portions
 // restantes et les grammes de la prochaine, « J’ai mangé une portion » d’un geste ; puis les plats de la
 // période pas encore cuisinés, et ce qu’elle a mangé ces trois derniers jours. Remplace le Frigo : une
-// boîte n’est qu’une portion rangée (frigo ou congélo), elle se voit dans la fiche de son plat.
+// boîte n’est qu’une portion rangée (frigo ou congélo), elle se voit dans la fiche de son plat. En tête,
+// le batch du moment : son bilan (/plats/batch/<id>), les plats pas encore pesés (portions estimées).
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { DishList } from "@/components/plats/DishList";
 import { portions } from "@/components/plats/words";
-import { buttonClass } from "@/components/ui";
+import { buttonClass, Icon, Pill } from "@/components/ui";
 import { DishBox } from "@/components/ui/dish";
 import { db } from "@/lib/db/client";
 import { activeProfileId } from "@/lib/health/active";
 import { listPeople, todayParis } from "@/lib/health/store";
 import { listDishRecipes } from "@/lib/recipes/queries";
-import { listDishes, recentServings } from "@/lib/reserve/store";
+import { currentBatch, listDishes, recentServings } from "@/lib/reserve/store";
 import { recipeColor } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
   const left = cooked.reduce((s, d) => s + (mine(d)?.left ?? 0), 0);
   const withLeft = cooked.filter((d) => (mine(d)?.left ?? 0) > 0).length;
   const self = who?.id === me;
+  const batch = currentBatch(db, now);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 md:gap-18 lg:grid-cols-12 lg:gap-x-6">
@@ -44,7 +46,7 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
         {who && (
           <p className="num max-w-[52ch] text-lead text-ink-2">
             {cooked.length
-              ? `${self ? "Pour toi" : `Pour ${who.name}`} : ${portions(left)} dans ${withLeft} plat${withLeft > 1 ? "s" : ""}. Le jour est libre : chacun mange ses portions quand il veut.`
+              ? `${self ? "Pour toi" : `Pour ${who.name}`} : ${portions(left)} dans ${withLeft} plat${withLeft > 1 ? "s" : ""}${cooked.some((d) => d.estimated) ? ", en partie estimées (pas encore pesées)" : ""}. Le jour est libre : chacun mange ses portions quand il veut.`
               : "Rien en réserve. Après la session, on pèse chaque récipient et je dis combien de portions pour chacun."}
           </p>
         )}
@@ -59,6 +61,23 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
               );
             })}
           </nav>
+        )}
+        {batch && (
+          <Link href={`/plats/batch/${batch.id}`} className="flex min-w-0 items-center gap-4 border-y border-line-strong py-4 hover:bg-surface-2 lg:max-w-[66%]" data-link="bilan">
+            <span className="grid min-w-0 flex-1 gap-1">
+              <span className="font-display text-h3 font-bold tracking-[-0.015em]">{batch.title}</span>
+              <span className="num text-small text-ink-2">
+                {batch.summary.dishes} plat{batch.summary.dishes > 1 ? "s" : ""} · {portions(batch.summary.portions)}
+                {batch.summary.toWeigh > 0 ? " · portions estimées d’après le cru : pèse quand tu peux" : " · tout est pesé"}
+              </span>
+            </span>
+            {batch.summary.toWeigh > 0 && (
+              <Pill tone="warn" icon="scale">
+                {batch.summary.toWeigh} à peser
+              </Pill>
+            )}
+            <Icon name="chev" className="shrink-0 text-faint" />
+          </Link>
         )}
       </header>
       <div className="grid gap-12 md:gap-18 lg:col-span-8">
