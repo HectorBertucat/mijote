@@ -40,7 +40,7 @@ function sentence(h: HomeView): string {
       return `Il manque ${s.missing}${NBSP}repas${NBSP}: ajoute un plat ou augmente les quantités.`;
     case "eat":
       return h.portionsLeft
-        ? `La cuisine est faite${NBSP}: ${h.portionsLeft}${NBSP}portion${h.portionsLeft > 1 ? "s" : ""} en réserve${h.batch?.toWeigh ? `, estimées tant que ${h.batch.toWeigh > 1 ? `${h.batch.toWeigh}${NBSP}plats ne sont pas pesés` : "un plat n’est pas pesé"}` : ""}. Chacun mange les siennes quand il veut.`
+        ? `La cuisine est faite${NBSP}: ${h.portionsLeft}${NBSP}portion${h.portionsLeft > 1 ? "s" : ""} en réserve${h.batch?.toWeigh ? `, en partie estimées${NBSP}: ${h.batch.toWeigh > 1 ? `${h.batch.toWeigh}${NBSP}plats ne sont pas encore pesés` : "un plat n’est pas encore pesé"}` : ""}. Chacun mange les siennes quand il veut.`
         : "La cuisine est faite, et tout est mangé.";
     case "list":
       return s.changed ? `La semaine a changé depuis la liste${NBSP}: refais-la avant de commander.` : "Tous les repas sont couverts. Reste la liste de courses.";

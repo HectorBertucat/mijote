@@ -46,7 +46,7 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
         {who && (
           <p className="num max-w-[52ch] text-lead text-ink-2">
             {cooked.length
-              ? `${self ? "Pour toi" : `Pour ${who.name}`} : ${portions(left)} dans ${withLeft} plat${withLeft > 1 ? "s" : ""}${cooked.some((d) => d.estimated) ? ", estimées tant que tout n’est pas pesé" : ""}. Le jour est libre : chacun mange ses portions quand il veut.`
+              ? `${self ? "Pour toi" : `Pour ${who.name}`} : ${portions(left)} dans ${withLeft} plat${withLeft > 1 ? "s" : ""}${cooked.some((d) => d.estimated) ? ", en partie estimées (pas encore pesées)" : ""}. Le jour est libre : chacun mange ses portions quand il veut.`
               : "Rien en réserve. Après la session, on pèse chaque récipient et je dis combien de portions pour chacun."}
           </p>
         )}
@@ -63,7 +63,7 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
           </nav>
         )}
         {batch && (
-          <Link href={`/plats/batch/${batch.id}`} className="-mx-3 flex min-w-0 items-center gap-4 rounded-[8px] border-y border-line-strong px-3 py-4 hover:bg-surface-2 lg:max-w-[66%]" data-link="bilan">
+          <Link href={`/plats/batch/${batch.id}`} className="flex min-w-0 items-center gap-4 border-y border-line-strong py-4 hover:bg-surface-2 lg:max-w-[66%]" data-link="bilan">
             <span className="grid min-w-0 flex-1 gap-1">
               <span className="font-display text-h3 font-bold tracking-[-0.015em]">{batch.title}</span>
               <span className="num text-small text-ink-2">
