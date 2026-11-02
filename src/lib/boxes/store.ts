@@ -2,16 +2,15 @@
 // repas prévus), le rangement en fin de session, et le stock du frigo et du congélateur.
 // Le calcul est dans ./core (pur, testé).
 import { randomUUID } from "crypto";
-import { and, asc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { cookSessions, mealBoxes, mealSlots, people, recipeIngredients, recipes, weekPlans } from "@/lib/db/schema";
+import { cookSessions, foodLog, mealBoxes, people, recipeIngredients, recipes } from "@/lib/db/schema";
 import { loadEaters } from "@/lib/eaters/store";
-import { addEntry } from "@/lib/health/log";
+import { adoptLegacyBoxes, eatPortion, plannedSlots } from "@/lib/reserve/store";
 import { todayParis } from "@/lib/health/store";
 import { computeNutrition, type IngredientYield } from "@/lib/nutrition/compute";
 import type { SessionPlan } from "@/lib/session/planner";
-import { mondayOf } from "@/lib/week/propose";
-import { daysBetween, DEFAULT_FRIDGE_DAYS, freshness, limitOf, mealAt, placeFor, splitPot, type Place, type PotModel, type PotPerson, type Weights } from "./core";
+import { DEFAULT_FRIDGE_DAYS, freshness, limitOf, placeFor, splitPot, type Place, type PotModel, type PotPerson, type Weights } from "./core";
 
 type IngRow = { item: string; foodId: string | null; grams: number | null; units: number | null; yield: IngredientYield | null; side: boolean; optional: boolean };
 
@@ -33,32 +32,6 @@ export function potParts(ings: IngRow[], scale: number): Pick<PotModel, "dish" |
     dish: known ? { kcal: d.total.kcal * scale, protein: d.total.protein * scale } : null,
     side: { label: sideLabelOf(sides.map((i) => i.item)), kcal: known ? s.total.kcal * scale : 0, protein: known ? s.total.protein * scale : 0 },
   };
-}
-
-const addDays = (date: string, n: number) => {
-  const t = new Date(`${date}T12:00:00Z`);
-  t.setUTCDate(t.getUTCDate() + n);
-  return t.toISOString().slice(0, 10);
-};
-
-/** Repas prévus par la Semaine avec cette recette, du jour de la cuisson aux deux semaines suivantes. */
-export function plannedSlots(db: Db, recipeId: string, cookedOn: string): Map<string, PotPerson["planned"]> {
-  const monday = mondayOf(new Date(`${cookedOn}T12:00:00Z`));
-  const weeks = [monday, addDays(monday, 7)];
-  const rows = db
-    .select({ weekStart: weekPlans.weekStart, day: mealSlots.day, meal: mealSlots.meal, personId: mealSlots.personId })
-    .from(mealSlots)
-    .innerJoin(weekPlans, eq(weekPlans.id, mealSlots.weekPlanId))
-    .where(and(eq(mealSlots.recipeId, recipeId), ne(mealSlots.place, "away"), inArray(weekPlans.weekStart, weeks)))
-    .all();
-  const out = new Map<string, PotPerson["planned"]>();
-  for (const r of rows) {
-    const date = addDays(r.weekStart, r.day);
-    const d = daysBetween(cookedOn, date);
-    if (d < 0 || d >= 14) continue;
-    out.set(r.personId, [...(out.get(r.personId) ?? []), { date, meal: r.meal }]);
-  }
-  return out;
 }
 
 /** La marmite d'une recette : `week` = avec les repas prévus (fin de session), sinon un partage à parts égales du foyer. */
@@ -230,27 +203,16 @@ const stockBox = (db: Db, id: string) => {
   return b;
 };
 
-const parisHour = (d: Date) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", hourCycle: "h23" }).format(d));
-
-/** « Je mange cette boîte » : une ligne au journal de Santé (macros de la boîte), et la boîte sort du stock. */
+/**
+ * « Je mange cette boîte » : une portion de la réserve (src/lib/reserve), mangée depuis cette boîte :
+ * une ligne au journal de Santé (macros de la boîte), et la boîte sort du stock.
+ */
 export function eatBox(db: Db, id: string, personId: string, now = new Date()) {
-  return db.transaction((tx) => {
-    const b = stockBox(tx as unknown as Db, id);
-    const grams = [b.grams != null ? `${Math.round(b.grams)} g` : null, b.sideGrams != null ? `${b.sideLabel ?? "garniture"} ${Math.round(b.sideGrams)} g` : null].filter(Boolean).join(" + ");
-    const entry = addEntry(tx as unknown as Db, {
-      personId,
-      date: todayParis(now),
-      meal: mealAt(parisHour(now)),
-      kind: "recipe",
-      recipeId: b.recipeId,
-      label: grams ? `${b.name} (${grams})` : b.name,
-      kcal: b.kcal ?? 0,
-      proteinG: b.proteinG ?? 0,
-      source: "manual",
-    });
-    tx.update(mealBoxes).set({ status: "eaten", closedAt: now.toISOString(), eatenBy: personId, foodLogId: entry.id }).where(eq(mealBoxes.id, id)).run();
-    return entry;
-  });
+  adoptLegacyBoxes(db);
+  const b = stockBox(db, id);
+  if (!b.reserveId) throw new Error("Cette boîte n'est plus au frigo.");
+  const s = eatPortion(db, b.reserveId, personId, { boxId: id }, now);
+  return db.select().from(foodLog).where(eq(foodLog.id, s.entryId!)).get()!;
 }
 
 export function freezeBox(db: Db, id: string, today = todayParis()) {

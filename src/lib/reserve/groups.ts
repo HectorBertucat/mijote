@@ -70,6 +70,7 @@ const cooks = (s: PlannerStep) => s.kind !== "prep" && s.kind !== "cool";
 /** « Haricots verts » → « haricots-verts » : une clé stable, sans accent. */
 export const keyOf = (label: string) =>
   label
+    .toLowerCase()
     .replace(/œ/g, "oe")
     .replace(/æ/g, "ae")
     .normalize("NFD")

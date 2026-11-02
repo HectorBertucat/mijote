@@ -68,6 +68,9 @@ export interface Split {
   fill: number;
 }
 
+/** Sous 25 g par groupe, le récipient est vide (les arrondis à 5 g laissent quelques grammes). */
+export const CRUMBS_G = 25;
+
 const roundG = (g: number) => Math.max(0, Math.round(g / GRAM_STEP) * GRAM_STEP);
 const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
 
@@ -279,7 +282,7 @@ export function reserveState(groups: ReserveGroup[], counts: Record<string, numb
       const next: ShareState["next"] = r.left <= 0 ? null : portion ? { source: "recipient", grams: portion.grams, kcal: portion.kcal, protein: portion.protein } : box ? { source: "boite", boxId: box.id, grams: box.grams, ...macrosOf(groups, box.grams) } : null;
       return { personId: r.id, name: byId.get(r.id)!.name, total: r.total, eaten: r.eaten, left: r.left, inBoxes: r.inBoxes, loose: r.loose, portion, next };
     });
-  const empty = !anyLeft && !stock.length && shares.every((s) => s.left <= 0);
+  const empty = !groups.some((g) => (left[g.key] ?? 0) > CRUMBS_G) && !stock.length && shares.every((s) => s.left <= 0);
   return { left, shares, rest: split.rest, fill: split.fill, empty };
 }
 
@@ -296,4 +299,60 @@ export function reweigh(g: ReserveGroup, leftNow: number, grams: number, at: str
 export function servingLabel(name: string, groups: Pick<ReserveGroup, "key" | "label">[], grams: Grams): string {
   const parts = groups.filter((g) => (grams[g.key] ?? 0) > 0).map((g) => `${g.label} ${Math.round(grams[g.key])} g`);
   return parts.length ? `${name} (${parts.join(", ")})` : name;
+}
+
+// ─── Le calculateur de fin de session ───
+
+/** Une marmite à peser : ses groupes (macros de la marmite entière, poids cuit estimé) et le foyer. */
+export interface CalcModel {
+  recipeId: string;
+  slug: string;
+  name: string;
+  cookedUnits: number;
+  /** kcal et protéines d'une unité de la marmite (null : inconnues). */
+  kcalUnit: number | null;
+  proteinUnit: number | null;
+  fridgeDays: number;
+  freezerOk: boolean;
+  cookedOn: string;
+  groups: { key: string; label: string; kind: GroupKind; kcal: number | null; protein: number | null; estG: number }[];
+  /** `planned` : repas prévus par la Semaine ; `late` : dont au-delà des jours de frigo. */
+  people: (Target & { planned: number; late: number })[];
+}
+
+/** Les groupes pesés (ou estimés, sans poids) à l'instant `at`. */
+export function weighedGroups(m: CalcModel, weights: Record<string, number | null | undefined>, at: string): ReserveGroup[] {
+  return m.groups.map((g) => {
+    const w = weights[g.key];
+    const weighed = w != null && Number.isFinite(w) && w > 0;
+    const grams = weighed ? w : g.estG;
+    return {
+      key: g.key,
+      label: g.label,
+      kind: g.kind,
+      g: Math.round(grams),
+      at,
+      kcalG: g.kcal != null && grams > 0 ? g.kcal / grams : null,
+      proteinG: g.protein != null && grams > 0 ? g.protein / grams : null,
+      ...(weighed ? {} : { estimated: true }),
+    };
+  });
+}
+
+/** Portions de chacun par défaut : les repas prévus, puis la marge (initialCounts), en kcal si connues. */
+export function defaultCounts(m: CalcModel): Record<string, number> {
+  const kcal = m.groups.every((g) => g.kcal != null) ? sum(m.groups.map((g) => g.kcal!)) : null;
+  const known = kcal != null && kcal > 0 && m.people.every((p) => p.kcal != null && p.kcal > 0);
+  return initialCounts(
+    m.people.map((p) => ({ id: p.id, planned: p.planned, share: known ? p.kcal! : p.units })),
+    known ? kcal! : m.cookedUnits
+  );
+}
+
+/**
+ * Combien de portions de chacun vont au congélo, en boîtes : les repas prévus au-delà des jours de
+ * frigo et la marge (ce qui dépasse les repas prévus). Rien si le plat ne se congèle pas.
+ */
+export function defaultFreezer(m: CalcModel, counts: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(m.people.map((p) => [p.id, m.freezerOk ? Math.min(counts[p.id] ?? 0, p.late + Math.max(0, (counts[p.id] ?? 0) - p.planned)) : 0]));
 }
