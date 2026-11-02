@@ -25,7 +25,7 @@ import { programById, programFor } from "@/lib/training/programs";
 import { listWorkouts } from "@/lib/training/store";
 import { DRAWING, figureData, musclesData } from "./figures";
 import { ACTIONS, actionOf, clean, phaseOf } from "./state";
-import { adjustReserve, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
+import { adjustReserve, currentBatch, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
 import { healthSamples } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 
@@ -167,14 +167,20 @@ const withoutPerson = <T extends { personId: string }>(s: T): Omit<T, "personId"
   return out as Omit<T, "personId">;
 };
 
-/** Les plats et les portions restantes de chacun, la personne de la clé d'abord ; ses portions des trois derniers jours. */
+/**
+ * Les plats et les portions restantes de chacun, la personne de la clé d'abord ; ses portions des trois
+ * derniers jours ; le batch du moment (son bilan : plats pesés ou estimés).
+ */
 function plats(db: Db, p: Person, now: number) {
   const at = new Date(now);
+  const dishes = listDishes(db, p.id, at).map((d) => ({ ...d, people: d.people.map((s) => ({ ...s, me: s.personId === p.id })) }));
+  const b = currentBatch(db, at);
   return {
     today: todayParis(at),
     person: { id: p.id, name: p.name },
-    dishes: listDishes(db, p.id, at).map((d) => ({ ...d, people: d.people.map((s) => ({ ...s, me: s.personId === p.id })) })),
+    dishes,
     eaten: recentServings(db, p.id, at).map(withoutPerson),
+    batch: b ? { id: b.id, title: b.title, cookedOn: b.cookedOn, ...b.summary, items: b.dishes.map((d) => ({ dishId: d.reserveId, recipeId: d.recipeId, slug: d.slug, name: d.name, open: d.open, weigh: d.weigh })) } : null,
   };
 }
 

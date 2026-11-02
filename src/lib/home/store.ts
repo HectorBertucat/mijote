@@ -5,7 +5,8 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { cookSessions, shoppingItems, shoppingLists } from "@/lib/db/schema";
-import { currentBatch, listDishes, recentServings, type DishView, type ServingView } from "@/lib/reserve/store";
+import { currentBatch, listDishes, recentBatches, recentServings, type DishView, type ServingView } from "@/lib/reserve/store";
+import { batchInPeriod } from "@/lib/reserve/batch";
 import { todayParis } from "@/lib/health/store";
 import { activeSession, buildPlan } from "@/lib/session/store";
 import { estimateSession } from "@/lib/session/estimate";
@@ -14,8 +15,6 @@ import type { Meal } from "@/lib/week/propose";
 import { missingIgnoredOf, periodPlans, weekView } from "@/lib/week/store";
 import { todayRun } from "@/lib/running/page";
 import { cookDayOf, coverIgnored, nextStep, type HomeState, type HomeStep } from "./next";
-
-const MEALS: Meal[] = ["lunch", "dinner"];
 
 export interface HomeDish {
   slug: string;
@@ -100,9 +99,14 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
     .where(and(eq(cookSessions.status, "done"), eq(cookSessions.test, false), listIds.length ? or(eq(cookSessions.weekPlanId, view.planId), inArray(cookSessions.shoppingListId, listIds)) : eq(cookSessions.weekPlanId, view.planId)))
     .get();
 
+  // Un batch cuit pour la période compte aussi (une session lancée depuis Composer n'est liée à rien).
+  const b = currentBatch(db, now);
+  const batches = cooked ? [] : recentBatches(db, now);
+  const cookedHere = cooked || batches.some((x) => batchInPeriod(x.cookedOn, view.start, view.days));
+
   const cookDay = cookDayOf(view.start);
   const missingIgnored = missingIgnoredOf(db, view.planId);
-  const state: HomeState = { active, dishes: selected.length, missing: a.uncovered.length, missingIgnored, cooked, list, cookDay, today };
+  const state: HomeState = { active, dishes: selected.length, missing: a.uncovered.length, missingIgnored, cooked: cookedHere, list, cookDay, today };
   const step: HomeStep = nextStep(state);
 
   // Que manger : la réserve de chacun, plat par plat (le jour est libre), le profil actif d'abord ; puis
@@ -113,7 +117,6 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
   const planned: DishView[] = all.filter((d) => d.status === "planned");
   const portionsLeft = reserve.reduce((s, d) => s + d.people.reduce((x, p) => x + p.left, 0), 0);
   const eatenToday: ServingView[] = eaters.flatMap((e) => recentServings(db, e.id, now, 1));
-  const b = currentBatch(db, now);
   const batch = b ? { id: b.id, title: b.title, cookedOn: b.cookedOn, ...b.summary } : null;
 
   return {
@@ -128,7 +131,7 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
     minutes,
     list: list ? { ...list, items: items.length, inCart: items.filter((i) => i.inCart).length } : null,
     active,
-    cooked,
+    cooked: cookedHere,
     step,
     /** Repas sans plat ignorés pour cette période (l'accueil ne les signale plus). */
     missingIgnored: coverIgnored(a.uncovered.length, missingIgnored),

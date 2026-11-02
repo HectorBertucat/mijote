@@ -149,6 +149,14 @@ async function main() {
     await page(`/plats/${reserveId}`, undefined, /La portion de/);
     await page("/", undefined, /Que manger/);
     await page(`/session/${done}`, undefined);
+    await page(`/plats/batch/${done}`, undefined, /Le batch du[\s\S]*pesé[\s\S]*Les pesées/);
+    // Une session finie sans pesée (une étape faite) : ses plats en réserve, estimés ; Nos plats mène au bilan.
+    const late = createSession(db, { slugs: ["chasseur-porc"], mode: "solo" });
+    addEvent(db, late, { kind: "step_done", ref: "s1" });
+    addEvent(db, late, { kind: "note", payload: { status: "done" } });
+    await page("/plats", undefined, /Le batch du[\s\S]*à peser[\s\S]*estimé, pas encore pesé/);
+    await page(`/plats/batch/${late}`, undefined, /estimé[\s\S]*Enregistrer les portions/);
+    check((await get("/plats/batch/inconnue")).status === 404, "bilan d'une session inconnue → 404");
     await page("/sante/entrainement?vue=programme", "mijote.profil=lea", /Changer de programme/);
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
     check((await get("/bienvenue")).status === 307, "mise en route faite → /bienvenue renvoie à l'accueil");

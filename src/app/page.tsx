@@ -9,7 +9,7 @@ import { StepSubmit } from "@/components/accueil/StepSubmit";
 import { ignoreMissingAction, proposeAction, weekListAction } from "@/app/semaine/actions";
 import { db } from "@/lib/db/client";
 import { activeProfileId } from "@/lib/health/active";
-import { dayWord, headline, minutesText, NBSP, stepLabel, type HomeStep } from "@/lib/home/next";
+import { dayWord, headline, NBSP, stepLabel, type HomeStep } from "@/lib/home/next";
 import { homeView, type HomeView } from "@/lib/home/store";
 import type { Meal } from "@/lib/week/propose";
 import { periodHeading } from "@/lib/week/period";
