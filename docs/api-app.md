@@ -1,6 +1,6 @@
 # API de l'app iPhone (v1)
 
-L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, et pilote la séance guidée. Elle lit et écrit par cette API ; la synchro d'Apple Santé reste sur `/api/sante/import` (docs/sante.md).
+L'app Mijote Santé affiche Santé, le journal, les plats du batch, la course et le sport en natif, et pilote la séance guidée. Elle lit et écrit par cette API ; la synchro d'Apple Santé reste sur `/api/sante/import` (docs/sante.md).
 
 **Contrat additif** : on ajoute des routes et des champs, on n'en retire pas et on n'en change pas le sens. L'app ignore ce qu'elle ne connaît pas et n'affiche que ce que `features` annonce. Code : `src/lib/app-api/` (testé dans `tests/app-api.test.ts`), routes : `src/app/api/app/v1/`.
 
@@ -25,6 +25,10 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 | `GET jour?date=` | `{ date, entries, totals, complete, todo: { planned, templates }, review }` : le journal d'un jour (aujourd'hui par défaut) |
 | `POST jour` | une action sur le journal (ci-dessous) → `{ message, jour }` (le jour à jour) |
 | `POST pesee` | `{ kg }` (25 à 350) → `{ message, weighIns }` |
+| `GET plats` | `{ today, person, dishes, eaten }` : les plats du batch et les portions restantes de chacun (ci-dessous) |
+| `POST plats/manger` | `{ dishId, boxId?, grams?, date?, meal? }` → `{ message, serving, plats }` : « j'ai mangé une portion » |
+| `POST plats/annuler` | `{ servingId }` → `{ message, plats }` : annule une portion mangée |
+| `POST plats/reglage` | `{ dishId, weights?, left? }` → `{ message, plats }` : nouvelle pesée, portions restantes de chacun |
 | `GET course` | `{ enabled, view? }` : la vue de Santé › Course (`view` absent si le plan n'est pas actif). Les séances de la semaine (`view.week`…) gardent les ids des `plans` de la v2.1 (`/api/sante/import/plans`) : la séance du plan et celle programmée sur la montre ont le même id. |
 | `GET course/sorties?before=&limit=` | `{ runs, more }` : les sorties, de la plus récente à la plus ancienne, avant le jour `before` (exclu), `limit` 20 par défaut (100 au plus) ; chacune avec `sampleId` et `uuid` (l'uuid HealthKit de la séance envoyée par l'app) ; `more` : il en reste |
 | `GET sport` | `{ today, program, workouts, apple, guide, live, partner }` |
@@ -51,6 +55,64 @@ L'app Mijote Santé affiche Santé, le journal, la course et le sport en natif, 
 | `parts` | `id` (une entrée du jour), `units` |
 | `retirer` | `id` |
 | `complete` | `complete` (la journée compte ou non pour la cible) |
+
+## Plats (la réserve du batch)
+
+Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combien de portions de quel plat** ; le jour où on le mange est libre (la Semaine reste un prévisionnel). Une marmite cuite est une **réserve** : des **groupes** servis séparément (le plat et sa sauce, le riz, les haricots verts), pesés en fin de session, et un nombre de portions par personne. Une portion est en grammes de chaque groupe, calculée par le code d'après le repère de la personne (kcal et protéines), sans jamais plus de féculent que la proportion de la marmite. Chaque portion mangée retire ses grammes de la réserve, et **les portions restantes de chacun se recalculent** sur ce qui reste : l'app affiche les chiffres reçus, sans recalculer. Une portion peut être dans le grand récipient (au frigo) ou rangée dans une boîte (frigo ou congélo, ses grammes sont figés). Code : `src/lib/reserve/`.
+
+### `GET plats`
+
+```
+{ today, person: { id, name },
+  dishes: [{ id, recipeId, slug, name, status, cookedOn?, limit?, freshness?,
+             groups: [{ key, label, kind, leftG?, estimated? }],
+             people: [Share], rest?: { grams: [Gram], kcal? }, boxes: [Box] }],
+  eaten: [Serving] }
+```
+
+- **`dishes`** : les plats en réserve, le plus pressé d'abord, puis (`status: "planned"`) les plats de la période en cours pas encore cuisinés, avec seulement les portions prévues (`people[].total`, pas de grammes). `status: "cooked"` : en réserve. `limit` (`AAAA-MM-JJ`) et `freshness` (`ok`, `soon` : aujourd'hui ou demain, `past` : à jeter) : la date limite du grand récipient au frigo (cuisson + jours de conservation de la recette).
+- **`groups`** : dans l'ordre d'affichage. `key` (stable : `plat`, `riz`, `haricots-verts`…), `label` (« plat », « riz », « haricots verts »), `kind` : `main` (le plat, la viande et sa sauce), `starch` (féculent), `veg` (légume), `other`. `leftG` : grammes restants dans le grand récipient (hors boîtes). `estimated: true` : pas pesé, estimé d'après les grammes crus.
+- **`Gram`** : `{ key, label, g }`, une ligne par groupe, dans l'ordre de `groups`, grammes arrondis à 5 g.
+- **`Share`** (`people[]`, la personne de la clé d'abord, avec `me: true` ; puis les autres : « la part de l'autre ») :
+
+```
+{ personId, name, me, total, eaten, left, inBoxes,
+  portion?: { grams: [Gram], kcal?, protein? },
+  next?: { source, boxId?, grams: [Gram], kcal?, protein? } }
+```
+
+  `total` : portions de ce plat pour elle en tout ; `eaten` : déjà mangées ; `left` : restantes (`total − eaten`, jamais négatif) ; `inBoxes` : dont rangées en boîtes. `portion` : une portion à se servir dans le grand récipient (absente s'il n'y en a plus pour elle ou si le plat n'est pas cuisiné). `next` : ce que sert « manger » sans autre précision : `source: "recipient"` (le grand récipient, grammes de `portion`) ou `"boite"` (sa boîte au frigo la plus pressée, `boxId`) ; absent quand il ne lui reste rien.
+- **`rest`** : ce qui dépasse le haut des repères de tous, pour qui veut (absent le plus souvent).
+- **`Box`** : `{ id, personId?, place: "fridge" | "freezer", thawed, limit, freshness, grams: [Gram], kcal?, protein? }` ; `personId` absent : pour qui veut.
+- **`eaten`** (`Serving`) : les portions mangées par la personne ces trois derniers jours, la plus récente d'abord, pour proposer « Annuler » :
+
+```
+{ id, dishId, name, date, meal, at, source, boxId?, grams: [Gram], kcal, protein, entryId }
+```
+
+  `at` : instant (ISO 8601) ; `meal` : `breakfast`, `lunch`, `dinner`, `snack` ; `entryId` : sa ligne du journal (`GET jour`).
+
+### `POST plats/manger`
+
+`{ dishId, boxId?, grams?, date?, meal? }` → `{ message, serving, plats }` (`plats` : la même réponse que `GET plats`, à jour).
+
+- Sans `boxId` ni `grams` : la portion `next` de la personne. Plusieurs fois par jour, le même plat deux fois : permis.
+- `boxId` : mange cette boîte (une des `boxes`, à la personne ou pour qui veut), entière.
+- `grams` : `{ <key>: g }` (0 à 3 000 par groupe), ce que la personne a vraiment pris dans le grand récipient ; un groupe absent compte pour 0. Les kcal et protéines en sont recalculés.
+- `date` (aujourd'hui par défaut, jamais dans le futur) et `meal` (par défaut d'après l'heure de Paris : `lunch` de 10 h à 16 h, `dinner` à partir de 17 h, `snack` sinon).
+- Une ligne s'ajoute au journal du jour (kcal et protéines de la portion), comme « Je la mange » sur le site. Si la personne n'avait plus de portion de ce plat, son `total` monte d'une (les autres portions rapetissent pour tout répartir).
+- 404 : plat ou boîte inconnus ; 409 : plus rien à servir dans ce plat (récipient vide et plus de boîte).
+
+### `POST plats/annuler`
+
+`{ servingId }` (un des `eaten[].id`) → `{ message, plats }`. La ligne du journal est retirée, les grammes reviennent dans le grand récipient (ou la boîte revient au frigo), les portions se recalculent. 404 si ce n'est pas une portion de cette personne. Retirer la ligne par `POST jour` (`retirer`, `id` = `entryId`) fait la même chose.
+
+### `POST plats/reglage`
+
+`{ dishId, weights?, left? }` → `{ message, plats }` : réajuster après coup.
+
+- `weights` : `{ <key>: g }` (0 à 50 000), une nouvelle pesée de ce qui reste dans le grand récipient (hors boîtes), pour les groupes pesés.
+- `left` : `{ <personId>: n }` (0 à 30), les portions restantes voulues pour une personne (une de plus, une de moins).
 
 ## Sport
 
