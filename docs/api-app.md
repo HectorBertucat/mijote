@@ -25,7 +25,7 @@ L'app Mijote Santé affiche Santé, le journal, les plats du batch, la course et
 | `GET jour?date=` | `{ date, entries, totals, complete, todo: { planned, templates }, review }` : le journal d'un jour (aujourd'hui par défaut) |
 | `POST jour` | une action sur le journal (ci-dessous) → `{ message, jour }` (le jour à jour) |
 | `POST pesee` | `{ kg }` (25 à 350) → `{ message, weighIns }` |
-| `GET plats` | `{ today, person, dishes, eaten }` : les plats du batch et les portions restantes de chacun (ci-dessous) |
+| `GET plats` | `{ today, person, dishes, eaten, batch }` : les plats du batch et les portions restantes de chacun, le bilan du batch du moment (ci-dessous) |
 | `POST plats/manger` | `{ dishId, boxId?, grams?, date?, meal? }` → `{ message, serving, plats }` : « j'ai mangé une portion » |
 | `POST plats/annuler` | `{ servingId }` → `{ message, plats }` : annule une portion mangée |
 | `POST plats/reglage` | `{ dishId, weights?, left? }` → `{ message, plats }` : nouvelle pesée, portions restantes de chacun |
@@ -66,11 +66,16 @@ Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combi
 { today, person: { id, name },
   dishes: [{ id, recipeId, slug, name, status, cookedOn?, limit?, freshness?,
              groups: [{ key, label, kind, leftG?, estimated? }],
-             people: [Share], rest?: { grams: [Gram], kcal? }, boxes: [Box], short }],
-  eaten: [Serving] }
+             people: [Share], rest?: { grams: [Gram], kcal? }, boxes: [Box], short,
+             sessionId?, estimated }],
+  eaten: [Serving],
+  batch?: { id, title, cookedOn, dishes, toWeigh, portions, left, estimated,
+            items: [{ dishId, recipeId?, slug?, name, open, weigh }] } }
 ```
 
 - **`dishes`** : les plats en réserve, le plus pressé d'abord, puis (`status: "planned"`) les plats de la période en cours pas encore cuisinés, avec seulement les portions prévues (`people[].total`, pas de grammes). `status: "cooked"` : en réserve. `limit` (`AAAA-MM-JJ`) et `freshness` (`ok`, `soon` : aujourd'hui ou demain, `past` : à jeter) : la date limite du grand récipient au frigo (cuisson + jours de conservation de la recette).
+- **`estimated`** (ajouté le 2/11) : `true` tant qu'un groupe du plat n'est pas pesé : une session finie sans pesée met quand même ses plats en réserve, chaque groupe estimé d'après le cru (les grammes de la session × le rendement de cuisson) et les portions de chacun d'après la Semaine. Les grammes affichés sont alors approximatifs (« ≈ », « estimé ») ; on peut déjà manger. La pesée tardive passe par `POST plats/reglage` (`weights` : ce qui reste dans le grand récipient) : les kcal restantes ne changent pas, seulement les grammes. `sessionId` : la session qui l'a cuit (le bilan du site : `/plats/batch/<sessionId>`).
+- **`batch`** (ajouté le 2/11) : le batch du moment, le plus récent dont un plat est encore en réserve (absent sinon). `title` (« Le batch du 1er novembre »), `cookedOn`, `dishes` (plats cuits), `toWeigh` (encore en réserve et pas entièrement pesés), `portions` (de tout le foyer, en tout), `left` (restantes), `estimated` (`toWeigh > 0`) ; `items[]` : un plat par ligne, `dishId` (un des `dishes[].id`), `open` (encore en réserve), `weigh` : `estimated` (rien de pesé), `partial` (en partie), `weighed`.
 - **`groups`** : dans l'ordre d'affichage. `key` (stable : `plat`, `riz`, `haricots-verts`…), `label` (« plat », « riz », « haricots verts »), `kind` : `main` (le plat, la viande et sa sauce), `starch` (féculent), `veg` (légume), `other`. `leftG` : grammes restants dans le grand récipient (hors boîtes). `estimated: true` : pas pesé, estimé d'après les grammes crus.
 - **`Gram`** : `{ key, label, g }`, une ligne par groupe, dans l'ordre de `groups`, grammes arrondis à 5 g.
 - **`Share`** (`people[]`, la personne de la clé d'abord, avec `me: true` ; puis les autres : « la part de l'autre ») :

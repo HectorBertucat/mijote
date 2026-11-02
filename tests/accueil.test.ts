@@ -8,9 +8,9 @@ import { cookSessions } from "@/lib/db/schema";
 import { upsertRecipe } from "@/lib/recipes/store";
 import { addRecipe, weekView } from "@/lib/week/store";
 import { buildPlan } from "@/lib/session/store";
-import { dayWord, headline, minutesText, nextStep, stepLabel, type HomeState } from "@/lib/home/next";
-import { groupBoxes, homeView } from "@/lib/home/store";
-import type { StockBox } from "@/lib/boxes/store";
+import { coverIgnored, dayWord, headline, minutesText, nextStep, stepLabel, type HomeState } from "@/lib/home/next";
+import { homeView } from "@/lib/home/store";
+import { setMissingIgnored } from "@/lib/week/store";
 import { seedTest } from "./helpers";
 
 const NB = " ";
@@ -26,6 +26,17 @@ test("l'action du moment suit l'ordre du batch", () => {
   assert.deepEqual(nextStep({ ...base, list: { ...base.list!, ordered: false, building: true } }), { kind: "wait", listId: "L" });
   assert.deepEqual(nextStep({ ...base, list: { ...base.list!, ordered: false } }), { kind: "shop", listId: "L" });
   assert.deepEqual(nextStep(base), { kind: "cook", listId: "L" });
+});
+
+test("repas sans plat ignorés : l'étape passe, et revient si d'autres repas se retrouvent sans plat", () => {
+  assert.equal(coverIgnored(2, null), false);
+  assert.equal(coverIgnored(2, 2), true);
+  assert.equal(coverIgnored(1, 2), true);
+  assert.equal(coverIgnored(3, 2), false);
+  assert.equal(coverIgnored(0, 2), false);
+  assert.deepEqual(nextStep({ ...base, missing: 2, missingIgnored: 2 }), { kind: "cook", listId: "L" });
+  assert.deepEqual(nextStep({ ...base, missing: 2, missingIgnored: 2, cooked: true }), { kind: "eat" });
+  assert.deepEqual(nextStep({ ...base, missing: 3, missingIgnored: 2 }), { kind: "cover", missing: 3 });
 });
 
 test("le bouton nomme ce qu'on fait, le jour dit par rapport à aujourd'hui", () => {
@@ -50,16 +61,7 @@ test("le titre de la semaine : des chiffres, une ligne par idée", () => {
   assert.deepEqual(headline({ dishes: 0, meals: 28, minutes: null, cookDay: "2026-11-01", today: "2026-10-31" }), [`28${NB}repas`, "à prévoir."]);
 });
 
-test("frigo : boîtes regroupées par plat et date limite, la plus pressée d'abord", () => {
-  const box = (id: string, name: string, limit: string, person: string): StockBox => ({
-    id, name, slug: name.toLowerCase(), personId: person, personName: person, grams: 400, sideGrams: null, sideLabel: null, kcal: 600, proteinG: 40,
-    cookedOn: "2026-11-01", plannedFor: null, plannedMeal: null, place: "fridge", thawed: false, limit, freshness: "ok",
-  });
-  const g = groupBoxes([box("1", "Dahl", "2026-11-04", "Sam"), box("2", "Chasseur", "2026-11-03", "Alex"), box("3", "Chasseur", "2026-11-03", "Sam"), box("4", "Chasseur", "2026-11-03", "Alex")]);
-  assert.deepEqual(g.map((x) => [x.name, x.count, x.people.join(",")]), [["Chasseur", 3, "Alex,Sam"], ["Dahl", 1, "Sam"]]);
-});
-
-test("en base : de la semaine vide à la liste de courses, puis « Ouvrir le frigo » quand la session est finie", () => {
+test("en base : de la semaine vide à la liste de courses, puis « Voir nos plats » quand la session est finie", () => {
   const { db } = openDb(":memory:");
   seedTest(db);
   for (const f of ["chasseur-porc.json", "butter-chicken-express.json"]) upsertRecipe(db, JSON.parse(fs.readFileSync(`src/seed/recipes/${f}`, "utf8")));
@@ -79,12 +81,22 @@ test("en base : de la semaine vide à la liste de courses, puis « Ouvrir le fri
   assert.equal(h.covered + (h.toEat - h.covered), h.toEat);
   assert.equal(h.week.length, 7);
   assert.equal(h.lead?.name, "Sam");
-  // Les repas du jour de Sam (mercredi) : ceux de la grille, avec leurs calories.
+  // Que manger : rien de cuit, les portions prévues des plats de la période, pour chacun.
   const view = weekView(db, h.start);
-  const samToday = view.grid.filter((s) => s.day === 2 && s.personId === "sam" && s.slug);
-  assert.equal(h.todayMeals.length, samToday.length);
-  assert.ok(h.todayMeals.every((m) => m.kcal == null || m.kcal > 0));
-  if (h.step.kind !== "cover") assert.equal(h.step.kind, "list");
+  assert.equal(h.reserve.length, 0);
+  assert.deepEqual(h.planned.map((d) => d.slug).sort(), ["butter-chicken-express", "chasseur-porc"].filter((x) => view.grid.some((s) => s.slug === x)).sort());
+  const samMeals = view.grid.filter((s) => s.personId === "sam" && s.slug && s.place !== "away").length;
+  assert.equal(h.planned.reduce((n, d) => n + (d.people.find((p) => p.personId === "sam")?.total ?? 0), 0), samMeals);
+  assert.deepEqual(h.people.map((p) => p.name).sort(), ["Alex", "Sam"]);
+  if (h.step.kind === "cover") {
+    // Ignorer pour cette période : l'étape passe à la liste, la note reste (réversible).
+    setMissingIgnored(db, h.start, h.step.missing);
+    const g = homeView(db, "sam", now);
+    assert.equal(g.step.kind, "list");
+    assert.equal(g.missingIgnored, true);
+    setMissingIgnored(db, h.start, null);
+    assert.equal(homeView(db, "sam", now).step.kind, "cover");
+  } else assert.equal(h.step.kind, "list");
 
   // Une session finie sur cette période : place au frigo.
   const plan = buildPlan(db, { slugs: ["chasseur-porc", "butter-chicken-express"], mode: "solo" });

@@ -56,8 +56,9 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
                     <span className="num text-small text-ink-2">
                       {next ? (
                         <>
-                          {next.source === "boite" ? (d.boxes.find((b) => b.id === next.boxId)?.place === "freezer" ? "sa boîte au congélo : " : "sa boîte au frigo : ") : ""}
+                          {next.source === "boite" ? (d.boxes.find((b) => b.id === next.boxId)?.place === "freezer" ? "sa boîte au congélo : " : "sa boîte au frigo : ") : d.estimated ? "≈ " : ""}
                           {gramsLine(next.grams)}
+                          {next.source === "recipient" && d.estimated ? " · estimé, pas encore pesé" : ""}
                         </>
                       ) : left > 0 ? (
                         "à se servir à l’œil : le récipient est vide"

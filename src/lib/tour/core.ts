@@ -136,8 +136,15 @@ export interface FirstStepsFacts {
   list: boolean;
   /** Une session lancée pour de vrai (pas une session test). */
   session: boolean;
-  /** Des boîtes rangées. */
+  /** Un plat pesé en entier (ou des boîtes rangées avant la réserve) : reserve/batch.ts, weighedOnce. */
   boxes: boolean;
+}
+
+/** Un batch fini dont des plats restent à peser : le premier pas « Peser et ranger » mène à son bilan. */
+export interface PendingBatch {
+  id: string;
+  title: string;
+  toWeigh: number;
 }
 
 export type FirstStepId = keyof FirstStepsFacts;
@@ -159,8 +166,13 @@ export interface FirstStepsView {
   complete: boolean;
 }
 
-export function firstSteps(facts: FirstStepsFacts): FirstStepsView {
-  const items = FIRST_STEPS.map((s) => ({ ...s, done: facts[s.id] }));
+export function firstSteps(facts: FirstStepsFacts, pending: PendingBatch | null = null): FirstStepsView {
+  const items = FIRST_STEPS.map((s) => {
+    const item = { ...s, done: facts[s.id] };
+    // Une session finie sans pesée : ses plats sont en réserve, estimés ; le pas mène à leur bilan.
+    if (s.id === "boxes" && pending && !item.done) return { ...item, href: `/plats/batch/${pending.id}`, hint: `${pending.title} : ${pending.toWeigh} plat${pending.toWeigh > 1 ? "s" : ""} à peser, les portions sont estimées d'ici là.` };
+    return item;
+  });
   const done = items.filter((i) => i.done).length;
   return { items, done, total: items.length, next: items.find((i) => !i.done)?.id ?? null, complete: done === items.length };
 }

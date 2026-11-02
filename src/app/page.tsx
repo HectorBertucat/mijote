@@ -1,19 +1,21 @@
 // Accueil : la semaine en un regard (plats, repas couverts, jour et temps de session), l’action du
-// moment (une seule, en cocotte), le frigo, les courses et les repas du jour du profil actif.
+// moment (une seule, en cocotte ; « Ignorer » les repas sans plat), « Que manger ? » (la réserve de
+// chacun, plat par plat, et le bilan du batch), la course du jour et les courses.
 // Mise en page 7/5 au bureau, une colonne au téléphone (docs/design/systeme.md).
 import Link from "next/link";
 import { buttonClass, Icon, RecipeTile, StampSemainePrete } from "@/components/ui";
 import { PendingMark } from "@/components/PendingMark";
 import { StepSubmit } from "@/components/accueil/StepSubmit";
-import { proposeAction, weekListAction } from "@/app/semaine/actions";
+import { ignoreMissingAction, proposeAction, weekListAction } from "@/app/semaine/actions";
 import { db } from "@/lib/db/client";
 import { activeProfileId } from "@/lib/health/active";
-import { dayWord, headline, minutesText, NBSP, stepLabel, type HomeStep } from "@/lib/home/next";
-import { homeView, type HomeBoxGroup, type HomeView } from "@/lib/home/store";
-import { addDays, type Meal } from "@/lib/week/propose";
+import { dayWord, headline, NBSP, stepLabel, type HomeStep } from "@/lib/home/next";
+import { homeView, type HomeView } from "@/lib/home/store";
+import type { Meal } from "@/lib/week/propose";
 import { periodHeading } from "@/lib/week/period";
 import { recipeColor } from "@/lib/ui";
 import { FirstSteps } from "@/components/accueil/FirstSteps";
+import { WhatToEat } from "@/components/accueil/WhatToEat";
 import { Tour } from "@/components/tour/Tour";
 import { tourView } from "@/lib/tour/store";
 import { catalogEnabled } from "@/lib/chronocatalog";
@@ -23,9 +25,7 @@ import { firstOfMonth } from "@/lib/typo";
 export const dynamic = "force-dynamic";
 
 const MEALS: Meal[] = ["lunch", "dinner"];
-const fr = (n: number) => Math.round(n).toLocaleString("fr-FR");
 const and = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} et ${names.at(-1)}` : (names[0] ?? ""));
-const boxes = (n: number) => `${n}${NBSP}boîte${n > 1 ? "s" : ""}`;
 const dateLong = (ymd: string) => firstOfMonth(new Date(`${ymd}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" }));
 
 /** La phrase sous le titre : où en est la semaine, avec des chiffres. */
@@ -40,10 +40,8 @@ function sentence(h: HomeView): string {
       return `Il manque ${s.missing}${NBSP}repas${NBSP}: ajoute un plat ou augmente les quantités.`;
     case "eat":
       return h.portionsLeft
-        ? `La cuisine est faite${NBSP}: ${h.portionsLeft}${NBSP}portion${h.portionsLeft > 1 ? "s" : ""} en réserve, chacun mange les siennes quand il veut.`
-        : h.fridgeCount
-          ? `La cuisine est faite${NBSP}: ${boxes(h.fridgeCount)} au frigo${h.freezerCount ? `, ${h.freezerCount} au congélo` : ""}.`
-          : "La cuisine est faite, et tout est mangé.";
+        ? `La cuisine est faite${NBSP}: ${h.portionsLeft}${NBSP}portion${h.portionsLeft > 1 ? "s" : ""} en réserve${h.batch?.toWeigh ? `, en partie estimées${NBSP}: ${h.batch.toWeigh > 1 ? `${h.batch.toWeigh}${NBSP}plats ne sont pas encore pesés` : "un plat n’est pas encore pesé"}` : ""}. Chacun mange les siennes quand il veut.`
+        : "La cuisine est faite, et tout est mangé.";
     case "list":
       return s.changed ? `La semaine a changé depuis la liste${NBSP}: refais-la avant de commander.` : "Tous les repas sont couverts. Reste la liste de courses.";
     case "wait":
@@ -127,12 +125,29 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
                 Proposer trois plats
               </StepSubmit>
             </form>
+          ) : h.step.kind === "cover" ? (
+            // Un repas sans plat est parfois un choix : on l’ignore pour cette période (Semaine le rétablit).
+            <IgnoreMissing h={h} n={h.step.missing} />
+          ) : h.step.kind === "eat" && h.batch ? (
+            <Link href={`/plats/batch/${h.batch.id}`} className={QUIET_LINK} data-link="bilan">
+              {h.batch.title}
+              {h.batch.toWeigh > 0 && <span className="font-normal">{NBSP}· {h.batch.toWeigh}{NBSP}à peser</span>}
+            </Link>
           ) : (
             <Link href={`/semaine?w=${h.start}`} className={QUIET_LINK}>
               Voir la semaine
             </Link>
           )}
         </div>
+        {h.missingIgnored && (
+          <p className="mt-4 flex flex-wrap items-center gap-x-3 text-small text-ink-2" data-note="manque-ignore">
+            <span>
+              {h.toEat - h.covered}
+              {NBSP}repas sans plat, ignoré{h.toEat - h.covered > 1 ? "s" : ""} pour cette période.
+            </span>
+            <IgnoreMissing h={h} n={null} />
+          </p>
+        )}
 
         {h.dishes.length > 0 && (
           <div className="mt-18">
@@ -160,12 +175,11 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
         )}
       </section>
 
-      {/* Le reste du foyer : aujourd’hui, le frigo, les courses. */}
+      {/* Le reste du foyer : que manger (la réserve de chacun), la course, les courses. */}
       <div className="grid min-w-0 content-start gap-12 lg:col-span-5 lg:border-l lg:border-line lg:pl-8">
         {tour.showSteps && <FirstSteps view={tour.steps} />}
-        {h.toEatNow.length > 0 && h.lead ? <WhatToEat h={h} /> : h.todayMeals.length > 0 && h.lead && <Today h={h} />}
+        {h.lead && <WhatToEat reserve={h.reserve} planned={h.planned} people={h.people} me={h.lead.id} today={h.today} eaten={h.eatenToday} batch={h.batch} />}
         {h.run && <RunToday run={h.run} />}
-        {!h.toEatNow.length && <Fridge h={h} />}
         <Shopping h={h} />
       </div>
 
@@ -175,102 +189,20 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
   );
 }
 
-/** Les repas du jour du profil actif : midi et soir, en tableau de livre de cuisine. */
-function Today({ h }: { h: HomeView }) {
+/** « Ignorer » les repas sans plat (n : combien), ou rétablir l’avertissement (n null). */
+function IgnoreMissing({ h, n }: { h: HomeView; n: number | null }) {
   return (
-    <section aria-labelledby="jour-titre">
-      <h2 id="jour-titre" className="text-h2">
-        Aujourd’hui{h.multiple ? <span className="text-faint">, {h.lead!.name}</span> : null}
-      </h2>
-      <dl className="mt-6 border-t border-line-strong">
-        {h.todayMeals.map((m) => (
-          <div key={m.meal} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-x-4 border-b border-line py-4">
-            <dt className="label text-faint">{m.label}</dt>
-            <dd className="flex min-w-0 items-center gap-3">
-              <RecipeTile color={recipeColor(m.slug)} name={m.name} size="sm" />
-              <Link href={`/recettes/${m.slug}`} className="font-semibold text-pretty hover:underline hover:decoration-line-strong hover:underline-offset-4">
-                {m.name}
-              </Link>
-            </dd>
-            <dd className="text-right">
-              {m.kcal != null && (
-                <span className="num block font-semibold">
-                  {fr(m.kcal)}
-                  {NBSP}kcal
-                </span>
-              )}
-              {m.protein != null && (
-                <span className="num block text-small text-ink-2">
-                  {fr(m.protein)}
-                  {NBSP}g de protéines
-                </span>
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      {h.advice && <p className="mt-4 text-small text-ink-2">{h.advice}</p>}
-    </section>
+    <form action={ignoreMissingAction}>
+      <input type="hidden" name="w" value={h.start} />
+      <input type="hidden" name="n" value={n ?? ""} />
+      <input type="hidden" name="from" value="accueil" />
+      <button type="submit" className={n == null ? `${QUIET_LINK} text-small` : QUIET_LINK} data-action={n == null ? "retablir-manque" : "ignorer-manque"}>
+        {n == null ? "Rétablir l’avertissement" : "Ignorer"}
+      </button>
+    </form>
   );
 }
 
-/** Que manger : les plats de la réserve du profil actif, ce qui lui reste (« 2 sur 4 ») et sa prochaine portion. */
-function WhatToEat({ h }: { h: HomeView }) {
-  const list = [...h.toEatNow].sort((a, b) => Number(b.left > 0) - Number(a.left > 0));
-  const left = list.reduce((s, d) => s + d.left, 0);
-  return (
-    <section aria-labelledby="manger-titre">
-      <div className="flex items-end justify-between gap-4 border-b border-line-strong pb-4">
-        <h2 id="manger-titre" className="text-h2">
-          <Link href="/plats" className="rounded-[4px] hover:underline hover:decoration-2 hover:underline-offset-[6px]">
-            Que manger{h.multiple ? <span className="text-faint">, {h.lead!.name}</span> : null}
-            {NBSP}?
-          </Link>
-        </h2>
-        <p className="flex items-baseline gap-2">
-          <span className="num-tight text-num-xl">{left}</span>
-          <span className="label text-faint">portion{left > 1 ? "s" : ""}</span>
-        </p>
-      </div>
-      <ul className="reveal">
-        {list.slice(0, 5).map((d) => (
-          <li key={d.id} className="border-b border-line">
-            <Link href={`/plats/${d.id}`} className="-mx-3 flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-4 hover:bg-surface-2">
-              <RecipeTile color={d.slug ? recipeColor(d.slug) : "var(--c-ink-3)"} name={d.name} size="sm" />
-              <span className="grid min-w-0 flex-1">
-                <span className="font-semibold text-pretty">{d.name}</span>
-                <span className="num text-small text-ink-2">
-                  {d.next ? `${d.frozen ? "au congélo · " : ""}${d.next.map((g) => (d.next!.length > 1 ? `${g.label} ${fr(g.g)}${NBSP}g` : `${fr(g.g)}${NBSP}g`)).join(" · ")}` : d.left ? "à l’œil" : "plus de portion pour toi"}
-                </span>
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="num-tight block text-h3">
-                  {d.left}
-                  <span className="text-small font-normal text-ink-2"> sur {d.total}</span>
-                </span>
-                {d.limit && d.freshness && <span className={`block text-small ${d.freshness === "ok" ? "text-ink-2" : "font-bold text-hot-ink"}`}>{limitWord({ limit: d.limit, freshness: d.freshness }, h.today)}</span>}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <Link href="/plats" className={`${QUIET_LINK} text-small`}>
-        Tous les plats
-      </Link>
-    </section>
-  );
-}
-
-/** Une boîte : jusqu’à quand, en un mot. */
-function limitWord(g: Pick<HomeBoxGroup, "limit" | "freshness">, today: string) {
-  if (g.freshness === "past") return "à jeter";
-  if (g.limit === today) return "aujourd’hui";
-  if (g.limit === addDays(today, 1)) return "demain";
-  const w = dayWord(g.limit, today);
-  return /\d/.test(w) ? `jusqu’au ${w.replace(/^\p{L}+ /u, "")}` : `jusqu’à ${w}`;
-}
-
-/** Le frigo : combien de boîtes, celles à manger en premier ; le congélo complète s’il reste de la place. */
 /** La séance de course du jour, une ligne vers la page Course. */
 function RunToday({ run }: { run: NonNullable<HomeView["run"]> }) {
   return (
@@ -288,80 +220,6 @@ function RunToday({ run }: { run: NonNullable<HomeView["run"]> }) {
         </Link>
       </div>
     </section>
-  );
-}
-
-function Fridge({ h }: { h: HomeView }) {
-  const shown = h.fridge.slice(0, 4);
-  const frozen = h.freezer.slice(0, 4 - shown.length);
-  const urgent = shown.findIndex((g) => g.freshness !== "ok");
-  const more = h.fridge.length + h.freezer.length - shown.length - frozen.length;
-  return (
-    <section aria-labelledby="frigo-titre">
-      <div className="flex items-end justify-between gap-4 border-b border-line-strong pb-4">
-        <h2 id="frigo-titre" className="text-h2">
-          <Link href="/plats" className="rounded-[4px] hover:underline hover:decoration-2 hover:underline-offset-[6px]">
-            Le frigo
-          </Link>
-        </h2>
-        {h.fridgeCount > 0 && (
-          <p className="flex items-baseline gap-2">
-            <span className="num-tight text-num-xl">{h.fridgeCount}</span>
-            <span className="label text-faint">boîte{h.fridgeCount > 1 ? "s" : ""}</span>
-          </p>
-        )}
-      </div>
-      {!shown.length && (
-        <p className="mt-4 text-ink-2">
-          {h.freezerCount
-            ? `Rien au frigo. ${boxes(h.freezerCount)} au congélo${NBSP}: sors la veille celle du lendemain.`
-            : `Vide. Les boîtes arrivent à la fin d’une session${NBSP}: on pèse la marmite, je dis combien mettre dans chaque boîte.`}
-        </p>
-      )}
-      {shown.length + frozen.length > 0 && (
-        <ul className="reveal">
-          {shown.map((g, i) => (
-            <BoxRow key={g.key} g={g} h={h} trail={limitWord(g, h.today)} hot={i === urgent} />
-          ))}
-          {frozen.map((g) => (
-            <BoxRow
-              key={g.key}
-              g={g}
-              h={h}
-              trail={
-                <span className="inline-flex items-center gap-1">
-                  <Icon name="snow" size="s" className="text-faint" />
-                  congélo
-                </span>
-              }
-            />
-          ))}
-        </ul>
-      )}
-      {(more > 0 || (shown.length > 0 && h.freezerCount > 0 && !frozen.length)) && (
-        <p className="mt-4 text-small text-ink-2">
-          {more > 0 ? `et ${more}${NBSP}autre${more > 1 ? "s" : ""} plat${more > 1 ? "s" : ""} en boîte` : `${boxes(h.freezerCount)} au congélo`}
-        </p>
-      )}
-    </section>
-  );
-}
-
-function BoxRow({ g, h, trail, hot = false }: { g: HomeBoxGroup; h: HomeView; trail: React.ReactNode; hot?: boolean }) {
-  return (
-    <li className="border-b border-line">
-      <Link href="/plats" className="-mx-3 flex min-w-0 items-center gap-3 rounded-[8px] px-3 py-4 hover:bg-surface-2">
-        <RecipeTile color={g.slug ? recipeColor(g.slug) : "var(--c-ink-3)"} name={g.name} size="sm" />
-        <span className="grid min-w-0 flex-1">
-          <span className="font-semibold text-pretty">
-            {g.name}
-            {g.count > 1 && <span className="num font-normal text-ink-2"> ×{NBSP}{g.count}</span>}
-          </span>
-          {h.multiple && g.people.length > 0 && <span className="text-small text-ink-2">pour {and(g.people)}</span>}
-        </span>
-        <span className={`shrink-0 text-right text-small ${hot ? "font-bold text-hot-ink" : "text-ink-2"}`}>{trail}</span>
-      </Link>
-    </li>
   );
 }
 

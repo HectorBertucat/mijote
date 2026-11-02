@@ -4,7 +4,7 @@ Mijote suit une semaine de batch cooking : on choisit, on achète, on cuisine en
 
 ## L'accueil
 
-Le mot-symbole mène à l'accueil : la semaine en chiffres (plats, repas, temps de session et son jour), et le bouton bleu de ce qu'il y a à faire maintenant (choisir les plats, faire la liste, faire les courses, cuisiner, reprendre une session). À côté : « Que manger ? » (ce qui te reste de chaque plat et les grammes de ta prochaine portion ; avant la session, tes repas du jour), l'état des courses ; en bas, la période jour par jour, indicative.
+Le mot-symbole mène à l'accueil : la semaine en chiffres (plats, repas, temps de session et son jour), et le bouton bleu de ce qu'il y a à faire maintenant (choisir les plats, faire la liste, faire les courses, cuisiner, reprendre une session). À côté : « Que manger ? » (la réserve de chacun, plat par plat : ce qui te reste et les grammes de ta prochaine portion, **J'ai mangé une portion** et **Annuler**, l'autre d'un geste ; avant la session, les portions prévues ; et le lien vers le bilan du batch), l'état des courses. Un repas sans plat est parfois un choix : **Ignorer** retire l'avertissement pour la période (il revient si d'autres repas se retrouvent sans plat, **Rétablir** le remet) ; en bas, la période jour par jour, indicative.
 
 ## 1. Mise en route (une fois)
 
@@ -80,6 +80,8 @@ Les durées réelles sont mesurées et corrigent les estimations des sessions su
 Le plan tient compte de la cuisine : le riz de plusieurs recettes cuit une fois (puis « Partage le riz : … pour chacune »), un récipient ne reçoit jamais plus qu'il ne peut contenir, ce qui se verse au moment (une boîte de pulpe, la crème) ne prend pas de bol, et une personne n'a jamais deux choses à faire de ses mains en même temps : un mijoté se surveille (« remue la sauce » toutes les 5 min) pendant qu'on fait autre chose. Les règles : [session.md](session.md).
 
 **Peser, puis ranger** : à la fin, pèse chaque groupe servi à part (récipient plein moins récipient vide) : le plat et sa sauce, le riz, les haricots verts… (les groupes se déduisent des étapes de la fiche). L'appli dit combien de portions pour chacun (une par repas prévu, plus la marge) et les grammes de chaque groupe d'une portion : la portion vise les calories de chacun, sans dépasser le haut de son repère ; le riz garde la proportion de la marmite, en moins pour qui manque de protéines ; un surplus reste « pour qui veut ». On change le nombre de portions de chacun d'un geste, et combien partent en boîtes au congélo. « Ranger » met la marmite en réserve : on se sert ensuite dans le grand récipient, ou dans les boîtes. La fiche recette a la même calculette.
+
+**Pas le temps de peser** : la session finie met quand même chaque plat en réserve, ses groupes estimés d'après le cru et les portions de chacun d'après la Semaine, marqués « estimé » (≈). Chacun peut déjà manger ; on pèse plus tard depuis **le bilan du batch** (« Le batch du 1er novembre », en tête de Nos plats, sur l'accueil, dans la Semaine de la période, et en fin de session) : chaque plat cuit, ses groupes, les portions de chacun, pesé ou estimé. Après un repas, on pèse ce qui reste dans le grand récipient : les grammes des portions restantes se corrigent, les calories de la marmite ne changent pas.
 
 ## 6 bis. Nos plats
 
