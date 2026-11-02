@@ -25,6 +25,7 @@ import { programById, programFor } from "@/lib/training/programs";
 import { listWorkouts } from "@/lib/training/store";
 import { DRAWING, figureData, musclesData } from "./figures";
 import { ACTIONS, actionOf, clean, phaseOf } from "./state";
+import { actionIdOf, findAction, saveAction } from "./actions";
 import { adjustReserve, currentBatch, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
 import { healthSamples } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -450,29 +451,46 @@ function reglages(db: Db, p: Person, body: unknown): ApiReply {
 
 // ─── Routeur ───
 
-/** Réponses des derniers gestes par `actionId` (un renvoi après une coupure ne refait pas le geste). */
-const done = new Map<string, ApiReply>();
-const DONE_MAX = 500;
-
 export function appApi(db: Db, req: AppRequest): ApiReply {
   const now = req.now ?? Date.now();
-  const actionId = req.method === "POST" && req.body && typeof req.body === "object" ? (req.body as { actionId?: unknown }).actionId : undefined;
-  const key = typeof actionId === "string" && actionId.length <= 80 ? `${req.headers.get("x-mijote-key") ?? ""}:${actionId}` : null;
-  if (key && done.has(key)) return done.get(key)!;
-  const r = route(db, req, now);
-  const out: ApiReply = { status: r.status, body: { ...(clean(r.body) as Record<string, unknown>), generatedAt: new Date(now).toISOString() } };
-  if (key && r.status === 200) {
-    done.set(key, out);
-    if (done.size > DONE_MAX) done.delete(done.keys().next().value!);
-  }
-  return out;
+  const reply = (r: ApiReply): ApiReply => ({ status: r.status, body: { ...(clean(r.body) as Record<string, unknown>), generatedAt: new Date(now).toISOString() } });
+  const k = byKey(db, req.headers);
+  if (!k.link) return reply(k.error);
+  const p = getPerson(db, k.link.personId);
+  if (!p) return reply(fail("personne inconnue", 404));
+  const actionId = req.method === "POST" ? actionIdOf(req.body) : null;
+  if (!actionId) return reply(route(db, p, req, now));
+  // Un geste à `actionId` : lu, fait et gardé dans une même transaction « immediate », pour qu'un renvoi
+  // arrivé en même temps sur un autre processus attende la fin du premier au lieu de refaire le geste.
+  const name = `${req.method} ${req.path.join("/")}`;
+  return db.transaction(
+    () => {
+      const first = findAction(db, p.id, actionId);
+      if (first) return first.route === name ? reply(replay(db, p, first.reply, now)) : reply(fail("actionId déjà utilisé pour une autre action", 409));
+      const r = route(db, p, req, now);
+      if (r.status === 200) saveAction(db, { personId: p.id, actionId, route: name, reply: clean(r.body) as Record<string, unknown> }, now);
+      return reply(r);
+    },
+    { behavior: "immediate" },
+  );
 }
 
-function route(db: Db, req: AppRequest, now: number): ApiReply {
-  const k = byKey(db, req.headers);
-  if (!k.link) return k.error;
-  const p = getPerson(db, k.link.personId);
-  if (!p) return fail("personne inconnue", 404);
+/** Un renvoi reconnu : le message (et la portion) du premier envoi, mais la réserve, le journal, la séance et
+ * les pesées de maintenant : un autre geste a pu passer entre-temps (site, autre téléphone). */
+function replay(db: Db, p: Person, first: Record<string, unknown>, now: number): ApiReply {
+  const out: Record<string, unknown> = { ...first, replayed: true };
+  const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : null);
+  if ("plats" in out) out.plats = plats(db, p, now);
+  const day = obj(out.jour)?.date;
+  if (typeof day === "string") out.jour = jour(db, p, day);
+  if ("weighIns" in out) out.weighIns = listWeighIns(db, p.id).slice(-60);
+  const liveId = obj(out.live)?.id;
+  const row = typeof liveId === "string" ? getLive(db, liveId) : null;
+  if (row && row.personId === p.id) out.live = liveView(db, row, now);
+  return { status: 200, body: out };
+}
+
+function route(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
   const today = todayParis(new Date(now));
   const [a, b] = req.path;
   const route = `${req.method} ${a ?? ""}${b ? `/${b}` : ""}`;

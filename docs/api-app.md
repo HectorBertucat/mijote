@@ -14,7 +14,7 @@ L'app Mijote Santé affiche Santé, le journal, les plats du batch, la course et
 - Corps des `POST` en JSON. Jours `AAAA-MM-JJ` (jour de Paris) ; instants des séances et des horloges en **ms depuis l'epoch, heure du serveur** (`now`, `state.serverTime`, l'événement `hello` du flux : l'app corrige l'écart avec son horloge et décompte en local) ; autres instants en ISO 8601 avec décalage.
 - **Valeur absente = clé absente** : aucune réponse ne contient `null` dans un objet (le serveur retire ces clés). Dans un tableau, un trou reste à sa place (`null`), pour garder l'alignement d'une série.
 - Chaque réponse porte `generatedAt` (ISO 8601) à la racine.
-- **`actionId`** (facultatif, tout `POST`, chaîne de 80 caractères au plus, un uuid) : un renvoi du même `actionId` avec la même clé rend la réponse du premier envoi sans refaire l'action (réseau qui coupe). Gardé en mémoire pour les 500 derniers gestes : l'app n'en renvoie pas un vieux de plusieurs heures.
+- **`actionId`** (facultatif, tout `POST`, chaîne de 80 caractères au plus, un uuid) : un renvoi du même `actionId` par la même personne ne refait pas l'action (réseau qui coupe) et répond 200 avec `replayed: true`. Il rejoue le `message` (et `serving`, `workoutId`…) du premier envoi, mais l'état est recalculé maintenant : `plats`, `jour`, `live` et `weighIns` sont ceux du moment du renvoi (un autre geste a pu passer entre-temps). Gardé en base 30 jours (table `app_actions`), redémarrages et déploiements compris ; deux renvois simultanés n'en font qu'un. Seuls les gestes réussis sont gardés : après un refus (400, 404, 409), le même `actionId` peut repartir. Le même `actionId` sur une autre route répond 409.
 
 ## Routes
 
