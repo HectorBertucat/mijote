@@ -18,7 +18,7 @@ import { getRunProfile } from "@/lib/running/store";
 import { act, clockOf, normOpts, optsOf, suggestedReps, type Live, type LiveAction } from "@/lib/training/live";
 import { activeLive, createDuo, createLive, endLive, getLive, guideOpts, setGuideOpts, writeLive, type LiveRow } from "@/lib/training/live-store";
 import { GEAR_LABEL, META } from "@/lib/training/library";
-import { guideMotion, motionOf } from "@/lib/training/figures";
+import { guideFigureId, guideMotion, motionOf } from "@/lib/training/figures";
 import { cycleDuration } from "@/lib/training/motion";
 import { lastFor, levelFor, nextType, ready, type Program, type Workout } from "@/lib/training/program";
 import { programById, programFor } from "@/lib/training/programs";
@@ -175,6 +175,8 @@ function exerciseView(p: Program, workouts: Workout[], id: string) {
     hasFigure: !!motionOf(p, id),
     // Durée d'une répétition au rythme guidé (secondes) : celle de la figure, ou de la planche sans figure.
     cycle: cycleDuration(guideMotion(p, id)),
+    // La figure qui rythme la série (courbe, mots de phase) : l'exercice lui-même, ou la planche s'il n'a pas la sienne.
+    guideFigure: guideFigureId(p, id),
   };
 }
 
@@ -204,7 +206,7 @@ function sport(db: Db, p: Person, today: string) {
       next: nextType(program, workouts),
       exercises: Object.keys(program.exercises).map((id) => exerciseView(program, workouts, id)),
       // Les figures dont chaque séance a besoin, à télécharger avant de partir.
-      figureIds: Object.fromEntries(Object.entries(program.sessions).map(([k, def]) => [k, [...new Set([...def.blocks.flatMap((b) => b.items), ...(program.bonus?.items ?? [])])].filter((id) => motionOf(program, id))])),
+      figureIds: Object.fromEntries(Object.entries(program.sessions).map(([k, def]) => [k, [...new Set([...def.blocks.flatMap((b) => b.items), ...(program.bonus?.items ?? [])].map((id) => guideFigureId(program, id)))]])),
     },
     workouts,
     apple: recentWorkouts(db, p.id, 20).map((w) => ({ start: w.start, type: String(w.meta?.type ?? "Séance"), minutes: w.value, distanceM: typeof w.meta?.distanceM === "number" ? w.meta.distanceM : null })),
@@ -224,7 +226,8 @@ function figure(db: Db, p: Person, id: string, q: URLSearchParams): ApiReply {
 function figures(db: Db, p: Person, q: URLSearchParams): ApiReply {
   const program = (q.get("programme") ? programById(db, q.get("programme")!) : null) ?? programFor(db, p.id);
   const ids = (q.get("ex") ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 40);
-  const list = ids.length ? ids : Object.keys(program?.exercises ?? {});
+  // Sans liste : tous les exercices du programme, plus la figure de repli de ceux qui n'ont pas la leur.
+  const list = ids.length ? ids : [...new Set(Object.keys(program?.exercises ?? {}).map((id) => [id, guideFigureId(program, id)]).flat())];
   const out: Record<string, unknown> = {};
   for (const id of list) {
     const m = motionOf(program, id);
@@ -249,7 +252,7 @@ export function liveView(db: Db, row: LiveRow, now: number) {
     now,
     opts: optsOf(l),
     state: phaseOf(l, row.ended, row.version, now, cur && ex && reps != null ? { ex, motion: guideMotion(p, cur.ex), reps } : null),
-    figureIds: [...new Set(l.steps.flatMap((s) => (s.k === "ex" || s.k === "emom" ? [s.ex] : [])))].filter((id) => motionOf(p, id)),
+    figureIds: [...new Set(l.steps.flatMap((s) => (s.k === "ex" || s.k === "emom" ? [guideFigureId(p, s.ex)] : [])))],
     view: {
       step,
       exercise: cur && p ? exerciseView(p, workouts, cur.ex) : null,

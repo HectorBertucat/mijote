@@ -53,6 +53,8 @@ export function figureData(m: Motion, fps = FIGURE_FPS) {
     loop: true,
     cycle,
     fps,
+    // Nombre de poses clés : la pose k est à la hauteur 1 − k / (keys − 1) dans le guide du rythme (rhythm.ts).
+    keys: m.keys.length,
     steps: m.steps.map((s) => ({ to: s.to, dur: s.dur, label: s.label, count: !!s.count })),
     cues,
     frames,

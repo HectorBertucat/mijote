@@ -299,8 +299,16 @@ export function motionOf(p: { motions?: Record<string, Motion> } | null | undefi
   return p?.motions?.[ex] ?? MOTIONS[ex] ?? null;
 }
 
-/** La figure qui rythme une série : celle de l'exercice, sinon la planche (un programme a toujours ses figures ;
- * filet de sécurité). Le site et l'API de l'app en tirent la même durée de répétition. */
+/** La figure de repli du rythme guidé : la planche. */
+export const GUIDE_FALLBACK = "jPlank";
+
+/** L'id de la figure qui rythme une série : celle de l'exercice, sinon la planche (un programme a toujours ses
+ * figures ; filet de sécurité). L'API de l'app la donne pour que l'app dessine la même courbe que le site. */
+export function guideFigureId(p: { motions?: Record<string, Motion> } | null | undefined, ex: string): string {
+  return motionOf(p, ex) ? ex : GUIDE_FALLBACK;
+}
+
+/** La figure qui rythme une série (voir `guideFigureId`). Le site et l'API de l'app en tirent la même durée de répétition. */
 export function guideMotion(p: { motions?: Record<string, Motion> } | null | undefined, ex: string): Motion {
-  return motionOf(p, ex) ?? MOTIONS.jPlank;
+  return motionOf(p, guideFigureId(p, ex)) ?? MOTIONS[GUIDE_FALLBACK];
 }
