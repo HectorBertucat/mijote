@@ -562,6 +562,24 @@ export const adjustProposals = sqliteTable("adjust_proposals", {
   updatedAt: text("updated_at").notNull().default(now),
 });
 
+// Créer une recette d'après des recettes publiées (src/lib/creation, migration 0014) : l'envie, la
+// recherche (sources résumées, gardée en cache pour la même envie), les propositions vérifiées par le
+// code et les retouches demandées. Une ligne par création ; la page reprend la plus récente.
+export const recipeCreations = sqliteTable(
+  "recipe_creations",
+  {
+    id: text("id").primaryKey(),
+    envie: text("envie").notNull(),
+    envieKey: text("envie_key").notNull(), // envie normalisée : la même envie réutilise la recherche
+    research: json<unknown>("research"), // Research de src/lib/creation/core.ts (null : pas encore cherché)
+    proposals: json<unknown[]>("proposals").notNull().default(sql`'[]'`), // CreationProposal[], vérifiées
+    costUsd: real("cost_usd").notNull().default(0), // ce qu'a coûté la création, recherche comprise
+    createdAt: text("created_at").notNull().default(now),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_recipe_creations_key").on(t.envieKey), index("idx_recipe_creations_updated").on(t.updatedAt)]
+);
+
 // ─── 5. Santé (migration 0012) ───
 // Dates du jour en YYYY-MM-DD (heure de Paris). Le calcul (tendance, dépense, cibles) est
 // dans src/lib/health/, ces tables ne gardent que les mesures et les décisions.

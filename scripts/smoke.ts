@@ -123,9 +123,12 @@ async function main() {
     const listId = await buildShoppingList(db, ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"]);
     const sessionId = createSession(db, { slugs: ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"], mode: "solo" });
 
-    for (const p of ["/", "/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins", "/kit/boites"])
+    for (const p of ["/", "/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/atelier/creer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins", "/kit/boites"])
       await page(p, undefined);
     await page("/recettes", undefined, /Léa/);
+    // Sans clé d'API : pas d'entrée « Créer d'après des recettes publiées », la page le dit.
+    check(!(await (await get("/atelier")).text()).includes("/atelier/creer"), "sans clé : pas d'entrée « Créer une recette » dans l'Atelier");
+    await page("/atelier/creer", undefined, /a besoin de l’IA/);
     // Prise en main : les premiers pas sur l’accueil, la visite relançable, les images de démarrage iOS.
     await page("/", undefined, /Premiers pas/);
     await page("/?visite=1", undefined);
@@ -244,6 +247,7 @@ async function demo() {
     await page("/", cookieA, /Ma cible/);
     await page("/atelier", cookieA, /besoin de l’IA/);
     await page("/atelier/importer", cookieA, /besoin de l’IA/);
+    await page("/atelier/creer", cookieA, /Créer une recette a besoin de l’IA/);
     await page("/sante/objectifs", cookieA, /Où j’en suis[\s\S]*besoin de l’IA/);
     await page("/sante/apple", cookieA, /Apple Santé reste chez toi/);
     check((await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) })).status === 404, "démo : pas d'assistant, même avec une clé");
