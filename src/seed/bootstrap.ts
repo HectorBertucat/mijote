@@ -31,8 +31,10 @@ function fixtures(dir: string) {
     .sort()
     .map((f) => {
       const text = fs.readFileSync(path.join(dir, f), "utf8");
-      return { file: f, raw: JSON.parse(text) as { slug: string }, hash: crypto.createHash("sha256").update(text).update(`\nnutrition:${NUTRITION_VERSION}\nplan:${PLAN_VERSION}`).digest("hex") };
-    });
+      return { file: f, raw: JSON.parse(text) as { slug: string; variantOf?: string | null }, hash: crypto.createHash("sha256").update(text).update(`\nnutrition:${NUTRITION_VERSION}\nplan:${PLAN_VERSION}`).digest("hex") };
+    })
+    // Les variantes (`variantOf`) après les autres : leur recette d'origine existe déjà.
+    .sort((a, b) => Number(!!a.raw.variantOf) - Number(!!b.raw.variantOf));
 }
 
 function fixtureSlug(dir: string, file: string): string {

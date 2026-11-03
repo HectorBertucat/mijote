@@ -33,6 +33,11 @@ import { portionOf } from "@/lib/eaters/core";
 import { calcModel } from "@/lib/reserve/store";
 import { ReserveCalc } from "@/components/plats/ReserveCalc";
 import { recipeColor } from "@/lib/ui";
+import { TastePanel, type TastePanelData } from "@/components/feedback/TastePanel";
+import { feedbackLine } from "@/lib/feedback/core";
+import { loadTasteMarks, recipeFeedback, recipeTasteLine } from "@/lib/feedback/read";
+import { adjustmentFor, recipeSwapsOf, swappable, swapTarget } from "@/lib/feedback/store";
+import { tagsLine, variantNaming } from "@/lib/feedback/adjust";
 
 export const dynamic = "force-dynamic";
 
@@ -100,10 +105,39 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
     r.status === "to_try" && !cookedCounts(db).get(r.id) ? "jamais cuisinée" : null,
   ].filter(Boolean);
   const dish = { slug: r.slug, name: r.name, ingredients: input.ingredients.filter((i) => !i.pantry), steps: input.steps };
+  // Goûts (src/lib/feedback) : le dernier retour de chacun, les ingrédients remplacés, la variante ajustée.
+  const tastes = recipeFeedback(db, r.id);
+  const adj = adjustmentFor(db, r.slug, { leadId: active });
+  // Une variante née après le dernier « bof » est l'ajustement : on la montre plutôt que d'en proposer une autre.
+  const adjusted = loadTasteMarks(db).get(r.slug)?.adjusted ?? null;
+  const adjust = adj && !adjusted && !adj.adjustment.empty && (adj.issues.length > 0 || adj.swaps.length > 0) ? adj.adjustment : null;
+  const tasteData: TastePanelData = {
+    recipeId: r.id,
+    slug: r.slug,
+    people: people.map((p) => ({ id: p.id, name: p.name })),
+    activeId: active,
+    latest: tastes.latest.map((f) => ({ personId: f.personId, line: feedbackLine(f), note: f.note, at: f.at, meh: f.rating === "meh" })),
+    swaps: recipeSwapsOf(db, r.id).map((s) => ({ id: s.id, from: s.from, to: s.to, at: s.at, where: s.where })),
+    swappable: swappable(db, r.id).map((s) => ({ position: s.position, item: s.item, options: s.options })),
+    swapWhere: swapTarget(db, r.id).label,
+    adjusted,
+    adjust: adjust
+      ? {
+          tags: adjust.tags,
+          tagsLine: tagsLine(adjust.tags),
+          withSwaps: true,
+          changes: adjust.changes.map((c) => c.text),
+          notes: adjust.notes,
+          preview: adjust.preview.map((p) => ({ name: p.name, before: p.before, after: p.after, proteinMin: p.proteinMin })),
+          name: `« ${variantNaming(input, adjust.recipe, adjust).name} »`,
+        }
+      : null,
+  };
   const sections = [
     { id: "ingredients", label: "Ingrédients" },
     { id: "etapes", label: "Étapes", count: steps.length },
     { id: "chiffres", label: "Chiffres" },
+    { id: "gouts", label: "Goûts", count: tastes.latest.length || undefined },
     { id: "notes", label: "Notes", count: notes.length || undefined },
     { id: "produits", label: "Produits" },
   ];
@@ -113,7 +147,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
       slug={r.slug}
       color={color}
       original={input}
-      options={adjustOptions(input, household)}
+      options={adjustOptions(input, household, recipeTasteLine(db, r.slug))}
       lead={lead}
       leadName={eaters[0]?.name ?? null}
       leadRef={eaters[0]?.ref ?? null}
@@ -146,6 +180,11 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
           <div className="grid gap-4">
             <Figures items={figures} />
             <p className="text-small text-ink-2">{facts.join(" · ")}</p>
+            {tastes.latest.length > 0 && (
+              <a href="#gouts" className="text-small font-semibold text-ink-2 underline-offset-4 hover:underline" data-gouts="resume">
+                {tastes.latest.map((f) => feedbackLine(f)).join(" ; ")}
+              </a>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:hidden">
             <AdjustButton block />
@@ -241,6 +280,11 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
               <RecipeVariants family={family} currentId={r.id} />
             </FicheSection>
 
+            <FicheSection id="gouts" className="lg:mt-18">
+              <FicheBlock title="Goûts" aside={tastes.latest.length ? "Le dernier avis de chacun." : "Après l’avoir mangé, un geste."} label="Goûts">
+                <TastePanel data={tasteData} />
+              </FicheBlock>
+            </FicheSection>
             <FicheSection id="notes" className="lg:mt-18">
               <FicheBlock title="Notes" aside={notes.length > 0 ? `${notes.length}\u00a0note${notes.length > 1 ? "s" : ""}` : "Pour la prochaine fois."} label="Notes">
                 <NotesSection
