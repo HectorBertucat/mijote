@@ -65,7 +65,14 @@ export function TasteForm({
         <b className="text-[17px]">{title}</b>
         {people.length > 1 && <Segmented label="Pour qui" value={personId} onChange={setPersonId} options={people.map((p) => ({ value: p.id, label: p.name }))} />}
       </div>
-      <Segmented label="Note" value={rating ?? undefined} onChange={setRating} options={RATINGS.map((r) => ({ value: r, label: RATING_LABEL[r].charAt(0).toUpperCase() + RATING_LABEL[r].slice(1) }))} />
+      {/* Rien de choisi au départ : des puces, pas un sélecteur à segments (qui en montrerait un). */}
+      <Chips>
+        {RATINGS.map((r) => (
+          <Chip key={r} pressed={rating === r} onClick={() => setRating(rating === r ? null : r)} aria-label={`Note : ${RATING_LABEL[r]}`} data-rating={r}>
+            {RATING_LABEL[r].charAt(0).toUpperCase() + RATING_LABEL[r].slice(1)}
+          </Chip>
+        ))}
+      </Chips>
       <Chips>
         {TASTE_TAGS.map((t) => (
           <Chip key={t} pressed={tags.includes(t)} onClick={() => toggle(t)} data-tag={t}>

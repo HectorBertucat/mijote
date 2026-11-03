@@ -17,7 +17,9 @@ import type { SessionPlan } from "@/lib/session/planner";
 import { adjustRecipe, variantNaming, type Adjustment } from "./adjust";
 import { isTag, NOTE_MAX, RATINGS, TASTE_TAGS, type Feedback, type TasteTag } from "./core";
 import { recipeFeedback, toFeedback } from "./read";
-import { canSwap, rescaleGroups, swapOptions, type Swap } from "./swap";
+import { canSwap, foodWord, rescaleGroups, swapOptions, type Swap } from "./swap";
+
+const capital = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 
 export class FeedbackError extends Error {
   constructor(
@@ -94,7 +96,7 @@ export function recipeSwapsOf(db: Db, recipeId: string): SwapView[] {
       id: s.id,
       position: s.position,
       from: ings[s.position]?.item.split(/[,(]/)[0].trim() ?? (s.fromFood && isFoodId(s.fromFood) ? FOODS[s.fromFood].name : "?"),
-      to: isFoodId(s.toFood) ? FOODS[s.toFood].name : s.toFood,
+      to: capital(foodWord(s.toFood)),
       toFood: s.toFood,
       at: s.createdAt,
       where: s.reserveId ? ("reserve" as const) : s.sessionId ? ("session" as const) : null,
