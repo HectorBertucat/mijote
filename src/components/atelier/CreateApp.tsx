@@ -35,12 +35,15 @@ type Phase = "search" | "compose" | null;
 export function CreateApp({
   initial,
   initialEnvie,
+  kitchenReady = true,
   budget: budget0,
   estimates,
   limits,
 }: {
   initial: Creation | null;
   initialEnvie: string;
+  /** Au moins une poêle, une casserole ou un plat : sinon aucune étape de cuisson ne peut passer la vérification. */
+  kitchenReady?: boolean;
   budget: Budget;
   estimates: { creation: number; cached: number; more: number; refine: number };
   limits: { searches: number; fetches: number; first: number; max: number };
@@ -117,6 +120,16 @@ export function CreateApp({
 
       <div className="grid gap-12 lg:grid-cols-12 lg:gap-x-6">
         <div className="grid min-w-0 content-start gap-12 lg:col-span-8">
+          {!kitchenReady && (
+            <Alert tone="warn">
+              Ta cuisine n’a encore ni poêle, ni casserole, ni plat : aucune étape de cuisson ne pourra être vérifiée.{" "}
+              <Link href="/reglages#cuisine" className="font-bold underline decoration-1 underline-offset-4">
+                Décris-la dans les Réglages
+              </Link>
+              .
+            </Alert>
+          )}
+
           {!creation && (
             <form
               className="grid gap-6"

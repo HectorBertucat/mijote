@@ -6,7 +6,8 @@
 import assert from "node:assert/strict";
 import path from "path";
 import { openDb } from "@/lib/db/open";
-import { aiCalls } from "@/lib/db/schema";
+import { inArray } from "drizzle-orm";
+import { aiCalls, equipment } from "@/lib/db/schema";
 import { proposeAdjustment, proposeCreation } from "@/lib/atelier";
 import { composeProposals, refineProposal, startCreation } from "@/lib/creation";
 import { askCoach } from "@/lib/health/coach";
@@ -36,6 +37,8 @@ process.env.AI_MONTHLY_CAP_USD = "5";
 const { db } = openDb(":memory:");
 seedBase(db);
 syncRecipes(db, path.join(process.cwd(), "src/seed/recipes"));
+// Une cuisine décrite (plaque, four, poêle, cocotte, casserole, plat) : les étapes se vérifient sur elle.
+db.update(equipment).set({ owned: true }).where(inArray(equipment.id, ["hob-28", "hob-21", "oven", "poele-28", "cocotte", "casserole-18", "plat-four"])).run();
 const alex = addPerson(db, { name: "Alex", portionUnits: 5, sex: "m", birthDate: "1995-07-01", heightCm: 180, weightKg: 78, activity: "moderate", goal: "recomp" });
 addPerson(db, { name: "Sam", portionUnits: 4, sex: "f", birthDate: "1996-07-01", heightCm: 165, weightKg: 60, activity: "light", goal: "maintain" });
 

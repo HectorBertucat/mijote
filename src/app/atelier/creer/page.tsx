@@ -2,7 +2,7 @@ import { CreateApp } from "@/components/atelier/CreateApp";
 import { DemoNotice } from "@/components/demo/DemoNotice";
 import { EmptyState } from "@/components/ui";
 import { aiEnabled, monthlyCapUsd, spentThisMonth } from "@/lib/ai";
-import { estimateComposeUsd, estimateCreationUsd, estimateRefineUsd, latestCreation, LIMITS } from "@/lib/creation";
+import { estimateComposeUsd, estimateCreationUsd, estimateRefineUsd, kitchenOf, latestCreation, LIMITS } from "@/lib/creation";
 import { db } from "@/lib/db/client";
 import { demoEnabled } from "@/lib/demo/core";
 
@@ -26,6 +26,7 @@ export default async function Creer({ searchParams }: { searchParams: Promise<{ 
     <CreateApp
       initial={latestCreation(db)}
       initialEnvie={envie?.slice(0, 400) ?? ""}
+      kitchenReady={kitchenOf(db).some((e) => e.kind === "pan" || e.kind === "pot" || e.kind === "dish")}
       budget={{ spentUsd: spentThisMonth(db), capUsd: monthlyCapUsd() }}
       estimates={{ creation: estimateCreationUsd(), cached: estimateCreationUsd(true), more: estimateComposeUsd(1), refine: estimateRefineUsd() }}
       limits={{ searches: LIMITS.searches, fetches: LIMITS.fetches, first: LIMITS.first, max: LIMITS.max }}

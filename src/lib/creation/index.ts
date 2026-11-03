@@ -15,7 +15,7 @@ import type { RecipeInput } from "@/lib/recipes/format";
 import { equipmentIds, loadLibrary, mainIngredients, promptContext, saveDraft } from "@/lib/atelier/library";
 import { mockAdjust, mockCreate } from "@/lib/atelier/mock";
 import { systemPrompt } from "@/lib/atelier/prompt";
-import { fillPhases, toAiRecipe } from "@/lib/atelier/schema";
+import { fillPhases } from "@/lib/atelier/schema";
 import { findDuplicate, verifyRecipe, type Resolver, type Verification } from "@/lib/atelier/verify";
 import {
   BLOCKED_DOMAINS,

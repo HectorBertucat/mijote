@@ -50,9 +50,10 @@ export const envieKey = (envie: string) => norm(envie).slice(0, 300);
 
 // ─── Coût estimé, affiché avant l'appel ───
 
-// Jetons mesurés à la louche : le prompt système de composition (table nutritionnelle, équipement, goûts)
-// fait ≈ 7 000 jetons ; une recette rendue ≈ 4 500 jetons ; une recherche ramène ≈ 3 000 jetons de résultats.
-const T = { researchIn: 2500, perSearchIn: 3000, perFetchIn: LIMITS.pageTokens, researchOut: 2500, composeSystem: 7000, composeIn: 3000, recipeOut: 4500 };
+// Jetons, d'après l'essai réel du 03/11/2026 (pnpm test:ai creer) : la recherche ≈ 0,03 $ ; le prompt système de
+// composition (table nutritionnelle, équipement, goûts) ≈ 7 000 jetons ; une proposition rend ≈ 8 500 jetons
+// (raisonnement compris, effort bas), 0,10 $ ; une retouche ≈ 5 000 jetons, 0,07 $.
+const T = { researchIn: 2500, perSearchIn: 3000, perFetchIn: LIMITS.pageTokens, researchOut: 3200, composeSystem: 7000, composeIn: 3000, composeOut: 8500, recipeIn: 4500, refineOut: 5000 };
 
 /** Recherche : toutes les recherches et lectures permises, une relance comprise. */
 export function estimateResearchUsd(): number {
@@ -62,12 +63,12 @@ export function estimateResearchUsd(): number {
 
 /** Composition de n recettes (Sonnet), un appel chacune, en parallèle : chacun écrit le prompt système en cache. */
 export function estimateComposeUsd(n: number): number {
-  return costUsd(MODELS.plan, { inputTokens: n * T.composeIn, outputTokens: n * (T.recipeOut + 800), cacheReadTokens: 0, cacheWriteTokens: n * T.composeSystem });
+  return costUsd(MODELS.plan, { inputTokens: n * T.composeIn, outputTokens: n * T.composeOut, cacheReadTokens: 0, cacheWriteTokens: n * T.composeSystem });
 }
 
 /** Une retouche : la recette en entrée, la recette en sortie. */
 export function estimateRefineUsd(): number {
-  return costUsd(MODELS.plan, { inputTokens: T.composeIn + T.recipeOut, outputTokens: T.recipeOut + 1000, cacheReadTokens: T.composeSystem, cacheWriteTokens: 0 });
+  return costUsd(MODELS.plan, { inputTokens: T.composeIn + T.recipeIn, outputTokens: T.refineOut, cacheReadTokens: 0, cacheWriteTokens: T.composeSystem });
 }
 
 /** Une création complète : recherche (si elle n'est pas en cache) et deux propositions. */
