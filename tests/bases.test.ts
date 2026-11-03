@@ -110,7 +110,7 @@ test("refaire du riz : le cru, l'eau, la plus petite casserole qui le tient, les
   assert.equal(p.batches, 1);
   assert.equal(p.boxes, 2);
   assert.match(p.steps[0], /^Pèse 700 g de riz \(cru\), rince/);
-  assert.match(p.steps[1], /1,3 L d'eau salée dans faitout.*12 min.*10 min hors du feu/);
+  assert.match(p.steps[1], /^Faitout : 1,3 L d'eau salée ;.*12 min.*10 min hors du feu/);
   assert.match(p.steps[2], /remplis 2 gros récipients \(2 L\) : 4 jours au frigo/);
   // Trop pour la cuisine : en fournées dans la plus grande.
   const big = remakePlan(riz, 5000, POTS.slice(0, 2), box);

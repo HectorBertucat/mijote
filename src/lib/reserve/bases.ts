@@ -261,13 +261,14 @@ export function remakePlan(f: BaseFamily, cookedG: number, pots: PotIn[], box: B
   const heat = Math.min(20, Math.round(6 + 2 * waterL));
   const minutes = batches * (heat + f.cookMin) + f.restMin + 15;
   const boxes = boxesFor(f, rawG * f.cookedYield, box);
-  const where = pot ? `dans ${pot.name.toLocaleLowerCase("fr")}` : "dans ta plus grande casserole";
+  // Le nom d'un récipient de la cuisine (« Cocotte en fonte », « Faitout ») vient sans article : en tête du geste.
+  const where = pot ? `${pot.name} : ` : "Ta plus grande casserole : ";
   const per = batches > 1 ? ` (en ${batches} fournées de ${fmtG(rawG / batches)})` : "";
   const steps = [
     `Pèse ${fmtG(rawG)} ${/^[aeéiouy]/i.test(f.label) ? "d'" : "de "}${f.label} (${f.raw})${f.rinse ? ", rince à l'eau froide" : ""}${per}.`,
     f.method === "absorb"
-      ? `${fmtL(waterL)} d'eau salée ${where} ; à l'ébullition, verse ${f.the}, couvre, feu au minimum ${f.cookMin} min${f.restMin ? `, puis ${f.restMin} min hors du feu sans ouvrir` : ""}.`
-      : `${fmtL(waterL)} d'eau salée ${where} ; à l'ébullition, ${f.the} ${f.cookMin} min, puis égoutte.`,
+      ? `${where}${fmtL(waterL)} d'eau salée ; à l'ébullition, verse ${f.the}, couvre, feu au minimum ${f.cookMin} min${f.restMin ? `, puis ${f.restMin} min hors du feu sans ouvrir` : ""}.`
+      : `${where}${fmtL(waterL)} d'eau salée ; à l'ébullition, ${f.the} ${f.cookMin} min, puis égoutte.`,
     `Laisse tiédir 15 min, puis ${boxes ? `remplis ${boxes.n > 1 ? `${boxes.n} gros récipients` : "un gros récipient"} (${fmtL(box.liters)})` : "mets dans un récipient fermé"} : ${f.fridgeDays} jours au frigo.`,
   ];
   return { family: f.key, cookedG: Math.round(rawG * f.cookedYield), rawG, waterL, pot: pot ? { id: pot.id, name: pot.name } : null, batches, minutes, boxes: boxes?.n ?? null, steps };
