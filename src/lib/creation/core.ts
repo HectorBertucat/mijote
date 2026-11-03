@@ -1,7 +1,9 @@
 // Créer une recette d'après des recettes publiées : la partie pure (testée, tests/creation.test.ts).
 //   1. Recherche (Haiku, outils serveur web_search et web_fetch, en nombre borné) : l'IA résume chaque
 //      source dans ses mots ; le code ne garde que les pages que l'API a vraiment renvoyées.
-//   2. Composition (Sonnet) : 2 propositions, une 3e à la demande, au format des fiches.
+//   2. Composition (Sonnet) : 2 propositions, une 3e à la demande, au format des fiches. Un appel par
+//      proposition (une recette complète par schéma strict : deux font une grammaire trop grosse pour l'API),
+//      chacun avec sa direction, pour qu'elles diffèrent sans se voir.
 //   3. Vérification en code : ingrédients connus de la table nutritionnelle (ou signalés), étapes
 //      compatibles avec l'équipement, durées, quantités, bases servies à part ; chiffres par portion
 //      calculés ici, jamais par l'IA. Un défaut bloquant empêche l'enregistrement, la proposition se corrige.
@@ -58,9 +60,9 @@ export function estimateResearchUsd(): number {
   return (LIMITS.searches + 1) * WEB_SEARCH_USD + costUsd(MODELS.small, { inputTokens, outputTokens: T.researchOut, cacheReadTokens: 0, cacheWriteTokens: 0 });
 }
 
-/** Composition de n recettes (Sonnet), prompt système écrit en cache. */
+/** Composition de n recettes (Sonnet), un appel chacune, en parallèle : chacun écrit le prompt système en cache. */
 export function estimateComposeUsd(n: number): number {
-  return costUsd(MODELS.plan, { inputTokens: T.composeIn, outputTokens: n * T.recipeOut + 1500, cacheReadTokens: 0, cacheWriteTokens: T.composeSystem });
+  return costUsd(MODELS.plan, { inputTokens: n * T.composeIn, outputTokens: n * (T.recipeOut + 800), cacheReadTokens: 0, cacheWriteTokens: n * T.composeSystem });
 }
 
 /** Une retouche : la recette en entrée, la recette en sortie. */
@@ -221,15 +223,14 @@ export const CreationRecipe = AiRecipe.extend({
 });
 export type CreationRecipe = z.infer<typeof CreationRecipe>;
 
-const ProposalOut = z.object({
+export const ProposalOut = z.object({
   recipe: CreationRecipe,
   pitch: z.string().describe("2 phrases, comme on en parlerait à table : pourquoi c'est bon"),
   inspiredBy: z.array(z.string()).describe("Ids des sources (s1, s2…) dont la recette s'inspire"),
   changes: z.array(z.string()).describe("Ce qui change par rapport à la source, très court, un changement par ligne (4 à 6)"),
 });
 
-export const ComposeOutput = z.object({ proposals: z.array(ProposalOut) });
-export type ComposeOutput = z.infer<typeof ComposeOutput>;
+export type ProposalOut = z.infer<typeof ProposalOut>;
 
 export const RefineOutput = ProposalOut.extend({
   answer: z.string().describe("Une ou deux phrases : ce que tu as changé pour cette demande"),
@@ -460,7 +461,14 @@ const CRAFT = `Écris comme un bon cuisinier de maison, pas comme une machine :
 - Batch cooking : le plat tient ${"3 à 4"} jours au frigo et se réchauffe sans sécher (assez de sauce) ; dis s'il se congèle (freezerOk) ; une garniture qui se garde mieux à part (riz, pâtes, semoule) est « side » et a son groupe dans serve, sauf si l'envie demande un one pot.
 - Honnêteté : chaque recette s'inspire d'une ou deux sources (inspiredBy). Reprends l'idée, pas le texte : tes quantités pour le foyer, tes étapes pour l'équipement d'ici. changes dit ce qui change par rapport à la source (« crème remplacée par du fromage blanc en fin de cuisson », « four plutôt que friteuse »).`;
 
-export function composePrompt(input: { envie: string; sources: Source[]; taste: Taste; household: Member[]; library: { name: string; main: string[] }[]; count: number; avoid: string[] }): string {
+/** La direction de chaque proposition : elles se composent en parallèle, sans se voir. */
+export const DIRECTIONS = [
+  "la plus fidèle à l'envie, d'après la source qui y répond le mieux",
+  "une autre façon d'y répondre : une autre source, une autre technique de cuisson ou une autre protéine que l'idée la plus évidente",
+  "une troisième voie, nettement différente des propositions déjà faites (cuisson, cuisine d'ailleurs, texture)",
+];
+
+export function composePrompt(input: { envie: string; sources: Source[]; taste: Taste; household: Member[]; library: { name: string; main: string[] }[]; slot: number; avoid: string[] }): string {
   const units = defaultBatchUnits(input.household);
   const split = input.household.length ? ` (deux repas pour ${input.household.map((m) => `${m.name} ${m.units}`).join(" + ")})` : "";
   const taste = tasteBlock(input.taste);
@@ -472,7 +480,7 @@ ${sourcesBlock(input.sources)}
 ${taste ? `${taste}\n\n` : ""}Bibliothèque existante (pas de doublon : ni ces plats, ni les mêmes ingrédients principaux) :
 ${input.library.map((r) => `- ${r.name} (${r.main.join(", ")})`).join("\n") || "- (vide)"}
 ${input.avoid.length ? `\nDéjà proposé dans cette création, à ne pas refaire : ${input.avoid.join(", ")}.\n` : ""}
-Propose ${input.count === 1 ? "une recette" : `${input.count} recettes vraiment différentes (pas la même avec une épice en plus)`}.
+Propose une recette : l'idée n° ${input.slot + 1}, ${DIRECTIONS[Math.min(input.slot, DIRECTIONS.length - 1)]}. D'autres idées se composent à côté : pas la même avec une épice en plus.
 
 ${CRAFT}
 

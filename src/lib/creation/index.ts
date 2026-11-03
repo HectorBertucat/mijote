@@ -22,7 +22,6 @@ import {
   budgetRefusal,
   checkCreation,
   COMPOSE_SCREEN,
-  ComposeOutput,
   composePrompt,
   envieKey,
   estimateComposeUsd,
@@ -32,6 +31,7 @@ import {
   keepSources,
   LIMITS,
   normalizeCreation,
+  ProposalOut,
   RefineOutput,
   refinePrompt,
   RESEARCH_SCREEN,
@@ -257,22 +257,30 @@ export async function composeProposals(db: Db, id: string, deps: Deps = {}): Pro
   guardBudget(db, estimateComposeUsd(count), deps.now);
   const library = loadLibrary(db).filter((r) => r.status !== "archived");
   const household = householdMembers(db, deps.leadId);
-  const out = await structured({
-    db,
-    screen: COMPOSE_SCREEN,
-    model: MODELS.plan,
-    effort: "medium",
-    maxTokens: 20000,
-    system: systemPrompt(promptContext(db, deps.leadId)),
-    prompt: composePrompt({ envie: c.envie, sources: c.research.sources, taste: tasteOf(db), household, library: library.map((r) => ({ name: r.name, main: mainIngredients(r) })), count, avoid: c.proposals.map((p) => p.draft.name) }),
-    schema: ComposeOutput,
-    devMock: () => mockCompose(c.envie, count, have),
-    onCost: (usd) => addCost(db, id, usd),
-  });
-  if (!out.proposals.length) throw new Error("aucune recette proposée");
-  const fresh = await Promise.all(
-    out.proposals.slice(0, count).map((p, k) => toProposal(db, `p${have + k + 1}`, p.recipe, p, c.research!.sources, deps))
+  const system = systemPrompt(promptContext(db, deps.leadId));
+  const taste = tasteOf(db);
+  const lib = library.map((r) => ({ name: r.name, main: mainIngredients(r) }));
+  const avoid = c.proposals.map((p) => p.draft.name);
+  // Un appel par proposition, en parallèle ; une qui échoue n'emporte pas l'autre (son erreur est journalisée).
+  const outs = await Promise.allSettled(
+    Array.from({ length: count }, (_, k) =>
+      structured({
+        db,
+        screen: COMPOSE_SCREEN,
+        model: MODELS.plan,
+        effort: "medium",
+        maxTokens: 16000,
+        system,
+        prompt: composePrompt({ envie: c.envie, sources: c.research!.sources, taste, household, library: lib, slot: have + k, avoid }),
+        schema: ProposalOut,
+        devMock: () => mockCompose(c.envie, have + k),
+        onCost: (usd) => addCost(db, id, usd),
+      })
+    )
   );
+  const ok = outs.flatMap((o) => (o.status === "fulfilled" ? [o.value] : []));
+  if (!ok.length) throw (outs[0] as PromiseRejectedResult).reason;
+  const fresh = await Promise.all(ok.map((p, k) => toProposal(db, `p${have + k + 1}`, p.recipe, p, c.research!.sources, deps)));
   saveProposals(db, id, [...c.proposals, ...fresh]);
   return loadCreation(db, id)!;
 }
@@ -362,15 +370,11 @@ function mockResearch(envie: string) {
   return { report, pages, queries: [envie.slice(0, 60)] };
 }
 
-function mockCompose(envie: string, count: number, have: number): ComposeOutput {
+function mockCompose(envie: string, slot: number): ProposalOut {
   const variants = [envie, `${envie} porc`, `${envie} poulet bis`];
-  return {
-    proposals: Array.from({ length: count }, (_, k) => {
-      const base = mockCreate({ envie: variants[(have + k) % 3], add: [], remove: [], avoid: have + k > 1 ? ["x"] : [] }, null);
-      const recipe = toCreationRecipe(normalizeCreation({ ...base.recipe, ingredients: base.recipe.ingredients.map((i) => ({ ...i, side: false })), serve: null }));
-      return { recipe, pitch: "Réponse simulée (MIJOTE_AI_MOCK) : une base fixe, pour tester le parcours sans appeler l'API.", inspiredBy: [`s${((have + k) % 3) + 1}`], changes: ["Four plutôt que cocotte", "Quantités pour le foyer"] };
-    }),
-  };
+  const base = mockCreate({ envie: variants[slot % 3], add: [], remove: [], avoid: slot > 1 ? ["x"] : [] }, null);
+  const recipe = toCreationRecipe(normalizeCreation({ ...base.recipe, ingredients: base.recipe.ingredients.map((i) => ({ ...i, side: false })), serve: null }));
+  return { recipe, pitch: "Réponse simulée (MIJOTE_AI_MOCK) : une base fixe, pour tester le parcours sans appeler l'API.", inspiredBy: [`s${(slot % 3) + 1}`], changes: ["Four plutôt que cocotte", "Quantités pour le foyer"] };
 }
 
 function mockRefine(draft: RecipeInput, ask: string): RefineOutput {

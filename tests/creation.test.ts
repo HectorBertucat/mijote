@@ -78,6 +78,8 @@ const SEARCH_BLOCKS = [
   },
 ];
 
+const promptOf = (params: Record<string, unknown>) => String((params.messages as { content: string }[])[0].content);
+
 /** Faux client : la recherche part en pause (pause_turn), reprend et rapporte ; la composition rend des recettes. */
 function fakeClient(opts: { compose?: (params: Record<string, unknown>) => unknown } = {}) {
   const seen = { create: 0, parse: 0, models: [] as string[], resumed: false };
@@ -100,7 +102,7 @@ function fakeClient(opts: { compose?: (params: Record<string, unknown>) => unkno
       parse: async (params) => {
         seen.parse++;
         seen.models.push(String(params.model));
-        return { usage: { input_tokens: 3000, output_tokens: 9000, cache_creation_input_tokens: 7000 }, stop_reason: "end_turn", parsed_output: opts.compose?.(params) ?? { proposals: [{ recipe: goodRecipe(), pitch: "Des sucs, une sauce qui nappe.", inspiredBy: ["s1", "s9"], changes: ["Pois chiches rôtis à part"] }, { recipe: goodRecipe("Curry doux de pois chiches au poulet"), pitch: "Doux.", inspiredBy: ["s2"], changes: [] }] } };
+        return { usage: { input_tokens: 3000, output_tokens: 9000, cache_creation_input_tokens: 7000 }, stop_reason: "end_turn", parsed_output: opts.compose?.(params) ?? (/idée n° 1,/.test(promptOf(params)) ? { recipe: goodRecipe(), pitch: "Des sucs, une sauce qui nappe.", inspiredBy: ["s1", "s9"], changes: ["Pois chiches rôtis à part"] } : { recipe: goodRecipe("Curry doux de pois chiches au poulet"), pitch: "Doux.", inspiredBy: ["s2"], changes: [] }) };
       },
     },
   };
@@ -221,7 +223,9 @@ test("création : recherche bornée (pause reprise), sources vérifiées, 2 prop
 
     const after = await composeProposals(db, c.id, { resolve: offline });
     assert.equal(fake.seen.models[2], "claude-sonnet-5-5", "Sonnet compose");
+    assert.equal(fake.seen.parse, 2, "un appel par proposition (une recette par schéma strict)");
     assert.equal(after.proposals.length, 2);
+    assert.deepEqual(after.proposals.map((p) => p.id), ["p1", "p2"]);
     const [p1] = after.proposals;
     assert.deepEqual(p1.inspiredBy, ["s1"], "une source inconnue (s9) est retirée");
     assert.equal(p1.figures.length, 2, "un chiffre par personne du foyer");
@@ -275,12 +279,12 @@ test("défauts : une proposition bancale est montrée avec ses défauts, refusé
   };
   const fake = fakeClient({
     compose: (params) => {
-      const prompt = String((params.messages as { content: string }[])[0].content);
+      const prompt = promptOf(params);
       if (/Défauts relevés/.test(prompt)) {
         fixed = /aucun récipient/.test(prompt);
         return { recipe: goodRecipe(), pitch: "Corrigée.", inspiredBy: [], changes: ["Cocotte"], answer: "La cocotte à la place." };
       }
-      return { proposals: [{ recipe: bad(), pitch: "Bon.", inspiredBy: ["s1"], changes: [] }] };
+      return { recipe: bad(), pitch: "Bon.", inspiredBy: ["s1"], changes: [] };
     },
   });
   setAiClient(fake.client);
@@ -316,7 +320,7 @@ test("défauts : une proposition bancale est montrée avec ses défauts, refusé
 test("doublon : une proposition trop proche de la bibliothèque est bloquée", async () => {
   const db = freshDb();
   upsertRecipe(db, RecipeInput.parse(JSON.parse(fs.readFileSync("src/seed/recipes/poulet-basquaise.json", "utf8"))));
-  const fake = fakeClient({ compose: () => ({ proposals: [{ recipe: goodRecipe("Poulet basquaise"), pitch: "", inspiredBy: [], changes: [] }] }) });
+  const fake = fakeClient({ compose: () => ({ recipe: goodRecipe("Poulet basquaise"), pitch: "", inspiredBy: [], changes: [] }) });
   setAiClient(fake.client);
   try {
     const c = await startCreation(db, "poulet basquaise", { resolve: offline });
