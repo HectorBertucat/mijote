@@ -13,7 +13,7 @@ import { DishArts } from "./parts";
 import { ReserveCalc } from "@/components/plats/ReserveCalc";
 import { Field, Input } from "@/components/ui";
 import { loadSessionReserves } from "@/app/plats/actions";
-import { splitShared } from "@/lib/boxes/core";
+import { gramsLabel, splitShared } from "@/lib/boxes/core";
 import { sharedBases } from "@/lib/session/guide";
 import type { SessionPlan } from "@/lib/session/planner";
 
@@ -72,6 +72,20 @@ export function SessionBoxes({ id, plan, kitchen = false, initial, arts }: { id:
         )}
       </div>
       <ol className="grid content-start md:col-span-8">
+        {data.bases.length > 0 && (
+          <li className="grid gap-2 border-t border-line-strong py-6 first:pt-6" data-bases>
+            <h3 className="text-h3">Les bases, dans leurs gros récipients</h3>
+            <ul className="grid gap-1">
+              {data.bases.map((b) => (
+                <li key={b.family} className="num text-[17px]" data-base-fill={b.family}>
+                  {b.the.charAt(0).toLocaleUpperCase("fr") + b.the.slice(1)} : ≈ {gramsLabel(b.cookedG)} cuit{/s$/.test(b.label) ? "s" : ""}
+                  {b.boxes ? `, de quoi remplir ${b.boxes > 1 ? `${b.boxes} gros récipients` : "un gros récipient"} (${b.liters.toLocaleString("fr-FR")} L)` : ""}.
+                </li>
+              ))}
+            </ul>
+            <p className="text-small text-ink-2">Pour tous les plats : chacun s’y sert à chaque repas, la fiche de son plat dit combien. Quand un récipient est vide, Nos plats propose d’en refaire.</p>
+          </li>
+        )}
         {bases.map((b) => (
           <li key={b.stepId} className="grid gap-3 border-t border-line-strong py-6 first:pt-6" data-commun={b.label}>
             <h3 className="text-h3">{b.the.charAt(0).toLocaleUpperCase("fr") + b.the.slice(1)} commun</h3>

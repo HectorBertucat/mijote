@@ -19,7 +19,8 @@ import { addDays, mondayOf } from "@/lib/week/propose";
 import { periodPlans } from "@/lib/week/store";
 import { leftInPot, macrosOf, reserveState, reweigh, servingLabel, splitGroups, weighedGroups, type BoxIn, type CalcModel, type Grams, type ReserveGroup, type ServingIn, type ShareState, type Target } from "./core";
 import { serveGroups, type ServeDecl } from "./groups";
-import { separableBases } from "./bases";
+import { basesToFill, separableBases } from "./bases";
+import { loadKitchen } from "@/lib/kitchen/store";
 import { syncBases } from "./bases-store";
 import { batchSummary, batchTitle, ESTIMATE_WINDOW_DAYS, estimatedReserve, toEstimate, weighState, type BatchSummary, type WeighState } from "./batch";
 
@@ -126,7 +127,7 @@ export interface SavedReserve {
 }
 
 /** Fin de session : les marmites à peser, et les réserves déjà rangées. */
-export function sessionReserves(db: Db, sessionId: string, now = new Date()): { models: CalcModel[]; saved: Record<string, SavedReserve> } | null {
+export function sessionReserves(db: Db, sessionId: string, now = new Date()): { models: CalcModel[]; saved: Record<string, SavedReserve>; bases: ReturnType<typeof basesToFill> } | null {
   ensureEstimates(db, now);
   const s = db.select().from(cookSessions).where(eq(cookSessions.id, sessionId)).get();
   if (!s?.planJson) return null;
@@ -154,7 +155,12 @@ export function sessionReserves(db: Db, sessionId: string, now = new Date()): { 
       people: state.shares.map((x) => ({ id: x.personId, name: x.name, total: x.total, eaten: x.eaten, left: x.left })),
     };
   }
-  return { models, saved };
+  // Le riz, les haricots de toutes les marmites : combien de gros récipients remplir.
+  const bases = basesToFill(
+    models.flatMap((m) => m.groups.map((g) => ({ base: g.base, g: saved[m.recipeId]?.groups.find((x) => x.key === g.key)?.g ?? g.estG }))),
+    loadKitchen(db).containers.baseBoxes
+  );
+  return { models, saved, bases };
 }
 
 const checkGrams = (w: Record<string, number | null | undefined>, max: number) => {

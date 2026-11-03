@@ -312,3 +312,13 @@ export function dishFreezeNote(foods: (string | null | undefined)[]): string | n
 
 /** L'aliment d'une base, pour son dessin (FoodIllu). */
 export const BASE_FOOD: Record<string, string> = { riz: "riz_basmati", pates: "pates", semoule: "semoule", quinoa: "quinoa", boulgour: "boulgour", "pommes-de-terre": "pomme_de_terre", "patates-douces": "patate_douce", "haricots-verts": "haricots_verts", brocoli: "brocoli", "chou-fleur": "chou_fleur", "petits-pois": "petits_pois", epinards: "epinards", courgettes: "courgette", carottes: "carotte" };
+
+/** Les bases d'une session, toutes recettes ensemble : grammes cuits et gros récipients à remplir. */
+export function basesToFill(groups: { base?: string; g: number }[], box: BigBoxes): { family: string; label: string; the: string; cookedG: number; boxes: number | null; liters: number }[] {
+  const by = new Map<string, number>();
+  for (const g of groups) if (g.base && g.g > 0) by.set(g.base, (by.get(g.base) ?? 0) + g.g);
+  return BASE_FAMILIES.filter((f) => by.has(f.key)).map((f) => {
+    const cookedG = Math.round(by.get(f.key)!);
+    return { family: f.key, label: f.label, the: f.the, cookedG, boxes: boxesFor(f, cookedG, box)?.n ?? null, liters: box.liters };
+  });
+}

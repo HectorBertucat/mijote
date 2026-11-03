@@ -43,7 +43,7 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
               const left = mine?.left ?? 0;
               const fridgeBox = d.boxes.find((b) => b.place === "fridge");
               const lim = d.limit && d.freshness ? limitWords(d.limit, d.freshness, today) : fridgeBox ? limitWords(fridgeBox.limit, fridgeBox.freshness, today) : null;
-              const potLeft = d.groups.some((g) => (g.leftG ?? 0) > 0);
+              const potLeft = d.groups.some((g) => !g.base && (g.leftG ?? 0) > 0);
               const next = mine?.next;
               const href = `/plats/${d.id}${self ? "" : `?pour=${who.id}`}`;
               return (

@@ -16,7 +16,10 @@ import { db } from "@/lib/db/client";
 import { cookSessions } from "@/lib/db/schema";
 import { gramsLabel } from "@/lib/boxes/core";
 import { listDishRecipes } from "@/lib/recipes/queries";
-import { batchView, sessionReserves, type BatchDish } from "@/lib/reserve/store";
+import { BaseList, FreezeList } from "@/components/plats/Bases";
+import { freezeList, listBases } from "@/lib/reserve/bases-store";
+import { batchView, listDishes, sessionReserves, type BatchDish } from "@/lib/reserve/store";
+import { todayParis } from "@/lib/health/store";
 import type { SessionPlan } from "@/lib/session/planner";
 import { recipeColor } from "@/lib/ui";
 import { joinFr } from "@/lib/week/tastes";
@@ -42,6 +45,12 @@ export default async function Bilan({ params }: { params: Promise<{ id: string }
   const sum = batch?.summary;
   const names = [...new Set(batch?.dishes.flatMap((d) => d.people.filter((p) => p.total > 0).map((p) => p.name)) ?? [])];
   const open = batch?.dishes.some((d) => d.open) ?? false;
+  // Les bases cuites par ce batch (le riz de tous ses plats) et ce qui est à congeler.
+  const today = todayParis(now);
+  const all = batch ? listDishes(db, null, now) : [];
+  const ids = new Set(batch?.dishes.map((d) => d.reserveId));
+  const bases = batch ? listBases(db, all, now).filter((b) => b.containers.some((c) => c.sessionId === id) || b.dishes.some((d) => ids.has(d.dishId))) : [];
+  const freeze = batch ? freezeList(db, all, now).filter((f) => ids.has(f.dishId)) : [];
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 md:gap-18 lg:grid-cols-12 lg:gap-x-6">
@@ -75,6 +84,7 @@ export default async function Bilan({ params }: { params: Promise<{ id: string }
               { value: sum.toWeigh, label: "à peser" },
             ]}
           />
+          <FreezeList dishes={freeze} bases={bases} today={today} />
           <h2 id="cuit-titre" className="sr-only">
             Ce qui a été cuit
           </h2>
@@ -83,11 +93,12 @@ export default async function Bilan({ params }: { params: Promise<{ id: string }
               <DishLine key={d.reserveId} d={d} art={d.slug ? arts[d.slug] : undefined} />
             ))}
           </ul>
+          <BaseList bases={bases} today={today} title="Les bases du batch" />
         </section>
       )}
 
       <div className="lg:col-span-12">
-        <SessionBoxes id={id} plan={plan} initial={{ models: owned, saved: data.saved }} arts={arts} />
+        <SessionBoxes id={id} plan={plan} initial={{ models: owned, saved: data.saved, bases: data.bases }} arts={arts} />
       </div>
     </div>
   );
@@ -111,8 +122,9 @@ function DishLine({ d, art }: { d: BatchDish; art?: React.ReactNode }) {
           {!d.open ? <Pill tone="idle" icon="check">tout mangé</Pill> : est ? <Pill tone="warn" icon="scale">{d.weigh === "partial" ? "en partie pesé" : "estimé"}</Pill> : <Pill tone="ok">pesé</Pill>}
         </div>
         <p className="num text-small text-ink-2">
-          {d.groups.some((g) => g.g > 0) ? d.groups.filter((g) => g.g > 0).map((g) => `${g.label} ${g.estimated ? "≈ " : ""}${gramsLabel(g.g)}`).join(" · ") : "rangé en boîtes"}
+          {d.groups.some((g) => g.g > 0) ? d.groups.filter((g) => g.g > 0).map((g) => `${g.label} ${g.estimated ? "≈ " : ""}${gramsLabel(g.g)}${g.base ? " (au récipient commun)" : ""}`).join(" · ") : "rangé en boîtes"}
           {est && d.open ? " (cuit, estimé d’après le cru)" : ""}
+          {d.open ? (d.freezerOk ? " · se congèle" : " · ne se congèle pas") : ""}
         </p>
         <p className="num text-small text-ink">
           {d.people
