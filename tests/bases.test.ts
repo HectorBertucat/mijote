@@ -8,7 +8,8 @@ import { reserveState, type ReserveGroup, type Target } from "@/lib/reserve/core
 import { serveGroups } from "@/lib/reserve/groups";
 import { eatPortion, listDishes, saveReserve } from "@/lib/reserve/store";
 import { openDb } from "@/lib/db/open";
-import { baseStocks, cookSessions, mealSlots, recipes, weekPlans } from "@/lib/db/schema";
+import { baseStocks, cookSessions, mealSlots, recipes, reserves, weekPlans } from "@/lib/db/schema";
+import { weighState } from "@/lib/reserve/batch";
 import { upsertRecipe } from "@/lib/recipes/store";
 import { load, seedTest } from "./helpers";
 
@@ -236,4 +237,31 @@ test("en base : à congeler, ce qui ne sera pas mangé avant la limite au frigo"
   assert.deepEqual(fz[0].people.map((p) => [p.personId, p.n]), [["alex", 5], ["sam", 3]]);
   const riz = listBases(db, dishes, later).find((b) => b.family === "riz")!;
   assert.ok(riz.freeze.ok && riz.freeze.portions > 0 && riz.freeze.by === "2026-11-05");
+});
+
+test("en base : une réserve d'avant les bases reste telle quelle (son riz dans le récipient du plat)", () => {
+  const { db, r } = setup();
+  saveReserve(db, "S", r.id, { weights: { plat: 1500, riz: 1100, "haricots-verts": 600 }, counts: { alex: 4, sam: 3 }, freezer: {} }, NOW);
+  // Comme rangée avant la migration 0014 : pas de `base` dans ses groupes, aucun gros récipient.
+  const row = db.select().from(reserves).where(eq(reserves.recipeId, r.id)).get()!;
+  const old = row.groups.map(({ base: _b, ratio: _r, perKcal: _k, ...g }) => g);
+  db.update(reserves).set({ groups: old }).where(eq(reserves.id, row.id)).run();
+  db.delete(baseStocks).run();
+  assert.equal(weighState(old), "weighed");
+
+  const later = new Date("2026-11-02T11:30:00Z");
+  let dish = listDishes(db, "alex", later).find((d) => d.status === "cooked")!;
+  assert.ok(dish.groups.every((g) => g.base === undefined));
+  assert.equal(dish.groups.find((g) => g.key === "riz")!.leftG, 1100);
+  assert.deepEqual(listBases(db, listDishes(db, "alex", later), later), []);
+  // Une portion : le riz sort du récipient du plat, aucun gros récipient n'apparaît.
+  const s = eatPortion(db, dish.id, "alex", {}, later);
+  const took = s.grams.find((g) => g.key === "riz")!.g;
+  assert.ok(took > 0);
+  dish = listDishes(db, "alex", later).find((d) => d.status === "cooked")!;
+  assert.equal(dish.groups.find((g) => g.key === "riz")!.leftG, 1100 - took);
+  // Rangée à nouveau après une portion : ses groupes d'avant restent, toujours sans gros récipient.
+  saveReserve(db, "S", r.id, { weights: { plat: 1400 }, counts: { alex: 4, sam: 3 }, freezer: {} }, later);
+  assert.ok(db.select().from(reserves).where(eq(reserves.id, row.id)).get()!.groups.every((g) => !g.base));
+  assert.equal(db.select().from(baseStocks).all().length, 0);
 });
