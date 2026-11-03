@@ -86,6 +86,10 @@ export interface Deps {
   now?: Date;
 }
 
+// Effort bas : à effort moyen, le raisonnement doublait la sortie (≈ 15 000 jetons, 0,17 $ la recette, mesuré
+// le 03/11/2026) et une sur deux était tronquée. 20 000 jetons : le plus haut sans flux pour le SDK.
+const COMPOSE_AI = { model: MODELS.plan, effort: "low" as const, maxTokens: 20000 };
+
 const defaultResolver: Resolver = (q) => resolve(q, { limit: 5 });
 
 // ─── Lectures ───
@@ -267,9 +271,7 @@ export async function composeProposals(db: Db, id: string, deps: Deps = {}): Pro
       structured({
         db,
         screen: COMPOSE_SCREEN,
-        model: MODELS.plan,
-        effort: "medium",
-        maxTokens: 16000,
+        ...COMPOSE_AI,
         system,
         prompt: composePrompt({ envie: c.envie, sources: c.research!.sources, taste, household, library: lib, slot: have + k, avoid }),
         schema: ProposalOut,
@@ -300,9 +302,7 @@ export async function refineProposal(db: Db, id: string, proposalId: string, inp
   const out = await structured({
     db,
     screen: COMPOSE_SCREEN,
-    model: MODELS.plan,
-    effort: "medium",
-    maxTokens: 16000,
+    ...COMPOSE_AI,
     system: systemPrompt(promptContext(db, deps.leadId)),
     prompt: refinePrompt({ recipe: p.draft, ask: request, sources: c.research?.sources ?? [], asks: p.asks.map((a) => a.ask), defects }),
     schema: RefineOutput,
