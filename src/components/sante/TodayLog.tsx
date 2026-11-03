@@ -3,17 +3,18 @@
 // Santé > Aujourd’hui : ce que la personne a mangé, en un tap pour le prévu.
 // Haut : jauges kcal et protéines contre la cible de la semaine. Puis « À cocher » (repas de la
 // Semaine, habitudes du jour), le journal par repas, « Ajouter » (recette, hors appli avec
-// estimation IA, récents), et « Journée complète » qui fait compter la journée pour la cible.
+// estimation IA, récents), et « Journée complète » qui fait compter la journée pour la cible : en un geste,
+// elle note aussi les repas prévus et les habitudes du jour encore à cocher (cochés d'office, à décocher).
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, buttonClass, Check, Field, Input, RecipeTile, Segmented, Sheet, Stepper, Tabs, Textarea } from "@/components/ui";
 import { bigNum } from "@/components/ui/charts/core";
-import { HowCalc, NB, Note, qty, Section, Verdict } from "./carnet";
+import { NB, Note, qty, Section, Verdict } from "./carnet";
 import { useToast } from "@/components/cart/Toast";
-import { changeUnits, eatFree, eatRecipe, eatTemplate, estimateFree, markComplete, removeEntry } from "@/app/sante/actions";
+import { changeUnits, eatFree, eatRecipe, eatTemplate, estimateFree, finishDay, markComplete, removeEntry } from "@/app/sante/actions";
 import type { MealEstimate } from "@/lib/health/estimate";
-import { MEAL_LABEL, MEALS, type LogMeal } from "@/lib/health/log";
+import { MEAL_LABEL, MEALS, planKey, type DayCheck, type LogMeal } from "@/lib/health/log";
 
 type Entry = { id: string; meal: LogMeal; kind: "recipe" | "template" | "free"; label: string; units: number | null; kcal: number; proteinG: number; source: string; slug: string | null };
 type Planned = { meal: "lunch" | "dinner"; place: "home" | "office"; recipeId: string; slug: string; name: string; units: number; kcal: number | null; proteinG: number | null; color: string };
@@ -36,6 +37,10 @@ export interface TodayProps {
   recents: Recent[];
   library: LibItem[];
   complete: boolean;
+  /** Ce qui reste avant de la dire complète (src/lib/health/log.ts, dayCheck). */
+  check: DayCheck;
+  /** Journées complètes sur la fenêtre du prochain lundi (src/lib/health/status.ts). */
+  window: { have: number; need: number; next: string } | null;
   colors: Record<string, string>;
 }
 
@@ -204,18 +209,91 @@ export function TodayLog(p: TodayProps) {
         )}
       </Section>
 
-      <div className="grid gap-2 border-t border-line-strong pt-4">
-        <Check checked={p.complete} strike={false} disabled={pending} onChange={(e) => run("complete", () => markComplete(p.personId, p.date, e.currentTarget.checked))}>
-          <span className="text-h3">Journée complète</span>
-        </Check>
-        <HowCalc title="Pourquoi la cocher">
-          <p>Coche-la quand tout ce que tu as mangé est noté. Seules les journées complètes servent à mesurer ta dépense ; une journée oubliée ne compte pas comme zéro, elle est ignorée.</p>
-        </HowCalc>
-      </div>
+      <FinishDay {...p} pending={pending} busy={busy} onRun={run} onAdd={setAdding} />
 
       <AddSheet key={adding ?? "closed"} open={adding != null} onClose={() => setAdding(null)} initialMeal={adding ?? "lunch"} {...p} onRun={run} pending={pending} />
       {node}
     </div>
+  );
+}
+
+const nextDay = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+
+/** « Journée complète » : ce qui sera noté avec elle (cochés d'office), les repas vides, puis un seul bouton. */
+function FinishDay(p: TodayProps & { pending: boolean; busy: string | null; onRun: (key: string, fn: () => Promise<{ ok: boolean; message: string }>) => void; onAdd: (m: LogMeal) => void }) {
+  const [planned, setPlanned] = useState<string[]>(p.check.planned);
+  const [templates, setTemplates] = useState<string[]>(p.check.templates);
+  const toggle = (list: string[], set: (v: string[]) => void, key: string, on: boolean) => set(on ? [...list, key] : list.filter((k) => k !== key));
+  const w = p.window;
+  const count = w && (
+    <>
+      {w.have} sur {w.need} journées complètes pour la mise à jour du {nextDay(w.next)}.
+    </>
+  );
+  if (p.complete)
+    return (
+      <section aria-labelledby="complete-titre" className="grid gap-3 border-t border-line-strong pt-4">
+        <h2 id="complete-titre" className="sr-only">
+          Journée complète
+        </h2>
+        <Verdict tone="ok">Journée complète : elle compte pour la cible</Verdict>
+        {count && <p className="text-small text-ink-2">{count}</p>}
+        <Button variant="quiet" size="sm" className="justify-self-start" disabled={p.pending} onClick={() => p.onRun("complete", () => markComplete(p.personId, p.date, false))}>
+          Il manque quelque chose
+        </Button>
+      </section>
+    );
+  const items = [
+    ...p.planned.filter((m) => p.check.planned.includes(planKey(m))).map((m) => ({ key: planKey(m), kind: "planned" as const, label: `${MEAL_LABEL[m.meal]} · ${m.name}`, sub: m.kcal != null ? `${qty(Math.round(m.kcal), "kcal")} · ${fr(m.units)}${NB}u.` : "" })),
+    ...p.habits.filter((h) => p.check.templates.includes(h.id)).map((h) => ({ key: h.id, kind: "template" as const, label: `${MEAL_LABEL[h.meal]} · ${h.label}`, sub: qty(h.kcal, "kcal") })),
+  ];
+  return (
+    <section aria-labelledby="complete-titre" className="grid gap-4 border-t border-line-strong pt-4">
+      <div className="grid gap-1">
+        <h2 id="complete-titre" className="text-h3">
+          Tout est noté ?
+        </h2>
+        <p className="max-w-[62ch] text-small text-ink-2">
+          Une journée complète, c’est tout ce que tu as mangé, noté. Seules celles-là mesurent ta dépense : c’est ce qui fait s’ajuster ta cible. {count}
+        </p>
+      </div>
+      {items.length > 0 && (
+        <fieldset className="grid gap-2">
+          <legend className="label mb-2 text-ink-2">Noté en même temps</legend>
+          {items.map((it) => {
+            const on = it.kind === "planned" ? planned.includes(it.key) : templates.includes(it.key);
+            return (
+              <Check key={it.key} checked={on} strike={false} disabled={p.pending} onChange={(e) => (it.kind === "planned" ? toggle(planned, setPlanned, it.key, e.currentTarget.checked) : toggle(templates, setTemplates, it.key, e.currentTarget.checked))}>
+                <span className="font-bold">{it.label}</span> <span className="text-small tabular-nums text-ink-2">{it.sub}</span>
+              </Check>
+            );
+          })}
+        </fieldset>
+      )}
+      {p.check.empty.length > 0 && (
+        <Note
+          title={`Rien de noté ${p.check.empty.map((m) => (m === "lunch" ? "à midi" : "le soir")).join(" ni ")}`}
+          action={
+            <Button size="sm" icon="plus" onClick={() => p.onAdd(p.check.empty[0])}>
+              Ajouter
+            </Button>
+          }
+        >
+          Ajoute-le, ou laisse-le si tu l’as sauté.
+        </Note>
+      )}
+      <Button
+        variant="primary"
+        icon="check"
+        className="justify-self-start"
+        state={p.busy === "complete" ? "loading" : "idle"}
+        loadingLabel="…"
+        disabled={p.pending}
+        onClick={() => p.onRun("complete", () => finishDay(p.personId, p.date, { planned, templates }))}
+      >
+        Journée complète
+      </Button>
+    </section>
   );
 }
 

@@ -21,8 +21,9 @@ L'app Mijote Santé affiche Santé, le journal, les plats du batch, la course et
 | Route | Ce qu'elle rend ou fait |
 |---|---|
 | `GET moi` | `{ version: 1, features, person: { id, name }, today, running }` (`running` : plan de course actif) |
-| `GET sante?periode=` | `{ overview, series, goals, review, waist }` : la vue d'ensemble de Santé (`periode` : `7j`, `30j` par défaut, `3m`, `1an`, `tout`, comme `/sante`), les objectifs, le repère de la semaine, les derniers tours de taille |
-| `GET jour?date=` | `{ date, entries, totals, complete, todo: { planned, templates }, review }` : le journal d'un jour (aujourd'hui par défaut) |
+| `GET sante?periode=` | `{ overview, series, goals, review, waist, status }` (`status` : comme `GET statut`, ajouté le 3/11) : la vue d'ensemble de Santé (`periode` : `7j`, `30j` par défaut, `3m`, `1an`, `tout`, comme `/sante`), les objectifs, le repère de la semaine, les derniers tours de taille |
+| `GET statut` | `{ status }` : « Où j'en suis » (annoncé par `"statut"`, ci-dessous) |
+| `GET jour?date=` | `{ date, entries, totals, complete, todo: { planned, templates }, check, review }` : le journal d'un jour (aujourd'hui par défaut) ; `check` (ajouté le 3/11) : ce que « terminer » noterait |
 | `POST jour` | une action sur le journal (ci-dessous) → `{ message, jour }` (le jour à jour) |
 | `POST pesee` | `{ kg }` (25 à 350) → `{ message, weighIns }` |
 | `GET plats` | `{ today, person, dishes, eaten, batch }` : les plats du batch et les portions restantes de chacun, le bilan du batch du moment (ci-dessous) |
@@ -55,6 +56,33 @@ L'app Mijote Santé affiche Santé, le journal, les plats du batch, la course et
 | `parts` | `id` (une entrée du jour), `units` |
 | `retirer` | `id` |
 | `complete` | `complete` (la journée compte ou non pour la cible) |
+| `terminer` | `planned?` (clés `<meal>:<recipeId>` de `check.planned`), `templates?` (ids de `check.templates`) : note ces lignes puis marque la journée complète, en un geste ; sans liste, tout ce que propose `check` (annoncé par `"terminer"`) |
+
+`check` : `{ planned: [clé], templates: [id], empty: ["lunch" | "dinner"], ready }`. `planned` et `templates` : les repas prévus de la Semaine pas encore notés et les habitudes prévues ce jour-là, à proposer cochés ; `empty` : midi ou soir sans rien de noté ni de prévu (à ajouter, ou sauté) ; `ready` : rien de tout ça.
+
+## Où j'en suis (`GET statut`)
+
+Annoncé par `"statut"`. Tout est calculé par le serveur (`src/lib/health/status.ts`) : l'app affiche les phrases et les chiffres reçus.
+
+```
+{ status: { person: { id, name }, goal?, targetWeightKg?, headline,
+  trend?: { kg, rateKg?, ratePct?, aimedKg, aimedPct, pace?, text },
+  target?: { kcal, proteinG, tdee, confidence, word, text },
+  update: { next, window: { start, end }, complete: { have, need, daysLeft }, weighIns: { have, need, thisWeek },
+            firstWeighOk, ready, nextConfidence, measuredBy? },
+  todo: [string],
+  protein: { target?, avg?, days, fromComplete, mode, perKg?, suggestPerKg? },
+  portions: { mode, ref?, targetRef?, follows, limited, text, next? },
+  days: [{ date, kcal?, proteinG?, complete }] } }
+```
+
+- `target.confidence` : `adaptive` (dépense mesurée), `holding` (en attente : la dernière dépense mesurée), `estimate` (formule) ; `word` : « mesurée », « en attente », « estimation ».
+- `update` : la prochaine mise à jour (`next`, un lundi) et sa fenêtre de 21 jours ; `complete` et `weighIns` : ce qui est déjà là et ce qu'il faut (12 journées complètes, 3 pesées) ; `daysLeft` : jours encore notables d'ici dimanche ; `ready` : lundi, la dépense sera mesurée ; `nextConfidence` : d'où elle viendra sinon ; `measuredBy` : le premier lundi possible en notant chaque journée complète.
+- `todo` : ce qui manque, en phrases (« 2 journées complètes de plus d'ici dimanche… », « Pèse-toi une fois de plus d'ici dimanche… ») ; vide si `ready`. `headline` : la phrase de tête (la cible et la première chose à faire, toujours présente).
+- `trend.pace` : `rythme`, `lent`, `rapide`, `inverse`, `stable` (maintien tenu), `ecart` (le poids bouge en maintien) ; `rateKg` et `aimedKg` en kg par semaine.
+- `protein` : `avg` sur `days` journées complètes des 14 derniers jours (`fromComplete`), sinon sur les jours notés de la semaine ; `mode` : `g` (grammes fixes) ou `gkg` ; `suggestPerKg` : en recomposition avec des grammes fixes, le même apport en g/kg.
+- `portions` : `mode` `auto` (le repère suit la cible chaque lundi) ou `fixe` (il ne la suit pas : `follows: false`) ; `ref` : le repère d'un repas `{ kcalMin, kcalMax, proteinMin, proteinMax }`, `targetRef` : ce que la cible seule donnerait, `limited` : le pas de la semaine l'a retenu.
+- `days` : les jours de la fenêtre, d'aujourd'hui en arrière (`kcal` absent : rien de noté).
 
 ## Plats (la réserve du batch)
 

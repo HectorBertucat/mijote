@@ -4,11 +4,14 @@ import { db } from "@/lib/db/client";
 import { activePerson } from "@/lib/health/active";
 import { planOf } from "@/lib/health/objectives";
 import { listWeighIns } from "@/lib/health/store";
+import { eaterOf } from "@/lib/eaters/store";
+import { refLabel } from "@/lib/eaters/core";
 
 export const dynamic = "force-dynamic";
 
 export default async function Profil() {
   const p = await activePerson();
+  const e = eaterOf(db, p);
   return (
     <div className="grid gap-18">
     <ProfileForm
@@ -18,7 +21,7 @@ export default async function Profil() {
       needsWeight={listWeighIns(db, p.id).length === 0}
       values={{ sex: p.sex, birthDate: p.birthDate, heightCm: p.heightCm, activity: p.activity, goal: p.goal, ratePct: p.ratePct, proteinGPerKg: p.proteinGPerKg, proteinG: p.proteinG, targetWeightKg: p.targetWeightKg, targetDate: p.targetDate, sportPlan: planOf(p), constraints: p.constraints }}
     />
-    <FixedRefForm key={`${p.id}-ref`} personId={p.id} value={p.fixedMealRef ?? null} />
+    <FixedRefForm key={`${p.id}-ref`} personId={p.id} value={p.fixedMealRef ?? null} auto={e.refMode === "auto"} current={e.ref ? refLabel(e.ref) : null} />
     </div>
   );
 }

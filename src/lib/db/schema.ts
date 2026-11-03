@@ -38,9 +38,12 @@ export const people = sqliteTable("people", {
   outsideKcal: real("outside_kcal"),
   outsideProteinG: real("outside_protein_g"),
   setupDoneAt: text("setup_done_at"),
-  // Repère fixe d'un repas (kcal et protéines), choisi par la personne : il sert tant que la dépense
-  // n'est pas mesurée par Santé (plus juste qu'une formule quand on connaît déjà ses chiffres).
+  // Repère fixe d'un repas (kcal et protéines), choisi par la personne. Il ne sert qu'en mode fixe
+  // (meal_ref_auto faux) ; en mode automatique, il reste le point de départ du premier pas.
   fixedMealRef: json<{ kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number }>("fixed_meal_ref"),
+  // Repère automatique (migration 0014) : le repère d'un repas suit la cible de la semaine, moins le hors
+  // batch, borné et d'un pas limité (src/lib/eaters/core.ts, autoMealRef). Faux : le repère fixe.
+  mealRefAuto: integer("meal_ref_auto", { mode: "boolean" }).notNull().default(true),
   // Rythme guidé des séances de sport (src/lib/training/live.ts, GuideOpts) : mode automatique, secondes de
   // mise en place et de changement d'exercice. Null : les réglages par défaut.
   trainingGuide: json<{ auto: boolean; lead: number; change: number }>("training_guide"),
@@ -654,6 +657,8 @@ export const weeklyTargets = sqliteTable(
     fatMinG: real("fat_min_g").notNull(),
     confidence: text("confidence", { enum: ["estimate", "holding", "adaptive"] }).notNull(),
     details: json<Record<string, unknown>>("details").notNull().default(sql`'{}'`),
+    // Repère d'un repas de la semaine en mode automatique (migration 0014) : le pas de la semaine suivante s'y mesure.
+    mealRef: json<{ kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number }>("meal_ref"),
     createdAt: text("created_at").notNull().default(now),
   },
   (t) => [uniqueIndex("uq_weekly_target").on(t.personId, t.weekStart)]

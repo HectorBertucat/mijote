@@ -175,7 +175,7 @@ test("journal : le prévu de la Semaine se coche en un tap, les unités suivent,
 
   assert.equal(intakeDays(db, "alex", date)[0].complete, false);
   setComplete(db, "alex", date, true);
-  assert.deepEqual(intakeDays(db, "alex", date), [{ date, kcal: 1235, complete: true }]);
+  assert.deepEqual(intakeDays(db, "alex", date), [{ date, kcal: 1235, proteinG: 115, complete: true }]);
 });
 
 // ─── Export Apple Santé ───

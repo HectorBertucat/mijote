@@ -11,7 +11,8 @@ import { overview } from "@/lib/health/overview";
 import { DEFAULT_PERIOD, isPeriod, lineGrainOf } from "@/lib/health/series";
 import { addWeighIn, currentReview, getPerson, listPeople, listWaist, listWeighIns, todayParis, type Person } from "@/lib/health/store";
 import { goalSummary } from "@/lib/health/objectives";
-import { addEntry, addRecipeEntry, deleteEntry, isComplete, listEntries, listTemplates, MEALS, pending, plannedMeals, setComplete, setEntryUnits, totals, type LogMeal } from "@/lib/health/log";
+import { addEntry, addRecipeEntry, completeDay, dayCheck, deleteEntry, isComplete, listEntries, listTemplates, MEALS, pending, plannedMeals, setComplete, setEntryUnits, totals, type LogMeal } from "@/lib/health/log";
+import { statusFor } from "@/lib/health/status-store";
 import { recentWorkouts } from "@/lib/health/samples";
 import { courseView } from "@/lib/running/page";
 import { getRunProfile } from "@/lib/running/store";
@@ -32,7 +33,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 export const API_VERSION = 1;
 /** Ce que sait faire ce Mijote : l'app n'affiche que ce qui est annoncé. */
-export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme"] as const;
+export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme", "statut", "terminer"] as const;
 
 export interface AppRequest {
   method: "GET" | "POST";
@@ -52,7 +53,12 @@ const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.t
 function sante(db: Db, p: Person, q: URLSearchParams, today: string) {
   const periode = q.get("periode");
   const o = overview(db, p, isPeriod(periode) ? periode : DEFAULT_PERIOD, today);
-  return ok({ overview: o, series: seriesOf(o), goals: goalSummary(db, p), review: currentReview(db, p), waist: listWaist(db, p.id).slice(-30) });
+  return ok({ overview: o, series: seriesOf(o), goals: goalSummary(db, p), review: currentReview(db, p), waist: listWaist(db, p.id).slice(-30), status: statut(db, p) });
+}
+
+/** « Où j'en suis » (src/lib/health/status.ts) : cible et source, ce qui manque, rythme, protéines, repère d'un repas. */
+function statut(db: Db, p: Person, now = new Date()) {
+  return statusFor(db, p, now);
 }
 
 /** Les courbes de la vue d'ensemble, à plat pour les graphiques de l'app : un point par paquet mesuré. */
@@ -81,12 +87,14 @@ function seriesOf(o: ReturnType<typeof overview>) {
 function jour(db: Db, p: Person, date: string) {
   const entries = listEntries(db, p.id, date);
   const templates = listTemplates(db, p.id);
+  const todo = pending(plannedMeals(db, p.id, date), templates, entries, date);
   return {
     date,
     entries,
     totals: totals(entries),
     complete: isComplete(db, p.id, date),
-    todo: pending(plannedMeals(db, p.id, date), templates, entries, date),
+    todo,
+    check: dayCheck(todo, entries),
     review: currentReview(db, p),
   };
 }
@@ -99,6 +107,7 @@ const JourAction = z.discriminatedUnion("action", [
   z.object({ action: z.literal("parts"), date: z.string(), id: z.string().max(80), units: z.number().positive().max(20) }),
   z.object({ action: z.literal("retirer"), date: z.string(), id: z.string().max(80) }),
   z.object({ action: z.literal("complete"), date: z.string(), complete: z.boolean() }),
+  z.object({ action: z.literal("terminer"), date: z.string(), planned: z.array(z.string().max(120)).max(20).optional(), templates: z.array(z.string().max(80)).max(40).optional() }),
 ]);
 
 function jourPost(db: Db, p: Person, body: unknown, today: string): ApiReply {
@@ -141,6 +150,13 @@ function jourPost(db: Db, p: Person, body: unknown, today: string): ApiReply {
         setComplete(db, p.id, a.date, a.complete);
         message = a.complete ? "Journée complète : elle compte pour la cible." : "Journée marquée incomplète.";
         break;
+      case "terminer": {
+        // Sans liste, ce que propose `check` : les repas prévus et les habitudes du jour encore à cocher.
+        const c = dayCheck(pending(plannedMeals(db, p.id, a.date), listTemplates(db, p.id), listEntries(db, p.id, a.date), a.date), listEntries(db, p.id, a.date));
+        const n = completeDay(db, p.id, a.date, { planned: a.planned ?? c.planned, templates: a.templates ?? c.templates });
+        message = `Journée complète${n ? ` (${n} ${n > 1 ? "lignes notées" : "ligne notée"})` : ""} : elle compte pour la cible.`;
+        break;
+      }
     }
     return ok({ message, jour: jour(db, p, a.date) });
   } catch (e) {
@@ -499,6 +515,8 @@ function route(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
       return ok({ version: API_VERSION, features: FEATURES, person: { id: p.id, name: p.name }, today, running: !!getRunProfile(db, p.id)?.enabled });
     case "GET sante":
       return sante(db, p, req.query, today);
+    case "GET statut":
+      return ok({ status: statut(db, p, new Date(now)) });
     case "GET jour": {
       const d = req.query.get("date");
       return ok(jour(db, p, isDate(d) && d <= today ? d : today));

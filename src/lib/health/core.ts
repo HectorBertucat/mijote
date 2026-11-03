@@ -144,6 +144,8 @@ export interface IntakeDay {
   date: string;
   kcal: number;
   complete: boolean;
+  /** Protéines notées ce jour-là (g), quand on les a lues. */
+  proteinG?: number;
 }
 
 export interface AdaptiveResult {
