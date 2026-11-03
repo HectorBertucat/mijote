@@ -8,6 +8,7 @@ L'IA est **facultative**. Sans `ANTHROPIC_API_KEY`, les boutons IA sont désacti
 |---|---|---|---|
 | Ajuster une recette | Sonnet | la recette complète modifiée | macros recalculées depuis les grammes, équipement réel, sous-étapes, ingrédients connus de la table nutritionnelle, produits du catalogue s'il y en a un |
 | Atelier (créer) | Sonnet | une recette complète | la même chose, plus les doublons de la bibliothèque (une seconde tentative si trop proche) |
+| Créer d'après des recettes publiées | Haiku (recherche web bornée), Sonnet (une proposition par appel) | des sources résumées, puis 2 ou 3 recettes complètes, puis des retouches | seulement les adresses renvoyées par l'API, deux par site ; puis comme l'Atelier, plus les récipients de la cuisine, durées, quantités, garnitures à part reconnues en code ; revérifiée avant d'entrer « à essayer » (docs/recettes.md) |
 | Assistant (partout, ⌘I) | Haiku ; Sonnet pour composer toute la semaine | une réponse en flux, et jusqu'à trois actions par outils stricts | chaque action revérifiée par `checkAction` (`src/lib/assistant/core.ts`) : existence, bornes, cohérence nutritionnelle ; chiffres des cartes calculés par le code ; appliquée d'un geste, revérifiée, puis exécutée par les fonctions de l'interface |
 | Coach (Santé › Objectifs) | Sonnet | une réponse et des objectifs | rythme −1 à +0,5 %/sem., protéines 1,2 à 2,4 g/kg, poids visé dans un IMC sain, jamais sous le métabolisme de base |
 | Programme de sport | Sonnet (2 appels) | les séances, puis la figure des exercices inventés | ids de la bibliothèque, matériel, séries et repos bornés, durée, chaque figure résolue par le squelette ; une figure refusée repart une fois, sinon l'exercice est remplacé |
@@ -36,6 +37,7 @@ Mesuré le 28/10/2026 avec `pnpm test:ai`, une fois chaque fonction :
 |---|---|---|
 | Ajuster une recette | ~85 s | 0,16 $ |
 | Créer une recette | ~60 s | 0,10 $ |
+| Créer d'après des recettes publiées (03/11/2026) : recherche, 2 propositions | ~80 s | 0,23 $ (recherche 0,03 $, chaque proposition 0,10 $) ; une retouche 0,07 $ |
 | Assistant, un message (Haiku, 31/10/2026) | quelques secondes | ~0,001 $ |
 | Coach, un message | ~15 s | 0,02 $ |
 | Programme de sport | ~50 s | 0,09 $ |
@@ -43,12 +45,14 @@ Mesuré le 28/10/2026 avec `pnpm test:ai`, une fois chaque fonction :
 | Estimer un repas | ~3 s | moins de 0,001 $ |
 | Importer une recette | ~30 s (estimé) | environ 0,003 $ (estimé, affiché avant l'appel) |
 
+La recherche web coûte 10 $ les 1 000 recherches en plus des jetons (`WEB_SEARCH_USD`), comptée dans `ai_calls` ; `research()` (`src/lib/ai/index.ts`) borne recherches et pages lues, reprend un tour en pause (`pause_turn`) et relance une fois un modèle qui s'arrête sans rapporter. Une recette complète tient tout juste dans la grammaire d'un schéma strict : un appel par proposition, et pas un champ de plus (l'API refuse au-delà).
+
 Un usage normal (quelques ajustements et messages au coach par semaine) reste sous 5 $ par mois. `AI_MONTHLY_CAP_USD` (10 $ par défaut) coupe les boutons IA au-delà, jusqu'au mois suivant. La page Coûts montre la dépense du mois. L'import de recettes a en plus une limite par jour : `AI_IMPORTS_PER_DAY` (10 par défaut), chaque appel compte, réussi ou non.
 
 ## Tester
 
-- `pnpm test` : tous les parcours IA avec un **faux client** (réponse juste, fausse puis corrigée, fausse deux fois, plafond atteint), sans réseau ni coût (`tests/ia-parcours.test.ts`, `tests/atelier.test.ts`, `tests/importer.test.ts`).
-- `pnpm test:ai` : chaque fonction appelée **en vrai** sur une base jetable, et sa sortie contrôlée comme le fait l'appli. Il faut une clé ; compter environ 0,40 $. `pnpm test:ai programme` n'en lance qu'une.
+- `pnpm test` : tous les parcours IA avec un **faux client** (réponse juste, fausse puis corrigée, fausse deux fois, plafond atteint), sans réseau ni coût (`tests/ia-parcours.test.ts`, `tests/atelier.test.ts`, `tests/importer.test.ts`, `tests/creation.test.ts` : recherche en pause reprise, adresses inventées écartées, cache, plafond, défauts corrigés).
+- `pnpm test:ai` : chaque fonction appelée **en vrai** sur une base jetable, et sa sortie contrôlée comme le fait l'appli. Il faut une clé ; compter environ 0,40 $. `pnpm test:ai programme` n'en lance qu'une ; `pnpm test:ai creer` fait une création complète et une retouche (environ 0,30 $).
 - `MIJOTE_AI_MOCK=1` (hors production) : l'appli rend des réponses simulées, pour développer l'interface sans clé.
 
 ## Changer de modèle
