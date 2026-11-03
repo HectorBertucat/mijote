@@ -46,3 +46,15 @@ export function TastesNote({
     </div>
   );
 }
+
+/** La pastille de goût d’un plat (retours de chacun, src/lib/feedback/core.ts) : « Sam : bof (sec) », « Alex adore ». */
+export function TasteMark({ badge }: { badge: { tone: "ok" | "warn" | "info"; text: string } | null }) {
+  if (!badge) return null;
+  const icon = badge.tone === "ok" ? "star" : badge.tone === "warn" ? "alert" : "swap";
+  return (
+    <span className={`mt-1 flex items-start gap-1 ${badge.tone === "warn" ? "text-warn-ink" : "text-ink-2"}`} data-gout={badge.tone}>
+      <Icon name={icon} size="s" className={`mt-[3px] shrink-0 ${badge.tone === "ok" ? "text-ok" : badge.tone === "warn" ? "text-warn" : "text-ink-3"}`} />
+      {badge.text}
+    </span>
+  );
+}

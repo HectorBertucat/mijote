@@ -1,0 +1,8 @@
+## 2026-11-03 : goûts de chacun et variantes réelles
+
+- Retour de goût par personne et par recette, en un geste : j'adore, ok ou bof, des étiquettes (sec, trop dense, fade, trop épicé, trop gras, portion trop grosse, je referais) et un mot libre. Sur Nos plats juste après « J'ai mangé » (ou « Mon avis » sur une portion mangée), sur la fiche (section Goûts, résumé en tête : « Sam : bof · sec, trop dense ») et dans l'app iPhone (`POST plats/avis`, annoncé par `"gouts"` ; `eaten[].avis`, vocabulaire dans `avis`). Table `taste_feedback` (migration 0015).
+- Semaine : pastille de goût par plat, un « bof » pas encore ajusté passe en fin de liste et n'est plus proposé d'office ; une recette et sa variante ne sont jamais proposées ensemble.
+- Ingrédient remplacé en vrai (patate douce → pomme de terre) : poids pour poids, dans la même famille d'aliments ; la nutrition de la réserve (ou de la session en cours, au rangement) suit la table. Table `recipe_swaps` (migration 0015).
+- Ajuster d'après les retours, en code : plus de sauce servie dans la portion pour « sec », moins de viande (jamais sous le bas de protéines de chacun) et plus de légumes pour « trop dense », etc., avec l'aperçu chiffré de la part de chacun ; enregistré comme variante « à essayer », l'originale reste. Option « D'après les retours » dans Ajuster (IA), revérifiée par le code.
+- Assistant : les retours en cours de chaque recette dans son contexte.
+- Nouvelle fiche : « Poulet au paprika fumé, pommes de terre rôties et riz (plus moelleux) », variante de la recette aux patates douces (`variantOf`, nouveau champ du format) : pommes de terre, un peu moins de poulet mariné au skyr, poivrons rôtis, jus de cuisson, deux fois plus de sauce au skyr servie dans chaque portion.

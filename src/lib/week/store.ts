@@ -17,6 +17,7 @@ import { buildProfiles, lineResolver, totalResolver } from "./packs";
 import { scaledNutrition, selectionLeftovers, type Leftover } from "./leftovers";
 import type { PackProfiles } from "./waste";
 import { eaterMap, leadOf, loadEaters } from "@/lib/eaters/store";
+import { loadTasteMarks, tastePoints } from "@/lib/feedback/read";
 
 const MEALS: Meal[] = ["lunch", "dinner"];
 
@@ -212,7 +213,7 @@ export async function proposeWeek(db: Db, weekStart: string) {
   const kept = loadSelection(db, w.planId);
   const tastes = loadTastes(db, lib);
   const { profiles } = await loadProfiles(db, lib);
-  const p = propose(lib, asSlots(w), { keep: kept.map((x) => x.slug), excluded: tastes.excluded, profiles, eaters: eatersCtx(db) });
+  const p = propose(lib, asSlots(w), { keep: kept.map((x) => x.slug), excluded: tastes.excluded, profiles, eaters: eatersCtx(db), taste: tastePoints(loadTasteMarks(db)) });
   const old = new Map(kept.map((x) => [x.slug, x]));
   writeSelection(db, w.planId, lib, (p?.slugs ?? []).map((slug) => ({ slug, extras: old.get(slug)?.extras })));
   resize(db, weekStart);
@@ -242,7 +243,7 @@ export async function swapRecipe(db: Db, weekStart: string, out: string) {
   const lib = withSel(library(db), sel);
   const tastes = loadTastes(db, lib);
   const { profiles } = await loadProfiles(db, lib);
-  const p = swap(lib, asSlots(w), sel.map((x) => x.slug), out, [], { excluded: tastes.excluded, profiles, eaters: eatersCtx(db) });
+  const p = swap(lib, asSlots(w), sel.map((x) => x.slug), out, [], { excluded: tastes.excluded, profiles, eaters: eatersCtx(db), taste: tastePoints(loadTasteMarks(db)) });
   if (p) {
     save(db, w, lib, p);
     const keep = new Map(sel.map((x) => [x.slug, x]));

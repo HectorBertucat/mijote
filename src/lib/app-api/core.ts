@@ -29,12 +29,14 @@ import { ACTIONS, actionOf, clean, phaseOf } from "./state";
 import { actionIdOf, findAction, saveAction } from "./actions";
 import { adjustReserve, currentBatch, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
 import { closeBase, freezeList, listBases, remakeBase, weighBase } from "@/lib/reserve/bases-store";
-import { healthSamples } from "@/lib/db/schema";
+import { healthSamples, reserves, tasteFeedback } from "@/lib/db/schema";
+import { RATING_LABEL, RATINGS, TAG_LABEL, TASTE_TAGS, NOTE_MAX } from "@/lib/feedback/core";
+import { FeedbackError, saveFeedback } from "@/lib/feedback/store";
 import { and, eq, inArray } from "drizzle-orm";
 
 export const API_VERSION = 1;
 /** Ce que sait faire ce Mijote : l'app n'affiche que ce qui est annoncé. */
-export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "bases", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme", "statut", "terminer"] as const;
+export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "bases", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme", "statut", "terminer", "gouts"] as const;
 
 export interface AppRequest {
   method: "GET" | "POST";
@@ -193,11 +195,24 @@ function plats(db: Db, p: Person, now: number) {
   const at = new Date(now);
   const dishes = listDishes(db, p.id, at).map((d) => ({ ...d, people: d.people.map((s) => ({ ...s, me: s.personId === p.id })) }));
   const b = currentBatch(db, at);
+  const eaten = recentServings(db, p.id, at);
+  // Le retour de goût déjà donné pour chaque portion mangée (POST plats/avis).
+  const avis = new Map(
+    eaten.length
+      ? db
+          .select({ servingId: tasteFeedback.servingId, rating: tasteFeedback.rating, tags: tasteFeedback.tags })
+          .from(tasteFeedback)
+          .where(inArray(tasteFeedback.servingId, eaten.map((s) => s.id)))
+          .all()
+          .map((f) => [f.servingId!, { rating: f.rating, tags: f.tags }])
+      : []
+  );
   return {
     today: todayParis(at),
     person: { id: p.id, name: p.name },
     dishes,
-    eaten: recentServings(db, p.id, at).map(withoutPerson),
+    eaten: eaten.map((s) => ({ ...withoutPerson(s), avis: avis.get(s.id) ?? null })),
+    avis: { ratings: RATINGS.map((id) => ({ id, label: RATING_LABEL[id] })), tags: TASTE_TAGS.map((id) => ({ id, label: TAG_LABEL[id] })) },
     batch: b ? { id: b.id, title: b.title, cookedOn: b.cookedOn, ...b.summary, items: b.dishes.map((d) => ({ dishId: d.reserveId, recipeId: d.recipeId, slug: d.slug, name: d.name, open: d.open, weigh: d.weigh })) } : null,
     bases: listBases(db, dishes, at),
     freeze: freezeList(db, dishes, at),
@@ -206,6 +221,13 @@ function plats(db: Db, p: Person, now: number) {
 
 const Grams = z.record(z.string().max(40), z.number().min(0).max(3000));
 const MangerBody = z.object({ dishId: z.string().max(80), boxId: z.string().max(80).optional(), grams: Grams.optional(), date: z.string().optional(), meal: Meal.optional() });
+const AvisBody = z.object({
+  servingId: z.string().max(80).optional(),
+  dishId: z.string().max(80).optional(),
+  rating: z.enum(RATINGS),
+  tags: z.array(z.enum(TASTE_TAGS)).max(TASTE_TAGS.length).optional(),
+  note: z.string().max(NOTE_MAX).optional(),
+});
 const ReglageBody = z.object({ dishId: z.string().max(80), weights: z.record(z.string().max(40), z.number().min(0).max(50_000)).optional(), left: z.record(z.string().max(80), z.number().int().min(0).max(30)).optional() });
 
 function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number): ApiReply {
@@ -227,6 +249,16 @@ function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number):
       if (!parsed.success) return fail("{ servingId } attendu");
       const r = undoServing(db, parsed.data.servingId, p.id);
       message = `Portion de ${r.name.split(",")[0]} annulée.`;
+    } else if (verb === "avis") {
+      const parsed = AvisBody.safeParse(body);
+      if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
+      const a = parsed.data;
+      if (!a.servingId && !a.dishId) return fail("servingId ou dishId attendu");
+      const recipeId = a.dishId ? (db.select({ recipeId: reserves.recipeId }).from(reserves).where(eq(reserves.id, a.dishId)).get()?.recipeId ?? null) : null;
+      if (a.dishId && !recipeId) return fail("plat inconnu", 404);
+      const f = saveFeedback(db, { recipeId, personId: p.id, servingId: a.servingId ?? null, rating: a.rating, tags: a.tags ?? [], note: a.note ?? null }, at);
+      message = `Noté : ${RATING_LABEL[f.rating]}${f.tags.length ? ` (${f.tags.map((t) => TAG_LABEL[t]).join(", ")})` : ""}.`;
+      extra = { avis: { id: f.id, recipeId: f.recipeId, rating: f.rating, tags: f.tags, note: f.note, at: f.at } };
     } else if (verb === "reglage") {
       const parsed = ReglageBody.safeParse(body);
       if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
@@ -247,7 +279,7 @@ function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number):
     } else return fail("chemin inconnu", 404);
     return ok({ message, ...extra, plats: plats(db, p, now) });
   } catch (e) {
-    if (e instanceof ReserveError) return fail(e.message, e.status);
+    if (e instanceof ReserveError || e instanceof FeedbackError) return fail(e.message, e.status);
     return fail(e instanceof Error ? e.message : "action impossible");
   }
 }
@@ -548,6 +580,7 @@ function route(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
     case "POST plats/base-refaire":
     case "POST plats/base-pesee":
     case "POST plats/base-fini":
+    case "POST plats/avis":
       return platsPost(db, p, b, req.body, now);
     case "GET course": {
       const enabled = !!getRunProfile(db, p.id)?.enabled;

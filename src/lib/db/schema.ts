@@ -948,3 +948,40 @@ export const appActions = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.personId, t.actionId] }), index("idx_app_actions_at").on(t.at)]
 );
+
+// ─── 11. Goûts et variantes réelles (migration 0015_gouts_variantes, src/lib/feedback) ───
+// Le retour de goût de chacun après avoir mangé : une note (j'adore, ok, bof), des étiquettes (sec, trop
+// dense…) et un mot libre. Un retour par repas ; le plus récent de chacun compte pour une recette.
+export const tasteFeedback = sqliteTable(
+  "taste_feedback",
+  {
+    id: text("id").primaryKey(),
+    recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    rating: text("rating", { enum: ["love", "ok", "meh"] }).notNull(),
+    tags: json<string[]>("tags").notNull().default(sql`'[]'`),
+    note: text("note"),
+    // La portion mangée qui l'a fait naître (« J'ai mangé »), s'il y en a une.
+    servingId: text("serving_id").references(() => reserveServings.id, { onDelete: "set null" }),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("idx_taste_feedback_recipe").on(t.recipeId, t.personId, t.createdAt)]
+);
+
+// Un ingrédient remplacé en vrai (patate douce → pomme de terre), noté en cuisinant ou après : rattaché à
+// la session en cours (la réserve rangée en tient compte) ou à une réserve déjà rangée (sa nutrition est
+// recalculée). `position` : la ligne de la fiche ; `fromFood` : son aliment au moment du remplacement.
+export const recipeSwaps = sqliteTable(
+  "recipe_swaps",
+  {
+    id: text("id").primaryKey(),
+    recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    fromFood: text("from_food"),
+    toFood: text("to_food").notNull(),
+    sessionId: text("session_id").references(() => cookSessions.id, { onDelete: "set null" }),
+    reserveId: text("reserve_id").references(() => reserves.id, { onDelete: "set null" }),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("idx_recipe_swaps_recipe").on(t.recipeId, t.createdAt)]
+);

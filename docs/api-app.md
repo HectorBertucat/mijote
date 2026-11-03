@@ -26,13 +26,14 @@ L'app Mijote Santé affiche Santé, le journal, les plats du batch, la course et
 | `GET jour?date=` | `{ date, entries, totals, complete, todo: { planned, templates }, check, review }` : le journal d'un jour (aujourd'hui par défaut) ; `check` (ajouté le 3/11) : ce que « terminer » noterait |
 | `POST jour` | une action sur le journal (ci-dessous) → `{ message, jour }` (le jour à jour) |
 | `POST pesee` | `{ kg }` (25 à 350) → `{ message, weighIns }` |
-| `GET plats` | `{ today, person, dishes, eaten, batch }` : les plats du batch et les portions restantes de chacun, le bilan du batch du moment (ci-dessous) |
+| `GET plats` | `{ today, person, dishes, eaten, batch, avis }` : les plats du batch et les portions restantes de chacun, le bilan du batch du moment, le vocabulaire du retour de goût (ci-dessous) |
 | `POST plats/manger` | `{ dishId, boxId?, grams?, date?, meal? }` → `{ message, serving, plats }` : « j'ai mangé une portion » |
 | `POST plats/annuler` | `{ servingId }` → `{ message, plats }` : annule une portion mangée |
 | `POST plats/reglage` | `{ dishId, weights?, left? }` → `{ message, plats }` : nouvelle pesée, portions restantes de chacun |
 | `POST plats/base-refaire` | `{ family, rawG?, grams? }` → `{ message, plats }` : « C'est cuit », un nouveau gros récipient d'une base (le riz) |
 | `POST plats/base-pesee` | `{ baseId, grams }` → `{ message, plats }` : nouvelle pesée d'un gros récipient |
 | `POST plats/base-fini` | `{ baseId }` → `{ message, plats }` : le récipient est fini (vide, ou jeté) |
+| `POST plats/avis` | `{ servingId?, dishId?, rating, tags?, note? }` → `{ message, avis, plats }` : le retour de goût après « j'ai mangé » (annoncé par `"gouts"`) |
 | `GET course` | `{ enabled, view? }` : la vue de Santé › Course (`view` absent si le plan n'est pas actif). Les séances de la semaine (`view.week`…) gardent les ids des `plans` de la v2.1 (`/api/sante/import/plans`) : la séance du plan et celle programmée sur la montre ont le même id. |
 | `GET course/sorties?before=&limit=` | `{ runs, more }` : les sorties, de la plus récente à la plus ancienne, avant le jour `before` (exclu), `limit` 20 par défaut (100 au plus) ; chacune avec `sampleId` et `uuid` (l'uuid HealthKit de la séance envoyée par l'app) ; `more` : il en reste |
 | `GET sport` | `{ today, program, workouts, apple, guide, live, partner }` |
@@ -100,6 +101,7 @@ Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combi
              people: [Share], rest?: { grams: [Gram], kcal? }, boxes: [Box], short,
              sessionId?, estimated }],
   eaten: [Serving],
+  avis: { ratings: [{ id, label }], tags: [{ id, label }] },
   batch?: { id, title, cookedOn, dishes, toWeigh, portions, left, estimated,
             items: [{ dishId, recipeId?, slug?, name, open, weigh }] },
   bases: [Base], freeze: [Freeze] }
@@ -127,7 +129,8 @@ Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combi
 { id, dishId, name, slug?, date, meal, at, source, boxId?, grams: [Gram], kcal, protein, entryId }
 ```
 
-  `at` : instant (ISO 8601) ; `meal` : `breakfast`, `lunch`, `dinner`, `snack` ; `entryId` : sa ligne du journal (`GET jour`).
+  `at` : instant (ISO 8601) ; `meal` : `breakfast`, `lunch`, `dinner`, `snack` ; `entryId` : sa ligne du journal (`GET jour`). `avis` (ajouté le 3/11, annoncé par `"gouts"`) : `{ rating, tags }`, le retour de goût déjà donné pour cette portion (absent sinon), pour ne pas le redemander.
+- **`avis`** (ajouté le 3/11) : le vocabulaire du retour de goût, dans l'ordre d'affichage. `ratings` : `love` (« j'adore »), `ok`, `meh` (« bof ») ; `tags` : `sec`, `dense` (« trop dense »), `fade`, `epice` (« trop épicé »), `gras` (« trop gras »), `portion` (« portion trop grosse »), `referais` (« je referais »). L'app affiche les `label` reçus.
 
 ### Bases (ajouté le 3/11)
 
@@ -163,6 +166,14 @@ Freeze: { dishId, name, slug?, ok, portions, people: [{ personId, name, n }], by
 ### `POST plats/annuler`
 
 `{ servingId }` (un des `eaten[].id`) → `{ message, plats }`. La ligne du journal est retirée, les grammes reviennent dans le grand récipient (ou la boîte revient au frigo), les portions se recalculent. 404 si ce n'est pas une portion de cette personne. Retirer la ligne par `POST jour` (`retirer`, `id` = `entryId`) fait la même chose.
+
+### `POST plats/avis`
+
+Annoncé par `"gouts"` dans `features` (ajouté le 3/11). `{ servingId?, dishId?, rating, tags?, note? }` → `{ message, avis: { id, recipeId, rating, tags, note?, at }, plats }` : ce que la personne a pensé du plat, en un geste après `POST plats/manger` (l'`id` de son `serving`).
+
+- `servingId` (une de ses portions, `eaten[].id`) ou, à défaut, `dishId` (un des `dishes[].id`) : la recette notée est celle du plat. Au moins l'un des deux ; 404 si la portion n'est pas à elle ou si le plat est inconnu.
+- `rating` : `love`, `ok` ou `meh` ; `tags` : parmi `avis.tags[].id` ; `note` : 500 caractères au plus. 400 sinon.
+- Un retour par repas, gardé ; c'est le plus récent de chacun qui compte. Le site s'en sert : pastille et tri de la Semaine (un « bof » pas encore ajusté n'est plus proposé d'office), ajustement proposé sur la fiche (variante enregistrée, l'originale reste), contexte de l'assistant et de l'atelier. Code : `src/lib/feedback/`.
 
 ### `POST plats/reglage`
 

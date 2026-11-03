@@ -5,12 +5,13 @@
 // (annulable) ; la ligne ouvre la fiche de la portion. Puis les plats à cuisiner (portions prévues) et
 // ce qu’elle a mangé ces trois derniers jours, chacun annulable.
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui";
 import { BoxGlyph } from "@/components/boxes/BoxGlyph";
 import type { DishView, ServingView } from "@/lib/reserve/store";
 import { gramsLine, limitWords, portions } from "./words";
 import { useEat } from "./useEat";
+import { TasteForm } from "@/components/feedback/TasteForm";
 
 const MEAL = { breakfast: "matin", lunch: "midi", dinner: "soir", snack: "à côté" } as const;
 const dayWord = (date: string, today: string) => {
@@ -22,7 +23,30 @@ const dayWord = (date: string, today: string) => {
 };
 
 export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dishes: DishView[]; eaten: ServingView[]; who: { id: string; name: string }; me: string; today: string; arts: Record<string, ReactNode>; colors: Record<string, string> }) {
-  const { eat, undo, busy, pending, node } = useEat();
+  const { eat, undo, busy, pending, node, say } = useEat();
+  // Juste après « J’ai mangé » (ou « Mon avis » sur une portion mangée) : le retour de goût en un geste.
+  const [asked, setAsked] = useState<{ key: string; servingId: string | null; recipeId: string | null } | null>(null);
+  const ask = (key: string, recipeId: string | null) => (servingId?: string) => setAsked({ key, servingId: servingId ?? null, recipeId });
+  const form = (key: string, slug: string | null) =>
+    asked?.key === key && (asked.recipeId || asked.servingId) ? (
+      <div className="col-span-full grid gap-2 rounded-[8px] border border-line bg-surface-2 p-4">
+        <TasteForm
+          recipeId={asked.recipeId}
+          slug={slug}
+          people={[who]}
+          personId={who.id}
+          servingId={asked.servingId}
+          title={self ? "C’était comment ?" : `C’était comment, pour ${who.name} ?`}
+          onDone={(m) => {
+            setAsked(null);
+            say(m);
+          }}
+        />
+        <Button variant="quiet" size="sm" className="justify-self-start" onClick={() => setAsked(null)} data-action="plus-tard">
+          Plus tard
+        </Button>
+      </div>
+    ) : null;
   const self = who.id === me;
   const cooked = dishes.filter((d) => d.status === "cooked");
   const planned = dishes.filter((d) => d.status === "planned");
@@ -74,7 +98,7 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
                   </p>
                   <div className="col-span-2 col-start-2 flex flex-wrap items-center gap-x-4 gap-y-2">
                     {left > 0 || potLeft ? (
-                      <Button variant={i === firstEat ? "primary" : "secondary"} icon="check" state={busy === d.id ? "loading" : "idle"} loadingLabel="Je note…" disabled={pending && busy !== d.id} onClick={() => eat(d.id, d.id, who.id)} data-action="manger">
+                      <Button variant={i === firstEat ? "primary" : "secondary"} icon="check" state={busy === d.id ? "loading" : "idle"} loadingLabel="Je note…" disabled={pending && busy !== d.id} onClick={() => eat(d.id, d.id, who.id, {}, ask(d.id, d.recipeId))} data-action="manger">
                         {left > 0 ? (self ? "J’ai mangé une portion" : `${who.name} a mangé une portion`) : "En prendre une"}
                       </Button>
                     ) : null}
@@ -85,6 +109,7 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
                     )}
                     {mine && mine.inBoxes > 0 && <span className="text-small text-ink-2">dont {mine.inBoxes} en boîte{mine.inBoxes > 1 ? "s" : ""}</span>}
                   </div>
+                  {form(d.id, d.slug)}
                 </li>
               );
             })}
@@ -135,9 +160,15 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
                     {dayWord(s.date, today)} {MEAL[s.meal]} · {gramsLine(s.grams) || (s.source === "boite" ? "une boîte" : "")} · {s.kcal}&nbsp;kcal
                   </span>
                 </span>
-                <Button variant="quiet" size="sm" disabled={pending} onClick={() => undo(s.id)} data-action="annuler-portion">
-                  Annuler
-                </Button>
+                <span className="flex gap-1">
+                  <Button variant="quiet" size="sm" onClick={() => setAsked(asked?.key === s.id ? null : { key: s.id, servingId: s.id, recipeId: null })} data-action="avis">
+                    Mon avis
+                  </Button>
+                  <Button variant="quiet" size="sm" disabled={pending} onClick={() => undo(s.id)} data-action="annuler-portion">
+                    Annuler
+                  </Button>
+                </span>
+                {form(s.id, s.slug)}
               </li>
             ))}
           </ul>

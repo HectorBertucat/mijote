@@ -55,6 +55,8 @@ export interface SnapRecipe {
   status: string;
   /** Personnes à qui la recette n'est pas servie (goûts). */
   excludedFor: string[];
+  /** Retours de goût en cours, en une ligne (src/lib/feedback) : « Sam bof (sec, trop dense) ». */
+  feedback?: string;
 }
 
 export interface SnapBox {
@@ -406,7 +408,7 @@ export function buildContext(s: Snapshot): string {
       const why = f.issue === "proteines" ? `protéines ${g(f.proteinBest!)} au mieux` : f.issue ? FIT_ISSUE[f.issue] : "";
       return `${p.name} ${kcal(x.kcal)}/${g(x.protein!)} prot.${f.level ? ` (${f.level}${f.level !== "bien" ? ` : ${why}` : ""})` : ""}`;
     });
-    L.push(`- ${r.slug} — ${r.name}${s.week.selected.includes(r.slug) ? " [retenue]" : ""}${r.status === "liked" ? " [aimée]" : ""} : ${parts.join(", ")}`);
+    L.push(`- ${r.slug} — ${r.name}${s.week.selected.includes(r.slug) ? " [retenue]" : ""}${r.status === "liked" ? " [aimée]" : ""} : ${parts.join(", ")}${r.feedback ? ` ; retours : ${r.feedback}` : ""}`);
   }
 
   L.push("", "## Frigo et congélo");
