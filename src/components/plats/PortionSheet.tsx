@@ -12,7 +12,7 @@ import { gramsLabel } from "@/lib/boxes/core";
 import type { DishView } from "@/lib/reserve/store";
 import { adjustAction, closeAction } from "@/app/plats/actions";
 import { moveBoxAction, throwBoxAction } from "@/app/frigo/actions";
-import { limitWords } from "./words";
+import { baseBox, limitWords } from "./words";
 import { useEat } from "./useEat";
 
 const cap = (s: string) => s.charAt(0).toLocaleUpperCase("fr") + s.slice(1);
@@ -37,7 +37,9 @@ export function PortionSheet({ dish, who, me, today, art }: { dish: DishView; wh
   const name = self ? "toi" : (share?.name ?? "");
   const next = share?.next;
   const box = next?.source === "boite" ? dish.boxes.find((b) => b.id === next.boxId) : null;
-  const potLeft = dish.groups.filter((g) => (g.leftG ?? 0) > 0);
+  // Le riz, les haricots d’une base du foyer sont dans leur propre récipient, pas dans celui du plat.
+  const potLeft = dish.groups.filter((g) => !g.base && (g.leftG ?? 0) > 0);
+  const potGroups = dish.groups.filter((g) => !g.base);
   const lim = dish.limit && dish.freshness ? limitWords(dish.limit, dish.freshness, today) : null;
   const several = dish.groups.length > 1;
 
@@ -85,7 +87,14 @@ export function PortionSheet({ dish, who, me, today, art }: { dish: DishView; wh
             <dl className="border-t border-line-strong" data-portion={share.personId}>
               {next.grams.map((g) => (
                 <div key={g.key} className="flex items-baseline justify-between gap-4 border-b border-line py-4">
-                  <dt className="text-h3">{several ? cap(g.label) : "La portion"}</dt>
+                  <dt className="grid gap-0.5">
+                    <span className="text-h3">{several ? cap(g.label) : "La portion"}</span>
+                    {g.base && !box && (
+                      <Link href={`/plats/bases/${g.base}`} className="text-small text-ink-2 underline decoration-line-strong underline-offset-4 hover:text-ink" data-link="base">
+                        dans {baseBox(g.label)}
+                      </Link>
+                    )}
+                  </dt>
                   <dd className="num-tight text-num-xl" data-grams={g.key}>
                     {g.g.toLocaleString("fr-FR")}
                     <span className="ml-1 text-[0.4em] font-semibold text-ink-2">g</span>
@@ -206,7 +215,7 @@ export function PortionSheet({ dish, who, me, today, art }: { dish: DishView; wh
               <div className="grid gap-3">
                 <p className="text-small text-ink-2">Pèse ce qui reste dans le récipient (sans les boîtes) : les portions se recalculent. Laisse vide ce qui n’a pas changé.</p>
                 <div className="grid grid-cols-2 gap-4">
-                  {dish.groups.map((g) => (
+                  {potGroups.map((g) => (
                     <Field key={g.key} label={cap(g.label)}>
                       {(id, d) => <Input id={id} aria-describedby={d} num inputMode="decimal" placeholder={`${g.leftG ?? 0} g`} value={weights[g.key] ?? ""} onChange={(e) => setWeights((x) => ({ ...x, [g.key]: e.target.value }))} data-field={`pesee-${g.key}`} />}
                     </Field>

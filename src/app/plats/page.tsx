@@ -6,6 +6,7 @@
 // le batch du moment : son bilan (/plats/batch/<id>), les plats pas encore pesés (portions estimées).
 import Link from "next/link";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { BaseList, FreezeList } from "@/components/plats/Bases";
 import { DishList } from "@/components/plats/DishList";
 import { portions } from "@/components/plats/words";
 import { buttonClass, Icon, Pill } from "@/components/ui";
@@ -14,6 +15,7 @@ import { db } from "@/lib/db/client";
 import { activeProfileId } from "@/lib/health/active";
 import { listPeople, todayParis } from "@/lib/health/store";
 import { listDishRecipes } from "@/lib/recipes/queries";
+import { freezeList, listBases } from "@/lib/reserve/bases-store";
 import { currentBatch, listDishes, recentServings } from "@/lib/reserve/store";
 import { recipeColor } from "@/lib/ui";
 
@@ -37,6 +39,8 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
   const withLeft = cooked.filter((d) => (mine(d)?.left ?? 0) > 0).length;
   const self = who?.id === me;
   const batch = currentBatch(db, now);
+  const bases = listBases(db, dishes, now);
+  const freeze = freezeList(db, dishes, now);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 md:gap-18 lg:grid-cols-12 lg:gap-x-6">
@@ -79,6 +83,7 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
             <Icon name="chev" className="shrink-0 text-faint" />
           </Link>
         )}
+        <FreezeList dishes={freeze} bases={bases} today={today} />
       </header>
       <div className="grid gap-12 md:gap-18 lg:col-span-8">
         {who && <DishList dishes={dishes} eaten={eaten} who={{ id: who.id, name: who.name }} me={me} today={today} arts={arts} colors={colors} />}
@@ -92,6 +97,11 @@ export default async function Plats({ searchParams }: { searchParams: Promise<{ 
           </section>
         )}
       </div>
+      {bases.length > 0 && (
+        <aside className="grid content-start gap-12 lg:col-span-4 lg:border-l lg:border-line lg:pl-8">
+          <BaseList bases={bases} today={today} />
+        </aside>
+      )}
     </div>
   );
 }

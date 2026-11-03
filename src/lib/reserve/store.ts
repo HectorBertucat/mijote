@@ -19,6 +19,11 @@ import { addDays, mondayOf } from "@/lib/week/propose";
 import { periodPlans } from "@/lib/week/store";
 import { leftInPot, macrosOf, reserveState, reweigh, servingLabel, splitGroups, weighedGroups, type BoxIn, type CalcModel, type Grams, type ReserveGroup, type ServingIn, type ShareState, type Target } from "./core";
 import { serveGroups, type ServeDecl } from "./groups";
+import { basesToFill, separableBases } from "./bases";
+import { loadKitchen } from "@/lib/kitchen/store";
+import { syncBases } from "./bases-store";
+import { swapRows, type Swap } from "@/lib/feedback/swap";
+import { sessionSwaps } from "@/lib/feedback/swaps-db";
 import { batchSummary, batchTitle, ESTIMATE_WINDOW_DAYS, estimatedReserve, toEstimate, weighState, type BatchSummary, type WeighState } from "./batch";
 
 type ReserveRow = typeof reserves.$inferSelect;
@@ -41,21 +46,23 @@ export function targetsOf(db: Db, macros: { kcalUnit: number | null; proteinUnit
 }
 
 /** La marmite d'une recette, prête à peser : groupes et macros (× multiplicateur), foyer, repas prévus. */
-export function calcModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean } = {}, now = new Date()): CalcModel | null {
+export function calcModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean; swaps?: Swap[] } = {}, now = new Date()): CalcModel | null {
   const r = db.select().from(recipes).where(eq(recipes.slug, slug)).get();
   if (!r) return null;
   const scale = opts.scale ?? 1;
   const cookedOn = opts.cookedOn ?? todayParis(now);
   const planner = loadPlannerRecipes(db, [slug], { [slug]: scale })[0];
   const groups = serveGroups(planner, r.serveJson as ServeDecl[] | null);
-  const ings = db.select().from(recipeIngredients).where(eq(recipeIngredients.recipeId, r.id)).orderBy(asc(recipeIngredients.position)).all();
+  const bases = separableBases(planner, groups, r.serveJson as ServeDecl[] | null);
+  // Un ingrédient remplacé en cuisinant (src/lib/feedback/swap.ts) : la nutrition suit l'aliment mis.
+  const ings = swapRows(db.select().from(recipeIngredients).where(eq(recipeIngredients.recipeId, r.id)).orderBy(asc(recipeIngredients.position)).all(), opts.swaps ?? []);
   const nut = (idx: number[]) => computeNutrition(idx.map((n) => ings[n]).map((i) => ({ item: i.item, food: i.foodId, grams: i.grams, units: i.units, yield: i.yield })), 1);
   // Comme la fiche : sans 80 % des ingrédients connus, pas de kcal pour le partage.
   const known = nut(ings.map((i, n) => (i.optional ? -1 : n)).filter((n) => n >= 0)).coverage >= 0.8;
   const cookedUnits = r.servingsUnits * scale;
   const modelGroups = groups.map((g) => {
     const t = nut(g.items).total;
-    return { key: g.key, label: g.label, kind: g.kind, kcal: known ? t.kcal * scale : null, protein: known ? t.protein * scale : null, estG: g.estG };
+    return { key: g.key, label: g.label, kind: g.kind, kcal: known ? t.kcal * scale : null, protein: known ? t.protein * scale : null, estG: g.estG, ...(bases[g.key] ? { base: bases[g.key] } : {}) };
   });
   const kcal = known ? modelGroups.reduce((s, g) => s + g.kcal!, 0) : null;
   const protein = known ? modelGroups.reduce((s, g) => s + g.protein!, 0) : null;
@@ -123,7 +130,7 @@ export interface SavedReserve {
 }
 
 /** Fin de session : les marmites à peser, et les réserves déjà rangées. */
-export function sessionReserves(db: Db, sessionId: string, now = new Date()): { models: CalcModel[]; saved: Record<string, SavedReserve> } | null {
+export function sessionReserves(db: Db, sessionId: string, now = new Date()): { models: CalcModel[]; saved: Record<string, SavedReserve>; bases: ReturnType<typeof basesToFill> } | null {
   ensureEstimates(db, now);
   const s = db.select().from(cookSessions).where(eq(cookSessions.id, sessionId)).get();
   if (!s?.planJson) return null;
@@ -151,7 +158,12 @@ export function sessionReserves(db: Db, sessionId: string, now = new Date()): { 
       people: state.shares.map((x) => ({ id: x.personId, name: x.name, total: x.total, eaten: x.eaten, left: x.left })),
     };
   }
-  return { models, saved };
+  // Le riz, les haricots de toutes les marmites : combien de gros récipients remplir.
+  const bases = basesToFill(
+    models.flatMap((m) => m.groups.map((g) => ({ base: g.base, g: saved[m.recipeId]?.groups.find((x) => x.key === g.key)?.g ?? g.estG }))),
+    loadKitchen(db).containers.baseBoxes
+  );
+  return { models, saved, bases };
 }
 
 const checkGrams = (w: Record<string, number | null | undefined>, max: number) => {
@@ -177,7 +189,7 @@ export function saveReserve(db: Db, sessionId: string, recipeId: string, input: 
   checkCounts(input.counts);
   checkCounts(input.freezer ?? {});
   const cookedOn = cookedOnOf(s);
-  const model = calcModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true }, now)!;
+  const model = calcModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true, swaps: sessionSwaps(db, sessionId, recipeId) }, now)!;
   const at = now.toISOString();
   const ids = new Set(model.people.map((p) => p.id));
   // `counts` : les portions restantes de chacun ; le total y ajoute celles déjà mangées.
@@ -192,11 +204,13 @@ export function saveReserve(db: Db, sessionId: string, recipeId: string, input: 
     let groups = weighedGroups(model, input.weights, at);
     if (existing && eaten.length) {
       const left = leftInPot(existing.groups, eaten.map(servingIn), []);
-      groups = existing.groups.map((g) => (input.weights[g.key] != null && input.weights[g.key]! > 0 ? reweigh(g, left[g.key] ?? 0, input.weights[g.key]!, at) : g));
+      groups = existing.groups.map((g) => (!g.base && input.weights[g.key] != null && input.weights[g.key]! > 0 ? reweigh(g, left[g.key] ?? 0, input.weights[g.key]!, at) : g));
     }
     const fields = { name: r.name, cookedOn, fridgeDays: model.fridgeDays, freezerOk: model.freezerOk, cookedUnits: model.cookedUnits, kcalUnit: model.kcalUnit, proteinUnit: model.proteinUnit, groups, counts, status: "open" as const, closedAt: null, updatedAt: at };
     if (existing) t.update(reserves).set(fields).where(eq(reserves.id, reserveId)).run();
     else t.insert(reserves).values({ id: reserveId, sessionId, recipeId, ...fields }).run();
+    // Le riz, les haricots servis à part : dans le récipient de la base, pour tous les plats.
+    syncBases(t, { id: reserveId, sessionId, cookedOn }, groups, at);
     // Les boîtes du congélo : refaites (celles déjà mangées restent).
     t.delete(mealBoxes).where(and(eq(mealBoxes.reserveId, reserveId), eq(mealBoxes.status, "stock"))).run();
     // Une portion de chacun, sur la marmite entière (les portions restantes de chacun : total − mangées).
@@ -279,6 +293,8 @@ export interface GramLine {
   key: string;
   label: string;
   g: number;
+  /** Une base du foyer : à se servir dans son récipient (« riz »). */
+  base?: string;
 }
 
 export interface DishBoxView {
@@ -313,7 +329,8 @@ export interface DishView {
   cookedOn: string | null;
   limit: string | null;
   freshness: "ok" | "soon" | "past" | null;
-  groups: { key: string; label: string; kind: ReserveGroup["kind"]; leftG: number | null; estimated: boolean }[];
+  /** `base` : une base du foyer, dans son récipient ; `leftG` est alors ce qui revient au plat. */
+  groups: { key: string; label: string; kind: ReserveGroup["kind"]; leftG: number | null; estimated: boolean; base?: string }[];
   people: ShareView[];
   rest: { grams: GramLine[]; kcal: number | null } | null;
   boxes: DishBoxView[];
@@ -342,7 +359,7 @@ export interface ServingView {
   entryId: string | null;
 }
 
-const lines = (groups: Pick<ReserveGroup, "key" | "label">[], grams: Grams): GramLine[] => groups.filter((g) => (grams[g.key] ?? 0) > 0).map((g) => ({ key: g.key, label: g.label, g: Math.round(grams[g.key]) }));
+const lines = (groups: Pick<ReserveGroup, "key" | "label" | "base">[], grams: Grams): GramLine[] => groups.filter((g) => (grams[g.key] ?? 0) > 0).map((g) => ({ key: g.key, label: g.label, g: Math.round(grams[g.key]), ...(g.base ? { base: g.base } : {}) }));
 
 function shareView(groups: ReserveGroup[], s: ShareState): ShareView {
   return {
@@ -370,7 +387,7 @@ function stateOf(db: Db, row: ReserveRow, parts: ReturnType<typeof loadParts>, n
 function dishView(db: Db, row: ReserveRow, parts: ReturnType<typeof loadParts>, me: string | null, today: string, now: Date): DishView & { empty: boolean } {
   const { bx, state } = stateOf(db, row, parts, now);
   const slug = row.recipeId ? (db.select({ slug: recipes.slug }).from(recipes).where(eq(recipes.id, row.recipeId)).get()?.slug ?? null) : null;
-  const anyLeft = Object.values(state.left).some((g) => g > 0);
+  const anyLeft = row.groups.some((g) => !g.base && (state.left[g.key] ?? 0) > 0);
   const limit = anyLeft ? limitOf({ place: "fridge", cookedOn: row.cookedOn, fridgeDays: row.fridgeDays, frozenOn: null, thawedOn: null }) : null;
   const shares = [...state.shares].sort((a, b) => Number(b.personId === me) - Number(a.personId === me));
   return {
@@ -382,7 +399,7 @@ function dishView(db: Db, row: ReserveRow, parts: ReturnType<typeof loadParts>, 
     cookedOn: row.cookedOn,
     limit,
     freshness: limit ? freshness(limit, today) : null,
-    groups: row.groups.map((g) => ({ key: g.key, label: g.label, kind: g.kind, leftG: Math.round(state.left[g.key] ?? 0), estimated: !!g.estimated })),
+    groups: row.groups.map((g) => ({ key: g.key, label: g.label, kind: g.kind, leftG: Math.round(state.left[g.key] ?? 0), estimated: !!g.estimated, ...(g.base ? { base: g.base } : {}) })),
     people: shares.map((s) => shareView(row.groups, s)),
     rest: state.rest ? { grams: lines(row.groups, state.rest.grams), kcal: state.rest.kcal } : null,
     boxes: bx
@@ -391,7 +408,7 @@ function dishView(db: Db, row: ReserveRow, parts: ReturnType<typeof loadParts>, 
       .map((b) => ({ id: b.id, personId: b.personId, place: b.place, thawed: b.thawed, limit: b.limit, freshness: freshness(b.limit, today), grams: lines(row.groups, b.grams), ...macrosOf(row.groups, b.grams) })),
     short: state.fill < 0.97,
     sessionId: row.sessionId,
-    estimated: row.groups.some((g) => g.estimated),
+    estimated: row.groups.some((g) => g.estimated && !g.base),
     empty: state.empty,
   };
 }
@@ -573,9 +590,10 @@ export function adjustReserve(db: Db, reserveId: string, input: { weights?: Reco
     const parts = loadParts(t, [row.id]);
     const { state } = stateOf(t, row, parts, now);
     const at = now.toISOString();
+    // Une base se pèse dans son récipient (bases-store.ts, weighBase), pas ici.
     const groups = row.groups.map((g) => {
       const w = input.weights?.[g.key];
-      return w != null ? reweigh(g, state.left[g.key] ?? 0, w, at) : g;
+      return w != null && !g.base ? reweigh(g, state.left[g.key] ?? 0, w, at) : g;
     });
     const counts = { ...row.counts };
     for (const [id, n] of Object.entries(input.left ?? {})) {
@@ -682,12 +700,14 @@ export function ensureEstimates(db: Db, now = new Date()): number {
       const r = t.select().from(recipes).where(eq(recipes.id, recipeId)).get();
       const inPlan = r && planOf(s).find((x) => x.slug === r.slug);
       if (!r || !inPlan) continue;
-      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true }, now);
+      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true, swaps: sessionSwaps(t, sessionId, recipeId) }, now);
       if (!model) continue;
       const { groups, counts } = estimatedReserve(model, at);
+      const id = randomUUID();
       t.insert(reserves)
-        .values({ id: randomUUID(), sessionId, recipeId, name: r.name, cookedOn: model.cookedOn, fridgeDays: model.fridgeDays, freezerOk: model.freezerOk, cookedUnits: model.cookedUnits, kcalUnit: model.kcalUnit, proteinUnit: model.proteinUnit, groups, counts, createdAt: at, updatedAt: at })
+        .values({ id, sessionId, recipeId, name: r.name, cookedOn: model.cookedOn, fridgeDays: model.fridgeDays, freezerOk: model.freezerOk, cookedUnits: model.cookedUnits, kcalUnit: model.kcalUnit, proteinUnit: model.proteinUnit, groups, counts, createdAt: at, updatedAt: at })
         .run();
+      syncBases(t, { id, sessionId, cookedOn: model.cookedOn }, groups, at);
     }
   });
   return todo.length;
@@ -701,8 +721,10 @@ export interface BatchDish {
   name: string;
   open: boolean;
   weigh: WeighState;
-  groups: { key: string; label: string; kind: ReserveGroup["kind"]; g: number; leftG: number; estimated: boolean }[];
+  groups: { key: string; label: string; kind: ReserveGroup["kind"]; g: number; leftG: number; estimated: boolean; base?: string }[];
   people: { personId: string; name: string; total: number; eaten: number; left: number }[];
+  freezerOk: boolean;
+  limit: string;
 }
 
 export interface BatchView {
@@ -728,8 +750,10 @@ function batchOf(db: Db, sessionId: string, rows: ReserveRow[], now: Date): Batc
       name: row.name,
       open: row.status === "open",
       weigh: weighState(row.groups),
-      groups: row.groups.map((g) => ({ key: g.key, label: g.label, kind: g.kind, g: Math.round(g.g), leftG: Math.round(state.left[g.key] ?? 0), estimated: !!g.estimated })),
+      groups: row.groups.map((g) => ({ key: g.key, label: g.label, kind: g.kind, g: Math.round(g.g), leftG: Math.round(state.left[g.key] ?? 0), estimated: !!g.estimated, ...(g.base ? { base: g.base } : {}) })),
       people: state.shares.map((x) => ({ personId: x.personId, name: x.name, total: x.total, eaten: x.eaten, left: x.left })),
+      freezerOk: row.freezerOk,
+      limit: limitOf({ place: "fridge", cookedOn: row.cookedOn, fridgeDays: row.fridgeDays, frozenOn: null, thawedOn: null }),
     };
   });
   const cookedOn = rows.map((r) => r.cookedOn).sort()[0];

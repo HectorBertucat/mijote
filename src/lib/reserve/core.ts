@@ -17,6 +17,7 @@
 //   plat perd de l'eau, ou la tare était fausse) ;
 // - sans kcal connues : la proportion simple, selon la part de base de chacun.
 import { fillUp, GRAM_STEP, KCAL_OVER_MAX, MARGIN_MIN_SHARE, sideRatio, type SplitMode } from "@/lib/boxes/core";
+import { baseShares, linkBases } from "./bases";
 import type { GroupKind } from "./groups";
 
 /** Un groupe de la réserve, avec sa dernière pesée. */
@@ -33,6 +34,12 @@ export interface ReserveGroup {
   proteinG: number | null;
   /** Pas pesé : estimé d'après les grammes crus. */
   estimated?: boolean;
+  /** Une base du foyer (bases.ts : « riz ») : elle est dans son récipient, pas dans la marmite. */
+  base?: string;
+  /** Grammes de base par gramme de plat (la proportion de la marmite) : ce qui revient au plat. */
+  ratio?: number;
+  /** Grammes de base par kcal de plat : une nouvelle pesée du plat (il perd de l'eau) ne change pas la part de base. */
+  perKcal?: number;
 }
 
 /** Ce qui sert à viser la portion d'une personne. */
@@ -258,7 +265,8 @@ export function leftInPot(groups: Pick<ReserveGroup, "key" | "g" | "at">[], serv
 
 /** L'état d'une réserve : ce qui reste, et pour chacun ses portions et la prochaine à se servir. */
 export function reserveState(groups: ReserveGroup[], counts: Record<string, number>, people: Target[], servings: ServingIn[], boxes: BoxIn[]): ReserveState {
-  const left = leftInPot(groups, servings, boxes);
+  // Une base est dans son récipient : au plat revient sa proportion de ce qui reste du plat.
+  const left = baseShares(groups, leftInPot(groups, servings, boxes));
   const stock = boxes.filter((b) => b.status === "stock");
   const ids = [...new Set([...people.map((p) => p.id), ...Object.keys(counts)])];
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -269,7 +277,7 @@ export function reserveState(groups: ReserveGroup[], counts: Record<string, numb
     const inBoxes = Math.min(left, stock.filter((b) => b.personId === id).length);
     return { id, total, eaten, left, inBoxes, loose: left - inBoxes };
   });
-  const anyLeft = groups.some((g) => (left[g.key] ?? 0) > 0);
+  const anyLeft = groups.some((g) => !g.base && (left[g.key] ?? 0) > 0);
   const looseCounts = Object.fromEntries(rows.map((r) => [r.id, r.loose]));
   const split = splitGroups(groups, left, people.filter((p) => looseCounts[p.id] > 0), looseCounts);
   const boxOrder = (a: BoxIn, b: BoxIn) => (a.place === b.place ? 0 : a.place === "fridge" ? -1 : 1) || a.limit.localeCompare(b.limit);
@@ -283,7 +291,7 @@ export function reserveState(groups: ReserveGroup[], counts: Record<string, numb
       const next: ShareState["next"] = r.left <= 0 ? null : portion ? { source: "recipient", grams: portion.grams, kcal: portion.kcal, protein: portion.protein } : box ? { source: "boite", boxId: box.id, grams: box.grams, ...macrosOf(groups, box.grams) } : null;
       return { personId: r.id, name: byId.get(r.id)!.name, total: r.total, eaten: r.eaten, left: r.left, inBoxes: r.inBoxes, loose: r.loose, portion, next };
     });
-  const empty = !groups.some((g) => (left[g.key] ?? 0) > CRUMBS_G) && !stock.length && shares.every((s) => s.left <= 0);
+  const empty = !groups.some((g) => !g.base && (left[g.key] ?? 0) > CRUMBS_G) && !stock.length && shares.every((s) => s.left <= 0);
   return { left, shares, rest: split.rest, fill: split.fill, empty };
 }
 
@@ -316,14 +324,14 @@ export interface CalcModel {
   fridgeDays: number;
   freezerOk: boolean;
   cookedOn: string;
-  groups: { key: string; label: string; kind: GroupKind; kcal: number | null; protein: number | null; estG: number }[];
+  groups: { key: string; label: string; kind: GroupKind; kcal: number | null; protein: number | null; estG: number; /** Une base du foyer : elle va dans son récipient (bases.ts). */ base?: string }[];
   /** `planned` : repas prévus par la Semaine ; `late` : dont au-delà des jours de frigo. */
   people: (Target & { planned: number; late: number })[];
 }
 
 /** Les groupes pesés (ou estimés, sans poids) à l'instant `at`. */
 export function weighedGroups(m: CalcModel, weights: Record<string, number | null | undefined>, at: string): ReserveGroup[] {
-  return m.groups.map((g) => {
+  const groups = m.groups.map((g) => {
     const w = weights[g.key];
     const weighed = w != null && Number.isFinite(w) && w > 0;
     const grams = weighed ? w : g.estG;
@@ -338,6 +346,7 @@ export function weighedGroups(m: CalcModel, weights: Record<string, number | nul
       ...(weighed ? {} : { estimated: true }),
     };
   });
+  return linkBases(groups, Object.fromEntries(m.groups.filter((g) => g.base).map((g) => [g.key, g.base!])));
 }
 
 /** Portions de chacun par défaut : les repas prévus, puis la marge (initialCounts), en kcal si connues. */

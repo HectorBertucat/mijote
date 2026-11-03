@@ -11,6 +11,7 @@ import type { RecipeInput } from "@/lib/recipes/format";
 import { equipmentIds, loadLibrary, loadRecipeInput, mainIngredients, promptContext } from "./library";
 import { mockAdjust, mockCreate } from "./mock";
 import { adjustOptions } from "./options";
+import { recipeTasteLine } from "@/lib/feedback/read";
 import { adjustPrompt, creationPrompt, systemPrompt, type CreationRequest } from "./prompt";
 import { AdjustOutput, AtelierOutput, fillPhases, normalizeRecipe } from "./schema";
 import { carryYield, diffIngredients, findDuplicate, verifyRecipe, type Resolver, type Verification } from "./verify";
@@ -64,7 +65,7 @@ export async function proposeAdjustment(
   const original = loadRecipeInput(db, slug);
   if (!original) throw new Error("Recette inconnue.");
   const household = householdMembers(db, deps.leadId);
-  const option = input.optionId ? adjustOptions(original, household).find((o) => o.id === input.optionId) : null;
+  const option = input.optionId ? adjustOptions(original, household, recipeTasteLine(db, slug)).find((o) => o.id === input.optionId) : null;
   const free = input.text?.trim().slice(0, 600) ?? "";
   if (!option && !free) throw new Error("Choisis une option ou écris ta demande.");
   const base = input.refine && deps.base ? deps.base : null;

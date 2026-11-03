@@ -22,6 +22,7 @@ const num = (v: string) => {
 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n > 1 ? many : one}`;
 const cap = (s: string) => s.charAt(0).toLocaleUpperCase("fr") + s.slice(1);
+const joinLabels = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} et ${xs.at(-1)}` : (xs[0] ?? ""));
 /** « Riz cuit », « Haricots verts cuits », « Plat cuit », « Sauce au skyr ». */
 const cookedLabel = (label: string, kind: string) => (kind === "other" && label.startsWith("sauce") ? cap(label) : `${cap(label)} ${/s$|x$/.test(label.split(" ")[0]) ? "cuits" : /^(semoule|polenta|purée)/.test(label) ? "cuite" : "cuit"}`);
 
@@ -84,6 +85,11 @@ export function ReserveCalc({ model, color, session, saved, head = true, kitchen
         </div>
         {shared && <p className="text-small text-ink-2">{shared.note}{(w[shared.key] ?? "").trim() !== "" ? " · pesé à part ici" : ""}</p>}
         <p className="text-small text-ink-2">Pèse chaque récipient plein, retire le poids du récipient vide.</p>
+        {model.groups.some((g) => g.base) && (
+          <p className="text-small text-ink-2">
+            {cap(joinLabels(model.groups.filter((g) => g.base).map((g) => g.label)))} {model.groups.filter((g) => g.base).length > 1 ? "vont dans leurs gros récipients" : "va dans son gros récipient"}, pour tous les plats : chacun s’y sert à chaque repas.
+          </p>
+        )}
       </div>
 
       {/* Les portions de chacun : combien, et les grammes de chaque groupe d’une portion. */}
@@ -181,7 +187,8 @@ function Reopened({ model, saved, title, kitchen }: { model: CalcModel; saved: S
   const [w, setW] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const groups = saved.groups.filter((g) => (saved.leftG[g.key] ?? 0) > 0);
+  // Une base (le riz du récipient commun) se pèse sur sa fiche, pas ici.
+  const groups = saved.groups.filter((g) => !g.base && (saved.leftG[g.key] ?? 0) > 0);
   const weights = Object.fromEntries(groups.map((g) => [g.key, num(w[g.key] ?? "")]).filter(([, v]) => v != null));
   const several = saved.groups.length > 1;
   const weigh = async () => {

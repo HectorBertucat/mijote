@@ -15,6 +15,7 @@ import { authToken } from "@/lib/auth";
 import { buildShoppingList } from "@/lib/shopping/build";
 import { addEvent, createSession } from "@/lib/session/store";
 import { saveReserve } from "@/lib/reserve/store";
+import { saveFeedback } from "@/lib/feedback/store";
 import { cookEvents, cookSessions, recipes, reserves, shoppingLists } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
@@ -153,6 +154,15 @@ async function main() {
     await page("/plats", undefined, /Butter chicken[\s\S]*J’ai mangé une portion/);
     const reserveId = db.select({ id: reserves.id }).from(reserves).all().at(-1)!.id;
     await page(`/plats/${reserveId}`, undefined, /La portion de/);
+    // Le riz du butter chicken, servi à part : une base du foyer, dans son gros récipient, et sa fiche « Refaire ».
+    await page("/plats", undefined, /Les bases[\s\S]*riz/i);
+    await page("/plats/bases/riz", undefined, /C’est cuit et rangé|C'est cuit et rangé/);
+    check(/Erreur 404/.test(await (await get("/plats/bases/inconnue")).text()), "base inconnue → page introuvable");
+    // Retour de goût : visible sur la fiche (avec l'ajustement proposé) et sur la Semaine.
+    saveFeedback(db, { recipeId: bc.id, personId: tom, rating: "meh", tags: ["sec"] });
+    await page("/recettes/butter-chicken-express", undefined, /Tom : bof · sec[\s\S]*Ajuster d’après les retours[\s\S]*Enregistrer la variante/);
+    await page("/semaine", undefined, /Tom : bof \(sec\)/);
+    await page("/recettes/poulet-paprika-fume-pommes-de-terre", undefined, /Variante de[\s\S]*sauce au skyr/);
     await page("/", undefined, /Que manger/);
     await page(`/session/${done}`, undefined);
     await page(`/plats/batch/${done}`, undefined, /Le batch du[\s\S]*pesé[\s\S]*Les pesées/);

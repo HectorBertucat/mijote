@@ -28,6 +28,11 @@ import { storeLabel } from "@/lib/settings";
 import { DrivePanel } from "@/components/cart/DrivePanel";
 import { cartPayload, orderSummary } from "@/lib/shopping/drive";
 import { firstOfMonth } from "@/lib/typo";
+import { gramsLabel } from "@/lib/boxes/core";
+import { loadKitchen } from "@/lib/kitchen/store";
+import { basesOfRecipes } from "@/lib/reserve/bases";
+import type { ServeDecl } from "@/lib/reserve/groups";
+import { loadPlannerRecipes } from "@/lib/session/store";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +87,9 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
   const recipeNames = new Map(recipeRows.map((r) => [r.id, r.name]));
   const week = list.weekPlanId ? db.select({ weekStart: weekPlans.weekStart, days: weekPlans.days }).from(weekPlans).where(eq(weekPlans.id, list.weekPlanId)).get() : null;
   const scaledRecipes = recipeRows.filter((r) => list.recipeSlugs.includes(r.slug) && (list.recipeScales[r.slug] ?? 1) !== 1);
+  // Les bases servies à part (le riz, les haricots verts) : cuites en grande quantité pour la période, dans les gros récipients.
+  const decls = new Map(list.recipeSlugs.length ? db.select({ slug: recipes.slug, serve: recipes.serveJson }).from(recipes).where(inArray(recipes.slug, list.recipeSlugs)).all().map((r) => [r.slug, r.serve as ServeDecl[] | null]) : []);
+  const bases = list.recipeSlugs.length ? basesOfRecipes(loadPlannerRecipes(db, list.recipeSlugs, list.recipeScales).map((r) => ({ recipe: r, decl: decls.get(r.slug) })), loadKitchen(db).containers.baseBoxes) : [];
 
   const buy = items.filter((i) => !i.pantry);
   const total = buy.reduce((s, i) => s + (i.totalPrice ?? 0), 0);
@@ -198,6 +206,12 @@ export default async function Liste({ params }: { params: Promise<{ id: string }
               </Link>
             )}
             {Object.keys(list.recipeExtras).length > 0 && <span>{week && " · "}{Object.keys(list.recipeExtras).length === 1 ? "1 paquet fini" : `${Object.keys(list.recipeExtras).length} paquets finis`} (grammes ajoutés)</span>}
+          </p>
+        )}
+        {bases.length > 0 && (
+          <p className="num text-small text-ink-2" data-bases-periode>
+            Les bases, cuites en une fois pour la période :{" "}
+            {bases.map((b) => `${b.label} ${gramsLabel(b.rawG)} cru → ≈ ${gramsLabel(b.cookedG)}${b.boxes ? ` (${b.boxes > 1 ? `${b.boxes} gros récipients` : "un gros récipient"})` : ""}`).join(" · ")}.
           </p>
         )}
       </PageHead>

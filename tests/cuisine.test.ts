@@ -182,7 +182,7 @@ test("bols et boîtes : inventaire par défaut, bornes, ancien réglage, lignes 
   assert.equal(k.equipment.find((e) => e.id === "plaque-four")?.kind, "dish");
   assert.ok(k.fits.some((f) => f.equipmentId === "plaque-four" && f.hobId === "oven"));
   assert.ok(!kitchenEquipment({ ...D, oven: false }).equipment.some((e) => e.id === "plaque-four"));
-  assert.equal(containersLine(D.containers), "9 bols (4 petits, 3 moyens, 2 grands) · 4 boîtes de prep · 10 boîtes de conservation (1 L) · 1 plaque du four");
+  assert.equal(containersLine(D.containers), "9 bols (4 petits, 3 moyens, 2 grands) · 4 boîtes de prep · 10 boîtes de conservation (1 L) · 2 gros récipients pour les bases (2 L) · 1 plaque du four");
   assert.equal(kitchenSummary(D).find((r) => r.label === "Bols et boîtes")!.text, containersLine(D.containers));
 });
 

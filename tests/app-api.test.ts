@@ -221,7 +221,7 @@ test("api app : les plats, manger une portion, annuler, réajuster", async () =>
   db.insert(cookSessions).values({ id: "S", planJson: { version: 1, recipes: [{ slug: "poulet-teriyaki-riz", name: "Teriyaki", color: "x", scale: 1 }] }, status: "done", endedAt: "2026-10-18T17:00:00Z" }).run();
   saveReserve(db, "S", recipeId, { weights: { plat: 1500, riz: 1100, "haricots-verts": 600 }, counts: { alex: 4, sam: 3 } }, new Date("2026-10-18T17:30:00Z"));
   const now = Date.parse("2026-10-20T10:30:00Z");
-  type Dish = { id: string; status: string; groups: { key: string; leftG: number }[]; people: { personId: string; me: boolean; total: number; left: number; portion?: { grams: { key: string; g: number }[] }; next?: { source: string } }[] };
+  type Dish = { id: string; status: string; groups: { key: string; leftG: number; base?: string }[]; people: { personId: string; me: boolean; total: number; left: number; portion?: { grams: { key: string; g: number }[] }; next?: { source: string } }[] };
   type Plats = { dishes: Dish[]; eaten: { id: string; entryId: string; kcal: number }[]; person: { id: string } };
   const moi = call(alex, "GET", "moi").body as { features: string[] };
   assert.ok(moi.features.includes("plats"));
@@ -256,11 +256,29 @@ test("api app : les plats, manger une portion, annuler, réajuster", async () =>
   const u = call(alex, "POST", "plats/annuler", { servingId: body.serving.id }, now);
   assert.equal(u.status, 200);
   assert.equal((u.body as unknown as { plats: Plats }).plats.dishes[0].people[0].left, 3);
-  // Réglage : nouvelle pesée et une portion de plus pour Sam.
-  const g = call(alex, "POST", "plats/reglage", { dishId: dish.id, weights: { riz: 500 }, left: { sam: 3 } }, now);
+  // Réglage : nouvelle pesée et une portion de plus pour Sam ; le riz, une base, se pèse dans son récipient.
+  const g = call(alex, "POST", "plats/reglage", { dishId: dish.id, weights: { plat: 500, riz: 900 }, left: { sam: 3 } }, now);
   assert.equal(g.status, 200, JSON.stringify(g.body));
   const after = (g.body as unknown as { plats: Plats }).plats.dishes[0];
-  assert.equal(after.groups.find((x) => x.key === "riz")!.leftG, 500);
+  assert.equal(after.groups.find((x) => x.key === "plat")!.leftG, 500);
+  assert.equal(after.groups.find((x) => x.key === "riz")!.base, "riz");
   assert.equal(after.people.find((x) => x.personId === "sam")!.left, 3);
   assert.equal(call(alex, "POST", "plats/reglage", { dishId: dish.id, left: { sam: 99 } }, now).status, 400);
+  // Les bases : le riz du plat dans son récipient ; une portion dit d'où vient son riz.
+  type Base = { family: string; leftG: number; low: boolean; containers: { id: string; leftG: number }[]; remake: { rawG: number; steps: string[] } };
+  const pl = (g.body as unknown as { plats: { bases: Base[]; freeze: unknown[] } }).plats;
+  assert.ok(moi.features.includes("bases"));
+  const riz = pl.bases.find((x) => x.family === "riz")!;
+  assert.ok(riz.leftG > 0 && riz.remake.rawG > 0 && riz.remake.steps.length === 3);
+  assert.ok(Array.isArray(pl.freeze));
+  const w = call(alex, "POST", "plats/base-pesee", { baseId: riz.containers[0].id, grams: 100 }, now);
+  assert.equal(w.status, 200, JSON.stringify(w.body));
+  const riz2 = (w.body as unknown as { plats: { bases: Base[] } }).plats.bases.find((x) => x.family === "riz")!;
+  assert.deepEqual([riz2.leftG, riz2.low], [100, true]);
+  const re = call(alex, "POST", "plats/base-refaire", { family: "riz", rawG: 500 }, now);
+  assert.equal(re.status, 200, JSON.stringify(re.body));
+  assert.equal((re.body as unknown as { plats: { bases: Base[] } }).plats.bases.find((x) => x.family === "riz")!.leftG, 1350);
+  assert.equal(call(alex, "POST", "plats/base-fini", { baseId: riz.containers[0].id }, now).status, 200);
+  assert.equal(call(alex, "POST", "plats/base-fini", { baseId: "inconnu" }, now).status, 404);
+  assert.equal(call(alex, "POST", "plats/base-refaire", { family: "caviar", rawG: 10 }, now).status, 404);
 });

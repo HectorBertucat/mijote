@@ -191,7 +191,7 @@ test("attention : un plan d'avant (sans attention) garde la lecture du texte", (
 
 test("contenants : ce qui manque se dit avant de commencer, une seule fois", () => {
   // Un seul bol moyen dans la cuisine.
-  const few: KitchenConfig = { ...KITCHEN, containers: { bowls: { petit: { count: 0, liters: 0.5 }, moyen: { count: 1, liters: 1.5 }, grand: { count: 0, liters: 3 } }, prepBoxes: { count: 0, liters: 1 }, storageBoxes: { count: 6, liters: 1 }, ovenTrays: 1 } };
+  const few: KitchenConfig = { ...KITCHEN, containers: { bowls: { petit: { count: 0, liters: 0.5 }, moyen: { count: 1, liters: 1.5 }, grand: { count: 0, liters: 3 } }, prepBoxes: { count: 0, liters: 1 }, storageBoxes: { count: 6, liters: 1 }, baseBoxes: { count: 0, liters: 2 }, ovenTrays: 1 } };
   const plan = planOf("solo", few);
   const note = containerNote(plan)!;
   assert.ok(note.moment.some((m) => m.names.includes("pulpe de tomate")), "la pulpe se pèse au moment");

@@ -41,6 +41,8 @@ export interface Containers {
   prepBoxes: BowlSize;
   /** Boîtes de conservation du Frigo. */
   storageBoxes: BowlSize;
+  /** Gros récipients des bases (le riz, les haricots verts cuits pour plusieurs jours : src/lib/reserve/bases.ts). */
+  baseBoxes: BowlSize;
   /** Plaques (ou lèchefrites) livrées avec le four : on y rôtit en une couche. */
   ovenTrays: number;
 }
@@ -87,6 +89,7 @@ export const DEFAULT_CONTAINERS: Containers = {
   bowls: { petit: { count: 4, liters: 0.5 }, moyen: { count: 3, liters: 1.5 }, grand: { count: 2, liters: 3 } },
   prepBoxes: { count: 4, liters: 1 },
   storageBoxes: { count: 10, liters: 1 },
+  baseBoxes: { count: 2, liters: 2 },
   ovenTrays: 1,
 };
 
@@ -440,6 +443,7 @@ export function normalizeKitchen(raw: unknown): KitchenConfig {
       bowls: { petit: size(kb.petit, dc.bowls.petit, 1), moyen: size(kb.moyen, dc.bowls.moyen, 3), grand: size(kb.grand, dc.bowls.grand, 8) },
       prepBoxes: size(k.prepBoxes, dc.prepBoxes, 5),
       storageBoxes: size(k.storageBoxes, dc.storageBoxes, 5),
+      baseBoxes: size(k.baseBoxes, dc.baseBoxes, 10),
       ovenTrays: clamp(k.ovenTrays, 0, 4, dc.ovenTrays),
     },
     unsure: Array.isArray(x.unsure) ? QUESTIONS.filter((q) => (x.unsure as unknown[]).includes(q)) : [],
@@ -496,7 +500,7 @@ export function kitchenSummary(raw: KitchenConfig): { label: string; text: strin
   ];
 }
 
-/** « 4 petits bols, 3 moyens, 2 grands · 4 boîtes de prep · 10 boîtes de conservation (1 L) · 1 plaque ». */
+/** « 4 petits bols, 3 moyens, 2 grands · 4 boîtes de prep · 10 boîtes de conservation (1 L) · 2 gros récipients pour les bases (2 L) · 1 plaque ». */
 export function containersLine(k: Containers, oven = true): string {
   const b = k.bowls;
   const bowls = [b.petit.count ? `${b.petit.count} petit${b.petit.count > 1 ? "s" : ""}` : null, b.moyen.count ? `${b.moyen.count} moyen${b.moyen.count > 1 ? "s" : ""}` : null, b.grand.count ? `${b.grand.count} grand${b.grand.count > 1 ? "s" : ""}` : null].filter(Boolean);
@@ -505,6 +509,7 @@ export function containersLine(k: Containers, oven = true): string {
     n ? `${n} bol${n > 1 ? "s" : ""} (${bowls.join(", ")})` : "aucun bol",
     k.prepBoxes.count ? `${k.prepBoxes.count} boîte${k.prepBoxes.count > 1 ? "s" : ""} de prep` : null,
     k.storageBoxes.count ? `${k.storageBoxes.count} boîte${k.storageBoxes.count > 1 ? "s" : ""} de conservation (${fmtCm(k.storageBoxes.liters)} L)` : null,
+    k.baseBoxes.count ? `${k.baseBoxes.count} gros récipient${k.baseBoxes.count > 1 ? "s" : ""} pour les bases (${fmtCm(k.baseBoxes.liters)} L)` : null,
     oven && k.ovenTrays ? `${k.ovenTrays} plaque${k.ovenTrays > 1 ? "s" : ""} du four` : null,
   ]
     .filter(Boolean)
