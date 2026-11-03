@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { adjustReserve, closeReserve, eatPortion, saveReserve, sessionReserves, undoServing } from "@/lib/reserve/store";
 import type { Grams } from "@/lib/reserve/core";
+import { closeBase, remakeBase, weighBase } from "@/lib/reserve/bases-store";
 
 type Result = { ok: boolean; message: string };
 const fail = (e: unknown): Result => ({ ok: false, message: e instanceof Error ? e.message : "Action impossible." });
@@ -67,6 +68,38 @@ export async function closeAction(reserveId: string): Promise<Result> {
     closeReserve(db, reserveId);
     refresh();
     return { ok: true, message: "Plat terminé." };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Une nouvelle pesée d'un gros récipient de base (le riz) : elle devient ce qui reste. */
+export async function weighBaseAction(stockId: string, grams: number): Promise<Result> {
+  try {
+    const r = weighBase(db, stockId, grams);
+    refresh();
+    return { ok: true, message: `Pesée enregistrée : ${r.label}.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function closeBaseAction(stockId: string): Promise<Result> {
+  try {
+    const r = closeBase(db, stockId);
+    refresh();
+    return { ok: true, message: `Récipient de ${r.label} terminé.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** « C'est cuit » : un nouveau récipient de la base, d'après le cru ou pesé cuit. */
+export async function remakeBaseAction(family: string, input: { rawG?: number | null; grams?: number | null }): Promise<Result> {
+  try {
+    const r = remakeBase(db, family, input);
+    refresh();
+    return { ok: true, message: r.message };
   } catch (e) {
     return fail(e);
   }

@@ -47,9 +47,10 @@ const BOWL_SIZES: { key: keyof KitchenConfig["containers"]["bowls"]; title: stri
   { key: "moyen", title: "Bols moyens", one: "bol moyen", max: 3 },
   { key: "grand", title: "Grands bols, saladiers", one: "grand bol", max: 8 },
 ];
-const BOXES: { key: "prepBoxes" | "storageBoxes"; title: string; hint: string }[] = [
-  { key: "prepBoxes", title: "Boîtes de prep", hint: "À couvercle : une marinade, un bol préparé la veille qui passe la nuit au frigo." },
-  { key: "storageBoxes", title: "Boîtes de conservation", hint: "Celles du Frigo, où vont les parts de chacun." },
+const BOXES: { key: "prepBoxes" | "storageBoxes" | "baseBoxes"; title: string; hint: string; maxL: number }[] = [
+  { key: "prepBoxes", title: "Boîtes de prep", hint: "À couvercle : une marinade, un bol préparé la veille qui passe la nuit au frigo.", maxL: 5 },
+  { key: "storageBoxes", title: "Boîtes de conservation", hint: "Celles du Frigo, où vont les parts de chacun.", maxL: 5 },
+  { key: "baseBoxes", title: "Gros récipients des bases", hint: "Le riz, les haricots verts cuits pour plusieurs jours, où chacun se sert : je dis combien en remplir.", maxL: 10 },
 ];
 
 const HOB_HINT: Record<HobType, string> = {
@@ -493,7 +494,7 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
               </Block>
             );
           })}
-          {BOXES.map(({ key, title, hint }) => {
+          {BOXES.map(({ key, title, hint, maxL }) => {
             const b = c.containers[key];
             const setB = (patch: Partial<BowlSize>) => set({ containers: { ...c.containers, [key]: { ...b, ...patch } } }, ["containers"]);
             return (
@@ -501,7 +502,7 @@ export function KitchenForm({ initial, guided = false, onSaved, onExit, kicker =
                 <Line>
                   <Stepper decLabel="Une boîte de moins" incLabel="Une boîte de plus" value={b.count} min={0} max={30} onChange={(n) => setB({ count: n })} />
                   Combien
-                  <Stepper decLabel="Moins" incLabel="Plus" value={b.liters} min={0.2} max={5} step={0.1} unit="L" onChange={(n) => setB({ liters: Math.round(n * 10) / 10 })} />
+                  <Stepper decLabel="Moins" incLabel="Plus" value={b.liters} min={0.2} max={maxL} step={key === "baseBoxes" ? 0.5 : 0.1} unit="L" onChange={(n) => setB({ liters: Math.round(n * 10) / 10 })} />
                   Contenance
                 </Line>
                 <p className="text-small text-ink-2">{hint}</p>

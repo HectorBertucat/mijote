@@ -361,6 +361,33 @@ export const reserveServings = sqliteTable(
   (t) => [index("idx_reserve_servings_reserve").on(t.reserveId, t.at), index("idx_reserve_servings_person").on(t.personId, t.at), index("idx_reserve_servings_log").on(t.foodLogId)]
 );
 
+// Migration 0015 : les bases du foyer (src/lib/reserve/bases.ts) : un gros récipient de riz, de haricots
+// verts… cuit à part, où chacun se sert. Un stock par base et par session (parts : les grammes de chaque
+// plat, réserve par réserve), ou par cuisson « Refaire » (session_id nul). Ce qui reste = la dernière
+// pesée − ce qui en est sorti depuis (les portions des plats qui la prennent, premier cuit, premier servi).
+export const baseStocks = sqliteTable(
+  "base_stocks",
+  {
+    id: text("id").primaryKey(),
+    family: text("family").notNull(), // riz, haricots-verts… (BASE_FAMILIES)
+    label: text("label").notNull(),
+    sessionId: text("session_id").references(() => cookSessions.id, { onDelete: "set null" }),
+    cookedOn: text("cooked_on").notNull(), // YYYY-MM-DD
+    fridgeDays: integer("fridge_days").notNull(),
+    cookedG: real("cooked_g").notNull(), // grammes cuits au départ
+    g: real("g").notNull(), // dernière pesée
+    at: text("at").notNull(), // instant ISO de la dernière pesée
+    estimated: integer("estimated", { mode: "boolean" }).notNull().default(true),
+    weighed: integer("weighed", { mode: "boolean" }).notNull().default(false), // pesé à part : les parts ne la refont plus
+    parts: json<Record<string, { g: number; estimated: boolean }>>("parts_json").notNull().default(sql`'{}'`),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    closedAt: text("closed_at"),
+    createdAt: text("created_at").notNull().default(now),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_base_stocks_family").on(t.family, t.status), index("idx_base_stocks_session").on(t.sessionId)]
+);
+
 // ─── 3. Courses, achats, coûts ───
 
 export const shoppingLists = sqliteTable("shopping_lists", {

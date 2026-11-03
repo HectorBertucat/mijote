@@ -151,6 +151,10 @@ async function main() {
     await page("/plats", undefined, /Butter chicken[\s\S]*J’ai mangé une portion/);
     const reserveId = db.select({ id: reserves.id }).from(reserves).all().at(-1)!.id;
     await page(`/plats/${reserveId}`, undefined, /La portion de/);
+    // Le riz du butter chicken, servi à part : une base du foyer, dans son gros récipient, et sa fiche « Refaire ».
+    await page("/plats", undefined, /Les bases[\s\S]*riz/i);
+    await page("/plats/bases/riz", undefined, /C’est cuit et rangé|C'est cuit et rangé/);
+    check(/Erreur 404/.test(await (await get("/plats/bases/inconnue")).text()), "base inconnue → page introuvable");
     // Retour de goût : visible sur la fiche (avec l'ajustement proposé) et sur la Semaine.
     saveFeedback(db, { recipeId: bc.id, personId: tom, rating: "meh", tags: ["sec"] });
     await page("/recettes/butter-chicken-express", undefined, /Tom : bof · sec[\s\S]*Ajuster d’après les retours[\s\S]*Enregistrer la variante/);

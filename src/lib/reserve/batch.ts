@@ -23,8 +23,9 @@ export const ESTIMATE_WINDOW_DAYS = 7;
 
 export type WeighState = "estimated" | "partial" | "weighed";
 
-/** Estimé (aucun groupe pesé), en partie pesé, ou pesé. */
-export function weighState(groups: Pick<ReserveGroup, "estimated">[]): WeighState {
+/** Estimé (aucun groupe pesé), en partie pesé, ou pesé ; une base du foyer se pèse dans son récipient, à part. */
+export function weighState(all: Pick<ReserveGroup, "estimated" | "base">[]): WeighState {
+  const groups = all.filter((g) => !g.base);
   const est = groups.filter((g) => g.estimated).length;
   if (!groups.length || est === 0) return "weighed";
   return est === groups.length ? "estimated" : "partial";
@@ -111,4 +112,4 @@ export function batchTitle(cookedOn: string): string {
 export const batchInPeriod = (cookedOn: string, start: string, days: number) => cookedOn >= addDays(start, -3) && cookedOn <= addDays(start, days - 1);
 
 /** Premier pas « Peser et ranger » : un plat pesé en entier, ou des boîtes rangées avant la réserve. */
-export const weighedOnce = (reserves: { groups: Pick<ReserveGroup, "estimated">[] }[], legacyBoxes: boolean) => legacyBoxes || reserves.some((r) => r.groups.length > 0 && weighState(r.groups) === "weighed");
+export const weighedOnce = (reserves: { groups: Pick<ReserveGroup, "estimated" | "base">[] }[], legacyBoxes: boolean) => legacyBoxes || reserves.some((r) => r.groups.length > 0 && weighState(r.groups) === "weighed");
