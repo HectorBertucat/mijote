@@ -1,6 +1,6 @@
 // Santé : lecture et écriture en base. Le calcul est dans ./core (pur, testé).
 import { randomUUID } from "crypto";
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { dayLogs, foodLog, people, waistMeasures, weeklyTargets, weighIns } from "@/lib/db/schema";
 import { mondayOf } from "@/lib/week/propose";
@@ -68,7 +68,7 @@ export function setWaist(db: Db, personId: string, date: string, cm: number) {
 /** Total par jour du journal, et si la journée est marquée complète. */
 export function intakeDays(db: Db, personId: string, since: string): IntakeDay[] {
   const totals = db
-    .select({ date: foodLog.date, kcal: sql<number>`sum(${foodLog.kcal})` })
+    .select({ date: foodLog.date, kcal: sql<number>`sum(${foodLog.kcal})`, proteinG: sql<number>`sum(${foodLog.proteinG})` })
     .from(foodLog)
     .where(and(eq(foodLog.personId, personId), gte(foodLog.date, since)))
     .groupBy(foodLog.date)
@@ -81,7 +81,7 @@ export function intakeDays(db: Db, personId: string, since: string): IntakeDay[]
       .all()
       .map((d) => d.date)
   );
-  return totals.map((t) => ({ date: t.date, kcal: t.kcal, complete: complete.has(t.date) }));
+  return totals.map((t) => ({ date: t.date, kcal: t.kcal, proteinG: t.proteinG, complete: complete.has(t.date) }));
 }
 
 /**
@@ -121,3 +121,22 @@ export function currentReview(db: Db, person: Person, now = new Date()): WeeklyR
 }
 
 export const listTargets = (db: Db, personId: string) => db.select().from(weeklyTargets).where(eq(weeklyTargets.personId, personId)).orderBy(desc(weeklyTargets.weekStart)).limit(12).all();
+
+type MealRefRow = NonNullable<typeof weeklyTargets.$inferSelect.mealRef>;
+
+/** Le repère automatique de la dernière semaine avant `weekStart` qui en a un : le pas s'y mesure. */
+export function previousMealRef(db: Db, personId: string, weekStart: string): MealRefRow | null {
+  return (
+    db
+      .select({ ref: weeklyTargets.mealRef })
+      .from(weeklyTargets)
+      .where(and(eq(weeklyTargets.personId, personId), lt(weeklyTargets.weekStart, weekStart), isNotNull(weeklyTargets.mealRef)))
+      .orderBy(desc(weeklyTargets.weekStart))
+      .get()?.ref ?? null
+  );
+}
+
+/** Garde le repère automatique de la semaine (sur la ligne du bilan, quand elle existe). */
+export function saveMealRef(db: Db, personId: string, weekStart: string, ref: MealRefRow | null) {
+  db.update(weeklyTargets).set({ mealRef: ref }).where(and(eq(weeklyTargets.personId, personId), eq(weeklyTargets.weekStart, weekStart))).run();
+}

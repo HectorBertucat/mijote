@@ -16,6 +16,8 @@ import { overview } from "@/lib/health/overview";
 import { DEFAULT_PERIOD, isPeriod } from "@/lib/health/series";
 import { currentReview, listWaist, todayParis, toProfile } from "@/lib/health/store";
 import { courseView } from "@/lib/running/page";
+import { statusFor } from "@/lib/health/status-store";
+import { WhereIAmSummary } from "@/components/sante/WhereIAm";
 import { getRunProfile } from "@/lib/running/store";
 import { typo } from "@/lib/typo";
 
@@ -51,6 +53,7 @@ export default async function Sante({ searchParams }: { searchParams: Promise<{ 
   const isMonday = new Date(`${today}T12:00:00Z`).getUTCDay() === 1;
   const tone = review ? CONFIDENCE[review.confidence] : null;
   const running = getRunProfile(db, person.id)?.enabled ? courseView(db, person.id) : null;
+  const status = statusFor(db, person);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-12 lg:gap-18">
@@ -109,7 +112,7 @@ export default async function Sante({ searchParams }: { searchParams: Promise<{ 
                   {NB}kcal visés pour suivre ton rythme.
                 </p>
                 <p>{review.explanation}</p>
-                {review.confidence !== "adaptive" && <p>La dépense devient «{NNB}mesurée{NNB}» après 3 semaines avec au moins 4 journées complètes sur 7 et une pesée par semaine. Les repas se notent dans l’onglet Aujourd’hui.</p>}
+                {review.confidence !== "adaptive" && <p>La dépense devient «{NNB}mesurée{NNB}» après 3 semaines avec au moins 4 journées complètes sur 7 et 3 pesées. Ce qui manque est dans «{NNB}Où j’en suis{NNB}».</p>}
                 <p>{typo("Le poids du jour bouge d’un kilo avec l’eau, le sel et le transit. La tendance est une moyenne qui lisse ces écarts : c’est elle qui dit si tu perds, pas la pesée du matin. Le rythme compare la tendance d’aujourd’hui à celle d’il y a deux semaines.")}</p>
               </HowCalc>
             </>
@@ -118,6 +121,8 @@ export default async function Sante({ searchParams }: { searchParams: Promise<{ 
           )}
         </div>
       </section>
+
+      {review && <WhereIAmSummary s={status} />}
 
       <KeyTiles o={o} />
       {running && <RunningSection v={running} />}

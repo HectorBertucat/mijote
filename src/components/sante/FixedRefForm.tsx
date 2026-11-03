@@ -1,10 +1,12 @@
 "use client";
 
-// Repère fixe d’un repas (Santé › Profil) : pour qui connaît déjà ses chiffres. Il sert à la part de
-// chaque recette tant que Santé n’a pas mesuré la dépense ; ensuite, la cible mesurée prend le relais.
+// Repère d’un repas (Santé › Profil) : automatique par défaut (il suit la cible de Santé chaque lundi), ou
+// fixe pour qui connaît déjà ses chiffres. Un repère fixe enregistré passe en mode fixe : il ne suit plus
+// la cible, et « Où j’en suis » le dit.
 import { useState, useTransition } from "react";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { saveFixedRef } from "@/app/sante/actions";
+import { RefModeSwitch } from "./WhereIAmActions";
 
 type Ref = { kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number };
 const KEYS: [keyof Ref, string][] = [
@@ -14,7 +16,7 @@ const KEYS: [keyof Ref, string][] = [
   ["proteinMax", "Protéines max. (g)"],
 ];
 
-export function FixedRefForm({ personId, value }: { personId: string; value: Ref | null }) {
+export function FixedRefForm({ personId, value, auto, current }: { personId: string; value: Ref | null; auto: boolean; current: string | null }) {
   const [v, setV] = useState<Record<keyof Ref, string>>({
     kcalMin: value ? String(value.kcalMin) : "",
     kcalMax: value ? String(value.kcalMax) : "",
@@ -33,13 +35,18 @@ export function FixedRefForm({ personId, value }: { personId: string; value: Ref
     <section className="grid max-w-2xl gap-6 border-t border-line-strong pt-4" aria-labelledby="repere-fixe">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <h2 id="repere-fixe" className="text-h2">
-          Repère fixe d’un repas
+          Repère d’un repas
         </h2>
-        <span className="label text-ink-2">Facultatif</span>
+        <span className="label text-ink-2">{auto ? "Automatique" : "Fixe"}</span>
       </div>
       <p className="text-small text-ink-2">
-        Si tu connais déjà ce qu’un repas principal doit t’apporter, il sert à ta part de chaque recette tant que Santé n’a pas mesuré ta dépense (environ trois semaines de pesées et de journées complètes). Ensuite, la cible mesurée prend le relais.
+        {auto
+          ? "Automatique : chaque lundi, il se recalcule depuis ta cible de Santé, moins le hors batch, d’au plus 100 kcal par semaine. Les parts de la réserve et de la Semaine le suivent."
+          : "Fixe : il sert à ta part de chaque recette tel quel, et ne suit pas ta cible de Santé. En automatique, il se recalcule chaque lundi depuis ta cible."}
+        {current && ` Aujourd’hui : ${current}.`}
       </p>
+      <RefModeSwitch personId={personId} auto={auto} />
+      <p className="text-small text-ink-2">Un repère fixe, si tu connais déjà ce qu’un repas principal doit t’apporter (l’enregistrer passe en mode fixe) :</p>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {KEYS.map(([k, label]) => (
           <Field key={k} label={label}>
@@ -53,7 +60,7 @@ export function FixedRefForm({ personId, value }: { personId: string; value: Ref
         </Button>
         {value && (
           <Button variant="quiet" disabled={pending} onClick={() => save(true)}>
-            Retirer le repère
+            Retirer le repère fixe
           </Button>
         )}
       </div>

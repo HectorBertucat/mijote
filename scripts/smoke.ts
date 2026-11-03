@@ -134,6 +134,9 @@ async function main() {
     check(launch.status === 200 && launch.headers.get("content-type") === "image/png", "image de démarrage iOS → PNG");
     check((await get("/lancement?w=4000&h=4000")).status === 404, "image de démarrage d’une taille inconnue → 404");
     await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
+    // « Où j’en suis » : la cible et ce qui manque pour qu’elle s’ajuste ; « Journée complète » en un geste.
+    await page("/sante/objectifs", "mijote.profil=lea", /Où j’en suis[\s\S]*Pour que la cible s’ajuste[\s\S]*Tes portions/);
+    await page("/sante/aujourdhui", "mijote.profil=lea", /Tout est noté/);
     // Fin de session : la marmite pesée (plat et riz) part en réserve, une portion par repas de chacun.
     await page("/plats", undefined, /Aucun plat pour l’instant/);
     check((await get("/frigo")).status === 307, "/frigo renvoie à /plats");
@@ -237,10 +240,11 @@ async function demo() {
     await page(`/plats/${dish}`, cookieA, /La portion de/);
     await page("/", cookieA, /Que manger/);
     await page("/semaine", cookieA, /Butter chicken/);
-    await page("/sante", cookieA, /Alex/);
+    await page("/sante", cookieA, /Alex[\s\S]*Où j’en suis/);
+    await page("/", cookieA, /Ma cible/);
     await page("/atelier", cookieA, /besoin de l’IA/);
     await page("/atelier/importer", cookieA, /besoin de l’IA/);
-    await page("/sante/objectifs", cookieA, /besoin de l’IA/);
+    await page("/sante/objectifs", cookieA, /Où j’en suis[\s\S]*besoin de l’IA/);
     await page("/sante/apple", cookieA, /Apple Santé reste chez toi/);
     check((await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) })).status === 404, "démo : pas d'assistant, même avec une clé");
     check((await get("/api/sante/import", cookieA)).status === 404, "démo : pas d'import Apple Santé");

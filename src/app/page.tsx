@@ -19,7 +19,9 @@ import { WhatToEat } from "@/components/accueil/WhatToEat";
 import { Tour } from "@/components/tour/Tour";
 import { tourView } from "@/lib/tour/store";
 import { catalogEnabled } from "@/lib/chronocatalog";
-import { listPeople } from "@/lib/health/store";
+import { getPerson, listPeople } from "@/lib/health/store";
+import { statusFor } from "@/lib/health/status-store";
+import { WhereIAmSummary } from "@/components/sante/WhereIAm";
 import { firstOfMonth } from "@/lib/typo";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +97,9 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
   const replay = (await searchParams).visite != null;
   const lines = headline({ dishes: h.dishes.length, meals: h.toEat, minutes: h.minutes, cookDay: h.cookDay, today: h.today, cooked: h.cooked });
   const ready = h.step.kind === "cook";
+  // « Où j'en suis » du profil de l'appareil, en deux lignes, dès qu'il a une cible.
+  const me = profileId ? getPerson(db, profileId) : null;
+  const status = me ? statusFor(db, me) : null;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-y-12 lg:grid-cols-12 lg:gap-x-6 lg:gap-y-18">
@@ -179,6 +184,7 @@ export default async function Accueil({ searchParams }: { searchParams: Promise<
       <div className="grid min-w-0 content-start gap-12 lg:col-span-5 lg:border-l lg:border-line lg:pl-8">
         {tour.showSteps && <FirstSteps view={tour.steps} />}
         {h.lead && <WhatToEat reserve={h.reserve} planned={h.planned} people={h.people} me={h.lead.id} today={h.today} eaten={h.eatenToday} batch={h.batch} />}
+        {status?.target && <HealthToday s={status} />}
         {h.run && <RunToday run={h.run} />}
         <Shopping h={h} />
       </div>
@@ -200,6 +206,20 @@ function IgnoreMissing({ h, n }: { h: HomeView; n: number | null }) {
         {n == null ? "Rétablir l’avertissement" : "Ignorer"}
       </button>
     </form>
+  );
+}
+
+/** La cible du profil de l'appareil et ce qui manque pour qu'elle s'ajuste (src/lib/health/status.ts). */
+function HealthToday({ s }: { s: NonNullable<ReturnType<typeof statusFor>> }) {
+  return (
+    <section aria-labelledby="sante-titre">
+      <h2 id="sante-titre" className="text-h2">
+        Ma cible
+      </h2>
+      <div className="mt-6 border-t border-line-strong pt-4">
+        <WhereIAmSummary s={s} />
+      </div>
+    </section>
   );
 }
 

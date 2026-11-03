@@ -10,6 +10,8 @@ import { describeChanges, frDate } from "@/lib/health/goal-format";
 import type { GoalProposal } from "@/lib/health/goals";
 import { currentMonday, goalSummary, goalValues, listSessions } from "@/lib/health/objectives";
 import { todayParis } from "@/lib/health/store";
+import { statusFor } from "@/lib/health/status-store";
+import { WhereIAm } from "@/components/sante/WhereIAm";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +39,8 @@ export default async function Objectifs() {
   const sessions = listSessions(db, person.id);
   const g = goalSummary(db, person);
   return (
-    <div className="grid items-start gap-12 lg:grid-cols-12 lg:gap-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-12 lg:grid-cols-12 lg:gap-6">
+      <WhereIAm s={statusFor(db, person)} className="lg:col-span-12" />
       <Section
         title="Coach"
         id="coach"

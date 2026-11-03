@@ -4,7 +4,8 @@ import { TodayLog } from "@/components/sante/TodayLog";
 import { db } from "@/lib/db/client";
 import { recipes } from "@/lib/db/schema";
 import { activePerson } from "@/lib/health/active";
-import { isComplete, listEntries, listTemplates, pending, plannedMeals, recentExtras, totals } from "@/lib/health/log";
+import { dayCheck, isComplete, listEntries, listTemplates, pending, plannedMeals, recentExtras, totals } from "@/lib/health/log";
+import { statusFor } from "@/lib/health/status-store";
 import { currentReview, todayParis } from "@/lib/health/store";
 import { recipeColor } from "@/lib/ui";
 import { addDays } from "@/lib/week/propose";
@@ -23,6 +24,7 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Promi
   const templates = listTemplates(db, person.id);
   const todo = pending(plannedMeals(db, person.id, date), templates, entries, date);
   const review = currentReview(db, person);
+  const status = statusFor(db, person);
   const lib = db.select({ id: recipes.id, slug: recipes.slug, name: recipes.name, kcalUnit: recipes.kcalUnit, proteinUnit: recipes.proteinUnit, status: recipes.status }).from(recipes).all();
   const colors = Object.fromEntries(lib.map((r) => [r.slug, recipeColor(r.slug)]));
   const slugById = new Map(lib.map((r) => [r.id, r.slug]));
@@ -62,6 +64,8 @@ export default async function Aujourdhui({ searchParams }: { searchParams: Promi
         recents={recentExtras(db, person.id).map((e) => ({ label: e.label, meal: e.meal, kcal: e.kcal, proteinG: e.proteinG, fatG: e.fatG, carbsG: e.carbsG, ai: e.source === "ai" }))}
         library={lib.filter((r) => r.status !== "archived").map((r) => ({ id: r.id, slug: r.slug, name: r.name, kcalUnit: r.kcalUnit, proteinUnit: r.proteinUnit, color: colors[r.slug] }))}
         complete={isComplete(db, person.id, date)}
+        check={dayCheck(todo, entries)}
+        window={date >= status.update.window.start ? { have: status.update.complete.have, need: status.update.complete.need, next: status.update.next } : null}
         colors={colors}
       />
     </div>

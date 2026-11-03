@@ -6,21 +6,22 @@
 // (people.outside_kcal, repli rétrocompatible), puis la valeur par défaut (20 % de la journée),
 // qui suffit : un hors batch non dit n'est pas un manque.
 //
-// Repère d'un repas, par ordre de préférence :
-// 1. la cible de Santé quand la dépense est mesurée (ou en attente d'une nouvelle mesure) ;
-// 2. le repère fixe que la personne a choisi (people.fixed_meal_ref), s'il y en a un : plus juste
-//    qu'une formule tant que la balance n'a pas parlé ;
-// 3. la formule (Mifflin-St Jeor × activité) dès que le profil et une pesée existent, même
-//    pesée cette semaine (le bilan de Santé, lui, attend le lundi suivant) ;
-// 4. rien : la part de base, et la liste de ce qui manque.
+// Repère d'un repas :
+// - en mode fixe (people.meal_ref_auto faux, avec un repère fixe) : le repère fixe, tel quel ; il ne
+//   suit pas la cible, et l'écran le dit ;
+// - en mode automatique (par défaut) : tiré de la cible de la semaine (dépense mesurée, en attente ou
+//   estimée), moins le hors batch, borné et d'un pas limité par rapport à la semaine d'avant
+//   (./core autoMealRef) ; gardé sur la ligne du bilan (weekly_targets.meal_ref). Sans bilan du lundi
+//   (profil et pesée de cette semaine), la formule du jour, sans pas ;
+// - rien : la part de base, et la liste de ce qui manque.
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { mealSlots, people, preferences, recipes, weekPlans, weighIns } from "@/lib/db/schema";
 import { estimatedTdee, missingForEstimate, targetsFor } from "@/lib/health/core";
-import { currentReview, todayParis, toProfile, type Person } from "@/lib/health/store";
+import { currentReview, previousMealRef, saveMealRef, todayParis, toProfile, type Person } from "@/lib/health/store";
 import { DEFAULT_PORTION_UNITS } from "@/lib/nutrition/compute";
 import { mondayOf } from "@/lib/week/propose";
-import { defaultOutside, mealRef, portionOf, type DayTarget, type Eater, type MealRef, type Member, type Outside, type RefSource } from "./core";
+import { autoMealRef, defaultOutside, mealRef, portionOf, type DayTarget, type Eater, type MealRef, type Member, type Outside, type RefSource } from "./core";
 import { adviceOf, counts, isShaker, outsideMean, outsideWeek, type Advice } from "./habits";
 import { listHabits } from "./setup";
 
@@ -54,6 +55,12 @@ export interface EaterInfo extends Eater {
   hasShaker: boolean;
   explanation: string | null;
   setupDone: boolean;
+  /** auto : le repère suit la cible ; fixe : le repère fixe de la personne. */
+  refMode: "auto" | "fixe";
+  /** Ce que la cible donnerait pour un repas (avant bornes et pas) ; en mode fixe, de quoi comparer. */
+  targetRef: MealRef | null;
+  /** Le pas de la semaine a retenu le repère automatique. */
+  refLimited: boolean;
 }
 
 export function eaterOf(db: Db, p: Person, now = new Date()): EaterInfo {
@@ -64,31 +71,60 @@ export function eaterOf(db: Db, p: Person, now = new Date()): EaterInfo {
   const out = outsideFor(db, p);
   const outside = out.outside;
 
-  let dayTarget: DayTarget | null = null;
-  let source: RefSource | null = null;
-  let explanation: string | null = null;
-  if (review && review.confidence !== "estimate") {
-    dayTarget = { kcal: review.targets.kcal, proteinG: review.targets.proteinG };
-    source = "sante";
-    explanation = review.explanation;
-  } else if (p.fixedMealRef) {
-    source = "fixe";
-    explanation = "Repère fixe choisi dans le profil, tant que la dépense n'est pas mesurée (pesées et journées complètes).";
-  } else if (review) {
-    dayTarget = { kcal: review.targets.kcal, proteinG: review.targets.proteinG };
-    source = "estimation";
-    explanation = review.explanation;
+  // La cible du jour : le bilan du lundi (mesurée, en attente ou estimée), sinon la formule dès une pesée.
+  let target: DayTarget | null = null;
+  let targetSource: Exclude<RefSource, "fixe"> | null = null;
+  let targetWhy: string | null = null;
+  if (review) {
+    target = { kcal: review.targets.kcal, proteinG: review.targets.proteinG };
+    targetSource = review.confidence === "estimate" ? "estimation" : "sante";
+    targetWhy = review.explanation;
   } else if (lastKg != null) {
     const tdee = estimatedTdee(profile, lastKg, todayParis(now));
     if (tdee != null) {
       const t = targetsFor(profile, tdee, lastKg);
-      dayTarget = { kcal: t.kcal, proteinG: t.proteinG };
-      source = "estimation";
-      explanation = "Estimation par formule (Mifflin-St Jeor × activité), en attendant les premières mesures.";
+      target = { kcal: t.kcal, proteinG: t.proteinG };
+      targetSource = "estimation";
+      targetWhy = "Estimation par formule (Mifflin-St Jeor × activité), en attendant les premières mesures.";
     }
   }
-  const ref = source === "fixe" ? { ...p.fixedMealRef! } : dayTarget ? mealRef(dayTarget, outside ?? defaultOutside(dayTarget)) : null;
-  return { id: p.id, name: p.name, baseUnits: p.portionUnits, ref, source, missing, dayTarget, outside, outsideByDay: out.byDay, outsideSource: out.source, hasShaker: out.hasShaker, explanation, setupDone: !!p.setupDoneAt };
+  const o = target ? (outside ?? defaultOutside(target)) : null;
+  const targetRef = target ? mealRef(target, o!) : null;
+  const fixed = !p.mealRefAuto && p.fixedMealRef ? { ...p.fixedMealRef } : null;
+
+  let ref: MealRef | null = null;
+  let refLimited = false;
+  if (fixed) ref = fixed;
+  else if (target) {
+    const monday = mondayOf(now);
+    // Le pas se mesure au repère de la semaine d'avant ; au passage du fixe à l'automatique, au repère fixe.
+    const auto = autoMealRef(target, o!, previousMealRef(db, p.id, monday) ?? p.fixedMealRef ?? null);
+    ref = auto.ref;
+    refLimited = auto.limited;
+    if (review) saveMealRef(db, p.id, monday, auto.ref);
+  }
+  const source: RefSource | null = fixed ? "fixe" : targetSource;
+  const explanation = fixed ? "Repère fixe choisi dans le profil : il ne suit pas la cible de Santé." : targetWhy;
+  // En mode fixe, la journée se lit sur le repère (week/nutrition.ts, dayRefOf) : pas de cible du jour.
+  const dayTarget = fixed ? null : target;
+  return {
+    id: p.id,
+    name: p.name,
+    baseUnits: p.portionUnits,
+    ref,
+    source,
+    missing,
+    dayTarget,
+    outside,
+    outsideByDay: out.byDay,
+    outsideSource: out.source,
+    hasShaker: out.hasShaker,
+    explanation,
+    setupDone: !!p.setupDoneAt,
+    refMode: fixed ? "fixe" : "auto",
+    targetRef,
+    refLimited,
+  };
 }
 
 /**
