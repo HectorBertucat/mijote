@@ -15,7 +15,7 @@ import type { RecipeInput } from "@/lib/recipes/format";
 import { equipmentIds, loadLibrary, mainIngredients, promptContext, saveDraft } from "@/lib/atelier/library";
 import { mockAdjust, mockCreate } from "@/lib/atelier/mock";
 import { systemPrompt } from "@/lib/atelier/prompt";
-import { fillPhases } from "@/lib/atelier/schema";
+import { fillPhases, toAiRecipe } from "@/lib/atelier/schema";
 import { findDuplicate, verifyRecipe, type Resolver, type Verification } from "@/lib/atelier/verify";
 import {
   BLOCKED_DOMAINS,
@@ -32,13 +32,13 @@ import {
   LIMITS,
   normalizeCreation,
   ProposalOut,
+  sourceIds,
   RefineOutput,
   refinePrompt,
   RESEARCH_SCREEN,
   ResearchReport,
   researchPrompt,
   researchSystem,
-  toCreationRecipe,
   type CreationRecipe,
   type Defect,
   type Figure,
@@ -280,7 +280,7 @@ export async function composeProposals(db: Db, id: string, deps: Deps = {}): Pro
   );
   const ok = outs.flatMap((o) => (o.status === "fulfilled" ? [o.value] : []));
   if (!ok.length) throw (outs[0] as PromiseRejectedResult).reason;
-  const fresh = await Promise.all(ok.map((p, k) => toProposal(db, `p${have + k + 1}`, p.recipe, p, c.research!.sources, deps)));
+  const fresh = await Promise.all(ok.map((p, k) => toProposal(db, `p${have + k + 1}`, p.recipe, { ...p, inspiredBy: sourceIds(p.inspiredBy) }, c.research!.sources, deps)));
   saveProposals(db, id, [...c.proposals, ...fresh]);
   return loadCreation(db, id)!;
 }
@@ -311,7 +311,7 @@ export async function refineProposal(db: Db, id: string, proposalId: string, inp
   });
   // Le même nombre d'unités, avant de chiffrer : les parts de chacun restent comparables d'une retouche à l'autre.
   const recipe = { ...out.recipe, servingsUnits: p.draft.servingsUnits };
-  const next = await toProposal(db, p.id, recipe, { pitch: out.pitch, changes: out.changes, inspiredBy: out.inspiredBy.length ? out.inspiredBy : p.inspiredBy }, c.research?.sources ?? [], deps);
+  const next = await toProposal(db, p.id, recipe, { pitch: p.pitch, changes: out.changes, inspiredBy: p.inspiredBy }, c.research?.sources ?? [], deps);
   next.asks = [...p.asks, { ask: ask || "Corriger les défauts", answer: out.answer.slice(0, 400), at: new Date().toISOString() }];
   saveProposals(db, id, c.proposals.map((x) => (x.id === p.id ? next : x)));
   return loadCreation(db, id)!;
@@ -373,12 +373,10 @@ function mockResearch(envie: string) {
 function mockCompose(envie: string, slot: number): ProposalOut {
   const variants = [envie, `${envie} porc`, `${envie} poulet bis`];
   const base = mockCreate({ envie: variants[slot % 3], add: [], remove: [], avoid: slot > 1 ? ["x"] : [] }, null);
-  const recipe = toCreationRecipe(normalizeCreation({ ...base.recipe, ingredients: base.recipe.ingredients.map((i) => ({ ...i, side: false })), serve: null }));
-  return { recipe, pitch: "Réponse simulée (MIJOTE_AI_MOCK) : une base fixe, pour tester le parcours sans appeler l'API.", inspiredBy: [`s${(slot % 3) + 1}`], changes: ["Four plutôt que cocotte", "Quantités pour le foyer"] };
+  return { recipe: base.recipe, pitch: "Réponse simulée (MIJOTE_AI_MOCK) : une base fixe, pour tester le parcours sans appeler l'API.", inspiredBy: `s${(slot % 3) + 1}`, changes: ["Four plutôt que cocotte", "Quantités pour le foyer"] };
 }
 
 function mockRefine(draft: RecipeInput, ask: string): RefineOutput {
   const out = mockAdjust(draft, ask);
-  const recipe = toCreationRecipe(normalizeCreation({ ...out.recipe, ingredients: out.recipe.ingredients.map((i) => ({ ...i, side: false })), serve: null }));
-  return { recipe: { ...recipe, slug: draft.slug, name: draft.name }, pitch: out.explanation, inspiredBy: [], changes: out.changes, answer: out.changes.join(", ") };
+  return { recipe: { ...out.recipe, slug: draft.slug, name: draft.name }, changes: out.changes, answer: out.changes.join(", ") };
 }

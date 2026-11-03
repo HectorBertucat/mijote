@@ -14,6 +14,7 @@ import { upsertRecipe } from "@/lib/recipes/store";
 import { getRecipe } from "@/lib/recipes/queries";
 import { householdMembers } from "@/lib/eaters/store";
 import { portions } from "@/lib/atelier/verify";
+import { toAiRecipe } from "@/lib/atelier/schema";
 import {
   budgetRefusal,
   canonicalUrl,
@@ -28,12 +29,13 @@ import {
   kitchenOf,
   latestCreation,
   LIMITS,
+  markSides,
+  sourceIds,
   normalizeCreation,
   refineProposal,
   saveCreation,
   startCreation,
   tasteOf,
-  toCreationRecipe,
   type CreationRecipe,
   type ResearchReport,
 } from "@/lib/creation";
@@ -54,7 +56,7 @@ function freshDb() {
 /** Une proposition correcte : le poulet basquaise des fiches, renommé (la bibliothèque de test est vide). */
 function goodRecipe(name = "Poulet aux pois chiches et poivrons fondants"): CreationRecipe {
   const r = RecipeInput.parse(JSON.parse(fs.readFileSync("src/seed/recipes/poulet-basquaise.json", "utf8")));
-  return { ...toCreationRecipe(r), slug: "poulet-pois-chiches", name };
+  return { ...toAiRecipe(r), slug: "poulet-pois-chiches", name };
 }
 
 const SOURCES: ResearchReport = {
@@ -102,7 +104,7 @@ function fakeClient(opts: { compose?: (params: Record<string, unknown>) => unkno
       parse: async (params) => {
         seen.parse++;
         seen.models.push(String(params.model));
-        return { usage: { input_tokens: 3000, output_tokens: 9000, cache_creation_input_tokens: 7000 }, stop_reason: "end_turn", parsed_output: opts.compose?.(params) ?? (/idée n° 1,/.test(promptOf(params)) ? { recipe: goodRecipe(), pitch: "Des sucs, une sauce qui nappe.", inspiredBy: ["s1", "s9"], changes: ["Pois chiches rôtis à part"] } : { recipe: goodRecipe("Curry doux de pois chiches au poulet"), pitch: "Doux.", inspiredBy: ["s2"], changes: [] }) };
+        return { usage: { input_tokens: 3000, output_tokens: 9000, cache_creation_input_tokens: 7000 }, stop_reason: "end_turn", parsed_output: opts.compose?.(params) ?? (/idée n° 1,/.test(promptOf(params)) ? { recipe: goodRecipe(), pitch: "Des sucs, une sauce qui nappe.", inspiredBy: "s1, s9", changes: ["Pois chiches rôtis à part"] } : { recipe: goodRecipe("Curry doux de pois chiches au poulet"), pitch: "Doux.", inspiredBy: "s2", changes: [] }) };
       },
     },
   };
@@ -176,8 +178,7 @@ test("vérification : rejets (équipement, durées, quantités, service, aliment
   ko(check((r) => r.steps.push({ ...r.steps[r.steps.length - 1], kind: "bake", equipmentId: "plat-four", ovenTemp: null, durationMin: 20 })), /sans température/);
   ko(check((r) => (r.ingredients[0].grams = r.ingredients[0].grams! * 12)), /par unité|énorme/);
   ko(check((r) => (r.ingredients[0].grams = null)), /Sans quantité/);
-  ko(check((r) => (r.serve = [{ label: "plat", bowls: ["A"], kind: "main" }, { label: "riz", bowls: ["Z"], kind: "starch" }])), /bol Z/);
-  const unknown = check((r) => r.ingredients.push({ lineRaw: "50 g baies de goji", item: "Baies de goji", grams: 50, units: null, group: "A", optional: false, pantry: false, food: "goji_tibet", side: false }));
+  const unknown = check((r) => r.ingredients.push({ lineRaw: "50 g baies de goji", item: "Baies de goji", grams: 50, units: null, group: "A", optional: false, pantry: false, food: "goji_tibet" }));
   assert.ok(unknown.some((d) => d.level === "warn" && /Baies de goji/.test(d.text)), "un aliment inconnu est signalé");
 
   // Un rôle standard absent de la cuisine, avec une rechange qui y est : gardé, le planificateur fait l'échange.
@@ -203,6 +204,20 @@ test("vérification : rejets (équipement, durées, quantités, service, aliment
   const bare = kitchen.filter((e) => e.kind !== "oven" && e.kind !== "hob");
   const d = normalizeCreation(goodRecipe());
   assert.ok(checkCreation(d, { kitchen: bare, household, coverage: 1 }).some((x) => x.level === "ko" && /pas de plaque/.test(x.text)));
+});
+
+test("garniture à part reconnue par le code, sources citées lues dans une chaîne", () => {
+  const withRice = (equipmentId: string) => {
+    const r = goodRecipe();
+    r.ingredients.push({ lineRaw: "400 g riz basmati", item: "Riz basmati", grams: 400, units: null, group: "R", optional: false, pantry: false, food: "riz_basmati" });
+    r.steps.push({ ...r.steps[r.steps.length - 1], kind: "boil", text: "Riz (bol R), 11 min.", equipmentId, equipmentAlt: null, bowls: ["R"], durationMin: 15, activeMin: 2, ovenTemp: null, cue: null, phases: [] });
+    return normalizeCreation(r);
+  };
+  assert.equal(withRice("casserole-16").ingredients.find((i) => i.item === "Riz basmati")?.side, true, "cuit seul dans sa casserole : à part");
+  assert.notEqual(withRice("cocotte").ingredients.find((i) => i.item === "Riz basmati")?.side, true, "dans la cocotte du plat : one pot");
+  // La fiche d'origine marque son riz « side » à la main ; sans ce champ, le code le retrouve.
+  assert.deepEqual(markSides(normalizeCreation(goodRecipe())).ingredients.filter((i) => i.side).map((i) => i.group), ["D"]);
+  assert.deepEqual(sourceIds("S1, s3 et [s1] ; pas s123 ni ss2"), ["s1", "s3"]);
 });
 
 // ─── Parcours avec un faux client ───
@@ -282,9 +297,9 @@ test("défauts : une proposition bancale est montrée avec ses défauts, refusé
       const prompt = promptOf(params);
       if (/Défauts relevés/.test(prompt)) {
         fixed = /aucun récipient/.test(prompt);
-        return { recipe: goodRecipe(), pitch: "Corrigée.", inspiredBy: [], changes: ["Cocotte"], answer: "La cocotte à la place." };
+        return { recipe: goodRecipe(), changes: ["Cocotte"], answer: "La cocotte à la place." };
       }
-      return { recipe: bad(), pitch: "Bon.", inspiredBy: ["s1"], changes: [] };
+      return { recipe: bad(), pitch: "Bon.", inspiredBy: "[s1]", changes: [] };
     },
   });
   setAiClient(fake.client);
@@ -320,7 +335,7 @@ test("défauts : une proposition bancale est montrée avec ses défauts, refusé
 test("doublon : une proposition trop proche de la bibliothèque est bloquée", async () => {
   const db = freshDb();
   upsertRecipe(db, RecipeInput.parse(JSON.parse(fs.readFileSync("src/seed/recipes/poulet-basquaise.json", "utf8"))));
-  const fake = fakeClient({ compose: () => ({ recipe: goodRecipe("Poulet basquaise"), pitch: "", inspiredBy: [], changes: [] }) });
+  const fake = fakeClient({ compose: () => ({ recipe: goodRecipe("Poulet basquaise"), pitch: "", inspiredBy: "", changes: [] }) });
   setAiClient(fake.client);
   try {
     const c = await startCreation(db, "poulet basquaise", { resolve: offline });

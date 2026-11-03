@@ -14,7 +14,7 @@ import { gramsOf } from "@/lib/nutrition/compute";
 import { isFoodId } from "@/lib/nutrition/foods";
 import { RecipeInput } from "@/lib/recipes/format";
 import { recipeFits, type FitLevel } from "@/lib/week/fit";
-import { AiIngredient, AiRecipe, normalizeRecipe, toAiRecipe } from "@/lib/atelier/schema";
+import { AiRecipe, normalizeRecipe, toAiRecipe } from "@/lib/atelier/schema";
 import { norm, portions, type Verification } from "@/lib/atelier/verify";
 import { defaultBatchUnits } from "@/lib/atelier/prompt";
 
@@ -210,45 +210,62 @@ Trouve 3 à 5 recettes publiées qui y répondent (des façons différentes de f
 
 // ─── 2. Composition : ce que rend l'IA ───
 
-export const CreationIngredient = AiIngredient.extend({
-  side: z.boolean().describe("true pour une garniture cuite et gardée à part (riz, pâtes, semoule hors one pot) : elle se pèse et se sert à part"),
-});
-
-export const CreationRecipe = AiRecipe.extend({
-  ingredients: z.array(CreationIngredient),
-  serve: z
-    .array(z.object({ label: z.string(), bowls: z.array(z.string()), kind: z.string().describe("main, starch, veg ou other") }))
-    .nullable()
-    .describe("Ce qui se sert séparément (le plat d'abord, puis la garniture), par lettres de bol ; null si tout se sert ensemble"),
-});
-export type CreationRecipe = z.infer<typeof CreationRecipe>;
+// L'IA rend une recette au format de l'atelier, sans « side » ni « serve » : la grammaire d'un schéma strict a
+// une taille bornée par l'API (descriptions comprises), et une recette complète plus trois champs courts y tient tout
+// juste (mesuré le 03/11/2026 : un tableau de plus, ou une description de plus, et l'API refuse). Les garnitures à
+// part sont reconnues par le code (markSides), les groupes servis se déduisent des étapes (src/lib/reserve/groups.ts),
+// les sources citées sont lues dans une chaîne (sourceIds).
+export type CreationRecipe = AiRecipe;
 
 export const ProposalOut = z.object({
-  recipe: CreationRecipe,
+  recipe: AiRecipe,
   pitch: z.string().describe("2 phrases, comme on en parlerait à table : pourquoi c'est bon"),
-  inspiredBy: z.array(z.string()).describe("Ids des sources (s1, s2…) dont la recette s'inspire"),
+  inspiredBy: z.string().describe("Ids des sources dont la recette s'inspire, séparés par des virgules : « s1, s3 »"),
   changes: z.array(z.string()).describe("Ce qui change par rapport à la source, très court, un changement par ligne (4 à 6)"),
 });
-
 export type ProposalOut = z.infer<typeof ProposalOut>;
 
-export const RefineOutput = ProposalOut.extend({
+/** Les ids de sources cités dans une chaîne (« s1, s3 », « [s2] »), sans doublon. */
+export const sourceIds = (text: string) => [...new Set((text.toLowerCase().match(/\bs\d{1,2}\b/g) ?? []))];
+
+/** Une retouche : la recette, ce qui a changé pour la demande, et la liste des changements. Pitch et sources restent. */
+export const RefineOutput = z.object({
+  recipe: AiRecipe,
   answer: z.string().describe("Une ou deux phrases : ce que tu as changé pour cette demande"),
+  changes: z.array(z.string()).describe("Ce qui change par rapport à la source, très court, un changement par ligne (4 à 6)"),
 });
 export type RefineOutput = z.infer<typeof RefineOutput>;
-
-const SERVE_KINDS = new Set(["main", "starch", "veg", "other"]);
 
 /** Les récipients standard des fiches (docs/recettes.md) : des rôles, que le planificateur remplace par un récipient de rechange. */
 export const STANDARD_VESSELS = new Set(["poele-28", "cocotte", "faitout", "casserole-14", "casserole-16", "casserole-18", "plat-grand", "plat-moyen", "plat-four", "oven", "air-fryer"]);
 
+const COOK = new Set(["sear", "braise", "boil", "bake"]);
+/** Féculents qui se gardent mieux cuits à part (un one pot les cuit dans la sauce, c'est voulu). */
+const STARCH_FOOD = /^(riz|pates|semoule|quinoa|boulgour)/;
+
 /**
- * Sortie de l'IA → fiche valide : la normalisation de l'atelier, plus les garnitures à part et les groupes servis.
+ * Les garnitures à part (`side`), reconnues par le code : un féculent dont le bol cuit seul, à ses propres étapes,
+ * dans un récipient où rien d'autre ne cuit. Cuit avec le plat (même étape ou même récipient), c'est un one pot :
+ * il reste dans le plat. Pur.
+ */
+export function markSides(draft: RecipeInput): RecipeInput {
+  const cook = draft.steps.filter((s) => COOK.has(s.kind));
+  const alone = (g: string) => {
+    const own = cook.filter((s) => (s.bowls ?? []).includes(g));
+    if (!own.length || own.some((s) => (s.bowls ?? []).some((b) => b !== g))) return false;
+    const ownEq = new Set(own.map((s) => s.equipmentId).filter(Boolean));
+    return !cook.some((s) => !(s.bowls ?? []).includes(g) && s.equipmentId != null && ownEq.has(s.equipmentId));
+  };
+  return { ...draft, ingredients: draft.ingredients.map((i) => (i.food && STARCH_FOOD.test(i.food) && i.group && alone(i.group) ? { ...i, side: true } : i)) };
+}
+
+/**
+ * Sortie de l'IA → fiche valide : la normalisation de l'atelier, plus les garnitures à part.
  * Récipients : un rôle standard absent de la cuisine reste quand une rechange de la cuisine est donnée (le
  * planificateur fait l'échange, l'air fryer passe au four) ; sinon, comme un id inconnu, il tombe (et la
  * vérification le refuse).
  */
-export function normalizeCreation(ai: CreationRecipe, opts: { equipmentIds?: Set<string> } = {}): RecipeInput {
+export function normalizeCreation(ai: AiRecipe, opts: { equipmentIds?: Set<string> } = {}): RecipeInput {
   const owned = opts.equipmentIds;
   const draft = normalizeRecipe(ai);
   if (owned)
@@ -257,26 +274,7 @@ export function normalizeCreation(ai: CreationRecipe, opts: { equipmentIds?: Set
       const keep = s.equipmentId != null && (owned.has(s.equipmentId) || (STANDARD_VESSELS.has(s.equipmentId) && alt.length > 0));
       return { ...s, equipmentId: keep ? s.equipmentId : (alt[0] ?? null), equipmentAlt: keep ? alt : alt.slice(1) };
     });
-  const sides = ai.ingredients.filter((i) => i.item.trim()).map((i) => i.side);
-  draft.ingredients = draft.ingredients.map((i, k) => (sides[k] ? { ...i, side: true } : i));
-  const serve = (ai.serve ?? [])
-    .map((g) => ({
-      label: g.label.trim().slice(0, 40),
-      bowls: [...new Set(g.bowls.map((b) => b.trim().toUpperCase().slice(0, 1)).filter(Boolean))],
-      kind: (SERVE_KINDS.has(g.kind) ? g.kind : "other") as "main" | "starch" | "veg" | "other",
-    }))
-    .filter((g) => g.label && g.bowls.length);
-  return RecipeInput.parse({ ...draft, serve: serve.length > 1 ? serve : null });
-}
-
-/** Le chemin inverse, pour une retouche : la fiche au format de l'IA, garnitures et groupes servis compris. */
-export function toCreationRecipe(r: RecipeInput): CreationRecipe {
-  const ai = toAiRecipe(r);
-  return {
-    ...ai,
-    ingredients: ai.ingredients.map((i, k) => ({ ...i, side: r.ingredients[k]?.side === true })),
-    serve: r.serve?.map((g) => ({ label: g.label, bowls: g.bowls, kind: g.kind ?? "other" })) ?? null,
-  };
+  return RecipeInput.parse(markSides(draft));
 }
 
 // ─── 3. Vérification en code ───
@@ -297,7 +295,6 @@ export interface KitchenItem {
   capacityL?: number | null;
 }
 
-const COOK = new Set(["sear", "braise", "boil", "bake"]);
 /** Les récipients qui vont pour chaque type d'étape. */
 const FITS: Record<string, Set<string>> = {
   sear: new Set(["pan", "pot", "appliance"]),
@@ -309,9 +306,6 @@ const RAW_G_PER_UNIT = { min: 35, max: 300 };
 const KCAL_PER_UNIT = { min: 60, max: 350 };
 const MAX_LINE_G = 5000;
 const MAX_TOTAL_MIN = 300;
-/** Féculents qui se gardent mieux cuits à part (un one pot les cuit dans la sauce, c'est voulu). */
-const STARCH_FOOD = /^(riz|pates|semoule|quinoa|boulgour)/;
-
 /**
  * Ce qui cloche dans une recette proposée, pour le foyer et sa cuisine. « ko » bloque l'enregistrement
  * (la proposition se corrige d'abord), « warn » se relit. Pur.
@@ -378,23 +372,7 @@ export function checkCreation(draft: RecipeInput, ctx: { kitchen: KitchenItem[];
   });
   if (minutes > MAX_TOTAL_MIN) warn("durées", `${Math.round(minutes)} min d'étapes en tout : long pour une session.`);
 
-  // Service : groupes déclarés, garnitures à part, conservation.
-  const bowls = new Set(draft.ingredients.map((i) => i.group).filter(Boolean) as string[]);
-  for (const g of draft.serve ?? []) {
-    const missing = g.bowls.filter((b) => !bowls.has(b));
-    if (missing.length) ko("service", `« ${g.label} » cite le bol ${missing.join(", ")}, qui n'existe pas.`);
-  }
-  if (draft.serve?.length && draft.serve[0].kind && draft.serve[0].kind !== "main") warn("service", "Le premier groupe servi devrait être le plat.");
-  // Un féculent cuit avec le plat (même récipient ou même étape) : un one pot, voulu. Sinon il est « à part ».
-  const cook = draft.steps.filter((s) => COOK.has(s.kind));
-  for (const i of draft.ingredients) {
-    if (!i.food || !STARCH_FOOD.test(i.food) || i.side || !i.group) continue;
-    const g = i.group;
-    const own = cook.filter((s) => (s.bowls ?? []).includes(g));
-    const ownEq = new Set(own.map((s) => s.equipmentId).filter(Boolean));
-    const withDish = own.some((s) => (s.bowls ?? []).some((b) => b !== g)) || cook.some((s) => !(s.bowls ?? []).includes(g) && s.equipmentId != null && ownEq.has(s.equipmentId));
-    if (own.length && !withDish) warn("service", `${i.item} : cuit à part sans être marqué « à part » (il se pèse et se sert séparément).`);
-  }
+  // Conservation.
   if (draft.fridgeDays == null) warn("service", "Conservation au frigo non précisée.");
   return out;
 }
@@ -458,7 +436,7 @@ function sourcesBlock(sources: Source[]): string {
 const CRAFT = `Écris comme un bon cuisinier de maison, pas comme une machine :
 - Un nom de plat qu'on dirait à table (« Poulet rôti au paprika fumé, pois chiches croustillants »), jamais « délice », « explosion de saveurs », « healthy », ni émoji.
 - Du goût concret : une vraie saisie, des sucs déglacés, des aromates qui cuisent assez, un acide ou une herbe fraîche à la fin, une texture qui croque. Une sauce généreuse quand le plat en appelle une.
-- Batch cooking : le plat tient ${"3 à 4"} jours au frigo et se réchauffe sans sécher (assez de sauce) ; dis s'il se congèle (freezerOk) ; une garniture qui se garde mieux à part (riz, pâtes, semoule) est « side » et a son groupe dans serve, sauf si l'envie demande un one pot.
+- Batch cooking : le plat tient ${"3 à 4"} jours au frigo et se réchauffe sans sécher (assez de sauce) ; dis s'il se congèle (freezerOk) ; une garniture qui se garde mieux à part (riz, pâtes, semoule) a son bol et cuit dans sa propre casserole : l'appli la pèse et la sert à part. Sauf si l'envie demande un one pot.
 - Honnêteté : chaque recette s'inspire d'une ou deux sources (inspiredBy). Reprends l'idée, pas le texte : tes quantités pour le foyer, tes étapes pour l'équipement d'ici. changes dit ce qui change par rapport à la source (« crème remplacée par du fromage blanc en fin de cuisson », « four plutôt que friteuse »).`;
 
 /** La direction de chaque proposition : elles se composent en parallèle, sans se voir. */
@@ -489,7 +467,7 @@ Règles : ${units} unités par défaut${split}, tags courts (protéine, mode de 
 
 export function refinePrompt(input: { recipe: RecipeInput; ask: string; sources: Source[]; asks: string[]; defects: Defect[] }): string {
   return `Recette proposée (JSON) :
-${JSON.stringify(toCreationRecipe(input.recipe))}
+${JSON.stringify(toAiRecipe(input.recipe))}
 
 Sources d'inspiration :
 ${sourcesBlock(input.sources)}
