@@ -309,3 +309,6 @@ export function dishFreezeNote(foods: (string | null | undefined)[]): string | n
   if (has(/^creme/)) return "la sauce à la crème peut trancher : remue bien en réchauffant";
   return null;
 }
+
+/** L'aliment d'une base, pour son dessin (FoodIllu). */
+export const BASE_FOOD: Record<string, string> = { riz: "riz_basmati", pates: "pates", semoule: "semoule", quinoa: "quinoa", boulgour: "boulgour", "pommes-de-terre": "pomme_de_terre", "patates-douces": "patate_douce", "haricots-verts": "haricots_verts", brocoli: "brocoli", "chou-fleur": "chou_fleur", "petits-pois": "petits_pois", epinards: "epinards", courgettes: "courgette", carottes: "carotte" };

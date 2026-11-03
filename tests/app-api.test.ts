@@ -221,7 +221,7 @@ test("api app : les plats, manger une portion, annuler, réajuster", async () =>
   db.insert(cookSessions).values({ id: "S", planJson: { version: 1, recipes: [{ slug: "poulet-teriyaki-riz", name: "Teriyaki", color: "x", scale: 1 }] }, status: "done", endedAt: "2026-10-18T17:00:00Z" }).run();
   saveReserve(db, "S", recipeId, { weights: { plat: 1500, riz: 1100, "haricots-verts": 600 }, counts: { alex: 4, sam: 3 } }, new Date("2026-10-18T17:30:00Z"));
   const now = Date.parse("2026-10-20T10:30:00Z");
-  type Dish = { id: string; status: string; groups: { key: string; leftG: number }[]; people: { personId: string; me: boolean; total: number; left: number; portion?: { grams: { key: string; g: number }[] }; next?: { source: string } }[] };
+  type Dish = { id: string; status: string; groups: { key: string; leftG: number; base?: string }[]; people: { personId: string; me: boolean; total: number; left: number; portion?: { grams: { key: string; g: number }[] }; next?: { source: string } }[] };
   type Plats = { dishes: Dish[]; eaten: { id: string; entryId: string; kcal: number }[]; person: { id: string } };
   const moi = call(alex, "GET", "moi").body as { features: string[] };
   assert.ok(moi.features.includes("plats"));

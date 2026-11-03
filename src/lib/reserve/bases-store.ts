@@ -168,8 +168,8 @@ function eatPlanner(db: Db, dishes: DishView[], today: string) {
 
 const looseOf = (p: DishView["people"][number]) => Math.max(0, p.left - p.inBoxes);
 
-/** Les bases du foyer : ce qui reste dans chaque récipient, à refaire, à congeler. */
-export function listBases(db: Db, dishes: DishView[], now = new Date()): BaseView[] {
+/** Les bases du foyer : ce qui reste dans chaque récipient, à refaire, à congeler. `also` : une base à montrer même sans récipient. */
+export function listBases(db: Db, dishes: DishView[], now = new Date(), also?: string): BaseView[] {
   const today = todayParis(now);
   const { rows, levels } = loadStocks(db, now);
   const cooked = dishes.filter((d) => d.status === "cooked");
@@ -177,7 +177,7 @@ export function listBases(db: Db, dishes: DishView[], now = new Date()): BaseVie
   const potList = pots(db);
   const eatBefore = eatPlanner(db, dishes, today);
   const at = now.toISOString();
-  const families = new Set([...rows.filter((r) => r.status === "open").map((r) => r.family), ...cooked.flatMap((d) => d.groups.filter((g) => g.base).map((g) => g.base!))]);
+  const families = new Set([...rows.filter((r) => r.status === "open").map((r) => r.family), ...cooked.flatMap((d) => d.groups.filter((g) => g.base).map((g) => g.base!)), ...(also ? [also] : [])]);
   const out: BaseView[] = [];
   for (const key of families) {
     const f = baseFamily(key);
@@ -203,7 +203,7 @@ export function listBases(db: Db, dishes: DishView[], now = new Date()): BaseVie
         const leftG = levels[r.id] ?? 0;
         return { id: r.id, cookedOn: r.cookedOn, limit, freshness: freshness(limit, today), leftG, cookedG: Math.round(r.cookedG), estimated: r.estimated, sessionId: r.sessionId, boxes: leftG > CRUMBS_G ? (boxesFor(f, leftG, box)?.n ?? null) : 0 };
       });
-    if (!containers.length && !linked.length) continue;
+    if (!containers.length && !linked.length && key !== also) continue;
     const leftG = containers.reduce((s, c) => s + c.leftG, 0);
     const first = containers.find((c) => c.leftG > CRUMBS_G);
     const limit = first?.limit ?? null;
