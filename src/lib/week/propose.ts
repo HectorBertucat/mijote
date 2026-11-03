@@ -17,7 +17,10 @@
 // - goûts : une recette qui contient ce qu'une personne n'aime pas ne lui est pas servie
 //   (`excluded`, calculé par tastes.ts depuis la table preferences) ;
 // - gaspillage : les paquets entamés à travers toutes les recettes (`profiles`, waste.ts)
-//   coûtent des points, d'après la valeur du reste.
+//   coûtent des points, d'après la valeur du reste ;
+// - retours de goût : une recette trouvée « bof » coûte des points, une adorée en gagne un peu
+//   (`taste`, src/lib/feedback/core.ts) ;
+// - une recette et sa variante (même famille, recipes.parent_id) ne vont jamais ensemble.
 import { estimateSession, estimateRecipe, type RecipeLike } from "@/lib/session/estimate";
 import { gapOf, meanGap, portionUnits, type Eater } from "@/lib/eaters/core";
 import { selectionWaste, wastePenalty, type PackProfiles, type WasteLine } from "./waste";
@@ -41,6 +44,9 @@ export interface WeekRecipe extends RecipeLike {
   kcalUnit: number | null;
   proteinUnit: number | null;
   status?: string;
+  /** Famille (recipes.parent_id) : une recette et sa variante ne vont pas ensemble. */
+  id?: string;
+  parentId?: string | null;
   /** Multiplicateur des unités cuites (1 = la fiche). */
   factor?: number;
   /** Grammes ajoutés à un ingrédient (recipe_ingredient_id → g), pour finir un paquet. */
@@ -66,7 +72,13 @@ export interface ScoreContext {
   profiles?: PackProfiles;
   /** Mangeurs (cible, part de base) : la part de chacun suit la recette. Absent = part du créneau. */
   eaters?: Map<string, Eater>;
+  /** slug → points des retours de goût (src/lib/feedback/core.ts, tastePenalty). */
+  taste?: Map<string, number>;
 }
+
+/** La famille d'une recette : sa racine (une variante et son originale en partagent une). */
+export const familyKey = (r: Pick<WeekRecipe, "slug" | "id" | "parentId">) => r.parentId ?? r.id ?? r.slug;
+const oneEach = (rs: Pick<WeekRecipe, "slug" | "id" | "parentId">[]) => new Set(rs.map(familyKey)).size === rs.length;
 
 /** Jour de la session, relatif au premier jour de la période : -1 = la veille (le dimanche pour une semaine du lundi). */
 export const COOK_DAY = -1;
@@ -275,6 +287,7 @@ export function scoreSelection(recipes: WeekRecipe[], slots: SlotIn[], ctx: Scor
       score += servings ? (gap / servings) * recipes.length : 0;
     } else score += nutritionGap(r) * (a.neededUnits ? (p.unitsUsed / a.neededUnits) * recipes.length : 1);
     if (r.status && r.status !== "liked") score += 3;
+    score += ctx.taste?.get(r.slug) ?? 0;
   }
   score += est.conflicts.length * 40;
   score += est.totalMin * 0.05 + Math.max(0, est.totalMin - 210) * 0.3;
@@ -303,9 +316,9 @@ function* combinations<T>(items: T[], k: number, start = 0, acc: T[] = []): Gene
 const POOL = 14; // au-delà, on garde les meilleures recettes seules (2 000 combinaisons au plus)
 
 /** Ordre de départ : recettes aimées, proches du repère, qui se gardent et se congèlent. */
-function poolOf(library: WeekRecipe[], eaters?: Map<string, Eater>): WeekRecipe[] {
+function poolOf(library: WeekRecipe[], eaters?: Map<string, Eater>, taste?: Map<string, number>): WeekRecipe[] {
   const gap = (r: WeekRecipe) => (eaters ? meanGap([...eaters.values()], r) : nutritionGap(r));
-  const solo = (r: WeekRecipe) => gap(r) + (r.status === "liked" ? 0 : 3) + (r.freezerOk ? 0 : 2) - Math.min(4, fridgeOf(r));
+  const solo = (r: WeekRecipe) => gap(r) + (r.status === "liked" ? 0 : 3) + (r.freezerOk ? 0 : 2) - Math.min(4, fridgeOf(r)) + (taste?.get(r.slug) ?? 0);
   return [...library]
     .filter((r) => r.servingsUnits > 0 && r.status !== "archived")
     .sort((a, b) => solo(a) - solo(b) || a.slug.localeCompare(b.slug))
@@ -316,14 +329,14 @@ function poolOf(library: WeekRecipe[], eaters?: Map<string, Eater>): WeekRecipe[
 export function propose(library: WeekRecipe[], slots: SlotIn[], opts: { keep?: string[]; exclude?: string[] } & ScoreContext = {}): Proposal | null {
   const keep = (opts.keep ?? []).map((s) => library.find((r) => r.slug === s)).filter((r): r is WeekRecipe => !!r);
   const exclude = new Set([...(opts.exclude ?? []), ...keep.map((r) => r.slug)]);
-  const pool = poolOf(library.filter((r) => !exclude.has(r.slug)), opts.eaters);
+  const pool = poolOf(library.filter((r) => !exclude.has(r.slug)), opts.eaters, opts.taste);
   let best: Proposal | null = null;
   const minK = Math.max(0, 2 - keep.length);
   const maxK = Math.max(0, 4 - keep.length);
   for (let k = Math.min(minK, pool.length); k <= Math.min(maxK, pool.length); k++) {
     for (const combo of combinations(pool, k)) {
       const sel = [...keep, ...combo];
-      if (!sel.length) continue;
+      if (!sel.length || !oneEach(sel)) continue;
       const p = scoreSelection(sel, slots, opts);
       if (!best || p.score < best.score - 1e-9 || (Math.abs(p.score - best.score) <= 1e-9 && p.slugs.join() < best.slugs.join())) best = p;
     }
@@ -336,10 +349,11 @@ export function swap(library: WeekRecipe[], slots: SlotIn[], current: string[], 
   const keep = current.filter((s) => s !== out);
   const exclude = [out, ...alsoExclude];
   // Une seule remplaçante, à la place de celle qu'on retire.
-  const pool = poolOf(library.filter((r) => !exclude.includes(r.slug) && !keep.includes(r.slug)), ctx.eaters);
+  const pool = poolOf(library.filter((r) => !exclude.includes(r.slug) && !keep.includes(r.slug)), ctx.eaters, ctx.taste);
   const kept = keep.map((s) => library.find((r) => r.slug === s)).filter((r): r is WeekRecipe => !!r);
   let best: Proposal | null = null;
   for (const c of pool) {
+    if (!oneEach([...kept, c])) continue;
     const p = scoreSelection([...kept, c], slots, ctx);
     if (!best || p.score < best.score) best = p;
   }

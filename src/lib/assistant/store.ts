@@ -15,6 +15,7 @@ import { listPeople, todayParis } from "@/lib/health/store";
 import { editSession, getRunProfile, runContext, saveRunSettings, settingsOf, setWeekOverride } from "@/lib/running/store";
 import { startShoppingList } from "@/lib/shopping/build";
 import { defaultPeriod, isDay, periodLabel } from "@/lib/week/period";
+import { compactTastes } from "@/lib/feedback/read";
 import { addRecipe, library, loadSelection, loadTastes, loadWeek, periodPlans, removeRecipe, weekList } from "@/lib/week/store";
 import { buildContext, checkAction, KIND_LABEL, pageLine, pickModel, reviewToolCalls, toolDefinitions, type ActionCard, type AssistantAction, type PageContext, type Snapshot } from "./core";
 
@@ -52,6 +53,7 @@ export function loadSnapshot(db: Db, speakerId: string, weekStart: string, now =
       missing: e.missing,
     };
   });
+  const said = compactTastes(db);
   return {
     today: todayParis(now),
     speakerId,
@@ -59,7 +61,7 @@ export function loadSnapshot(db: Db, speakerId: string, weekStart: string, now =
     week: { start: w.start, days: w.days, label: periodLabel(w.start, w.days), selected: sel.map((x) => x.slug), list: list ? { status: list.status, changed: list.changed, ordered: list.ordered } : null },
     recipes: lib
       .filter((r) => r.status !== "archived")
-      .map((r) => ({ slug: r.slug, name: r.name, kcalUnit: r.kcalUnit, proteinUnit: r.proteinUnit, status: r.status ?? "to_try", excludedFor: [...(tastes.excluded.get(r.slug) ?? [])] })),
+      .map((r) => ({ slug: r.slug, name: r.name, kcalUnit: r.kcalUnit, proteinUnit: r.proteinUnit, status: r.status ?? "to_try", excludedFor: [...(tastes.excluded.get(r.slug) ?? [])], ...(said.has(r.slug) ? { feedback: said.get(r.slug) } : {}) })),
     boxes: listStock(db, todayParis(now)).map((b) => ({ id: b.id, name: b.name, personId: b.personId, kcal: b.kcal, proteinG: b.proteinG, place: b.place, limit: b.limit, freshness: b.freshness })),
     running: runContext(db, speakerId, now),
   };

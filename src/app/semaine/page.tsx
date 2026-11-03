@@ -18,7 +18,9 @@ import { densityOf, fitBadge, fitRank, fitsAll, fitSummary, proteinDense, recipe
 import { buildPlan } from "@/lib/session/store";
 import { FactorStepper, type Control } from "@/components/semaine/FactorStepper";
 import { Leftovers, LeftoversSkeleton } from "@/components/semaine/Leftovers";
-import { TastesNote } from "@/components/semaine/Tastes";
+import { TasteMark, TastesNote } from "@/components/semaine/Tastes";
+import { loadTasteMarks } from "@/lib/feedback/read";
+import { tasteBadge, tasteRank } from "@/lib/feedback/core";
 import { WeekListStatus } from "@/components/semaine/WeekListStatus";
 import { PendingButton } from "@/components/semaine/PendingButton";
 import { PartMacros } from "@/components/semaine/PartMacros";
@@ -156,6 +158,8 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
     return b?.tone === "warn" ? [`${r.name}, ${b.text.charAt(0).toLowerCase()}${b.text.slice(1)}`] : [];
   });
 
+  // Retours de goût de chacun (src/lib/feedback) : une pastille, et un « bof » pas ajusté passe en fin de liste.
+  const marks = loadTasteMarks(db);
   // Bibliothèque (choisir ses plats) : filtres simples, sans unités ni nombre de repas.
   const filters = FILTERS.filter((x) => goals || x.id !== "objectifs");
   const filter = filters.find((x) => x.id === f) ?? filters[0];
@@ -168,6 +172,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
       (x, y) =>
         Number(chosen.has(y.r.slug)) - Number(chosen.has(x.r.slug)) ||
         (byGoals ? fitRank(fitsOf.get(x.r.slug) ?? []) - fitRank(fitsOf.get(y.r.slug) ?? []) || (densityOf(y.r) ?? 0) - (densityOf(x.r) ?? 0) : 0) ||
+        tasteRank(marks.get(x.r.slug)) - tasteRank(marks.get(y.r.slug)) ||
         (x.r.status === "liked" ? 0 : 1) - (y.r.status === "liked" ? 0 : 1) ||
         x.r.name.localeCompare(y.r.name, "fr")
     );
@@ -417,6 +422,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                         <>
                           {facts}
                           <FitMark badge={badge} />
+                          <TasteMark badge={tasteBadge(marks.get(r.slug))} />
                         </>
                       }
                       label={label}

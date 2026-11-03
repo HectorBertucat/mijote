@@ -179,6 +179,25 @@ const CEIL: Record<string, [solo: number, duo: number]> = {
   "poulet-paprika-fume-patates-douces+poulet-teriyaki-riz": [100, 58],
   "poulet-paprika-fume-patates-douces+saute-minute-porc-gingembre-miel": [73, 58],
   "poulet-teriyaki-riz+saute-minute-porc-gingembre-miel": [74, 46],
+  // 03/11/2026 : la variante « pommes de terre » du poulet paprika, durée mesurée ce jour-là.
+  "butter-chicken-express+poulet-paprika-fume-pommes-de-terre": [123, 85],
+  "cannelloni-bolognaise+poulet-paprika-fume-pommes-de-terre": [163, 150],
+  "chasseur-porc+poulet-paprika-fume-pommes-de-terre": [173, 148],
+  "colombo-porc+poulet-paprika-fume-pommes-de-terre": [147, 124],
+  "couscous-poulet-merguez+poulet-paprika-fume-pommes-de-terre": [117, 96],
+  "dahl-pois-casses-poulet+poulet-paprika-fume-pommes-de-terre": [104, 84],
+  "gratin-facon-moussaka+poulet-paprika-fume-pommes-de-terre": [147, 135],
+  "medaillons-filet-mignon-moutarde+poulet-paprika-fume-pommes-de-terre": [80, 64],
+  "one-pot-orzo-poulet-champignons-citron+poulet-paprika-fume-pommes-de-terre": [109, 76],
+  "one-pot-orzo-poulet-epice+poulet-paprika-fume-pommes-de-terre": [105, 72],
+  "one-pot-orzo-poulet-epinards-parmesan+poulet-paprika-fume-pommes-de-terre": [91, 69],
+  "pasta-al-forno-saucisse-ricotta+poulet-paprika-fume-pommes-de-terre": [162, 136],
+  "porc-caramel-oeufs+poulet-paprika-fume-pommes-de-terre": [152, 119],
+  "poulet-basquaise+poulet-paprika-fume-pommes-de-terre": [117, 86],
+  "poulet-cremeux-ail-parmesan+poulet-paprika-fume-pommes-de-terre": [122, 82],
+  "poulet-paprika-fume-patates-douces+poulet-paprika-fume-pommes-de-terre": [101, 72],
+  "poulet-paprika-fume-pommes-de-terre+poulet-teriyaki-riz": [104, 67],
+  "poulet-paprika-fume-pommes-de-terre+saute-minute-porc-gingembre-miel": [81, 65],
 };
 
 /** Le morceau `part` (1 à `parts`) : une paire sur `parts`, dans l'ordre des noms. */

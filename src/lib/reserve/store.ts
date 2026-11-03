@@ -19,6 +19,8 @@ import { addDays, mondayOf } from "@/lib/week/propose";
 import { periodPlans } from "@/lib/week/store";
 import { leftInPot, macrosOf, reserveState, reweigh, servingLabel, splitGroups, weighedGroups, type BoxIn, type CalcModel, type Grams, type ReserveGroup, type ServingIn, type ShareState, type Target } from "./core";
 import { serveGroups, type ServeDecl } from "./groups";
+import { swapRows, type Swap } from "@/lib/feedback/swap";
+import { sessionSwaps } from "@/lib/feedback/swaps-db";
 import { batchSummary, batchTitle, ESTIMATE_WINDOW_DAYS, estimatedReserve, toEstimate, weighState, type BatchSummary, type WeighState } from "./batch";
 
 type ReserveRow = typeof reserves.$inferSelect;
@@ -41,14 +43,15 @@ export function targetsOf(db: Db, macros: { kcalUnit: number | null; proteinUnit
 }
 
 /** La marmite d'une recette, prête à peser : groupes et macros (× multiplicateur), foyer, repas prévus. */
-export function calcModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean } = {}, now = new Date()): CalcModel | null {
+export function calcModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean; swaps?: Swap[] } = {}, now = new Date()): CalcModel | null {
   const r = db.select().from(recipes).where(eq(recipes.slug, slug)).get();
   if (!r) return null;
   const scale = opts.scale ?? 1;
   const cookedOn = opts.cookedOn ?? todayParis(now);
   const planner = loadPlannerRecipes(db, [slug], { [slug]: scale })[0];
   const groups = serveGroups(planner, r.serveJson as ServeDecl[] | null);
-  const ings = db.select().from(recipeIngredients).where(eq(recipeIngredients.recipeId, r.id)).orderBy(asc(recipeIngredients.position)).all();
+  // Un ingrédient remplacé en cuisinant (src/lib/feedback/swap.ts) : la nutrition suit l'aliment mis.
+  const ings = swapRows(db.select().from(recipeIngredients).where(eq(recipeIngredients.recipeId, r.id)).orderBy(asc(recipeIngredients.position)).all(), opts.swaps ?? []);
   const nut = (idx: number[]) => computeNutrition(idx.map((n) => ings[n]).map((i) => ({ item: i.item, food: i.foodId, grams: i.grams, units: i.units, yield: i.yield })), 1);
   // Comme la fiche : sans 80 % des ingrédients connus, pas de kcal pour le partage.
   const known = nut(ings.map((i, n) => (i.optional ? -1 : n)).filter((n) => n >= 0)).coverage >= 0.8;
@@ -177,7 +180,7 @@ export function saveReserve(db: Db, sessionId: string, recipeId: string, input: 
   checkCounts(input.counts);
   checkCounts(input.freezer ?? {});
   const cookedOn = cookedOnOf(s);
-  const model = calcModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true }, now)!;
+  const model = calcModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true, swaps: sessionSwaps(db, sessionId, recipeId) }, now)!;
   const at = now.toISOString();
   const ids = new Set(model.people.map((p) => p.id));
   // `counts` : les portions restantes de chacun ; le total y ajoute celles déjà mangées.
@@ -682,7 +685,7 @@ export function ensureEstimates(db: Db, now = new Date()): number {
       const r = t.select().from(recipes).where(eq(recipes.id, recipeId)).get();
       const inPlan = r && planOf(s).find((x) => x.slug === r.slug);
       if (!r || !inPlan) continue;
-      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true }, now);
+      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true, swaps: sessionSwaps(t, sessionId, recipeId) }, now);
       if (!model) continue;
       const { groups, counts } = estimatedReserve(model, at);
       t.insert(reserves)

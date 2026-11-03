@@ -95,6 +95,12 @@ export function upsertRecipe(db: Db, raw: unknown, fixtureHash: string | null = 
         })
         .run()
     );
+    // Une variante du dépôt (`variantOf`) se rattache à la racine de sa recette d'origine.
+    if (r.variantOf) {
+      const p = tx.select({ id: recipes.id, parentId: recipes.parentId }).from(recipes).where(eq(recipes.slug, r.variantOf)).get();
+      const root = p?.parentId ?? p?.id ?? null;
+      if (root && root !== id) tx.update(recipes).set({ parentId: root }).where(eq(recipes.id, id)).run();
+    }
     return { id, created: !existing };
   });
 }

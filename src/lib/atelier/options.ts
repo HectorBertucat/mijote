@@ -27,7 +27,8 @@ export function dislikeHits(text: string, dislikes: string[]): string[] {
   });
 }
 
-export function adjustOptions(r: RecipeInput, household: Member[] = SAMPLE_HOUSEHOLD): AdjustOption[] {
+/** `feedback` : les retours de goût en cours, en une ligne (src/lib/feedback, compactLine) ; `meh` : quelqu'un a dit « bof ». */
+export function adjustOptions(r: RecipeInput, household: Member[] = SAMPLE_HOUSEHOLD, feedback?: { line: string; meh: boolean } | null): AdjustOption[] {
   const list = household.length ? household : SAMPLE_HOUSEHOLD;
   const lead = list[0];
   const p = portions(r, list);
@@ -36,6 +37,16 @@ export function adjustOptions(r: RecipeInput, household: Member[] = SAMPLE_HOUSE
   const who = `la part ${ofName(lead.name)} (${lead.units} unités)`;
   const now = `Aujourd'hui, ${who} fait ${h.kcal} kcal et ${Math.round(h.protein)} g de protéines (calcul en code).`;
   const out: AdjustOption[] = [];
+
+  // Les retours de goût d'abord : l'IA corrige ce qui est reproché, le code revérifie (protéines comprises).
+  if (feedback?.line)
+    out.push({
+      id: "retours",
+      label: "D’après les retours",
+      hint: feedback.line,
+      instruction: `${now} Retours de goût du foyer après l'avoir mangée : ${feedback.line}. Corrige ce qui est reproché sans sacrifier les protéines : plat sec → plus de sauce ou de liquide, et la sauce servie dans la portion ; trop dense → plus de légumes et un peu moins de viande, sans passer sous le bas du repère de protéines de chacun ; fade → acidité, herbes, sel au service ; trop gras → moins d'huile et de beurre.`,
+      recommended: feedback.meh,
+    });
 
   const over = !!t && h.kcal > t.kcalMax;
   const minus = over ? round10(h.kcal - (t!.kcalMin + t!.kcalMax) / 2) : 150;
