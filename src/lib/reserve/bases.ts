@@ -21,7 +21,7 @@
 import { FILL, gramsOfIngredient } from "@/lib/session/capacity";
 import type { PlannerRecipe } from "@/lib/session/planner";
 import type { ReserveGroup } from "./core";
-import type { ServeDecl, ServeGroup } from "./groups";
+import { serveGroups, type ServeDecl, type ServeGroup } from "./groups";
 
 export interface BaseFamily {
   /** Clé stable, celle du groupe d'une marmite (« riz », « haricots-verts »). */
@@ -320,5 +320,27 @@ export function basesToFill(groups: { base?: string; g: number }[], box: BigBoxe
   return BASE_FAMILIES.filter((f) => by.has(f.key)).map((f) => {
     const cookedG = Math.round(by.get(f.key)!);
     return { family: f.key, label: f.label, the: f.the, cookedG, boxes: boxesFor(f, cookedG, box)?.n ?? null, liters: box.liters };
+  });
+}
+
+/**
+ * Les bases d'une liste de recettes (la période) : le cru de chaque base servie à part, toutes recettes
+ * ensemble (× multiplicateur), le cuit et les gros récipients à remplir. Une base mélangée n'y est pas.
+ */
+export function basesOfRecipes(list: { recipe: PlannerRecipe; decl?: (ServeDecl & { base?: boolean })[] | null }[], box: BigBoxes): { family: string; label: string; rawG: number; cookedG: number; boxes: number | null; liters: number }[] {
+  const raw = new Map<string, number>();
+  for (const { recipe, decl } of list) {
+    const groups = serveGroups(recipe, decl);
+    const bases = separableBases(recipe, groups, decl);
+    for (const g of groups) {
+      if (!bases[g.key]) continue;
+      const grams = g.items.reduce((s, n) => s + (recipe.ingredients[n].optional ? 0 : gramsOfIngredient(recipe.ingredients[n], recipe.scale ?? 1)), 0);
+      raw.set(bases[g.key], (raw.get(bases[g.key]) ?? 0) + grams);
+    }
+  }
+  return BASE_FAMILIES.filter((f) => (raw.get(f.key) ?? 0) > 0).map((f) => {
+    const rawG = Math.round(raw.get(f.key)!);
+    const cookedG = Math.round(rawG * f.cookedYield);
+    return { family: f.key, label: f.label, rawG, cookedG, boxes: boxesFor(f, cookedG, box)?.n ?? null, liters: box.liters };
   });
 }

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
 import { eq } from "drizzle-orm";
-import { baseFamily, baseShares, boxesFor, dishFreezeNote, eatableWithoutPlan, familyOfFood, freezeBase, freezeDish, isLow, linkBases, remakePlan, remakeTarget, separableBases, stockLevels, type StockIn } from "@/lib/reserve/bases";
+import { baseFamily, baseShares, basesOfRecipes, basesToFill, boxesFor, dishFreezeNote, eatableWithoutPlan, familyOfFood, freezeBase, freezeDish, isLow, linkBases, remakePlan, remakeTarget, separableBases, stockLevels, type StockIn } from "@/lib/reserve/bases";
 import { closeBase, freezeList, listBases, remakeBase, weighBase } from "@/lib/reserve/bases-store";
 import { reserveState, type ReserveGroup, type Target } from "@/lib/reserve/core";
 import { serveGroups } from "@/lib/reserve/groups";
@@ -121,6 +121,21 @@ test("refaire du riz : le cru, l'eau, la plus petite casserole qui le tient, les
   assert.equal(hv.rawG, 800);
   assert.match(hv.steps[1], /égoutte/);
   assert.match(remakePlan(baseFamily("epinards")!, 400, POTS, box).steps[0], /d'épinards/);
+});
+
+test("la période : le riz de toutes les recettes ensemble, le cuit, les gros récipients ; l'orzo du one-pot n'y est pas", () => {
+  const t = load("poulet-teriyaki-riz.json");
+  const c = load("chasseur-porc.json");
+  const o = load("one-pot-orzo-poulet-epinards-parmesan.json");
+  const box = { count: 4, liters: 2 };
+  const all = basesOfRecipes([{ recipe: t }, { recipe: { ...c, scale: 2 } }, { recipe: o }], box);
+  assert.deepEqual(all.map((b) => b.family), ["riz", "haricots-verts"]);
+  const rizT = basesOfRecipes([{ recipe: t }], box)[0].rawG;
+  const rizC = basesOfRecipes([{ recipe: c }], box)[0].rawG;
+  assert.equal(all[0].rawG, rizT + 2 * rizC);
+  assert.equal(all[0].cookedG, Math.round(all[0].rawG * 2.5));
+  assert.equal(all[0].boxes, Math.ceil(all[0].cookedG / 1260));
+  assert.deepEqual(basesToFill([{ base: "riz", g: 1300 }, { base: "riz", g: 900 }, { g: 500 }], box), [{ family: "riz", label: "riz", the: "le riz", cookedG: 2200, boxes: 2, liters: 2 }]);
 });
 
 // ─── Congeler ───
