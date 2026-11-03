@@ -301,8 +301,9 @@ export async function refineProposal(db: Db, id: string, proposalId: string, inp
     devMock: () => mockRefine(p.draft, request),
     onCost: (usd) => addCost(db, id, usd),
   });
-  const next = await toProposal(db, p.id, out.recipe, { pitch: out.pitch, changes: out.changes, inspiredBy: out.inspiredBy.length ? out.inspiredBy : p.inspiredBy }, c.research?.sources ?? [], deps);
-  next.draft.servingsUnits = p.draft.servingsUnits;
+  // Le même nombre d'unités, avant de chiffrer : les parts de chacun restent comparables d'une retouche à l'autre.
+  const recipe = { ...out.recipe, servingsUnits: p.draft.servingsUnits };
+  const next = await toProposal(db, p.id, recipe, { pitch: out.pitch, changes: out.changes, inspiredBy: out.inspiredBy.length ? out.inspiredBy : p.inspiredBy }, c.research?.sources ?? [], deps);
   next.asks = [...p.asks, { ask: ask || "Corriger les défauts", answer: out.answer.slice(0, 400), at: new Date().toISOString() }];
   saveProposals(db, id, c.proposals.map((x) => (x.id === p.id ? next : x)));
   return loadCreation(db, id)!;

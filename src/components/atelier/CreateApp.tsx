@@ -184,6 +184,15 @@ export function CreateApp({
 
           {creation?.research && <Sources research={creation.research} />}
 
+          {creation?.research && proposals.length === 0 && !pending && (
+            <div className="grid gap-2">
+              <Button variant="primary" icon="sparkdraft" className="justify-self-start" onClick={more}>
+                Composer les recettes
+              </Button>
+              <CostLine>Environ {fmtUsd(estimates.cached)}, d’après ces sources (la recherche est déjà faite)</CostLine>
+            </div>
+          )}
+
           {proposals.length > 0 && (
             <section className="grid gap-12">
               <SectionHead aside="chiffres et vérifications calculés par l’appli">Propositions</SectionHead>

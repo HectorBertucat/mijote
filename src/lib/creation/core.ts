@@ -238,9 +238,24 @@ export type RefineOutput = z.infer<typeof RefineOutput>;
 
 const SERVE_KINDS = new Set(["main", "starch", "veg", "other"]);
 
-/** Sortie de l'IA → fiche valide : la normalisation de l'atelier, plus les garnitures à part et les groupes servis. */
+/** Les récipients standard des fiches (docs/recettes.md) : des rôles, que le planificateur remplace par un récipient de rechange. */
+export const STANDARD_VESSELS = new Set(["poele-28", "cocotte", "faitout", "casserole-14", "casserole-16", "casserole-18", "plat-grand", "plat-moyen", "plat-four", "oven", "air-fryer"]);
+
+/**
+ * Sortie de l'IA → fiche valide : la normalisation de l'atelier, plus les garnitures à part et les groupes servis.
+ * Récipients : un rôle standard absent de la cuisine reste quand une rechange de la cuisine est donnée (le
+ * planificateur fait l'échange, l'air fryer passe au four) ; sinon, comme un id inconnu, il tombe (et la
+ * vérification le refuse).
+ */
 export function normalizeCreation(ai: CreationRecipe, opts: { equipmentIds?: Set<string> } = {}): RecipeInput {
-  const draft = normalizeRecipe(ai, opts);
+  const owned = opts.equipmentIds;
+  const draft = normalizeRecipe(ai);
+  if (owned)
+    draft.steps = draft.steps.map((s) => {
+      const alt = (s.equipmentAlt ?? []).filter((x) => owned.has(x));
+      const keep = s.equipmentId != null && (owned.has(s.equipmentId) || (STANDARD_VESSELS.has(s.equipmentId) && alt.length > 0));
+      return { ...s, equipmentId: keep ? s.equipmentId : (alt[0] ?? null), equipmentAlt: keep ? alt : alt.slice(1) };
+    });
   const sides = ai.ingredients.filter((i) => i.item.trim()).map((i) => i.side);
   draft.ingredients = draft.ingredients.map((i, k) => (sides[k] ? { ...i, side: true } : i));
   const serve = (ai.serve ?? [])
@@ -343,15 +358,17 @@ export function checkCreation(draft: RecipeInput, ctx: { kitchen: KitchenItem[];
     if (s.kind !== "prep" && s.kind !== "rest" && s.kind !== "cool" && d == null) ko("durées", `Étape ${n} sans durée.`);
     if (d != null && s.activeMin != null && s.activeMin > d + 0.5) warn("durées", `Étape ${n} : ${s.activeMin} min de geste pour ${d} min en tout.`);
     if (!COOK.has(s.kind)) return;
-    const eq = s.equipmentId ? byId.get(s.equipmentId) : undefined;
+    // Le récipient de l'étape, ou sa rechange quand la cuisine ne l'a pas (le planificateur fait l'échange).
+    const eq = [s.equipmentId, ...(s.equipmentAlt ?? [])].map((id) => (id ? byId.get(id) : undefined)).find(Boolean);
     if (!eq) {
       ko("équipement", `Étape ${n} : aucun récipient de ta cuisine (${s.equipmentId ? `« ${s.equipmentId} » inconnu` : "non précisé"}).`);
       return;
     }
-    if (!FITS[s.kind].has(eq.kind)) ko("équipement", `Étape ${n} : ${eq.name} ne convient pas pour cette cuisson.`);
+    const airFryer = eq.id === "air-fryer";
+    if (!FITS[s.kind].has(eq.kind) && !(airFryer && s.kind === "bake")) ko("équipement", `Étape ${n} : ${eq.name} ne convient pas pour cette cuisson.`);
     if (s.kind === "bake") {
-      if (!has("oven")) ko("équipement", `Étape ${n} au four, mais pas de four dans ta cuisine.`);
-      if (s.ovenTemp == null) ko("durées", `Étape ${n} au four sans température.`);
+      if (!airFryer && !has("oven")) ko("équipement", `Étape ${n} au four, mais pas de four dans ta cuisine.`);
+      if (s.ovenTemp == null) ko("durées", `Étape ${n} ${airFryer ? "à l'air fryer" : "au four"} sans température.`);
       if (eq.kind === "pot" && eq.ovenSafe === false) ko("équipement", `Étape ${n} : ${eq.name} ne va pas au four.`);
     }
     if ((s.kind === "sear" || s.kind === "boil" || (s.kind === "braise" && eq.kind !== "dish" && eq.kind !== "appliance")) && !has("hob"))

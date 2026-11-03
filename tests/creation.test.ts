@@ -178,6 +178,25 @@ test("vérification : rejets (équipement, durées, quantités, service, aliment
   const unknown = check((r) => r.ingredients.push({ lineRaw: "50 g baies de goji", item: "Baies de goji", grams: 50, units: null, group: "A", optional: false, pantry: false, food: "goji_tibet", side: false }));
   assert.ok(unknown.some((d) => d.level === "warn" && /Baies de goji/.test(d.text)), "un aliment inconnu est signalé");
 
+  // Un rôle standard absent de la cuisine, avec une rechange qui y est : gardé, le planificateur fait l'échange.
+  const swap = check((r) => {
+    const braise = r.steps.find((s) => s.kind === "braise")!;
+    braise.equipmentId = "faitout";
+    braise.equipmentAlt = ["cocotte"];
+  });
+  assert.deepEqual(swap.filter((d) => d.topic === "équipement"), []);
+  const kept = normalizeCreation({ ...goodRecipe(), steps: goodRecipe().steps.map((s) => (s.kind === "braise" ? { ...s, equipmentId: "faitout", equipmentAlt: ["cocotte"] } : s)) }, { equipmentIds: new Set(kitchen.map((e) => e.id)) });
+  assert.equal(kept.steps.find((s) => s.kind === "braise")!.equipmentId, "faitout");
+  // Sans rechange, un id inventé tombe et l'étape est refusée (au-dessus) ; l'air fryer cuit sans four.
+  const fryer = { id: "air-fryer", kind: "appliance", name: "Air fryer" };
+  const roast = (r: CreationRecipe) => r.steps.push({ ...r.steps[r.steps.length - 1], kind: "bake", equipmentId: "air-fryer", equipmentAlt: ["plat-four"], ovenTemp: 190, durationMin: 18, hobLevel: null });
+  const r1 = structuredClone(goodRecipe());
+  roast(r1);
+  const noOven = [...kitchen.filter((e) => e.kind !== "oven"), fryer];
+  const d1 = normalizeCreation(r1, { equipmentIds: new Set(noOven.map((e) => e.id)) });
+  assert.deepEqual(checkCreation(d1, { kitchen: noOven, household, coverage: 1 }).filter((d) => d.topic === "équipement"), [], "air fryer sans four");
+  assert.deepEqual(check(roast).filter((d) => d.topic === "équipement"), [], "air fryer absent : rechange au four");
+
   // Sans four ni plaque : les étapes de cuisson ne passent plus.
   const bare = kitchen.filter((e) => e.kind !== "oven" && e.kind !== "hob");
   const d = normalizeCreation(goodRecipe());
