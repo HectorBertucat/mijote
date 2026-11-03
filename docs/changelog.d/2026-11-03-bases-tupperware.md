@@ -6,4 +6,4 @@
 - Congeler : Nos plats et le bilan du batch disent ce qui est à congeler (« 2 portions de poulet teriyaki d'ici jeudi »), plats et bases : ce qui dépasse ce qui sera mangé avant la limite au frigo (repas prévus par la Semaine, sinon deux repas par jour partagés entre les plats), seulement ce qui se congèle bien (la fiche pour un plat, l'aliment pour une base : riz oui en portions, pommes de terre non) ; sinon « à manger d'abord ».
 - Fin de session et bilan : les bases de toutes les marmites et le nombre de gros récipients à remplir. Réglages › Cuisine : « Gros récipients des bases » (combien, contenance).
 - API de l'app : `GET plats` gagne `bases` et `freeze`, `groups[].base` et `Gram.base` ; nouveaux gestes `POST plats/base-refaire`, `plats/base-pesee`, `plats/base-fini` (`features` : `bases`), docs/api-app.md.
-- Schéma : migration 0014 (`base_stocks`). Les réserves d'avant restent telles quelles (leur riz dans le grand récipient du plat).
+- Schéma : migration 0015 (`base_stocks`). Les réserves d'avant restent telles quelles (leur riz dans le grand récipient du plat).
