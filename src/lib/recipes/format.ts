@@ -85,7 +85,7 @@ export const RecipeInput = z.object({
   ingredients: z.array(IngredientInput),
   steps: z.array(StepInput),
   serve: z
-    .array(z.object({ label: z.string().min(1), bowls: z.array(z.string()), kind: z.enum(["main", "starch", "veg", "other"]).optional() }))
+    .array(z.object({ label: z.string().min(1), bowls: z.array(z.string()), kind: z.enum(["main", "starch", "veg", "other"]).optional(), base: z.boolean().optional() }))
     .nullable()
     .optional()
     .describe("Groupes servis séparément (le plat en premier, avec ce qui n'est dans aucun bol), quand la déduction depuis les étapes ne convient pas (src/lib/reserve/groups.ts)"),

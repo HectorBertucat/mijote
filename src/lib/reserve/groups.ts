@@ -25,6 +25,8 @@ export interface ServeDecl {
   label: string;
   bowls: string[];
   kind?: GroupKind;
+  /** `false` : un féculent servi à part qui reste dans la recette, pas une base du foyer (bases.ts). */
+  base?: boolean;
 }
 
 export interface ServeGroup {

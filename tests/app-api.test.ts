@@ -256,11 +256,12 @@ test("api app : les plats, manger une portion, annuler, réajuster", async () =>
   const u = call(alex, "POST", "plats/annuler", { servingId: body.serving.id }, now);
   assert.equal(u.status, 200);
   assert.equal((u.body as unknown as { plats: Plats }).plats.dishes[0].people[0].left, 3);
-  // Réglage : nouvelle pesée et une portion de plus pour Sam.
-  const g = call(alex, "POST", "plats/reglage", { dishId: dish.id, weights: { riz: 500 }, left: { sam: 3 } }, now);
+  // Réglage : nouvelle pesée et une portion de plus pour Sam ; le riz, une base, se pèse dans son récipient.
+  const g = call(alex, "POST", "plats/reglage", { dishId: dish.id, weights: { plat: 500, riz: 900 }, left: { sam: 3 } }, now);
   assert.equal(g.status, 200, JSON.stringify(g.body));
   const after = (g.body as unknown as { plats: Plats }).plats.dishes[0];
-  assert.equal(after.groups.find((x) => x.key === "riz")!.leftG, 500);
+  assert.equal(after.groups.find((x) => x.key === "plat")!.leftG, 500);
+  assert.equal(after.groups.find((x) => x.key === "riz")!.base, "riz");
   assert.equal(after.people.find((x) => x.personId === "sam")!.left, 3);
   assert.equal(call(alex, "POST", "plats/reglage", { dishId: dish.id, left: { sam: 99 } }, now).status, 400);
 });

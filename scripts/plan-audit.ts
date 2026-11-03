@@ -35,7 +35,7 @@ const KITCHENS: { name: string; res: PlannerResources }[] = [
       faitout: { liters: 5, ovenSafe: false },
       cocotte: { liters: 4, ovenSafe: true },
       plats: 2,
-      containers: { bowls: { petit: { count: 2, liters: 0.4 }, moyen: { count: 2, liters: 1.5 }, grand: { count: 1, liters: 3 } }, prepBoxes: { count: 2, liters: 1 }, storageBoxes: { count: 6, liters: 1 }, ovenTrays: 1 },
+      containers: { bowls: { petit: { count: 2, liters: 0.4 }, moyen: { count: 2, liters: 1.5 }, grand: { count: 1, liters: 3 } }, prepBoxes: { count: 2, liters: 1 }, storageBoxes: { count: 6, liters: 1 }, baseBoxes: { count: 1, liters: 2 }, ovenTrays: 1 },
     }),
   },
   {
@@ -47,7 +47,7 @@ const KITCHENS: { name: string; res: PlannerResources }[] = [
       casseroles: [{ cm: 14, liters: 1 }, { cm: 18, liters: 2.5 }, { cm: 22, liters: 4 }],
       faitout: { liters: 8, ovenSafe: true },
       cocotte: { liters: 7, ovenSafe: true },
-      containers: { bowls: { petit: { count: 6, liters: 0.5 }, moyen: { count: 4, liters: 2 }, grand: { count: 3, liters: 4 } }, prepBoxes: { count: 6, liters: 1.2 }, storageBoxes: { count: 16, liters: 1 }, ovenTrays: 2 },
+      containers: { bowls: { petit: { count: 6, liters: 0.5 }, moyen: { count: 4, liters: 2 }, grand: { count: 3, liters: 4 } }, prepBoxes: { count: 6, liters: 1.2 }, storageBoxes: { count: 16, liters: 1 }, baseBoxes: { count: 4, liters: 3 }, ovenTrays: 2 },
     }),
   },
 ];
