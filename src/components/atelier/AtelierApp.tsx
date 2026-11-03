@@ -27,7 +27,7 @@ const eur = (n: number) => n.toLocaleString("fr-FR", { style: "currency", curren
 const NB = "\u202f";
 type Check = NonNullable<DiffRow["check"]>;
 
-export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEnvie: string; budget: { spentUsd: number; capUsd: number }; count?: number }) {
+export function AtelierApp({ initialEnvie, budget: budget0, count, creer = false }: { initialEnvie: string; budget: { spentUsd: number; capUsd: number }; count?: number; creer?: boolean }) {
   const router = useRouter();
   const [envie, setEnvie] = useState(initialEnvie);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -129,10 +129,19 @@ export function AtelierApp({ initialEnvie, budget: budget0, count }: { initialEn
               Abandonner le brouillon
             </Button>
           ) : (
-            <Link href="/atelier/importer" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] text-body font-bold text-ink-2 hover:text-ink">
-              <Icon name="copy" size="s" />
-              Importer un texte collé
-            </Link>
+            <span className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {/* « Créer une recette » cherche des recettes publiées : seulement avec une clé d’API. */}
+              {creer && (
+                <Link href="/atelier/creer" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] text-body font-bold text-ink-2 hover:text-ink">
+                  <Icon name="search" size="s" />
+                  Créer d’après des recettes publiées
+                </Link>
+              )}
+              <Link href="/atelier/importer" className="inline-flex min-h-tap items-center gap-2 rounded-[8px] text-body font-bold text-ink-2 hover:text-ink">
+                <Icon name="copy" size="s" />
+                Importer un texte collé
+              </Link>
+            </span>
           )
         }
       />

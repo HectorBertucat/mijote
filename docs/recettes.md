@@ -2,11 +2,12 @@
 
 ## Ajouter une recette
 
-Quatre façons :
+Cinq façons :
 1. **Atelier** (avec l'IA) : décris une envie, Mijote écrit la fiche complète et la vérifie. Elle arrive « à essayer ».
-2. **Ajuster** une recette existante : la variante est rattachée à sa recette d'origine.
-3. **Importer** (avec l'IA, bon marché) : Recettes › Importer, on colle le texte d'une recette (légende d'un post Instagram ou TikTok, page de blog copiée) et son lien. Mijote la met au format, vérifie les quantités et montre un aperçu ; elle arrive « à essayer », avec le lien en source, et « à relire » si les quantités sont douteuses.
-4. **Un fichier** au format standard dans `src/seed/recipes/` ou dans le dossier de `MIJOTE_RECIPES_DIR` (les deux sont importés ; sur un même slug, le second gagne) : importé au démarrage, réimporté s'il change (les notes sont gardées). En ligne de commande : `pnpm import:recipes`.
+2. **Créer d'après des recettes publiées** (Atelier › Créer, avec l'IA) : l'envie part d'abord sur le web, Mijote résume quelques vraies recettes publiées (sources citées et liées), en tire deux propositions pour le foyer (une troisième à la demande), qu'on retouche (« plus de sauce ») avant de les ajouter « à essayer ». Voir plus bas.
+3. **Ajuster** une recette existante : la variante est rattachée à sa recette d'origine.
+4. **Importer** (avec l'IA, bon marché) : Recettes › Importer, on colle le texte d'une recette (légende d'un post Instagram ou TikTok, page de blog copiée) et son lien. Mijote la met au format, vérifie les quantités et montre un aperçu ; elle arrive « à essayer », avec le lien en source, et « à relire » si les quantités sont douteuses.
+5. **Un fichier** au format standard dans `src/seed/recipes/` ou dans le dossier de `MIJOTE_RECIPES_DIR` (les deux sont importés ; sur un même slug, le second gagne) : importé au démarrage, réimporté s'il change (les notes sont gardées). En ligne de commande : `pnpm import:recipes`.
 
 ## Importer un texte collé
 
@@ -15,6 +16,18 @@ Rien n'est téléchargé (ni vidéo, ni page d'un réseau social) : seul le text
 1. **Garde-fous en code**, sans appel ni coût : texte vide, de moins de 60 caractères, ou sans au moins deux quantités repérables (« 200 g », « 2 c. à s. », « - 2 oignons ») → refus clair. Hashtags retirés, texte tronqué à 6 000 caractères. Limite d'imports par jour : `AI_IMPORTS_PER_DAY` (10 par défaut, 0 coupe l'import).
 2. **Un appel Haiku** avec le prompt système de l'Atelier (matériel de la cuisine, table nutritionnelle, goûts) : bols, sous-étapes chronométrées, récipients standard, quantités ramenées à un batch de 5 repas du foyer.
 3. **Vérification en code** : celle de l'Atelier (catalogue, nutrition recalculée, sous-étapes), puis les quantités : ingrédient sans quantité, ligne de plus de 5 kg, aliment absent de la table, 35 à 300 g d'ingrédients et 60 à 350 kcal par unité, nombre d'unités proche du batch visé. Un écart : « quantités douteuses, à relire », et l'étiquette « à relire » sur la fiche.
+
+## Créer d'après des recettes publiées
+
+`/atelier/creer` (`src/lib/creation/` : `core.ts` pur, `index.ts` la base et l'IA). L'IA propose, le code vérifie :
+
+1. **Recherche bornée** (Haiku, outils serveur de l'API : 3 recherches et 2 pages lues au plus, réseaux sociaux exclus). L'IA rend chaque source résumée dans ses mots (ingrédients qui comptent, technique en une phrase, ce qui la rend bonne) : rien n'est recopié. Le code ne garde que les adresses que l'API a vraiment renvoyées (une adresse inventée est écartée et montrée comme telle), deux par site, cinq en tout, textes tronqués. La même envie réutilise la recherche pendant 30 jours, sans nouveau coût.
+2. **Composition** (Sonnet, un appel par proposition, chacun avec sa direction) : le prompt de l'Atelier (foyer, parts et repères, équipement réel, table nutritionnelle, goûts de la maison), plus les sources, les plats aimés et les retours de goût notés sur les fiches. Chaque proposition dit ce qui la rend bonne, de quelles sources elle s'inspire et ce qui change par rapport à elles.
+3. **Vérification en code** avant d'afficher, et de nouveau avant d'enregistrer : aliments connus de la table nutritionnelle (ou signalés et non comptés), au moins 70 % des grammes connus, chaque étape de cuisson sur un récipient de la cuisine (ou sa rechange, l'air fryer sans four), four et plaque présents, température au four, durées, quantités (35 à 300 g et 60 à 350 kcal par unité, pas de ligne de plus de 5 kg), doublon de la bibliothèque. Un défaut bloquant empêche l'enregistrement ; « Corriger » renvoie les défauts relevés à l'IA. Les garnitures à part (`side`) sont reconnues par le code : un féculent dont le bol cuit seul, dans son propre récipient. Les chiffres d'une part pour chacun sont calculés par l'appli.
+4. **Retouches** : « plus de sauce », « sans crème »… (6 au plus par proposition), même nombre d'unités, tout revérifié.
+5. **Enregistrement** : la fiche entre « à essayer », étiquetée « atelier », avec ses sources (titre, site, lien) dans le champ source.
+
+Le coût estimé est affiché avant chaque appel, et la demande est refusée clairement si elle ferait dépasser le plafond du mois (`AI_MONTHLY_CAP_USD`). Sans clé, l'entrée n'apparaît pas ; en démo, la page explique ce qu'elle ferait.
 
 ## Le format
 

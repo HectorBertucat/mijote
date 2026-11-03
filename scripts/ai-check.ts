@@ -1,13 +1,15 @@
 // Vérification de l'IA en vrai (appels payants, quelques dizaines de centimes) : chaque fonction IA
 // de Mijote appelée une fois sur une base jetable, et sa sortie contrôlée comme le fait l'appli.
 //   ANTHROPIC_API_KEY=… pnpm test:ai            (toutes les fonctions)
-//   ANTHROPIC_API_KEY=… pnpm test:ai programme  (une seule : ajuster, atelier, coach, programme, dessins, estimation)
+//   ANTHROPIC_API_KEY=… pnpm test:ai programme  (une seule : ajuster, atelier, creer, coach, programme, dessins, estimation)
 // Sans catalogue relié : les ingrédients ne sont pas vérifiés au drive (c'est le mode par défaut).
 import assert from "node:assert/strict";
 import path from "path";
 import { openDb } from "@/lib/db/open";
-import { aiCalls } from "@/lib/db/schema";
+import { inArray } from "drizzle-orm";
+import { aiCalls, equipment } from "@/lib/db/schema";
 import { proposeAdjustment, proposeCreation } from "@/lib/atelier";
+import { composeProposals, refineProposal, startCreation } from "@/lib/creation";
 import { askCoach } from "@/lib/health/coach";
 import { estimateMeal } from "@/lib/health/estimate";
 import { getPerson } from "@/lib/health/store";
@@ -35,6 +37,8 @@ process.env.AI_MONTHLY_CAP_USD = "5";
 const { db } = openDb(":memory:");
 seedBase(db);
 syncRecipes(db, path.join(process.cwd(), "src/seed/recipes"));
+// Une cuisine décrite (plaque, four, poêle, cocotte, casserole, plat) : les étapes se vérifient sur elle.
+db.update(equipment).set({ owned: true }).where(inArray(equipment.id, ["hob-28", "hob-21", "oven", "poele-28", "cocotte", "casserole-18", "plat-four"])).run();
 const alex = addPerson(db, { name: "Alex", portionUnits: 5, sex: "m", birthDate: "1995-07-01", heightCm: 180, weightKg: 78, activity: "moderate", goal: "recomp" });
 addPerson(db, { name: "Sam", portionUnits: 4, sex: "f", birthDate: "1996-07-01", heightCm: 165, weightKg: 60, activity: "light", goal: "maintain" });
 
@@ -86,6 +90,25 @@ const CHECKS: Record<string, () => Promise<string>> = {
     const r = await drawFoods(db, ["Poireau", "Patate douce"]);
     assert.ok(r.saved.length >= 1, `refusés : ${r.failed.map((f) => `${f.item} (${f.errors.join(", ")})`).join(" ; ")}`);
     return `gardés : ${r.saved.map((s) => s.label).join(", ")}${r.failed.length ? ` ; refusés : ${r.failed.map((f) => f.item).join(", ")}` : ""}`;
+  },
+  async creer() {
+    // Recherche bornée (Haiku, web), deux propositions (Sonnet), une retouche : le parcours de /atelier/creer.
+    const c = await startCreation(db, "Un plat gourmand, protéiné, one pot, avec des pois chiches", { leadId: alex });
+    const r = c.research!;
+    assert.ok(r.sources.length >= 1, `sources : ${r.sources.length}, écartées : ${r.dropped.map((d) => d.why).join(", ")}`);
+    assert.ok(r.searches <= 4, `${r.searches} recherches`);
+    const after = await composeProposals(db, c.id, { leadId: alex });
+    assert.equal(after.proposals.length, 2);
+    for (const p of after.proposals) {
+      assert.ok(p.draft.ingredients.length >= 5 && p.draft.steps.length >= 3, p.draft.name);
+      assert.ok(p.figures.length === 2 && p.figures[0].kcal > 0, "une part par personne, calculée en code");
+    }
+    const p = after.proposals[0];
+    const refined = await refineProposal(db, c.id, p.id, { ask: "Plus de sauce" }, { leadId: alex });
+    const q = refined.proposals[0];
+    assert.equal(q.draft.servingsUnits, p.draft.servingsUnits);
+    const ko = (x: typeof p) => x.defects.filter((d) => d.level === "ko").map((d) => d.text).join(" | ") || "aucun défaut bloquant";
+    return `${r.sources.length} source(s) (${r.sources.map((s) => new URL(s.url).hostname).join(", ")}), ${r.searches} recherche(s) ; ${after.proposals.map((x) => `« ${x.draft.name} » ${x.figures[0].kcal} kcal / ${x.figures[0].protein} g pour Alex (${ko(x)})`).join(" ; ")} ; retouche : ${q.asks[0].answer} ; création ${refined.costUsd.toFixed(3)} $`;
   },
   async estimation() {
     const e = await estimateMeal(db, "une assiette de pâtes carbonara et un yaourt", "Alex");
