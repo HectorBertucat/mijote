@@ -562,7 +562,7 @@ export const adjustProposals = sqliteTable("adjust_proposals", {
   updatedAt: text("updated_at").notNull().default(now),
 });
 
-// Créer une recette d'après des recettes publiées (src/lib/creation, migration 0014) : l'envie, la
+// Créer une recette d'après des recettes publiées (src/lib/creation, migration 0015) : l'envie, la
 // recherche (sources résumées, gardée en cache pour la même envie), les propositions vérifiées par le
 // code et les retouches demandées. Une ligne par création ; la page reprend la plus récente.
 export const recipeCreations = sqliteTable(
