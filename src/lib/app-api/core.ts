@@ -28,12 +28,13 @@ import { DRAWING, figureData, musclesData } from "./figures";
 import { ACTIONS, actionOf, clean, phaseOf } from "./state";
 import { actionIdOf, findAction, saveAction } from "./actions";
 import { adjustReserve, currentBatch, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
+import { closeBase, freezeList, listBases, remakeBase, weighBase } from "@/lib/reserve/bases-store";
 import { healthSamples } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 
 export const API_VERSION = 1;
 /** Ce que sait faire ce Mijote : l'app n'affiche que ce qui est annoncé. */
-export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme", "statut", "terminer"] as const;
+export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "bases", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme", "statut", "terminer"] as const;
 
 export interface AppRequest {
   method: "GET" | "POST";
@@ -198,6 +199,8 @@ function plats(db: Db, p: Person, now: number) {
     dishes,
     eaten: recentServings(db, p.id, at).map(withoutPerson),
     batch: b ? { id: b.id, title: b.title, cookedOn: b.cookedOn, ...b.summary, items: b.dishes.map((d) => ({ dishId: d.reserveId, recipeId: d.recipeId, slug: d.slug, name: d.name, open: d.open, weigh: d.weigh })) } : null,
+    bases: listBases(db, dishes, at),
+    freeze: freezeList(db, dishes, at),
   };
 }
 
@@ -229,6 +232,18 @@ function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number):
       if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
       adjustReserve(db, parsed.data.dishId, { weights: parsed.data.weights, left: parsed.data.left }, at);
       message = "Réserve réajustée.";
+    } else if (verb === "base-refaire") {
+      const parsed = z.object({ family: z.string().max(40), rawG: z.number().min(0).max(20_000).optional(), grams: z.number().min(0).max(50_000).optional() }).safeParse(body);
+      if (!parsed.success) return fail("{ family, rawG? | grams? } attendu");
+      message = remakeBase(db, parsed.data.family, { rawG: parsed.data.rawG, grams: parsed.data.grams }, at).message;
+    } else if (verb === "base-pesee") {
+      const parsed = z.object({ baseId: z.string().max(80), grams: z.number().min(0).max(50_000) }).safeParse(body);
+      if (!parsed.success) return fail("{ baseId, grams } attendu");
+      message = `Pesée enregistrée : ${weighBase(db, parsed.data.baseId, parsed.data.grams, at).label}.`;
+    } else if (verb === "base-fini") {
+      const parsed = z.object({ baseId: z.string().max(80) }).safeParse(body);
+      if (!parsed.success) return fail("{ baseId } attendu");
+      message = `Récipient de ${closeBase(db, parsed.data.baseId, at).label} terminé.`;
     } else return fail("chemin inconnu", 404);
     return ok({ message, ...extra, plats: plats(db, p, now) });
   } catch (e) {
@@ -530,6 +545,9 @@ function route(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
     case "POST plats/manger":
     case "POST plats/annuler":
     case "POST plats/reglage":
+    case "POST plats/base-refaire":
+    case "POST plats/base-pesee":
+    case "POST plats/base-fini":
       return platsPost(db, p, b, req.body, now);
     case "GET course": {
       const enabled = !!getRunProfile(db, p.id)?.enabled;

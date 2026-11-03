@@ -78,7 +78,7 @@ export function SessionBoxes({ id, plan, kitchen = false, initial, arts }: { id:
             <ul className="grid gap-1">
               {data.bases.map((b) => (
                 <li key={b.family} className="num text-[17px]" data-base-fill={b.family}>
-                  {b.the.charAt(0).toLocaleUpperCase("fr") + b.the.slice(1)} : ≈ {gramsLabel(b.cookedG)} cuit{/s$/.test(b.label) ? "s" : ""}
+                  {b.the.charAt(0).toLocaleUpperCase("fr") + b.the.slice(1)} : ≈ {gramsLabel(b.cookedG)} cuit{b.label.endsWith("s") ? "s" : ""}
                   {b.boxes ? `, de quoi remplir ${b.boxes > 1 ? `${b.boxes} gros récipients` : "un gros récipient"} (${b.liters.toLocaleString("fr-FR")} L)` : ""}.
                 </li>
               ))}

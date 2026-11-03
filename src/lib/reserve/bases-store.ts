@@ -50,7 +50,7 @@ export function syncBases(db: Db, reserve: { id: string; sessionId: string | nul
     if (!f) continue;
     const same = and(eq(baseStocks.family, f.key), reserve.sessionId ? eq(baseStocks.sessionId, reserve.sessionId) : eq(baseStocks.cookedOn, reserve.cookedOn));
     const row = db.select().from(baseStocks).where(same).get();
-    const parts = { ...(row?.parts ?? {}), [reserve.id]: { g: Math.round(g.g), estimated: !!g.estimated } };
+    const parts = { ...row?.parts, [reserve.id]: { g: Math.round(g.g), estimated: !!g.estimated } };
     const cookedG = Object.values(parts).reduce((s, p) => s + p.g, 0);
     const estimated = Object.values(parts).some((p) => p.estimated);
     if (!row) {
