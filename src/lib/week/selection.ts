@@ -6,7 +6,7 @@ import { isFactor } from "./propose";
 export interface Selection {
   slugs: string[];
   scales: Record<string, number>; // slug → multiplicateur (absent = 1)
-  extras: Record<string, number>; // recipe_ingredient_id → grammes ajoutés
+  extras: Record<string, number>; // recipe_ingredient_id → grammes ajoutés (négatif : retirés)
 }
 
 export function parseSelection(r: string | undefined, x?: string | undefined): Selection {
@@ -23,7 +23,8 @@ export function parseSelection(r: string | undefined, x?: string | undefined): S
   for (const part of (x ?? "").split(",")) {
     const [id, g] = part.split(":");
     const n = Math.round(Number(g));
-    if (id && /^[0-9a-f-]{8,}$/i.test(id) && n > 0 && n <= 5000) extras[id] = n;
+    // Négatif : moins que la fiche multipliée (garniture composée, src/lib/week/store.ts cookUnits).
+    if (id && /^[0-9a-f-]{8,}$/i.test(id) && n !== 0 && Math.abs(n) <= 5000) extras[id] = n;
   }
   return { slugs, scales, extras };
 }
@@ -32,7 +33,7 @@ export function formatSelection(s: Selection): { r: string; x: string } {
   return {
     r: s.slugs.map((slug) => (s.scales[slug] && s.scales[slug] !== 1 ? `${slug}*${s.scales[slug]}` : slug)).join(","),
     x: Object.entries(s.extras)
-      .filter(([, g]) => g > 0)
+      .filter(([, g]) => g !== 0)
       .map(([id, g]) => `${id}:${Math.round(g)}`)
       .join(","),
   };

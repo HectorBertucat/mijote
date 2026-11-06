@@ -62,24 +62,32 @@ export function plannedSlots(db: Db, recipeId: string, cookedOn: string): Map<st
 }
 
 /** La marmite d'une recette : `week` = avec les repas prévus (fin de session), sinon un partage à parts égales du foyer. */
-export function potModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean } = {}): PotModel | null {
+export function potModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean; extras?: Record<string, number> } = {}): PotModel | null {
   const r = db.select().from(recipes).where(eq(recipes.slug, slug)).get();
   if (!r) return null;
   const scale = opts.scale ?? 1;
   const cookedOn = opts.cookedOn ?? todayParis();
   const ings = db
-    .select({ item: recipeIngredients.item, foodId: recipeIngredients.foodId, grams: recipeIngredients.grams, units: recipeIngredients.units, yield: recipeIngredients.yield, side: recipeIngredients.side, optional: recipeIngredients.optional })
+    .select({ id: recipeIngredients.id, item: recipeIngredients.item, foodId: recipeIngredients.foodId, grams: recipeIngredients.grams, units: recipeIngredients.units, yield: recipeIngredients.yield, side: recipeIngredients.side, optional: recipeIngredients.optional })
     .from(recipeIngredients)
     .where(eq(recipeIngredients.recipeId, r.id))
     .orderBy(asc(recipeIngredients.position))
     .all();
   const planned = opts.week ? plannedSlots(db, r.id, cookedOn) : new Map<string, PotPerson["planned"]>();
+  // Garniture dosée selon les parts (src/lib/week/store.ts, cookUnits) : plus ou moins que la fiche multipliée.
+  const sideRows = ings.filter((i) => i.side && !i.optional && i.grams != null);
+  const sideFiche = sideRows.reduce((t, i) => t + i.grams! * scale, 0);
+  const sideCooked = sideRows.reduce((t, i) => t + Math.max(0, i.grams! * scale + (opts.extras?.[i.id] ?? 0)), 0);
+  const sideScale = sideFiche > 0 ? sideCooked / sideFiche : 1;
+  const parts = potParts(ings, scale);
   return {
     recipeId: r.id,
     slug: r.slug,
     name: r.name,
     cookedUnits: r.servingsUnits * scale,
-    ...potParts(ings, scale),
+    dish: parts.dish,
+    side: parts.side ? { ...parts.side, kcal: parts.side.kcal * sideScale, protein: parts.side.protein * sideScale } : null,
+    sideScale,
     fridgeDays: r.fridgeDays,
     freezerOk: r.freezerOk,
     cookedOn,
@@ -102,7 +110,7 @@ export function sessionPots(db: Db, sessionId: string): { pots: PotModel[]; stor
   if (!s?.planJson) return null;
   const plan = s.planJson as SessionPlan;
   const cookedOn = cookedOnOf(s);
-  const pots = plan.recipes.map((r) => potModel(db, r.slug, { scale: r.scale, cookedOn, week: true })).filter((p): p is PotModel => p != null);
+  const pots = plan.recipes.map((r) => potModel(db, r.slug, { scale: r.scale, cookedOn, week: true, extras: plan.extras })).filter((p): p is PotModel => p != null);
   const stored: Record<string, StoredPot> = {};
   for (const b of db.select().from(mealBoxes).where(eq(mealBoxes.sessionId, sessionId)).all()) {
     if (!b.recipeId) continue;
@@ -130,7 +138,7 @@ export function storeBoxes(db: Db, sessionId: string, recipeId: string, weights:
   const ok = (g: number | null | undefined) => g == null || (Number.isFinite(g) && g >= 0 && g <= 50_000);
   if (!ok(weights.dishG) || !ok(weights.sideG)) throw new Error("Poids entre 0 et 50 kg.");
   const cookedOn = cookedOnOf(s);
-  const model = potModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true })!;
+  const model = potModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true, extras: (s.planJson as SessionPlan).extras })!;
   const split = splitPot(model, weights);
   return db.transaction((tx) => {
     const existing = tx.select().from(mealBoxes).where(and(eq(mealBoxes.sessionId, sessionId), eq(mealBoxes.recipeId, recipeId))).all();

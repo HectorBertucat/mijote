@@ -3,14 +3,11 @@
 // Règles :
 // - la part de chacun vise son repère comme la Semaine (eaters/core.ts, portionUnits) : on la
 //   traduit ici en kcal visées, puis en grammes de la marmite réellement pesée ;
-// - avec une garniture cuite à part (riz, semoule : lignes `side` de la fiche), deux poids, donc
-//   deux inconnues par personne (grammes de plat, grammes de garniture) pour deux cibles (kcal du
-//   repère, protéines). Les kcal d'abord : c'est la taille de la boîte qui les vise. Le rapport
-//   garniture / plat est celui de la marmite tant que les protéines atteignent le bas du repère ;
-//   s'il en manque, moins de garniture et plus de plat (jusqu'à la moitié du rapport de la marmite).
-//   Jamais plus de garniture que la marmite : un surplus de protéines ne se compense pas par du
-//   féculent : une petite part n'a plus de riz qu'une grande que si la grande manque de protéines (la
-//   phrase de splitNote le dit). Sans repère, sans macros ou sans poids de garniture : la proportion
+// - avec une garniture cuite à part (riz, semoule : lignes `side` de la fiche), la boîte de chacun
+//   a la composition prévue par la Semaine (eaters/core.ts, compose) : même taille de part, même
+//   rapport garniture / plat (plus de riz et moins de plat pour qui trouve la recette trop protéinée,
+//   entre la moitié et une fois et demie la fiche). La marmite et la garniture pesées sont ensuite
+//   réparties entièrement, au prorata de ces parts. Sans repère ou sans macros : la proportion
 //   simple de la marmite ;
 // - nombre de boîtes : une par repas prévu dans la Semaine (pour qui, quel jour), puis la marge en
 //   boîtes entières tour à tour, tant qu'il reste au moins 3/4 d'une part ; ce qui reste à la fin
@@ -19,7 +16,7 @@
 //   des boîtes au-dessus du repère. Un manque rapetisse toutes les boîtes (la marmite est toujours vidée) ;
 // - rangement : au frigo si le repas prévu tombe dans ses jours de conservation, sinon au
 //   congélateur (si la recette s'y prête). La marge va au congélateur.
-import { portionUnits, type MealRef } from "@/lib/eaters/core";
+import { compose, SIDE_RATIO_MAX, SIDE_RATIO_MIN, unitMacros, type Composition, type MealRef, type RecipeMacros } from "@/lib/eaters/core";
 
 /** Ce qu'apporte une partie de la marmite entière (plat, ou garniture à part). */
 export interface PotPart {
@@ -45,7 +42,10 @@ export interface PotModel {
   cookedUnits: number;
   /** null : macros inconnues, la proportion simple seulement. */
   dish: PotPart | null;
+  /** Garniture réellement cuite (dosée selon les parts : src/lib/week/store.ts, cookUnits). */
   side: (PotPart & { label: string }) | null;
+  /** Garniture cuite ÷ celle de la fiche multipliée (1 = la fiche). */
+  sideScale?: number;
   fridgeDays: number | null;
   freezerOk: boolean;
   /** Jour de la cuisson (YYYY-MM-DD), pour dire où vont les boîtes. */
@@ -88,12 +88,15 @@ export interface PotSplit {
   rest: BoxPlan | null;
   /** Comment plat et garniture ont été réglés, par personne (une seule partie : « simple »). */
   modes: Record<string, SplitMode>;
+  /** Rapport garniture / plat de chacun, relatif à la fiche (1 = la fiche). */
+  sideRatios: Record<string, number>;
+  /** Pourquoi, quand le rapport quitte la fiche (eaters/core.ts, compose). */
+  sideWhy: Record<string, NonNullable<Composition["why"]>>;
   /** < 1 : la marmite ne couvre pas les repas prévus, chaque boîte est plus petite que la part visée. */
   fill: number;
 }
 
 /** Garniture / plat d'une personne : entre la moitié du rapport de la marmite et ce rapport. */
-export const SIDE_RATIO_MIN = 0.5;
 /** Une boîte de marge n'est faite que s'il reste au moins 3/4 d'une part. */
 export const MARGIN_MIN_SHARE = 0.75;
 /** Au-delà de 3 % au-dessus des repères, le surplus fait une boîte de reste. */
@@ -106,7 +109,6 @@ export const FREEZER_DAYS = 90;
 export const THAWED_DAYS = 1;
 
 const roundG = (g: number) => Math.max(0, Math.round(g / GRAM_STEP) * GRAM_STEP);
-const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
 /**
  * Une base cuite pour plusieurs recettes (le riz de deux recettes dans le même faitout), pesée en une
@@ -122,33 +124,6 @@ export function splitShared<K extends string>(totalG: number, shares: { key: K; 
   const left = steps - out.reduce((x, y) => x + y, 0);
   for (let k = 0; k < left; k++) out[order[k % order.length].i]++;
   return Object.fromEntries(shares.map((s, i) => [s.key, out[i] * GRAM_STEP])) as Record<K, number>;
-}
-
-/**
- * Rapport garniture / plat (en grammes) d'une boîte qui vise `target.kcal` : celui de la marmite si les
- * protéines atteignent `proteinMin`, sinon moins de garniture pour viser `protein` (le milieu), borné.
- */
-export function sideRatio(
-  target: { kcal: number; protein: number; proteinMin: number },
-  dish: { kcalG: number; proteinG: number },
-  side: { kcalG: number; proteinG: number },
-  potRatio: number
-): { ratio: number; mode: SplitMode } {
-  const lo = potRatio * SIDE_RATIO_MIN;
-  // Densités en protéines par kcal : celle du mélange glisse de la garniture au plat quand le rapport baisse.
-  const q = target.protein / target.kcal;
-  const qd = dish.proteinG / dish.kcalG;
-  const qs = side.proteinG / side.kcalG;
-  if (!Number.isFinite(q) || !Number.isFinite(qd) || !Number.isFinite(qs) || !(potRatio > 0)) return { ratio: potRatio, mode: "simple" };
-  const proteinAt = (t: number) => (target.kcal * (dish.proteinG + t * side.proteinG)) / (dish.kcalG + t * side.kcalG);
-  // Assez de protéines avec la proportion de la marmite, ou un plat pas plus protéiné que la garniture : on n'y touche pas.
-  if (proteinAt(potRatio) >= target.proteinMin || qd <= qs + 1e-6) return { ratio: potRatio, mode: "simple" };
-  // q = (pd + t·ps) / (kd + t·ks)  ⇔  t = (pd − q·kd) / (q·ks − ps)
-  const t = (dish.proteinG - q * dish.kcalG) / (q * side.kcalG - side.proteinG);
-  // Plus de protéines que le plat seul n'en donne : le moins de garniture permis.
-  if (!Number.isFinite(t) || t < 0) return { ratio: lo, mode: "borne" };
-  const bounded = clamp(t, lo, potRatio);
-  return { ratio: bounded, mode: Math.abs(bounded - t) > 1e-9 ? "borne" : "cible" };
 }
 
 /**
@@ -175,39 +150,37 @@ export function fillUp(parts: { units: number; cap: number }[], left: number): {
 /** Partage la marmite pesée en boîtes. `weights.dishG` null : pas encore pesée (boîtes sans grammes). */
 export function splitPot(m: PotModel, weights: Weights): PotSplit {
   const people = m.people;
-  if (!people.length) return { boxes: [], byPerson: [], rest: null, modes: {}, fill: 1 };
+  if (!people.length) return { boxes: [], byPerson: [], rest: null, modes: {}, sideRatios: {}, sideWhy: {}, fill: 1 };
   const cooked = Math.max(0.5, m.cookedUnits);
   const totalKcal = m.dish ? m.dish.kcal + (m.side?.kcal ?? 0) : null;
-  const kcalUnit = totalKcal != null && totalKcal > 0 ? totalKcal / cooked : null;
-  const proteinUnit = m.dish && kcalUnit != null ? (m.dish.protein + (m.side?.protein ?? 0)) / cooked : null;
+  // La recette à la fiche (garniture ramenée à la fiche) : ce que compose la Semaine, par unité de plat.
+  const sideScale = m.side && (m.sideScale ?? 1) > 0 ? (m.sideScale ?? 1) : 1;
+  const ficheSide = m.dish && m.side && m.side.kcal > 0 ? { kcalUnit: m.side.kcal / sideScale / cooked, proteinUnit: m.side.protein / sideScale / cooked } : null;
+  const macros: RecipeMacros = m.dish
+    ? { kcalUnit: (m.dish.kcal + (ficheSide?.kcalUnit ?? 0) * cooked) / cooked, proteinUnit: (m.dish.protein + (ficheSide?.proteinUnit ?? 0) * cooked) / cooked, side: ficheSide }
+    : { kcalUnit: null, proteinUnit: null };
+  const kcalUnit = macros.kcalUnit != null && macros.kcalUnit > 0 ? macros.kcalUnit : null;
 
-  // Part visée de chacun, en unités (la Semaine fait de même), donc en « poids » relatif.
-  const units = new Map(people.map((p) => [p.id, portionUnits(p, { kcalUnit, proteinUnit })]));
+  // Part visée de chacun (la Semaine fait de même) : unités de plat et rapport de garniture.
+  const comp = new Map(people.map((p) => [p.id, compose(p, macros)]));
+  const units = new Map(people.map((p) => [p.id, comp.get(p.id)!.units]));
   // Plafond d'une boîte : le haut du repère (sans repère ou sans macros : aucun).
-  const capOf = (p: PotPerson) => (p.ref && kcalUnit != null ? Math.max(units.get(p.id)!, p.ref.kcalMax / kcalUnit) : Infinity);
+  const capOf = (p: PotPerson) => {
+    const k = unitMacros(macros, comp.get(p.id)!.sideRatio)?.kcal;
+    return p.ref && kcalUnit != null && k ? Math.max(units.get(p.id)!, p.ref.kcalMax / k) : Infinity;
+  };
 
-  // Deux parties pesées : le rapport garniture / plat de chacun.
   const dishG = weights.dishG != null && weights.dishG > 0 ? weights.dishG : null;
   const sideG = m.side && weights.sideG != null && weights.sideG > 0 ? weights.sideG : null;
-  const twoParts = dishG != null && sideG != null && m.dish != null && m.side != null && m.dish.kcal > 0 && m.side.kcal > 0;
-  const potRatio = twoParts ? sideG! / dishG! : 0;
-  const dishD = twoParts ? { kcalG: m.dish!.kcal / dishG!, proteinG: m.dish!.protein / dishG! } : null;
-  const sideD = twoParts ? { kcalG: m.side!.kcal / sideG!, proteinG: m.side!.protein / sideG! } : null;
   const modes: Record<string, SplitMode> = {};
-  // Grammes de plat et de garniture d'une unité (avant mise à l'échelle de la marmite), par personne.
-  const perUnit = (ratio: number) => (twoParts ? { d: kcalUnit! / (dishD!.kcalG + ratio * sideD!.kcalG), s: (ratio * kcalUnit!) / (dishD!.kcalG + ratio * sideD!.kcalG) } : { d: 1, s: m.side ? 1 : 0 });
+  // Par unité de plat : 1 de plat, et de la garniture en « unités de marmite » (toute la garniture = cooked).
   const ideal = new Map<string, { d: number; s: number }>();
   for (const p of people) {
-    const u = units.get(p.id)!;
-    if (!twoParts) {
-      modes[p.id] = "simple";
-      ideal.set(p.id, perUnit(0));
-      continue;
-    }
-    const r = p.ref ? sideRatio({ kcal: u * kcalUnit!, protein: (p.ref.proteinMin + p.ref.proteinMax) / 2, proteinMin: p.ref.proteinMin }, dishD!, sideD!, potRatio) : { ratio: potRatio, mode: "simple" as const };
-    modes[p.id] = r.mode;
-    ideal.set(p.id, perUnit(r.ratio));
+    const r = comp.get(p.id)!.sideRatio;
+    modes[p.id] = !m.side || Math.abs(r - 1) < 1e-9 ? "simple" : r <= SIDE_RATIO_MIN + 1e-9 || r >= SIDE_RATIO_MAX - 1e-9 ? "borne" : "cible";
+    ideal.set(p.id, { d: 1, s: m.side ? r / sideScale : 0 });
   }
+  const potUnit = { d: 1, s: m.side ? 1 : 0 };
 
   // Les boîtes : les repas prévus, puis la marge tour à tour.
   const boxes: { personId: string | null; plannedFor: BoxPlan["plannedFor"] }[] = [];
@@ -250,7 +223,7 @@ export function splitPot(m: PotModel, weights: Weights): PotSplit {
     return { ...b, d: i0.d * final[i], s: i0.s * final[i] };
   });
   if (restUnits > 0) {
-    const i0 = perUnit(potRatio);
+    const i0 = potUnit;
     all.push({ personId: null, plannedFor: null, d: i0.d * restUnits, s: i0.s * restUnits });
   }
 
@@ -279,27 +252,29 @@ export function splitPot(m: PotModel, weights: Weights): PotSplit {
     const { dishG: dg, sideG: sg, kcal, protein } = mine[0];
     return [{ personId: p.id, name: p.name, count: mine.length, planned: p.planned.length, dishG: dg, sideG: sg, kcal, protein }];
   });
-  return { boxes: out, byPerson, rest: out.find((b) => b.personId == null) ?? null, modes, fill };
+  const sideRatios = Object.fromEntries(people.map((p) => [p.id, comp.get(p.id)!.sideRatio]));
+  const sideWhy = Object.fromEntries(people.flatMap((p) => (comp.get(p.id)!.why ? [[p.id, comp.get(p.id)!.why!]] : [])));
+  return { boxes: out, byPerson, rest: out.find((b) => b.personId == null) ?? null, modes, sideRatios, sideWhy, fill };
 }
 
 /**
- * La phrase qui explique un partage surprenant : une plus petite boîte avec plus de garniture qu'une
- * plus grande (seul cas : la grande manque de protéines). null quand rien ne surprend.
+ * La phrase qui explique une boîte qui ne suit pas la proportion de la fiche : plus de garniture et
+ * moins de plat pour qui trouve la recette trop protéinée, l'inverse pour qui en manque. null sinon.
  */
 export function splitNote(m: PotModel, split: PotSplit): string | null {
   if (!m.side) return null;
-  const label = m.side.label;
-  const of = (w: string) => (/^[aeiouyéèh]/i.test(w) ? `d'${w}` : `de ${w}`);
-  for (const big of split.byPerson) {
-    const ref = m.people.find((p) => p.id === big.personId)?.ref;
-    if (!ref || split.modes[big.personId] === "simple" || big.kcal == null || big.sideG == null) continue;
-    const small = split.byPerson.find((x) => x.kcal != null && x.sideG != null && x.kcal < big.kcal! && x.sideG > big.sideG!);
-    if (small) return `Plus ${of(label)} pour ${small.name} que pour ${big.name} : la boîte ${of(big.name)} vise ${Math.round((ref.proteinMin + ref.proteinMax) / 2)} g de protéines, il y faut plus de plat.`;
-  }
-  return null;
+  // « plus de riz », « plus d'orge », « plus de lentilles » (sans article partitif après « plus »).
+  const label = /^[aeiouyéèh]/i.test(m.side.label) ? `d'${m.side.label}` : `de ${m.side.label}`;
+  const parts = split.byPerson.flatMap((p) => {
+    const why = split.sideWhy[p.personId];
+    // Un ajustement de quelques kcal ne mérite pas une phrase ; un écart de protéines, si.
+    if (why !== "proteines-hautes" && why !== "proteines-basses") return [];
+    return why === "proteines-hautes" ? [`plus ${label} et moins de plat pour ${p.name}, pour qui la recette est trop protéinée`] : [`moins ${label} et plus de plat pour ${p.name}, à qui il faut plus de protéines`];
+  });
+  if (!parts.length) return null;
+  const text = parts.join(" ; ");
+  return `${text[0].toUpperCase()}${text.slice(1)}.`;
 }
-
-// ─── Rangement et dates limites ───
 
 export type Place = "fridge" | "freezer";
 

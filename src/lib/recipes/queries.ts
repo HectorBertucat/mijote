@@ -4,6 +4,8 @@ import type { Db } from "@/lib/db/open";
 import { cookSessions, cookUsages, equipment, people, recipeIngredients, recipeNotes, recipes, recipeSteps } from "@/lib/db/schema";
 import type { DishRecipe } from "@/lib/illus/dish";
 import { inSeason } from "./season";
+import { computeNutrition } from "@/lib/nutrition/compute";
+import type { SideMacros } from "@/lib/eaters/core";
 
 export function listRecipes(db: Db) {
   return db
@@ -22,6 +24,7 @@ export function listRecipes(db: Db) {
       fatUnit: recipes.fatUnit,
       fiberUnit: recipes.fiberUnit,
       servingsUnits: recipes.servingsUnits,
+      nutritionCoverage: recipes.nutritionCoverage,
       parentId: recipes.parentId,
       notesCount: sql<number>`(select count(*) from recipe_notes n where n.recipe_id = "recipes"."id")`,
       lastNoteAt: sql<string | null>`(select max(n.created_at) from recipe_notes n where n.recipe_id = "recipes"."id")`,
@@ -127,7 +130,30 @@ export function listRecipesWithSteps(db: Db) {
     .all();
   const byRecipe = new Map<string, typeof steps>();
   for (const s of steps) byRecipe.set(s.recipeId, [...(byRecipe.get(s.recipeId) ?? []), s]);
-  return rs.map((r) => ({ ...r, steps: byRecipe.get(r.id) ?? [] }));
+  const sides = sideMacros(db);
+  return rs.map((r) => ({ ...r, side: sides.get(r.id) ?? null, steps: byRecipe.get(r.id) ?? [] }));
+}
+
+/**
+ * Ce qu'apporte la garniture cuite à part (lignes `side` : riz, semoule) de chaque recette, par unité
+ * de la fiche : de quoi composer la part de chacun (src/lib/eaters/core.ts, compose). Seulement
+ * quand les macros de la recette sont calculées (80 % des ingrédients connus), comme kcal_unit.
+ */
+export function sideMacros(db: Db): Map<string, SideMacros> {
+  const rows = db
+    .select({ recipeId: recipeIngredients.recipeId, item: recipeIngredients.item, food: recipeIngredients.foodId, grams: recipeIngredients.grams, units: recipeIngredients.units, yield: recipeIngredients.yield, servings: recipes.servingsUnits, coverage: recipes.nutritionCoverage })
+    .from(recipeIngredients)
+    .innerJoin(recipes, eq(recipes.id, recipeIngredients.recipeId))
+    .where(sql`${recipeIngredients.side} = 1`)
+    .all();
+  const by = new Map<string, typeof rows>();
+  for (const r of rows) if ((r.coverage ?? 0) >= 0.8) by.set(r.recipeId, [...(by.get(r.recipeId) ?? []), r]);
+  const out = new Map<string, SideMacros>();
+  for (const [id, ings] of by) {
+    const n = computeNutrition(ings, ings[0].servings);
+    if (n.perUnit.kcal > 0) out.set(id, { kcalUnit: n.perUnit.kcal, proteinUnit: n.perUnit.protein, carbsUnit: n.perUnit.carbs, fatUnit: n.perUnit.fat, fiberUnit: n.perUnit.fiber });
+  }
+  return out;
 }
 
 /** De quoi dessiner la boîte de chaque recette (DishBox) : ses ingrédients et ses étapes, en deux requêtes. */

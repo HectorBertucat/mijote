@@ -13,6 +13,7 @@
 //   principaux + le hors batch ; sans cible, pas de repère.
 import { round, type Macros } from "@/lib/nutrition/compute";
 import type { Meal } from "./propose";
+import type { SideMacros } from "@/lib/eaters/core";
 
 export interface WeekSlot {
   day: number; // 0 = premier jour de la période
@@ -20,6 +21,8 @@ export interface WeekSlot {
   personId: string;
   portionUnits: number;
   recipeId: string | null;
+  /** Garniture à part : rapport à la fiche de cette part (src/lib/eaters/core.ts, compose). Absent = 1. */
+  sideRatio?: number;
 }
 
 export interface UnitMacros {
@@ -29,6 +32,7 @@ export interface UnitMacros {
   carbsUnit?: number | null;
   fatUnit?: number | null;
   fiberUnit?: number | null;
+  side?: SideMacros | null;
 }
 
 export interface DayRef {
@@ -123,7 +127,15 @@ export function weekNutrition(
         unknown++;
         continue;
       }
-      const m = { kcal: r.kcalUnit, protein: r.proteinUnit ?? 0, carbs: r.carbsUnit ?? 0, fat: r.fatUnit ?? 0, fiber: r.fiberUnit ?? 0 };
+      // Une unité de plat avec la garniture de cette part (plus ou moins de riz que la fiche).
+      const k = r.side && s.sideRatio != null ? s.sideRatio - 1 : 0;
+      const m = {
+        kcal: r.kcalUnit + k * (r.side?.kcalUnit ?? 0),
+        protein: (r.proteinUnit ?? 0) + k * (r.side?.proteinUnit ?? 0),
+        carbs: (r.carbsUnit ?? 0) + k * (r.side?.carbsUnit ?? 0),
+        fat: (r.fatUnit ?? 0) + k * (r.side?.fatUnit ?? 0),
+        fiber: (r.fiberUnit ?? 0) + k * (r.side?.fiberUnit ?? 0),
+      };
       add(meals, m, s.portionUnits);
       if (s.day >= 0 && s.day < length) {
         const d = (perDayList[s.day] ??= { meals: 0, macros: zero() });

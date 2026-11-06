@@ -19,7 +19,7 @@
 // - gaspillage : les paquets entamés à travers toutes les recettes (`profiles`, waste.ts)
 //   coûtent des points, d'après la valeur du reste.
 import { estimateSession, estimateRecipe, type RecipeLike } from "@/lib/session/estimate";
-import { gapOf, meanGap, portionUnits, type Eater } from "@/lib/eaters/core";
+import { compose, gapOf, meanGap, portionUnits, type Eater, type SideMacros } from "@/lib/eaters/core";
 import { selectionWaste, wastePenalty, type PackProfiles, type WasteLine } from "./waste";
 import { dayString } from "@/lib/days";
 
@@ -40,6 +40,8 @@ export interface WeekRecipe extends RecipeLike {
   freezerOk: boolean;
   kcalUnit: number | null;
   proteinUnit: number | null;
+  /** Garniture cuite à part (riz, semoule), par unité de la fiche : la part de chacun se compose. */
+  side?: SideMacros | null;
   status?: string;
   /** Multiplicateur des unités cuites (1 = la fiche). */
   factor?: number;
@@ -128,11 +130,14 @@ export interface RecipePlan {
   unitsUsed: number;
   unitsLeft: number;
   frozenUnits: number;
+  /** Garniture à part servie, en unités de la fiche (unités × rapport de chacun) ; = unitsUsed sans garniture. */
+  sideUsed: number;
 }
 
 export interface Assignment {
   bySlot: Map<string, string>; // clé de créneau (jour:repas:personne) → slug
   unitsBySlot: Map<string, number>; // clé de créneau → unités servies
+  sideBySlot: Map<string, number>; // clé de créneau → rapport de garniture (1 = la fiche)
   recipes: RecipePlan[];
   uncovered: SlotIn[];
   neededUnits: number;
@@ -155,15 +160,17 @@ export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreCo
   // sert à autoSize pour savoir combien cuire de chaque recette.
   const supply = (r: WeekRecipe) => (ctx.demand ? Infinity : unitsOf(r));
   const left = new Map(recipes.map((r) => [r.slug, supply(r)]));
-  const plans = new Map<string, RecipePlan>(recipes.map((r) => [r.slug, { slug: r.slug, meals: [], unitsUsed: 0, unitsLeft: supply(r), frozenUnits: 0 }]));
+  const plans = new Map<string, RecipePlan>(recipes.map((r) => [r.slug, { slug: r.slug, meals: [], unitsUsed: 0, unitsLeft: supply(r), frozenUnits: 0, sideUsed: 0 }]));
   const load = (r: WeekRecipe) => plans.get(r.slug)!.unitsUsed / Math.max(1, r.servingsUnits);
   const allowed = (r: WeekRecipe, people: SlotIn[]) => !people.some((x) => ctx.excluded?.get(r.slug)?.has(x.personId));
   const bySlot = new Map<string, string>();
   const unitsBySlot = new Map<string, number>();
-  const unitsFor = (x: SlotIn, r: WeekRecipe) => {
+  const sideBySlot = new Map<string, number>();
+  const partOf = (x: SlotIn, r: WeekRecipe) => {
     const e = ctx.eaters?.get(x.personId);
-    return e ? portionUnits(e, r) : x.portionUnits;
+    return e ? compose(e, r) : { units: x.portionUnits, sideRatio: 1 };
   };
+  const unitsFor = (x: SlotIn, r: WeekRecipe) => partOf(x, r).units;
   const needOf = (r: WeekRecipe, people: SlotIn[]) => people.reduce((s, x) => s + unitsFor(x, r), 0);
   const uncovered: SlotIn[] = [];
   const eaten = slots.filter(present);
@@ -217,8 +224,11 @@ export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreCo
         frozenUnits += units;
       }
       for (const x of people) {
+        const c = partOf(x, r);
         bySlot.set(slotKey(x), r.slug);
-        unitsBySlot.set(slotKey(x), unitsFor(x, r));
+        unitsBySlot.set(slotKey(x), c.units);
+        sideBySlot.set(slotKey(x), c.sideRatio);
+        p.sideUsed += c.units * c.sideRatio;
       }
       sameDay.set(day, new Set([...(sameDay.get(day) ?? []), r.slug]));
     };
@@ -246,7 +256,7 @@ export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreCo
   }
 
   const coveredUnits = neededUnits - uncovered.reduce((s, x) => s + x.portionUnits, 0);
-  return { bySlot, unitsBySlot, recipes: recipes.map((r) => plans.get(r.slug)!), uncovered, neededUnits, coveredUnits, frozenUnits };
+  return { bySlot, unitsBySlot, sideBySlot, recipes: recipes.map((r) => plans.get(r.slug)!), uncovered, neededUnits, coveredUnits, frozenUnits };
 }
 
 function cmp(a: number[], b: number[]) {
@@ -428,6 +438,18 @@ export function autoSize(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<Score
     }
   }
   return cur;
+}
+
+/**
+ * Garniture à cuire (riz, semoule à part), en multiplicateur de la fiche : celle des repas servis,
+ * au rapport de chacun, plus le reste du plat à la fiche ; au vingtième au-dessus. Sans garniture
+ * à part : le multiplicateur du plat.
+ */
+export function sideFactorOf(r: Pick<WeekRecipe, "side" | "factor" | "servingsUnits">, p: Pick<RecipePlan, "sideUsed" | "unitsLeft">): number {
+  const f = r.factor ?? 1;
+  if (!r.side || r.servingsUnits <= 0) return f;
+  const units = p.sideUsed + Math.max(0, p.unitsLeft);
+  return Math.ceil((units / r.servingsUnits) * AUTO_PER - 1e-9) / AUTO_PER;
 }
 
 /** Protéine principale (pour l'affichage). */
