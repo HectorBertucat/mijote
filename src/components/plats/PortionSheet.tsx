@@ -101,6 +101,11 @@ export function PortionSheet({ dish, who, me, today, art }: { dish: DishView; wh
               <Button variant="primary" size="kitchen" icon="check" state={eating === "portion" ? "loading" : "idle"} loadingLabel="Je note…" disabled={pending} onClick={() => eat("portion", dish.id, share.personId, box ? { boxId: box.id } : {})} data-action="manger-portion">
                 {self ? "J’ai mangé cette portion" : `${share.name} l’a mangée`}
               </Button>
+              {!self && dish.people.some((p) => p.personId === me) && (
+                <Button variant="quiet" disabled={pending} onClick={() => eat("echange", dish.id, me, { from: share.personId })} data-action="manger-la-sienne">
+                  C’est moi qui l’ai mangée
+                </Button>
+              )}
               {!box && potLeft.length > 0 && (
                 <Button variant="quiet" onClick={() => { setOther((x) => !x); setTook(Object.fromEntries(next.grams.map((g) => [g.key, String(g.g)]))); }} aria-expanded={other} data-action="autre-quantite">
                   {self ? "J’ai pris autre chose" : "Autre quantité"}
@@ -108,13 +113,34 @@ export function PortionSheet({ dish, who, me, today, art }: { dish: DishView; wh
               )}
             </div>
           </>
+        ) : share?.borrow ? (
+          <>
+            <p className="text-[17px] text-ink-2">
+              Plus de portion pour {name} : celle de {share.borrow.name}, telle quelle{share.borrow.source === "boite" ? (dish.boxes.find((b) => b.id === share.borrow!.boxId)?.place === "freezer" ? ", dans sa boîte au congélo" : ", dans sa boîte au frigo") : ""}. Elle passe de sa part à la {self ? "tienne" : "sienne"}.
+            </p>
+            <dl className="border-t border-line-strong" data-portion={share.borrow.personId}>
+              {share.borrow.grams.map((g) => (
+                <div key={g.key} className="flex items-baseline justify-between gap-4 border-b border-line py-4">
+                  <dt className="text-h3">{several ? cap(g.label) : "La portion"}</dt>
+                  <dd className="num-tight text-num-xl" data-grams={g.key}>
+                    {g.g.toLocaleString("fr-FR")}
+                    <span className="ml-1 text-[0.4em] font-semibold text-ink-2">g</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className="num text-small text-ink-2">{share.borrow.kcal != null ? <>≈&nbsp;{share.borrow.kcal}&nbsp;kcal · {share.borrow.protein}&nbsp;g de protéines</> : "Calories inconnues"}</p>
+            <Button variant="secondary" className="w-fit" icon="check" state={eating === "portion" ? "loading" : "idle"} loadingLabel="Je note…" disabled={pending} onClick={() => eat("portion", dish.id, share.personId, { from: share.borrow!.personId })} data-action="manger-celle-de">
+              {self ? `J’ai mangé celle de ${share.borrow.name}` : `${share.name} a mangé celle de ${share.borrow.name}`}
+            </Button>
+          </>
         ) : (
           <p className="border-y border-line py-4 text-[17px] text-ink-2">
             {share && share.left > 0 ? "Le récipient est vide : à se servir à l’œil, ou pèse ce qui reste." : `Plus de portion pour ${name}.`}
-            {potLeft.length > 0 && share && share.left === 0 && " Il en reste dans le récipient : une portion de plus se prend sur celles des autres."}
+            {potLeft.length > 0 && share && share.left === 0 && " Il en reste dans le récipient : une portion de plus se prend sur ce qui reste."}
           </p>
         )}
-        {!next && potLeft.length > 0 && share && (
+        {!next && !share?.borrow && potLeft.length > 0 && share && (
           <Button variant="secondary" className="w-fit" state={eating === "portion" ? "loading" : "idle"} disabled={pending} onClick={() => eat("portion", dish.id, share.personId)} data-action="manger-portion">
             {self ? "J’en prends une" : `${share.name} en prend une`}
           </Button>

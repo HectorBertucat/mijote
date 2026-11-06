@@ -354,6 +354,8 @@ export const reserveServings = sqliteTable(
     kcal: real("kcal").notNull(),
     proteinG: real("protein_g").notNull().default(0),
     foodLogId: text("food_log_id"),
+    // La portion d'un autre, prise telle quelle : une portion de son total est passée à la personne.
+    borrowedFrom: text("borrowed_from"),
   },
   (t) => [index("idx_reserve_servings_reserve").on(t.reserveId, t.at), index("idx_reserve_servings_person").on(t.personId, t.at), index("idx_reserve_servings_log").on(t.foodLogId)]
 );

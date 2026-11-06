@@ -186,7 +186,7 @@ function plats(db: Db, p: Person, now: number) {
 }
 
 const Grams = z.record(z.string().max(40), z.number().min(0).max(3000));
-const MangerBody = z.object({ dishId: z.string().max(80), boxId: z.string().max(80).optional(), grams: Grams.optional(), date: z.string().optional(), meal: Meal.optional() });
+const MangerBody = z.object({ dishId: z.string().max(80), boxId: z.string().max(80).optional(), grams: Grams.optional(), from: z.string().max(80).optional(), date: z.string().optional(), meal: Meal.optional() });
 const ReglageBody = z.object({ dishId: z.string().max(80), weights: z.record(z.string().max(40), z.number().min(0).max(50_000)).optional(), left: z.record(z.string().max(80), z.number().int().min(0).max(30)).optional() });
 
 function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number): ApiReply {
@@ -200,7 +200,7 @@ function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number):
       if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
       const a = parsed.data;
       if (a.date != null && (!isDate(a.date) || a.date > today)) return fail("date AAAA-MM-JJ attendue, pas dans le futur");
-      const serving = eatPortion(db, a.dishId, p.id, { boxId: a.boxId, grams: a.grams, date: a.date, meal: a.meal }, at);
+      const serving = eatPortion(db, a.dishId, p.id, { boxId: a.boxId, grams: a.grams, from: a.from, date: a.date, meal: a.meal }, at);
       message = `${serving.name.split(",")[0]} : ${serving.kcal} kcal, ${serving.protein} g de protéines.`;
       extra = { serving: withoutPerson(serving) };
     } else if (verb === "annuler") {

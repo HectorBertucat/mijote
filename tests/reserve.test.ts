@@ -322,11 +322,51 @@ test("manger la boîte, puis tout : la réserve se ferme ; annuler la rouvre", (
   assert.equal(db.select().from(reserves).get()!.status, "closed");
   undoServing(db, s.id);
   assert.equal(listDishes(db, "alex", new Date("2026-11-02T12:00:00Z")).filter((d) => d.status === "cooked").length, 1);
-  // Plus de portion pour Sam : il en mange une quand même, à sa mesure ; son total monte.
+  // Plus de portion pour Sam : il prend celle d'Alex, telle quelle.
   eatPortion(db, reserveId, "sam", {}, new Date("2026-11-02T19:00:00Z"));
-  const dish = listDishes(db, "alex", new Date("2026-11-02T20:00:00Z")).find((d) => d.status === "cooked")!;
-  assert.deepEqual(dish.people.find((p) => p.personId === "sam")!.total, 1);
+  assert.equal(listDishes(db, "alex", new Date("2026-11-02T20:00:00Z")).filter((d) => d.status === "cooked").length, 0);
   assert.throws(() => eatPortion(db, "inconnu", "alex"), /plus en réserve/);
+});
+
+test("la portion d'un autre : prise telle quelle, son total passe ; annuler la lui rend", () => {
+  const { db, r } = setup();
+  const { reserveId } = saveReserve(db, "S", r.id, { weights: { plat: 1500, riz: 1100, "haricots-verts": 600 }, counts: { alex: 1, sam: 2 }, freezer: {} }, NOW);
+  const at = new Date("2026-11-02T11:30:00Z");
+  eatPortion(db, reserveId, "alex", {}, at);
+  let dish = listDishes(db, "alex", at).find((d) => d.id === reserveId)!;
+  const alex = dish.people.find((p) => p.personId === "alex")!;
+  const sam = dish.people.find((p) => p.personId === "sam")!;
+  assert.equal(alex.next, null);
+  assert.equal(alex.borrow!.personId, "sam");
+  assert.deepEqual(alex.borrow!.grams, sam.next!.grams, "la portion de Sam, sans recalcul");
+  const samNext = sam.next!.grams;
+
+  // Alex en reprend une : celle de Sam ; le total passe de Sam à Alex, la dernière de Sam ne bouge pas.
+  const s = eatPortion(db, reserveId, "alex", {}, new Date("2026-11-02T18:30:00Z"));
+  assert.deepEqual(s.grams, samNext);
+  assert.equal(s.borrowedFrom, "sam");
+  dish = listDishes(db, "alex", at).find((d) => d.id === reserveId)!;
+  assert.deepEqual(dish.people.map((p) => [p.personId, p.total, p.eaten, p.left]), [["alex", 2, 2, 0], ["sam", 1, 0, 1]]);
+  dish.people[1].next!.grams.forEach((g, i) => assert.ok(Math.abs(g.g - samNext[i].g) <= 10, "à l'arrondi près"));
+
+  // Annuler : la portion revient à Sam.
+  undoServing(db, s.id, "alex");
+  dish = listDishes(db, "alex", at).find((d) => d.id === reserveId)!;
+  assert.deepEqual(dish.people.map((p) => [p.personId, p.total, p.left]), [["alex", 1, 0], ["sam", 2, 2]]);
+
+  // Plus rien à Alex : demander la sienne est refusé.
+  assert.throws(() => eatPortion(db, reserveId, "sam", { from: "alex" }, at), /Plus de portion pour Alex/);
+});
+
+test("portions interverties : manger celle d'un autre alors qu'il en reste à soi", () => {
+  const { db, r } = setup();
+  const { reserveId } = saveReserve(db, "S", r.id, { weights: { plat: 1500, riz: 1100, "haricots-verts": 600 }, counts: { alex: 2, sam: 2 }, freezer: {} }, NOW);
+  const at = new Date("2026-11-02T11:30:00Z");
+  const samNext = listDishes(db, "alex", at).find((d) => d.id === reserveId)!.people.find((p) => p.personId === "sam")!.next!.grams;
+  const s = eatPortion(db, reserveId, "alex", { from: "sam" }, at);
+  assert.deepEqual(s.grams, samNext);
+  const dish = listDishes(db, "alex", at).find((d) => d.id === reserveId)!;
+  assert.deepEqual(dish.people.map((p) => [p.personId, p.total, p.left]), [["alex", 3, 2], ["sam", 1, 1]]);
 });
 
 test("boîtes d'avant : reprises dans une réserve, toujours au frigo, mangées comme avant", () => {

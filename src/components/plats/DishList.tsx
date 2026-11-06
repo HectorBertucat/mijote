@@ -62,6 +62,8 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
                         </>
                       ) : left > 0 ? (
                         "à se servir à l’œil : le récipient est vide"
+                      ) : mine?.borrow ? (
+                        `plus de portion pour ${self ? "toi" : who.name} · celle de ${mine.borrow.name} : ${gramsLine(mine.borrow.grams)}`
                       ) : (
                         `plus de portion pour ${self ? "toi" : who.name}`
                       )}
@@ -73,9 +75,9 @@ export function DishList({ dishes, eaten, who, me, today, arts, colors }: { dish
                     <span className="label text-ink-2">sur {mine?.total ?? 0}</span>
                   </p>
                   <div className="col-span-2 col-start-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                    {left > 0 || potLeft ? (
+                    {left > 0 || potLeft || mine?.borrow ? (
                       <Button variant={i === firstEat ? "primary" : "secondary"} icon="check" state={busy === d.id ? "loading" : "idle"} loadingLabel="Je note…" disabled={pending && busy !== d.id} onClick={() => eat(d.id, d.id, who.id)} data-action="manger">
-                        {left > 0 ? (self ? "J’ai mangé une portion" : `${who.name} a mangé une portion`) : "En prendre une"}
+                        {left > 0 ? (self ? "J’ai mangé une portion" : `${who.name} a mangé une portion`) : mine?.borrow ? `Prendre celle de ${mine.borrow.name}` : "En prendre une"}
                       </Button>
                     ) : null}
                     {lim && (

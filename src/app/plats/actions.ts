@@ -31,7 +31,7 @@ export async function saveReserveAction(sessionId: string, recipeId: string, inp
 }
 
 /** « J'ai mangé une portion » (de la personne affichée) : au journal de Santé, la réserve se recalcule. */
-export async function eatAction(reserveId: string, personId: string, opts: { boxId?: string; grams?: Grams } = {}): Promise<Result & { servingId?: string }> {
+export async function eatAction(reserveId: string, personId: string, opts: { boxId?: string; grams?: Grams; from?: string } = {}): Promise<Result & { servingId?: string }> {
   try {
     const s = eatPortion(db, reserveId, personId, opts);
     refresh();

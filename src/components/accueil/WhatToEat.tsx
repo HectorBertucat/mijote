@@ -79,6 +79,8 @@ export function WhatToEat({ reserve, planned, people, me, today, eaten, batch }:
                         </>
                       ) : n > 0 ? (
                         "à se servir à l’œil"
+                      ) : s?.borrow ? (
+                        `celle de ${s.borrow.name} : ${gramsLine(s.borrow.grams)}`
                       ) : (
                         `plus de portion pour ${self ? "toi" : who.name}`
                       )}
@@ -92,7 +94,7 @@ export function WhatToEat({ reserve, planned, people, me, today, eaten, batch }:
                 </p>
                 <div className="col-span-2 col-start-2">
                   <Button size="sm" icon="check" state={busy === d.id ? "loading" : "idle"} loadingLabel="Je note…" disabled={pending && busy !== d.id} onClick={() => eat(d.id, d.id, who.id)} data-action="manger">
-                    {n > 0 ? (self ? "J’ai mangé une portion" : `${who.name} a mangé une portion`) : "En prendre une"}
+                    {n > 0 ? (self ? "J’ai mangé une portion" : `${who.name} a mangé une portion`) : s?.borrow ? `Prendre celle de ${s.borrow.name}` : "En prendre une"}
                   </Button>
                 </div>
               </li>

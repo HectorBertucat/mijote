@@ -19,7 +19,7 @@ export function useEat() {
   }, [toast]);
 
   /** `key` : ce qui tourne pendant l’envoi (le bouton du plat). */
-  const eat = (key: string, reserveId: string, personId: string, opts: { boxId?: string; grams?: Grams } = {}, done?: () => void) => {
+  const eat = (key: string, reserveId: string, personId: string, opts: { boxId?: string; grams?: Grams; from?: string } = {}, done?: () => void) => {
     setBusy(key);
     start(async () => {
       const r = await eatAction(reserveId, personId, opts);

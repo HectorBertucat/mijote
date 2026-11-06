@@ -232,7 +232,20 @@ export interface ShareState {
   /** Portions restantes à prendre dans le grand récipient. */
   loose: number;
   portion: PortionCalc | null;
-  next: { source: "recipient"; grams: Grams; kcal: number | null; protein: number | null } | { source: "boite"; boxId: string; grams: Grams; kcal: number | null; protein: number | null } | null;
+  next: Next | null;
+  /**
+   * Plus de portion pour elle : la portion suivante d'un autre, telle quelle (sans recalcul), que
+   * « manger » sert alors ; une portion passe de son total à celui de la personne.
+   */
+  borrow: (Next & { personId: string; name: string }) | null;
+}
+
+export type Next = { source: "recipient"; grams: Grams; kcal: number | null; protein: number | null } | { source: "boite"; boxId: string; grams: Grams; kcal: number | null; protein: number | null };
+
+/** À qui prendre une portion : un autre qui en a une à servir, le grand récipient d'abord, puis qui en a le plus. */
+export function lender<S extends Pick<ShareState, "personId" | "left" | "next">>(shares: S[], personId: string): S | null {
+  const others = shares.filter((s) => s.personId !== personId && s.left > 0 && s.next);
+  return others.sort((a, b) => Number(b.next!.source === "recipient") - Number(a.next!.source === "recipient") || b.left - a.left)[0] ?? null;
 }
 
 export interface ReserveState {
@@ -281,8 +294,13 @@ export function reserveState(groups: ReserveGroup[], counts: Record<string, numb
       const box = mine[0];
       // Le grand récipient d'abord ; sinon sa boîte du frigo la plus pressée, puis celle du congélo.
       const next: ShareState["next"] = r.left <= 0 ? null : portion ? { source: "recipient", grams: portion.grams, kcal: portion.kcal, protein: portion.protein } : box ? { source: "boite", boxId: box.id, grams: box.grams, ...macrosOf(groups, box.grams) } : null;
-      return { personId: r.id, name: byId.get(r.id)!.name, total: r.total, eaten: r.eaten, left: r.left, inBoxes: r.inBoxes, loose: r.loose, portion, next };
+      return { personId: r.id, name: byId.get(r.id)!.name, total: r.total, eaten: r.eaten, left: r.left, inBoxes: r.inBoxes, loose: r.loose, portion, next, borrow: null as ShareState["borrow"] };
     });
+  for (const s of shares) {
+    if (s.left > 0) continue;
+    const l = lender(shares, s.personId);
+    if (l) s.borrow = { ...l.next!, personId: l.personId, name: l.name };
+  }
   const empty = !groups.some((g) => (left[g.key] ?? 0) > CRUMBS_G) && !stock.length && shares.every((s) => s.left <= 0);
   return { left, shares, rest: split.rest, fill: split.fill, empty };
 }

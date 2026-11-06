@@ -83,29 +83,34 @@ Annoncé par `"plats"` dans `features`. Ce qui est fixe, c'est **qui mange combi
 ```
 { personId, name, me, total, eaten, left, inBoxes,
   portion?: { grams: [Gram], kcal?, protein? },
-  next?: { source, boxId?, grams: [Gram], kcal?, protein? } }
+  next?: { source, boxId?, grams: [Gram], kcal?, protein? },
+  borrow?: { personId, name, source, boxId?, grams: [Gram], kcal?, protein? } }
 ```
 
   `total` : portions de ce plat pour elle en tout ; `eaten` : déjà mangées ; `left` : restantes (`total − eaten`, jamais négatif) ; `inBoxes` : dont rangées en boîtes. `portion` : une portion à se servir dans le grand récipient (absente s'il n'y en a plus pour elle ou si le plat n'est pas cuisiné). `next` : ce que sert « manger » sans autre précision : `source: "recipient"` (le grand récipient, grammes de `portion`) ou `"boite"` (sa boîte au frigo la plus pressée, `boxId`) ; absent quand il ne lui reste rien.
+  `borrow` (ajouté le 6/11) : quand il ne lui reste rien (`left: 0`) et qu'un autre a encore une portion à servir, la portion suivante de cet autre (`personId`, `name`), telle quelle : c'est ce que sert alors « manger » sans autre précision (« Prendre celle de Sam »). Le grand récipient d'abord, sinon sa boîte ; absent sinon.
 - **`rest`** : ce qui dépasse le haut des repères de tous, pour qui veut (absent le plus souvent). **`short`** : `true` quand le grand récipient ne couvre pas les portions visées (chacune est plus petite que sa part).
 - **`Box`** : `{ id, personId?, place: "fridge" | "freezer", thawed, limit, freshness, grams: [Gram], kcal?, protein? }` ; `personId` absent : pour qui veut.
 - **`eaten`** (`Serving`) : les portions mangées par la personne ces trois derniers jours, la plus récente d'abord, pour proposer « Annuler » :
 
 ```
-{ id, dishId, name, slug?, date, meal, at, source, boxId?, grams: [Gram], kcal, protein, entryId }
+{ id, dishId, name, slug?, date, meal, at, source, boxId?, grams: [Gram], kcal, protein, entryId, borrowedFrom? }
 ```
+
+  `borrowedFrom` (ajouté le 6/11) : l'id de la personne dont la portion a été prise (absent pour une portion à soi).
 
   `at` : instant (ISO 8601) ; `meal` : `breakfast`, `lunch`, `dinner`, `snack` ; `entryId` : sa ligne du journal (`GET jour`).
 
 ### `POST plats/manger`
 
-`{ dishId, boxId?, grams?, date?, meal? }` → `{ message, serving, plats }` (`plats` : la même réponse que `GET plats`, à jour).
+`{ dishId, boxId?, grams?, from?, date?, meal? }` → `{ message, serving, plats }` (`plats` : la même réponse que `GET plats`, à jour).
 
-- Sans `boxId` ni `grams` : la portion `next` de la personne. Plusieurs fois par jour, le même plat deux fois : permis.
+- Sans `boxId` ni `grams` : la portion `next` de la personne ; si elle n'en a plus, la portion `borrow` (celle d'un autre). Plusieurs fois par jour, le même plat deux fois : permis.
+- `from` (ajouté le 6/11) : `personId` d'un autre ; mange sa portion `next` telle quelle (grammes ou boîte), même s'il en reste à la personne (portions interverties). Une portion passe du `total` de l'autre à celui de la personne ; les autres portions ne sont pas recalculées. 409 s'il n'en a plus. « Annuler » la lui rend.
 - `boxId` : mange cette boîte (une des `boxes`, à la personne ou pour qui veut), entière.
 - `grams` : `{ <key>: g }` (0 à 3 000 par groupe), ce que la personne a vraiment pris dans le grand récipient ; un groupe absent compte pour 0. Les kcal et protéines en sont recalculés.
 - `date` (aujourd'hui par défaut, jamais dans le futur) et `meal` (par défaut d'après l'heure de Paris : `lunch` de 10 h à 16 h, `dinner` à partir de 17 h, `snack` sinon).
-- Une ligne s'ajoute au journal du jour (kcal et protéines de la portion), comme « Je la mange » sur le site. Si la personne n'avait plus de portion de ce plat, son `total` monte d'une (les autres portions rapetissent pour tout répartir).
+- Une ligne s'ajoute au journal du jour (kcal et protéines de la portion), comme « Je la mange » sur le site. Si la personne n'avait plus de portion de ce plat : elle prend celle d'un autre (`borrow`) ; s'il n'en reste à personne mais qu'il en reste dans le récipient, son `total` monte d'une (une portion à sa mesure, les autres rapetissent).
 - 404 : plat ou boîte inconnus ; 409 : plus rien à servir dans ce plat (récipient vide et plus de boîte).
 
 ### `POST plats/annuler`

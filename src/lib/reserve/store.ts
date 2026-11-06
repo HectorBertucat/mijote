@@ -302,6 +302,8 @@ export interface ShareView {
   inBoxes: number;
   portion: { grams: GramLine[]; kcal: number | null; protein: number | null } | null;
   next: { source: "recipient" | "boite"; boxId?: string; grams: GramLine[]; kcal: number | null; protein: number | null } | null;
+  /** Plus de portion pour elle : celle d'un autre que « manger » sert alors, telle quelle. */
+  borrow: { personId: string; name: string; source: "recipient" | "boite"; boxId?: string; grams: GramLine[]; kcal: number | null; protein: number | null } | null;
 }
 
 export interface DishView {
@@ -340,6 +342,8 @@ export interface ServingView {
   kcal: number;
   protein: number;
   entryId: string | null;
+  /** Prise sur la part de cette personne (sa portion telle quelle). */
+  borrowedFrom: string | null;
 }
 
 const lines = (groups: Pick<ReserveGroup, "key" | "label">[], grams: Grams): GramLine[] => groups.filter((g) => (grams[g.key] ?? 0) > 0).map((g) => ({ key: g.key, label: g.label, g: Math.round(grams[g.key]) }));
@@ -354,6 +358,7 @@ function shareView(groups: ReserveGroup[], s: ShareState): ShareView {
     inBoxes: s.inBoxes,
     portion: s.portion ? { grams: lines(groups, s.portion.grams), kcal: s.portion.kcal, protein: s.portion.protein } : null,
     next: s.next ? { source: s.next.source, ...(s.next.source === "boite" ? { boxId: s.next.boxId } : {}), grams: lines(groups, s.next.grams), kcal: s.next.kcal, protein: s.next.protein } : null,
+    borrow: s.borrow ? { personId: s.borrow.personId, name: s.borrow.name, source: s.borrow.source, ...(s.borrow.source === "boite" ? { boxId: s.borrow.boxId } : {}), grams: lines(groups, s.borrow.grams), kcal: s.borrow.kcal, protein: s.borrow.protein } : null,
   };
 }
 
@@ -428,7 +433,7 @@ function plannedDishes(db: Db, cooked: Set<string>, me: string | null, now: Date
     people: [...names.keys()]
       .filter((id) => d.counts.has(id))
       .sort((a, b) => Number(b === me) - Number(a === me))
-      .map((id) => ({ personId: id, name: names.get(id)!, total: d.counts.get(id)!, eaten: 0, left: d.counts.get(id)!, inBoxes: 0, portion: null, next: null })),
+      .map((id) => ({ personId: id, name: names.get(id)!, total: d.counts.get(id)!, eaten: 0, left: d.counts.get(id)!, inBoxes: 0, portion: null, next: null, borrow: null })),
     rest: null,
     boxes: [],
     short: false,
@@ -475,7 +480,7 @@ export function recentServings(db: Db, personId: string, now = new Date(), days 
     .where(and(eq(reserveServings.personId, personId), gte(reserveServings.date, from)))
     .orderBy(desc(reserveServings.at))
     .all()
-    .map(({ s, r, slug }) => ({ id: s.id, dishId: r.id, name: r.name, slug, personId: s.personId, date: s.date, meal: s.meal, at: s.at, source: s.source, boxId: s.boxId, grams: lines(r.groups, s.grams), kcal: Math.round(s.kcal), protein: Math.round(s.proteinG), entryId: s.foodLogId }));
+    .map(({ s, r, slug }) => ({ id: s.id, dishId: r.id, name: r.name, slug, personId: s.personId, date: s.date, meal: s.meal, at: s.at, source: s.source, boxId: s.boxId, grams: lines(r.groups, s.grams), kcal: Math.round(s.kcal), protein: Math.round(s.proteinG), entryId: s.foodLogId, borrowedFrom: s.borrowedFrom }));
 }
 
 // ─── Gestes ───
@@ -493,10 +498,12 @@ export class ReserveError extends Error {
 
 /**
  * « J'ai mangé une portion » : la portion de la personne (le grand récipient, sinon sa boîte), une
- * boîte précise (`boxId`), ou ce qu'elle a vraiment pris (`grams`). Une ligne au journal (kcal et
- * protéines de la portion) ; une personne sans portion restante en a une de plus.
+ * boîte précise (`boxId`), ce qu'elle a vraiment pris (`grams`), ou la portion d'un autre (`from`).
+ * Une ligne au journal (kcal et protéines de la portion). Une personne sans portion restante prend
+ * celle d'un autre telle quelle (une portion passe de son total au sien) ; s'il n'y en a plus à
+ * personne, une portion à sa mesure sur ce qui reste.
  */
-export function eatPortion(db: Db, reserveId: string, personId: string, opts: { boxId?: string | null; grams?: Grams | null; date?: string; meal?: LogMeal } = {}, now = new Date()): ServingView {
+export function eatPortion(db: Db, reserveId: string, personId: string, opts: { boxId?: string | null; grams?: Grams | null; from?: string | null; date?: string; meal?: LogMeal } = {}, now = new Date()): ServingView {
   return db.transaction((tx) => {
     const t = tx as unknown as Db;
     const row = t.select().from(reserves).where(eq(reserves.id, reserveId)).get();
@@ -507,7 +514,18 @@ export function eatPortion(db: Db, reserveId: string, personId: string, opts: { 
     if (!share) throw new ReserveError("Personne inconnue.", 404);
     let grams: Grams;
     let box: BoxIn | undefined;
-    if (opts.boxId) {
+    // La portion d'un autre, prise telle quelle.
+    let lent: ShareState | undefined;
+    if (opts.from && opts.from !== personId) {
+      lent = state.shares.find((s) => s.personId === opts.from);
+      if (!lent) throw new ReserveError("Personne inconnue.", 404);
+      if (!lent.next || lent.left <= 0) throw new ReserveError(`Plus de portion pour ${lent.name}.`, 409);
+    } else if (!opts.boxId && !opts.grams && !share.next && share.borrow) lent = state.shares.find((s) => s.personId === share.borrow!.personId);
+    if (lent) {
+      const n = lent.next!;
+      if (n.source === "boite") box = bx.find((b) => b.id === n.boxId);
+      grams = n.grams;
+    } else if (opts.boxId) {
       box = bx.find((b) => b.id === opts.boxId && b.status === "stock");
       if (!box) throw new ReserveError("Cette boîte n'est plus là.", 404);
       grams = box.grams;
@@ -536,10 +554,12 @@ export function eatPortion(db: Db, reserveId: string, personId: string, opts: { 
     const meal = opts.meal ?? mealAt(parisHour(now));
     const entry = addEntry(t, { personId, date, meal, kind: "recipe", recipeId: row.recipeId, label: servingLabel(row.name, row.groups, grams), kcal: kcal ?? 0, proteinG: protein ?? 0, source: "manual" });
     const id = randomUUID();
-    t.insert(reserveServings).values({ id, reserveId: row.id, personId, at: now.toISOString(), date, meal, source: box ? "boite" : "recipient", boxId: box?.id ?? null, grams, kcal: kcal ?? 0, proteinG: protein ?? 0, foodLogId: entry.id }).run();
+    t.insert(reserveServings).values({ id, reserveId: row.id, personId, at: now.toISOString(), date, meal, source: box ? "boite" : "recipient", boxId: box?.id ?? null, grams, kcal: kcal ?? 0, proteinG: protein ?? 0, foodLogId: entry.id, borrowedFrom: lent?.personId ?? null }).run();
     if (box) t.update(mealBoxes).set({ status: "eaten", closedAt: now.toISOString(), eatenBy: personId, foodLogId: entry.id }).where(eq(mealBoxes.id, box.id)).run();
+    // La portion d'un autre : elle passe de son total au sien, les autres portions ne bougent pas.
+    if (lent) t.update(reserves).set({ counts: { ...row.counts, [personId]: share.total + 1, [lent.personId]: lent.total - 1 }, updatedAt: now.toISOString() }).where(eq(reserves.id, row.id)).run();
     // Une portion de plus que prévu : son total suit (les autres portions rapetissent).
-    if (share.left <= 0) t.update(reserves).set({ counts: { ...row.counts, [personId]: share.eaten + 1 }, updatedAt: now.toISOString() }).where(eq(reserves.id, row.id)).run();
+    else if (share.left <= 0) t.update(reserves).set({ counts: { ...row.counts, [personId]: share.eaten + 1 }, updatedAt: now.toISOString() }).where(eq(reserves.id, row.id)).run();
     return recentServings(t, personId, now, 400).find((s) => s.id === id)!;
   });
 }
@@ -553,6 +573,8 @@ export function undoServing(db: Db, servingId: string, personId?: string): { nam
     const r = t.select().from(reserves).where(eq(reserves.id, s.reserveId)).get();
     if (s.foodLogId) deleteEntry(t, s.foodLogId);
     t.delete(reserveServings).where(eq(reserveServings.id, servingId)).run();
+    // La portion d'un autre lui revient.
+    if (r && s.borrowedFrom) t.update(reserves).set({ counts: { ...r.counts, [s.personId]: Math.max(0, (r.counts[s.personId] ?? 0) - 1), [s.borrowedFrom]: (r.counts[s.borrowedFrom] ?? 0) + 1 } }).where(eq(reserves.id, r.id)).run();
     if (s.boxId) t.update(mealBoxes).set({ status: "stock", closedAt: null, eatenBy: null, foodLogId: null }).where(eq(mealBoxes.id, s.boxId)).run();
     if (r?.status === "closed") t.update(reserves).set({ status: "open", closedAt: null }).where(eq(reserves.id, r.id)).run();
     return { name: r?.name ?? "Plat" };

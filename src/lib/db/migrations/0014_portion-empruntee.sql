@@ -1,0 +1,1 @@
+ALTER TABLE `reserve_servings` ADD `borrowed_from` text;
