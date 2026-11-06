@@ -30,9 +30,14 @@ import { cookedCounts, getRecipe, listPeople } from "@/lib/recipes/queries";
 import { inSeason, parisMonth } from "@/lib/recipes/season";
 import { householdMembers, householdUnits, loadEaters } from "@/lib/eaters/store";
 import { portionOf } from "@/lib/eaters/core";
-import { potModel } from "@/lib/boxes/store";
-import { PotSplit } from "@/components/boxes/PotSplit";
+import { calcModel } from "@/lib/reserve/store";
+import { ReserveCalc } from "@/components/plats/ReserveCalc";
 import { recipeColor } from "@/lib/ui";
+import { TastePanel, type TastePanelData } from "@/components/feedback/TastePanel";
+import { feedbackLine } from "@/lib/feedback/core";
+import { loadTasteMarks, recipeFeedback, recipeTasteLine } from "@/lib/feedback/read";
+import { adjustmentFor, recipeSwapsOf, swappable, swapTarget } from "@/lib/feedback/store";
+import { tagsLine, variantNaming } from "@/lib/feedback/adjust";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +54,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
   const input = loadRecipeInput(db, slug)!;
   const family = familyOf(db, r.id);
   // Calculette : la marmite pesée → les grammes de chaque boîte (src/lib/boxes).
-  const pot = potModel(db, r.slug);
+  const pot = calcModel(db, r.slug);
 
   const activeMin = steps.reduce((s, x) => s + (x.step.activeMin ?? 0), 0);
   const perUnit = r.kcalUnit != null ? { kcal: r.kcalUnit, protein: r.proteinUnit ?? 0, carbs: r.carbsUnit ?? 0, fat: r.fatUnit ?? 0, fiber: r.fiberUnit ?? 0 } : null;
@@ -100,10 +105,39 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
     r.status === "to_try" && !cookedCounts(db).get(r.id) ? "jamais cuisinée" : null,
   ].filter(Boolean);
   const dish = { slug: r.slug, name: r.name, ingredients: input.ingredients.filter((i) => !i.pantry), steps: input.steps };
+  // Goûts (src/lib/feedback) : le dernier retour de chacun, les ingrédients remplacés, la variante ajustée.
+  const tastes = recipeFeedback(db, r.id);
+  const adj = adjustmentFor(db, r.slug, { leadId: active });
+  // Une variante née après le dernier « bof » est l'ajustement : on la montre plutôt que d'en proposer une autre.
+  const adjusted = loadTasteMarks(db).get(r.slug)?.adjusted ?? null;
+  const adjust = adj && !adjusted && !adj.adjustment.empty && (adj.issues.length > 0 || adj.swaps.length > 0) ? adj.adjustment : null;
+  const tasteData: TastePanelData = {
+    recipeId: r.id,
+    slug: r.slug,
+    people: people.map((p) => ({ id: p.id, name: p.name })),
+    activeId: active,
+    latest: tastes.latest.map((f) => ({ personId: f.personId, line: feedbackLine(f), note: f.note, at: f.at, meh: f.rating === "meh" })),
+    swaps: recipeSwapsOf(db, r.id).map((s) => ({ id: s.id, from: s.from, to: s.to, at: s.at, where: s.where })),
+    swappable: swappable(db, r.id).map((s) => ({ position: s.position, item: s.item, options: s.options })),
+    swapWhere: swapTarget(db, r.id).label,
+    adjusted,
+    adjust: adjust
+      ? {
+          tags: adjust.tags,
+          tagsLine: tagsLine(adjust.tags),
+          withSwaps: true,
+          changes: adjust.changes.map((c) => c.text),
+          notes: adjust.notes,
+          preview: adjust.preview.map((p) => ({ name: p.name, before: p.before, after: p.after, proteinMin: p.proteinMin })),
+          name: `« ${variantNaming(input, adjust.recipe, adjust).name} »`,
+        }
+      : null,
+  };
   const sections = [
     { id: "ingredients", label: "Ingrédients" },
     { id: "etapes", label: "Étapes", count: steps.length },
     { id: "chiffres", label: "Chiffres" },
+    { id: "gouts", label: "Goûts", count: tastes.latest.length || undefined },
     { id: "notes", label: "Notes", count: notes.length || undefined },
     { id: "produits", label: "Produits" },
   ];
@@ -113,7 +147,7 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
       slug={r.slug}
       color={color}
       original={input}
-      options={adjustOptions(input, household)}
+      options={adjustOptions(input, household, recipeTasteLine(db, r.slug))}
       lead={lead}
       leadName={eaters[0]?.name ?? null}
       leadRef={eaters[0]?.ref ?? null}
@@ -146,6 +180,11 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
           <div className="grid gap-4">
             <Figures items={figures} />
             <p className="text-small text-ink-2">{facts.join(" · ")}</p>
+            {tastes.latest.length > 0 && (
+              <a href="#gouts" className="text-small font-semibold text-ink-2 underline-offset-4 hover:underline" data-gouts="resume">
+                {tastes.latest.map((f) => feedbackLine(f)).join(" ; ")}
+              </a>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:hidden">
             <AdjustButton block />
@@ -234,13 +273,18 @@ export default async function FicheRecette({ params }: { params: Promise<{ slug:
                 </FicheBlock>
               )}
               {pot && (
-                <FicheBlock title="En boîtes" aside="La marmite pesée, partagée selon la part de chacun." label="En boîtes">
-                  <PotSplit model={pot} color={color} head={false} />
+                <FicheBlock title="En portions" aside={pot.groups.length > 1 ? `Servi en ${pot.groups.length} : ${pot.groups.map((g) => g.label).join(", ")}. Chaque groupe pesé, partagé selon la part de chacun.` : "La marmite pesée, partagée selon la part de chacun."} label="En portions">
+                  <ReserveCalc model={pot} color={color} head={false} />
                 </FicheBlock>
               )}
               <RecipeVariants family={family} currentId={r.id} />
             </FicheSection>
 
+            <FicheSection id="gouts" className="lg:mt-18">
+              <FicheBlock title="Goûts" aside={tastes.latest.length ? "Le dernier avis de chacun." : "Après l’avoir mangé, un geste."} label="Goûts">
+                <TastePanel data={tasteData} />
+              </FicheBlock>
+            </FicheSection>
             <FicheSection id="notes" className="lg:mt-18">
               <FicheBlock title="Notes" aside={notes.length > 0 ? `${notes.length}\u00a0note${notes.length > 1 ? "s" : ""}` : "Pour la prochaine fois."} label="Notes">
                 <NotesSection

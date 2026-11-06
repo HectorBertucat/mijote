@@ -17,6 +17,7 @@ import { buildProfiles, lineResolver, totalResolver } from "./packs";
 import { scaledNutrition, selectionLeftovers, type Leftover } from "./leftovers";
 import type { PackProfiles } from "./waste";
 import { eaterMap, leadOf, loadEaters } from "@/lib/eaters/store";
+import { loadTasteMarks, tastePoints } from "@/lib/feedback/read";
 
 const MEALS: Meal[] = ["lunch", "dinner"];
 
@@ -212,7 +213,7 @@ export async function proposeWeek(db: Db, weekStart: string) {
   const kept = loadSelection(db, w.planId);
   const tastes = loadTastes(db, lib);
   const { profiles } = await loadProfiles(db, lib);
-  const p = propose(lib, asSlots(w), { keep: kept.map((x) => x.slug), excluded: tastes.excluded, profiles, eaters: eatersCtx(db) });
+  const p = propose(lib, asSlots(w), { keep: kept.map((x) => x.slug), excluded: tastes.excluded, profiles, eaters: eatersCtx(db), taste: tastePoints(loadTasteMarks(db)) });
   const old = new Map(kept.map((x) => [x.slug, x]));
   writeSelection(db, w.planId, lib, (p?.slugs ?? []).map((slug) => ({ slug, extras: old.get(slug)?.extras })));
   resize(db, weekStart);
@@ -242,7 +243,7 @@ export async function swapRecipe(db: Db, weekStart: string, out: string) {
   const lib = withSel(library(db), sel);
   const tastes = loadTastes(db, lib);
   const { profiles } = await loadProfiles(db, lib);
-  const p = swap(lib, asSlots(w), sel.map((x) => x.slug), out, [], { excluded: tastes.excluded, profiles, eaters: eatersCtx(db) });
+  const p = swap(lib, asSlots(w), sel.map((x) => x.slug), out, [], { excluded: tastes.excluded, profiles, eaters: eatersCtx(db), taste: tastePoints(loadTasteMarks(db)) });
   if (p) {
     save(db, w, lib, p);
     const keep = new Map(sel.map((x) => [x.slug, x]));
@@ -455,3 +456,11 @@ export async function leftoversFor(db: Db, sel: { slug: string; factor?: number;
     return { leftovers: [], error: "chronocatalog ne répond pas : les paquets entamés ne sont pas calculés." };
   }
 }
+
+/** Repas sans plat ignorés pour la période (leur nombre au moment d'ignorer ; null : avertir à nouveau). */
+export function setMissingIgnored(db: Db, weekStart: string, n: number | null) {
+  const planId = ensureWeek(db, weekStart);
+  db.update(weekPlans).set({ missingIgnored: n != null && n > 0 ? Math.round(n) : null }).where(eq(weekPlans.id, planId)).run();
+}
+
+export const missingIgnoredOf = (db: Db, planId: string) => db.select({ n: weekPlans.missingIgnored }).from(weekPlans).where(eq(weekPlans.id, planId)).get()?.n ?? null;

@@ -12,7 +12,8 @@ import { AiCapReachedError } from "@/lib/ai";
 import { estimateMeal, type MealEstimate } from "@/lib/health/estimate";
 import { ImportPayload, ingest } from "@/lib/health/ingest";
 import { CF_ID, CF_SECRET, resetHistory, rotateLink, setSetting } from "@/lib/health/link";
-import { addEntry, addRecipeEntry, deleteEntry, listTemplates, setComplete, setEntryUnits, type LogMeal } from "@/lib/health/log";
+import { addEntry, addRecipeEntry, completeDay, deleteEntry, listTemplates, setComplete, setEntryUnits, type LogMeal } from "@/lib/health/log";
+import { eaterOf } from "@/lib/eaters/store";
 import { deleteWorkout, saveWorkout } from "@/lib/training/store";
 import { addDislikes, markSetupDone, removeDislike, removeHabit, saveHabit, setNothingOutside, setOutside, type HabitInput } from "@/lib/eaters/setup";
 import { askCoach, clearCoach, getCoachMessage, setCoachStatus } from "@/lib/health/coach";
@@ -120,9 +121,41 @@ export async function saveFixedRef(personId: string, ref: { kcalMin: number; kca
     if (!(ref.kcalMin >= 200 && ref.kcalMax <= 2500 && ref.kcalMin < ref.kcalMax)) return { ok: false, message: "kcal d'un repas : entre 200 et 2 500, le minimum sous le maximum." };
     if (!(ref.proteinMin >= 5 && ref.proteinMax <= 200 && ref.proteinMin < ref.proteinMax)) return { ok: false, message: "Protéines d'un repas : entre 5 et 200 g, le minimum sous le maximum." };
   }
-  db.update(people).set({ fixedMealRef: ref ? { kcalMin: Math.round(ref.kcalMin), kcalMax: Math.round(ref.kcalMax), proteinMin: Math.round(ref.proteinMin), proteinMax: Math.round(ref.proteinMax) } : null }).where(eq(people.id, personId)).run();
+  // Un repère fixe enregistré passe la personne en mode fixe ; le retirer la remet en automatique.
+  db.update(people)
+    .set({ fixedMealRef: ref ? { kcalMin: Math.round(ref.kcalMin), kcalMax: Math.round(ref.kcalMax), proteinMin: Math.round(ref.proteinMin), proteinMax: Math.round(ref.proteinMax) } : null, mealRefAuto: !ref })
+    .where(eq(people.id, personId))
+    .run();
   revalidatePath("/", "layout");
-  return { ok: true, message: ref ? "Repère enregistré." : "Repère retiré." };
+  return { ok: true, message: ref ? "Repère fixe enregistré : il ne suit plus la cible." : "Repère fixe retiré : le repère suit la cible." };
+}
+
+/**
+ * Repère automatique ou fixe. Passer en fixe sans repère fixe enregistré fige le repère du moment ;
+ * passer en automatique garde le repère fixe (point de départ du premier pas, et pour y revenir).
+ */
+export async function setRefMode(personId: string, auto: boolean): Promise<Result> {
+  const p = getPerson(db, personId);
+  if (!p) return { ok: false, message: "Profil inconnu." };
+  if (auto) db.update(people).set({ mealRefAuto: true }).where(eq(people.id, personId)).run();
+  else {
+    const ref = p.fixedMealRef ?? eaterOf(db, p).ref;
+    if (!ref) return { ok: false, message: "Pas encore de repère à figer : complète le profil et pèse-toi." };
+    db.update(people).set({ mealRefAuto: false, fixedMealRef: ref }).where(eq(people.id, personId)).run();
+  }
+  revalidatePath("/", "layout");
+  return { ok: true, message: auto ? "Repère automatique : il suit ta cible chaque lundi." : "Repère fixe : il ne bouge plus avec la cible." };
+}
+
+/** Protéines en g/kg de la tendance (au lieu de grammes fixes), vérifiées comme celles du profil. */
+export async function setProteinPerKg(personId: string, perKg: number): Promise<Result> {
+  const p = getPerson(db, personId);
+  if (!p) return { ok: false, message: "Profil inconnu." };
+  if (!Number.isFinite(perKg)) return { ok: false, message: "Un nombre de g/kg, s'il te plaît." };
+  const checked = check(db, p, { proteinGPerKg: perKg });
+  applyPatch(db, personId, checked.patch);
+  revalidatePath("/", "layout");
+  return { ok: true, message: `Protéines : ${String(checked.patch.proteinGPerKg ?? perKg).replace(".", ",")} g/kg, elles suivent ton poids.${checked.notes.length ? ` ${checked.notes.join(" ")}` : ""}` };
 }
 
 export async function sendToCoach(personId: string, text: string): Promise<Result> {
@@ -250,6 +283,17 @@ export async function changeUnits(id: string, units: number): Promise<Result> {
 export async function removeEntry(id: string): Promise<Result> {
   deleteEntry(db, id);
   return done("Retiré du journal.");
+}
+
+/** « Journée complète » en un geste : note les repas prévus et habitudes choisis, puis marque la journée. */
+export async function finishDay(personId: string, date: string, pick: { planned: string[]; templates: string[] }): Promise<Result> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayParis()) return { ok: false, message: "Jour invalide." };
+  try {
+    const n = completeDay(db, personId, date, pick);
+    return done(`Journée complète${n ? ` (${n} ${n > 1 ? "lignes notées" : "ligne notée"})` : ""} : elle compte pour la cible.`);
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 export async function markComplete(personId: string, date: string, complete: boolean): Promise<Result> {

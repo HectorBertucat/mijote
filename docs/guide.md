@@ -4,7 +4,7 @@ Mijote suit une semaine de batch cooking : on choisit, on achète, on cuisine en
 
 ## L'accueil
 
-Le mot-symbole mène à l'accueil : la semaine en chiffres (plats, repas, temps de session et son jour), et le bouton bleu de ce qu'il y a à faire maintenant (choisir les plats, faire la liste, faire les courses, cuisiner, reprendre une session). À côté : tes repas du jour, les boîtes du frigo à manger en premier, l'état des courses ; en bas, la période jour par jour.
+Le mot-symbole mène à l'accueil : la semaine en chiffres (plats, repas, temps de session et son jour), et le bouton bleu de ce qu'il y a à faire maintenant (choisir les plats, faire la liste, faire les courses, cuisiner, reprendre une session). À côté : « Que manger ? » (la réserve de chacun, plat par plat : ce qui te reste et les grammes de ta prochaine portion, **J'ai mangé une portion** et **Annuler**, l'autre d'un geste ; avant la session, les portions prévues ; et le lien vers le bilan du batch), l'état des courses. Un repas sans plat est parfois un choix : **Ignorer** retire l'avertissement pour la période (il revient si d'autres repas se retrouvent sans plat, **Rétablir** le remet) ; en bas, la période jour par jour, indicative.
 
 ## 1. Mise en route (une fois)
 
@@ -71,7 +71,7 @@ Lance-la depuis la liste validée ou le Composer. **Mode** : seul, à deux (chac
 Par défaut, la session se suit sur le téléphone, en trois temps plein écran, une barre de progression en haut et un gros bouton en bas (la barre espace au clavier) :
 1. **Prépare** : tout sur le plan de travail, bol par bol, avec les dessins des aliments et les quantités ; on touche un bol quand il est prêt.
 2. **Cuisine** : une consigne à la fois, en grand, avec son dessin, le foyer et son niveau, le minuteur en pastille (+1 min) et « Suivant ». Les sous-étapes s'enchaînent seules. « Ça sonne bientôt » montre ce qui tourne en fond ; quand une attente sonne (l'eau bout), son étape revient au premier plan. La flèche « retour » défait le dernier pas.
-3. **Range** : chaque recette en boîtes (une boîte par repas du foyer, durée au frigo, congélation), puis une confirmation de fin et le frigo plein.
+3. **Range** : chaque recette pesée, groupe par groupe, et mise en réserve (les portions de chacun ; ce qui ne tiendra pas au frigo en boîtes au congélo), puis une confirmation de fin.
 
 Un écran sobre annonce chaque temps. À deux, chacun ouvre son fil sur son téléphone ; sur grand écran, les deux fils sont côte à côte (touches A et B). Le menu (en haut à droite) ouvre la **vue détaillée** : le fil complet, tous les minuteurs, le schéma des foyers et du four, les QR codes pour les autres écrans.
 
@@ -79,15 +79,19 @@ Les durées réelles sont mesurées et corrigent les estimations des sessions su
 
 Le plan tient compte de la cuisine : le riz de plusieurs recettes cuit une fois (puis « Partage le riz : … pour chacune »), un récipient ne reçoit jamais plus qu'il ne peut contenir, ce qui se verse au moment (une boîte de pulpe, la crème) ne prend pas de bol, et une personne n'a jamais deux choses à faire de ses mains en même temps : un mijoté se surveille (« remue la sauce » toutes les 5 min) pendant qu'on fait autre chose. Les règles : [session.md](session.md).
 
-**En boîtes** : à la fin, pèse chaque marmite cuite (récipient plein moins récipient vide), et le riz ou la semoule à part s'ils ont cuit séparément. L'appli dit combien de boîtes pour chacun et combien de grammes dans chacune (la taille de la boîte vise les calories de chacun, sans dépasser le haut de son repère ; le riz garde la proportion de la marmite, en moins pour qui manque de protéines ; un surplus fait une petite boîte de reste). « Ranger les boîtes » les met dans le **Frigo** : au frigo pour les repas des prochains jours, au congélo pour la fin de semaine et la marge. La fiche recette a la même calculette.
+**Peser, puis ranger** : à la fin, pèse chaque groupe servi à part (récipient plein moins récipient vide) : le plat et sa sauce, le riz, les haricots verts… (les groupes se déduisent des étapes de la fiche). L'appli dit combien de portions pour chacun (une par repas prévu, plus la marge) et les grammes de chaque groupe d'une portion : la portion vise les calories de chacun, sans dépasser le haut de son repère ; le riz garde la proportion de la marmite, en moins pour qui manque de protéines ; un surplus reste « pour qui veut ». On change le nombre de portions de chacun d'un geste, et combien partent en boîtes au congélo. « Ranger » met la marmite en réserve : on se sert ensuite dans le grand récipient, ou dans les boîtes. La fiche recette a la même calculette.
 
-## 6 bis. Frigo
+**Pas le temps de peser** : la session finie met quand même chaque plat en réserve, ses groupes estimés d'après le cru et les portions de chacun d'après la Semaine, marqués « estimé » (≈). Chacun peut déjà manger ; on pèse plus tard depuis **le bilan du batch** (« Le batch du 1er novembre », en tête de Nos plats, sur l'accueil, dans la Semaine de la période, et en fin de session) : chaque plat cuit, ses groupes, les portions de chacun, pesé ou estimé. Après un repas, on pèse ce qui reste dans le grand récipient : les grammes des portions restantes se corrigent, les calories de la marmite ne changent pas.
 
-L'onglet **Frigo** liste les boîtes du frigo et du congélo, la plus pressée d'abord, avec sa date limite (jours au frigo de la recette, trois mois au congélo, le lendemain une fois sortie). Une faim : on pioche ici avant de commander. **Je la mange** note la boîte au journal de Santé de la personne de l'appareil (macros de la boîte) ; **Au congélo**, **Sortir au frigo** et **Jetée** d'un tap.
+## 6 bis. Nos plats
+
+Ce qui est fixe, c'est qui mange combien de portions de quel plat ; le jour où on le mange est libre (la Semaine reste un prévisionnel). L'onglet **Plats** montre, pour la personne de l'appareil (ou l'autre, d'un geste), chaque plat de la réserve avec ses portions restantes (« 2 sur 4 ») et les grammes de sa prochaine portion, puis les plats de la période pas encore cuisinés (portions prévues). **J'ai mangé une portion** la note au journal de Santé (kcal et protéines de la portion), plusieurs fois par jour si besoin ; **Annuler** la reprend (le toast, ou la liste « Ce que tu as mangé »). La réserve se recalcule à chaque fois : ce qui a été servi sort du grand récipient, et les portions restantes de chacun se répartissent ce qui reste, en respectant les repères.
+
+La fiche d'un plat dit en très grand les grammes de chaque groupe à se servir, la part de l'autre d'un geste, « J'ai pris autre chose » (ce qui a vraiment été pris), ce qui reste dans le grand récipient et sa date limite, **Réajuster** (une nouvelle pesée, une portion de plus ou de moins pour quelqu'un), les boîtes (**Je la mange**, **Au congélo**, **Sortir au frigo**, **Jetée**) et **C'est fini**.
 
 ## 6 ter. Assistant
 
-Le bouton en forme de bulle, en haut (⌘I au clavier, ou « Demander » dans ⌘K), ouvre l'assistant. On lui parle avec ses mots : « dois-je prendre un shaker ? », « quelle recette cette semaine pour plus de protéines ? », « quelle boîte manger ce soir ? ». Il lit les objectifs de chacun, la semaine, le frigo et les recettes, et sait quelle page est ouverte. Quand il propose d'agir (ajouter une recette, un shaker, marquer une boîte mangée, lancer les courses), une carte montre ce qui change, chiffré par l'appli : **Appliquer** ou **Annuler**. Une proposition que l'appli refuse est montrée avec sa raison. **Repartir de zéro** efface la conversation. Sans clé d'API, le bouton n'apparaît pas.
+Le bouton en forme de bulle, en haut (⌘I au clavier, ou « Demander » dans ⌘K), ouvre l'assistant. On lui parle avec ses mots : « dois-je prendre un shaker ? », « quelle recette cette semaine pour plus de protéines ? », « quel plat manger ce soir ? ». Il lit les objectifs de chacun, la semaine, le frigo et les recettes, et sait quelle page est ouverte. Quand il propose d'agir (ajouter une recette, un shaker, marquer une boîte mangée, lancer les courses), une carte montre ce qui change, chiffré par l'appli : **Appliquer** ou **Annuler**. Une proposition que l'appli refuse est montrée avec sa raison. **Repartir de zéro** efface la conversation. Sans clé d'API, le bouton n'apparaît pas.
 
 ## 7. Santé
 

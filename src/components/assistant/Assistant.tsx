@@ -18,7 +18,7 @@ export const askAssistant = (text?: string) => window.dispatchEvent(new CustomEv
 function starters(path: string): string[] {
   if (/^\/recettes\/[^/]+/.test(path)) return ["Cette recette convient-elle à nos objectifs ?", "Je l’ajoute à la semaine ?"];
   if (path.startsWith("/semaine")) return ["Quelle recette cette semaine pour plus de protéines ?", "On lance les courses ?"];
-  if (path.startsWith("/frigo")) return ["Quelle boîte manger ce soir ?"];
+  if (path.startsWith("/plats") || path.startsWith("/frigo")) return ["Quel plat manger ce soir ?"];
   if (/^\/sante\/course\/[^/]+$/.test(path) && !/\/(reglages|sorties)$/.test(path)) return ["Explique-moi cette sortie.", "Qu’est-ce que je change pour la prochaine ?"];
   if (path.startsWith("/sante/course")) return ["Pourquoi cette séance ?", "Je ne peux pas courir demain : on décale ?", "Je me sens fatigué : on allège la semaine ?"];
   if (path.startsWith("/sante")) return ["Dois-je prendre un shaker ?", "L’autre personne devrait-elle prendre une collation le matin ?"];

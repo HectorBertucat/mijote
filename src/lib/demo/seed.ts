@@ -1,11 +1,14 @@
 // Écrit le foyer de la démo (./household.ts) dans une base où les recettes sont déjà importées, avec les
 // fonctions de l'appli : la Semaine répartit les plats, la liste de courses se fait sans catalogue, la
-// session est planifiée puis terminée, la marmite part en boîtes, les boîtes passées sont mangées (ce qui
-// remplit le journal de Santé). Seules les dates sont reculées à la main, pour que tout ait eu lieu.
+// session est planifiée puis terminée, chaque marmite pesée part en réserve (portions de chacun, boîtes du
+// congélo), les portions des repas passés sont mangées (ce qui remplit le journal de Santé). Seules les dates
+// sont reculées à la main, pour que tout ait eu lieu.
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { cookSessions, foodTemplates, mealBoxes, people, preferences, recipeIngredients, recipes, runProfiles, shoppingLists, workouts } from "@/lib/db/schema";
-import { eatBox, freezeBox, storeBoxes, thawBox } from "@/lib/boxes/store";
+import { cookSessions, foodTemplates, mealBoxes, people, preferences, recipes, runProfiles, shoppingLists, workouts } from "@/lib/db/schema";
+import { thawBox } from "@/lib/boxes/store";
+import { defaultCounts, defaultFreezer } from "@/lib/reserve/core";
+import { calcModel, eatPortion, listDishes, plannedSlots, saveReserve } from "@/lib/reserve/store";
 import { addEntry } from "@/lib/health/log";
 import { ingestV2, parseV2 } from "@/lib/health/ingest-v2";
 import { addWeighIn, setWaist } from "@/lib/health/store";
@@ -33,20 +36,13 @@ function planWeek(db: Db, start: string, slugs: string[]) {
   return { planId, sel: loadSelection(db, planId) };
 }
 
-/** Poids d'une marmite cuite, estimé des grammes crus (le plat réduit, le riz gonfle). */
-function potWeights(db: Db, recipeId: string, scale: number) {
-  const ings = db.select({ grams: recipeIngredients.grams, side: recipeIngredients.side, optional: recipeIngredients.optional }).from(recipeIngredients).where(eq(recipeIngredients.recipeId, recipeId)).all();
-  const sum = (side: boolean) => ings.filter((i) => !i.optional && i.side === side).reduce((s, i) => s + (i.grams ?? 0), 0) * scale;
-  const side = sum(true);
-  return { dishG: Math.round(sum(false) * 0.82), sideG: side > 0 ? Math.round(side * 2.4) : null };
-}
-
 /**
- * Une semaine déjà cuisinée : la liste faite et payée le samedi, la session du dimanche terminée, les
- * boîtes rangées ; celles des repas passés sont mangées, celles d'aujourd'hui et demain sont sorties du
- * congélo la veille, la marge part au congélo (`freezeMargin`).
+ * Une semaine déjà cuisinée : la liste faite et payée le samedi, la session du dimanche terminée, chaque
+ * marmite pesée (le poids cuit estimé du cru) et mise en réserve, avec les boîtes du congélo, sauf la dernière
+ * de la semaine en cours, pas encore pesée (estimée, comme une session finie sans pesée). Les portions
+ * des repas passés sont mangées ; une boîte du congélo est sortie la veille. Une semaine archivée est finie.
  */
-async function cookedWeek(db: Db, h: DemoHousehold, week: { start: string; cookedOn: string; listOn: string }, slugs: string[], opts: { archive: boolean; freezeMargin: number }) {
+async function cookedWeek(db: Db, h: DemoHousehold, week: { start: string; cookedOn: string; listOn: string }, slugs: string[], opts: { archive: boolean }) {
   const { today } = h.calendar;
   const { planId, sel } = planWeek(db, week.start, slugs);
   const scales = Object.fromEntries(sel.map((x) => [x.slug, x.factor]));
@@ -65,20 +61,40 @@ async function cookedWeek(db: Db, h: DemoHousehold, week: { start: string; cooke
     .run();
   const plan = db.select({ planJson: cookSessions.planJson }).from(cookSessions).where(eq(cookSessions.id, sessionId)).get()!.planJson as SessionPlan;
   const ids = new Map(db.select({ id: recipes.id, slug: recipes.slug }).from(recipes).where(inArray(recipes.slug, slugs)).all().map((r) => [r.slug, r.id]));
-  for (const r of plan.recipes) {
+  const weighed = at(week.cookedOn, "11:45");
+  // Les repas passés et le midi d'aujourd'hui, dans l'ordre : chacun mange une portion du plat prévu ce jour-là
+  // (la Semaine reste un repère) ; le batch est entamé, même un lundi.
+  const meals: { reserveId: string; personId: string; date: string; meal: "lunch" | "dinner" }[] = [];
+  const reserveIds = new Set<string>();
+  for (const [k, r] of plan.recipes.entries()) {
     const recipeId = ids.get(r.slug);
-    if (recipeId) storeBoxes(db, sessionId, recipeId, potWeights(db, recipeId, r.scale ?? 1));
+    if (!recipeId) continue;
+    const m = calcModel(db, r.slug, { scale: r.scale ?? 1, cookedOn: week.cookedOn, week: true }, weighed)!;
+    const counts = defaultCounts(m);
+    // Le dernier plat de la semaine en cours n'est pas encore pesé : ses portions sont estimées (le bilan du batch).
+    const unweighed = !opts.archive && k === plan.recipes.length - 1 && plan.recipes.length > 1;
+    const weights = unweighed ? {} : Object.fromEntries(m.groups.map((g) => [g.key, Math.round(g.estG / 5) * 5]));
+    const { reserveId } = saveReserve(db, sessionId, recipeId, { weights, counts, freezer: defaultFreezer(m, counts) }, weighed);
+    reserveIds.add(reserveId);
+    for (const [personId, slots] of plannedSlots(db, recipeId, week.cookedOn)) for (const s of slots) if (s.date < today || (s.date === today && s.meal === "lunch") || opts.archive) meals.push({ reserveId, personId, date: s.date, meal: s.meal });
   }
-
-  const firstPerson = h.people[0].id;
-  let frozen = 0;
-  for (const b of db.select().from(mealBoxes).where(and(eq(mealBoxes.sessionId, sessionId), eq(mealBoxes.status, "stock"))).all()) {
-    if (b.plannedFor && b.plannedFor < today) eatBox(db, b.id, b.personId ?? firstPerson, at(b.plannedFor, b.plannedMeal === "dinner" ? "18:45" : "11:15"));
-    else if (b.plannedFor && b.place === "freezer" && b.plannedFor <= addDays(today, 1)) thawBox(db, b.id, addDays(b.plannedFor, -1));
-    else if (!b.plannedFor && b.place === "fridge" && frozen < opts.freezeMargin) {
-      freezeBox(db, b.id, addDays(week.cookedOn, 1));
-      frozen++;
-    } else if (!b.plannedFor && b.place === "fridge" && opts.archive) eatBox(db, b.id, b.personId ?? firstPerson, at(addDays(week.cookedOn, 6), "11:15"));
+  meals.sort((a, b) => a.date.localeCompare(b.date) || a.meal.localeCompare(b.meal));
+  for (const x of meals) {
+    try {
+      eatPortion(db, x.reserveId, x.personId, { date: x.date, meal: x.meal }, at(x.date, x.meal === "dinner" ? "18:45" : "11:15"));
+    } catch {
+      // Plus rien de ce plat : le repas a été pris ailleurs.
+    }
+  }
+  // Une semaine archivée : le reste du grand récipient est fini le samedi ; les boîtes du congélo restent.
+  if (opts.archive) {
+    const end = at(addDays(week.cookedOn, 6), "11:15");
+    for (const d of listDishes(db, null, end).filter((x) => x.status === "cooked" && reserveIds.has(x.id)))
+      for (const p of d.people) for (let k = 0; k < p.left - p.inBoxes; k++) eatPortion(db, d.id, p.personId, { date: addDays(week.cookedOn, 6), meal: "lunch" }, end);
+  } else {
+    // Une boîte du congélo sortie la veille, pour le lendemain.
+    const frozen = db.select().from(mealBoxes).where(and(eq(mealBoxes.sessionId, sessionId), eq(mealBoxes.status, "stock"), eq(mealBoxes.place, "freezer"))).get();
+    if (frozen) thawBox(db, frozen.id, addDays(today, -1));
   }
   return { planId, listId, sessionId };
 }
@@ -125,8 +141,8 @@ export async function seedDemo(db: Db, today: string) {
       addEntry(db, { personId: x.personId, date: d, meal: x.meal, kind: "template", templateId: x.id, label: x.label, kcal: x.kcal, proteinG: x.proteinG, fatG: x.fatG, carbsG: x.carbsG });
   }
 
-  await cookedWeek(db, h, calendar.previous, h.weeks.previous, { archive: true, freezeMargin: 2 });
-  await cookedWeek(db, h, calendar.current, h.weeks.current, { archive: false, freezeMargin: 1 });
+  await cookedWeek(db, h, calendar.previous, h.weeks.previous, { archive: true });
+  await cookedWeek(db, h, calendar.current, h.weeks.current, { archive: false });
   const next = planWeek(db, calendar.next.start, h.weeks.next);
   await buildShoppingList(db, next.sel.map((x) => x.slug), { weekPlanId: next.planId, scales: Object.fromEntries(next.sel.map((x) => [x.slug, x.factor])) });
 

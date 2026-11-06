@@ -136,7 +136,7 @@ export function saveDraft(
     explanation?: string;
     unavailable?: boolean;
     origin: "ajuster" | "atelier" | "import";
-    /** Import : le lien de la recette d'origine, gardé comme source. */
+    /** Import : le lien de la recette d'origine ; atelier : les recettes publiées dont elle s'inspire. */
     source?: string | null;
     /** Quantités douteuses : la recette porte l'étiquette « à relire ». */
     review?: boolean;
@@ -156,7 +156,7 @@ export function saveDraft(
     ? `Variante de « ${parent.name} » (/recettes/${parent.slug}). ${opts.explanation ?? ""}`.trim()
     : opts.origin === "import"
       ? opts.source || "Importée depuis un texte collé."
-      : `Créée dans l'atelier. ${opts.explanation ?? ""}`.trim();
+      : opts.source || `Créée dans l'atelier. ${opts.explanation ?? ""}`.trim();
   const { id } = upsertRecipe(db, { ...draft, slug, tags: [...new Set(tags)], status: "to_try", kcalUnit: null, proteinUnit: null, source });
   if (top) db.update(recipes).set({ parentId: top.id }).where(eq(recipes.id, id)).run();
   return slug;

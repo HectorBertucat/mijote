@@ -1,21 +1,20 @@
 // Ce que l'accueil lit : la période affichée par défaut (comme /semaine), ses plats et ses repas,
-// la liste de courses, la session, le frigo et les repas du jour du profil actif. Lecture seule,
-// sauf ce que weekView fait déjà (créer la période, recaler les parts).
+// la liste de courses, la session, le batch du moment et la réserve de chacun (« Que manger ? »).
+// Lecture seule, sauf ce que weekView et listDishes font déjà (créer la période, recaler les parts,
+// mettre en réserve les plats d'une session finie sans pesée).
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
 import { cookSessions, shoppingItems, shoppingLists } from "@/lib/db/schema";
-import { listStock, type StockBox } from "@/lib/boxes/store";
-import { adviceFor } from "@/lib/eaters/store";
+import { currentBatch, listDishes, recentBatches, recentServings, type DishView, type ServingView } from "@/lib/reserve/store";
+import { batchInPeriod } from "@/lib/reserve/batch";
 import { todayParis } from "@/lib/health/store";
 import { activeSession, buildPlan } from "@/lib/session/store";
 import { estimateSession } from "@/lib/session/estimate";
-import { dayIndexIn, defaultPeriod, periodDays, type PeriodDay } from "@/lib/week/period";
-import { MEAL_LABEL, type Meal } from "@/lib/week/propose";
-import { loadWeek, periodPlans, weekView } from "@/lib/week/store";
+import { defaultPeriod, periodDays, type PeriodDay } from "@/lib/week/period";
+import type { Meal } from "@/lib/week/propose";
+import { missingIgnoredOf, periodPlans, weekView } from "@/lib/week/store";
 import { todayRun } from "@/lib/running/page";
-import { cookDayOf, nextStep, type HomeState, type HomeStep } from "./next";
-
-const MEALS: Meal[] = ["lunch", "dinner"];
+import { cookDayOf, coverIgnored, nextStep, type HomeState, type HomeStep } from "./next";
 
 export interface HomeDish {
   slug: string;
@@ -31,42 +30,6 @@ export interface HomeCell {
   dishes: { slug: string; name: string }[];
   missing: boolean;
   away: boolean;
-}
-
-export interface HomeBoxGroup {
-  key: string;
-  name: string;
-  slug: string | null;
-  count: number;
-  people: string[];
-  limit: string;
-  freshness: StockBox["freshness"];
-  plannedFor: string | null;
-}
-
-export interface HomeMeal {
-  meal: Meal;
-  label: string;
-  slug: string;
-  name: string;
-  kcal: number | null;
-  protein: number | null;
-}
-
-/** Boîtes d'un lieu regroupées (même plat, même date limite) : la plus pressée d'abord. */
-export function groupBoxes(boxes: StockBox[]): HomeBoxGroup[] {
-  const groups = new Map<string, HomeBoxGroup>();
-  for (const b of boxes) {
-    const key = `${b.slug ?? b.name}:${b.limit}`;
-    const g = groups.get(key);
-    if (g) {
-      g.count++;
-      if (b.personName && !g.people.includes(b.personName)) g.people.push(b.personName);
-      if (b.plannedFor && (!g.plannedFor || b.plannedFor < g.plannedFor)) g.plannedFor = b.plannedFor;
-    } else
-      groups.set(key, { key, name: b.name, slug: b.slug, count: 1, people: b.personName ? [b.personName] : [], limit: b.limit, freshness: b.freshness, plannedFor: b.plannedFor });
-  }
-  return [...groups.values()].sort((a, b) => a.limit.localeCompare(b.limit) || (a.plannedFor ?? "9").localeCompare(b.plannedFor ?? "9") || a.name.localeCompare(b.name, "fr"));
 }
 
 export function homeView(db: Db, profileId: string | null, now = new Date()) {
@@ -136,36 +99,25 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
     .where(and(eq(cookSessions.status, "done"), eq(cookSessions.test, false), listIds.length ? or(eq(cookSessions.weekPlanId, view.planId), inArray(cookSessions.shoppingListId, listIds)) : eq(cookSessions.weekPlanId, view.planId)))
     .get();
 
+  // Un batch cuit pour la période compte aussi (une session lancée depuis Composer n'est liée à rien).
+  const b = currentBatch(db, now);
+  const batches = cooked ? [] : recentBatches(db, now);
+  const cookedHere = cooked || batches.some((x) => batchInPeriod(x.cookedOn, view.start, view.days));
+
   const cookDay = cookDayOf(view.start);
-  const state: HomeState = { active, dishes: selected.length, missing: a.uncovered.length, cooked, list, cookDay, today };
+  const missingIgnored = missingIgnoredOf(db, view.planId);
+  const state: HomeState = { active, dishes: selected.length, missing: a.uncovered.length, missingIgnored, cooked: cookedHere, list, cookDay, today };
   const step: HomeStep = nextStep(state);
 
-  // Frigo : les boîtes du frigo d'abord (la plus pressée en tête), le congélo en nombre.
-  const stock = listStock(db, today);
-  const fridge = groupBoxes(stock.filter((b) => b.place === "fridge"));
-  const freezer = groupBoxes(stock.filter((b) => b.place === "freezer"));
-  const fridgeCount = stock.filter((b) => b.place === "fridge").length;
-  const freezerCount = stock.length - fridgeCount;
-
-  // Aujourd'hui, pour le profil actif : ses repas de la période qui contient aujourd'hui.
+  // Que manger : la réserve de chacun, plat par plat (le jour est libre), le profil actif d'abord ; puis
+  // les plats de la période pas encore cuisinés. Ce que chacun a mangé aujourd'hui, pour l'annuler.
   const lead = eaters.find((e) => e.id === profileId) ?? eaters[0] ?? null;
-  let todayMeals: HomeMeal[] = [];
-  if (lead) {
-    const inDefault = dayIndexIn(view.start, view.days, today);
-    const current = inDefault != null ? null : plans.filter((p) => p.touched && dayIndexIn(p.start, p.days, today) != null).sort((x, y) => y.start.localeCompare(x.start))[0];
-    const index = inDefault ?? (current ? dayIndexIn(current.start, current.days, today) : null);
-    const slots = inDefault != null ? grid : current ? loadWeek(db, current.start).slots : [];
-    // Les plats retenus de la période affichée portent leurs grammes ajoutés (macros recalculées).
-    const byId = new Map([...library, ...(inDefault != null ? selected : [])].map((r) => [r.id, r]));
-    todayMeals = MEALS.flatMap((meal) => {
-      const s = slots.find((x) => x.day === index && x.meal === meal && x.personId === lead.id && x.place !== "away" && x.recipeId);
-      const r = s ? byId.get(s.recipeId!) : null;
-      if (!s || !r) return [];
-      const units = s.portionUnits;
-      return [{ meal, label: MEAL_LABEL[meal], slug: r.slug, name: r.name, kcal: r.kcalUnit != null ? r.kcalUnit * units : null, protein: r.proteinUnit != null ? r.proteinUnit * units : null }];
-    });
-  }
-  const advice = lead && todayMeals.length ? adviceFor(db, lead, now) : null;
+  const all = lead ? listDishes(db, lead.id, now) : [];
+  const reserve: DishView[] = all.filter((d) => d.status === "cooked");
+  const planned: DishView[] = all.filter((d) => d.status === "planned");
+  const portionsLeft = reserve.reduce((s, d) => s + d.people.reduce((x, p) => x + p.left, 0), 0);
+  const eatenToday: ServingView[] = eaters.flatMap((e) => recentServings(db, e.id, now, 1));
+  const batch = b ? { id: b.id, title: b.title, cookedOn: b.cookedOn, ...b.summary } : null;
 
   return {
     today,
@@ -179,16 +131,20 @@ export function homeView(db: Db, profileId: string | null, now = new Date()) {
     minutes,
     list: list ? { ...list, items: items.length, inCart: items.filter((i) => i.inCart).length } : null,
     active,
-    cooked,
+    cooked: cookedHere,
     step,
-    fridge,
-    freezer,
-    fridgeCount,
-    freezerCount,
+    /** Repas sans plat ignorés pour cette période (l'accueil ne les signale plus). */
+    missingIgnored: coverIgnored(a.uncovered.length, missingIgnored),
     lead: lead ? { id: lead.id, name: lead.name } : null,
+    people: eaters.map((e) => ({ id: e.id, name: e.name })),
     multiple: personName.size > 1,
-    todayMeals,
-    advice: advice?.kind === "gap" ? advice.text : null,
+    /** La réserve (plats cuits, portions de chacun), les plats à cuisiner, les portions qui restent au foyer. */
+    reserve,
+    planned,
+    portionsLeft,
+    eatenToday,
+    /** Le batch du moment (le plus récent encore en réserve) : son bilan, les plats à peser. */
+    batch,
     /** La séance de course du jour du profil actif (module Course activé), sans recalcul du plan. */
     run: todayRun(db, profileId, today),
   };

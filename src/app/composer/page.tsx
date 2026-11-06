@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { sideLabelOf } from "@/lib/boxes/store";
+import { sideLabelOf } from "@/lib/week/selection";
 import { Suspense } from "react";
 import { buttonClass, Icon, Lanes, Scene } from "@/components/ui";
 import { DishBox } from "@/components/ui/dish";

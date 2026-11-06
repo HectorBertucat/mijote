@@ -33,6 +33,8 @@ Une **cuisson de base** est une cuisson à l'eau dont les bols ne contiennent qu
 
 Quand plusieurs recettes cuisent la même base de la même façon, le planificateur en fait **une seule cuisson** dans le récipient qui la tient, puis une sous-étape « Partage le riz : 1 kg cuit pour …, 1,1 kg cuit pour … » (poids cuit estimé : riz × 2,5, pâtes × 2,2…). Trop pour un récipient : le moins de cuissons possible (une recette entière par cuisson), dans les récipients les moins pris par ailleurs. Le plan le dit dans ses décisions.
 
+Après la session, une base servie à part (le riz, les haricots verts, pas l'orzo cuit dans la sauce) n'est plus une part de chaque plat : elle va dans les **gros récipients du foyer** (Réglages › Cuisine › Gros récipients des bases), où chacun se sert à chaque repas (`src/lib/reserve/bases.ts`, docs/api-app.md § Bases). La fin de session dit combien de gros récipients remplir (« Le riz : ≈ 2,2 kg cuits, de quoi remplir 2 gros récipients (2 L) ») ; quand l'un se vide, Nos plats propose de le refaire, hors session.
+
 ## Bols de prep
 
 Les lettres du plan (bol A, bol B…) restent celles des fiches. Chaque groupe trouve où attendre :

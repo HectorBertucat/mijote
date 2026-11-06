@@ -47,3 +47,6 @@ export function composerHref(s: Selection): string {
 
 /** « ×1,5 » */
 export const factorLabel = (f: number) => `×${String(f).replace(".", ",")}`;
+
+/** « Riz basmati » → « riz » ; plusieurs garnitures : « riz et semoule ». */
+export const sideLabelOf = (items: string[]) => [...new Set(items.map((i) => i.split(/[\s,(]/)[0].toLowerCase()))].join(" et ");

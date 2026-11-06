@@ -20,6 +20,9 @@ export interface Usage {
   cacheWriteTokens: number;
 }
 
+/** Une recherche web (outil serveur web_search) : 10 $ les 1 000, en plus des jetons. Lire une page (web_fetch) ne coûte que ses jetons. */
+export const WEB_SEARCH_USD = 0.01;
+
 export function costUsd(model: ModelId, u: Usage): number {
   const p = PRICES[model];
   return (

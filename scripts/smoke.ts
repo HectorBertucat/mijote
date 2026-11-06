@@ -14,8 +14,9 @@ import { setSetting, SETTING } from "@/lib/settings";
 import { authToken } from "@/lib/auth";
 import { buildShoppingList } from "@/lib/shopping/build";
 import { addEvent, createSession } from "@/lib/session/store";
-import { storeBoxes } from "@/lib/boxes/store";
-import { cookEvents, cookSessions, recipes, shoppingLists } from "@/lib/db/schema";
+import { saveReserve } from "@/lib/reserve/store";
+import { saveFeedback } from "@/lib/feedback/store";
+import { cookEvents, cookSessions, recipes, reserves, shoppingLists } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { assignProgram } from "@/lib/training/programs";
 import { generateProgram } from "@/lib/training/generate";
@@ -117,15 +118,18 @@ async function main() {
     // La mise en route, comme si on avait rempli le formulaire (même code que les actions).
     const { db } = openDb(path.join(dataDir, "mijote.db"));
     const lea = addPerson(db, { name: "Léa", portionUnits: 4, sex: "f", birthDate: "1994-07-01", heightCm: 165, weightKg: 60, activity: "light", goal: "maintain" });
-    addPerson(db, { name: "Tom", portionUnits: 5 });
+    const tom = addPerson(db, { name: "Tom", portionUnits: 5 });
     setSetting(db, SETTING.setupDone, new Date().toISOString());
     assignProgram(db, lea, generateProgram({ gear: ["miniBande"], perWeek: 2, minutes: 30, level: 1, focus: "bas" }, ""), "generateur");
     const listId = await buildShoppingList(db, ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"]);
     const sessionId = createSession(db, { slugs: ["chasseur-porc", "pasta-al-forno-saucisse-ricotta"], mode: "solo" });
 
-    for (const p of ["/", "/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins", "/kit/boites"])
+    for (const p of ["/", "/recettes", "/recettes/chasseur-porc", "/semaine", "/semaine?w=2026-11-05&n=12", "/composer", "/courses", `/courses/${listId}`, "/couts", "/placard", `/session/${sessionId}`, "/atelier", "/atelier/importer", "/atelier/creer", "/sante", "/sante/demarrer?p=lea", "/sante/aujourdhui", "/sante/objectifs", "/sante/apple", "/sante/profil", "/kit", "/kit/dessins", "/kit/boites"])
       await page(p, undefined);
     await page("/recettes", undefined, /Léa/);
+    // Sans clé d'API : pas d'entrée « Créer d'après des recettes publiées », la page le dit.
+    check(!(await (await get("/atelier")).text()).includes("/atelier/creer"), "sans clé : pas d'entrée « Créer une recette » dans l'Atelier");
+    await page("/atelier/creer", undefined, /a besoin de l’IA/);
     // Prise en main : les premiers pas sur l’accueil, la visite relançable, les images de démarrage iOS.
     await page("/", undefined, /Premiers pas/);
     await page("/?visite=1", undefined);
@@ -134,15 +138,42 @@ async function main() {
     check(launch.status === 200 && launch.headers.get("content-type") === "image/png", "image de démarrage iOS → PNG");
     check((await get("/lancement?w=4000&h=4000")).status === 404, "image de démarrage d’une taille inconnue → 404");
     await page("/sante/habitudes", "mijote.profil=lea", /Shaker protéiné/);
-    // Fin de session : la marmite pesée part en boîtes, au frigo et au congélo.
-    await page("/frigo", undefined, /Le frigo est vide/);
-    await page("/recettes/butter-chicken-express", undefined, /En boîtes/);
+    // « Où j’en suis » : la cible et ce qui manque pour qu’elle s’ajuste ; « Journée complète » en un geste.
+    await page("/sante/objectifs", "mijote.profil=lea", /Où j’en suis[\s\S]*Pour que la cible s’ajuste[\s\S]*Tes portions/);
+    await page("/sante/aujourdhui", "mijote.profil=lea", /Tout est noté/);
+    // Fin de session : la marmite pesée (plat et riz) part en réserve, une portion par repas de chacun.
+    await page("/plats", undefined, /Aucun plat pour l’instant/);
+    check((await get("/frigo")).status === 307, "/frigo renvoie à /plats");
+    await page("/recettes/butter-chicken-express", undefined, /En portions/);
     const done = createSession(db, { slugs: ["butter-chicken-express"], mode: "solo" });
     addEvent(db, done, { kind: "note", payload: { status: "done" } });
     const bc = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.slug, "butter-chicken-express")).get()!;
-    check(storeBoxes(db, done, bc.id, { dishG: 3800, sideG: 1350 }) > 0, "boîtes rangées en fin de session");
-    await page("/frigo", undefined, /Butter chicken/);
+    const people = db.select({ id: reserves.id }).from(reserves).all().length;
+    check(saveReserve(db, done, bc.id, { weights: { plat: 3800, riz: 1350 }, counts: Object.fromEntries([lea, tom].map((id) => [id, 3])), freezer: { [lea]: 1 } }).boxes === 1, "marmite en réserve en fin de session");
+    check(db.select({ id: reserves.id }).from(reserves).all().length === people + 1, "une réserve de plus");
+    await page("/plats", undefined, /Butter chicken[\s\S]*J’ai mangé une portion/);
+    const reserveId = db.select({ id: reserves.id }).from(reserves).all().at(-1)!.id;
+    await page(`/plats/${reserveId}`, undefined, /La portion de/);
+    // Le riz du butter chicken, servi à part : une base du foyer, dans son gros récipient, et sa fiche « Refaire ».
+    await page("/plats", undefined, /Les bases[\s\S]*riz/i);
+    await page("/plats/bases/riz", undefined, /C’est cuit et rangé|C'est cuit et rangé/);
+    check(/Erreur 404/.test(await (await get("/plats/bases/inconnue")).text()), "base inconnue → page introuvable");
+    // Retour de goût : visible sur la fiche (avec l'ajustement proposé) et sur la Semaine.
+    saveFeedback(db, { recipeId: bc.id, personId: tom, rating: "meh", tags: ["sec"] });
+    await page("/recettes/butter-chicken-express", undefined, /Tom : bof · sec[\s\S]*Ajuster d’après les retours[\s\S]*Enregistrer la variante/);
+    await page("/semaine", undefined, /Tom : bof \(sec\)/);
+    await page("/recettes/poulet-paprika-fume-pommes-de-terre", undefined, /Variante de[\s\S]*sauce au skyr/);
+    await page("/", undefined, /Que manger/);
     await page(`/session/${done}`, undefined);
+    await page(`/plats/batch/${done}`, undefined, /Le batch du[\s\S]*pesé[\s\S]*Les pesées/);
+    // Une session finie sans pesée (une étape faite) : ses plats en réserve, estimés ; Nos plats mène au bilan.
+    const late = createSession(db, { slugs: ["chasseur-porc"], mode: "solo" });
+    addEvent(db, late, { kind: "step_done", ref: "s1" });
+    addEvent(db, late, { kind: "note", payload: { status: "done" } });
+    await page("/plats", undefined, /Le batch du[\s\S]*à peser[\s\S]*estimé, pas encore pesé/);
+    await page(`/plats/batch/${late}`, undefined, /estimé[\s\S]*Enregistrer les portions/);
+    // Une session inconnue : la page introuvable (le chargement a déjà envoyé l'en-tête 200).
+    check(/Erreur 404/.test(await (await get("/plats/batch/inconnue")).text()), "bilan d'une session inconnue → page introuvable");
     await page("/sante/entrainement?vue=programme", "mijote.profil=lea", /Changer de programme/);
     await page("/sante/entrainement", "mijote.profil=tom", /Pas encore de programme pour Tom/);
     check((await get("/bienvenue")).status === 307, "mise en route faite → /bienvenue renvoie à l'accueil");
@@ -214,14 +245,20 @@ async function demo() {
     const { sqlite, db } = openDb(fileA);
     const session = db.select({ id: cookSessions.id }).from(cookSessions).where(eq(cookSessions.status, "done")).all().at(-1)!.id;
     const list = db.select({ id: shoppingLists.id }).from(shoppingLists).where(eq(shoppingLists.status, "draft")).get()!.id;
-    for (const p of ["/recettes", "/recettes/butter-chicken-express", "/semaine", "/composer", "/courses", `/courses/${list}`, "/couts", "/placard", "/frigo", `/session/${session}`, "/sante", "/sante/aujourdhui", "/sante/profil", "/sante/habitudes", "/sante/entrainement", "/reglages"])
+    for (const p of ["/recettes", "/recettes/butter-chicken-express", "/semaine", "/composer", "/courses", `/courses/${list}`, "/couts", "/placard", "/plats", `/session/${session}`, "/sante", "/sante/aujourdhui", "/sante/profil", "/sante/habitudes", "/sante/entrainement", "/reglages"])
       await page(p, cookieA);
-    await page("/frigo", cookieA, /Congélo|congélo/);
+    // La démo : un batch en cours, des portions déjà mangées (annulables), la fiche d’une portion.
+    await page("/plats", cookieA, /sur \d[\s\S]*Ce que tu as mangé/);
+    const dish = db.select({ id: reserves.id }).from(reserves).where(eq(reserves.status, "open")).all().at(-1)!.id;
+    await page(`/plats/${dish}`, cookieA, /La portion de/);
+    await page("/", cookieA, /Que manger/);
     await page("/semaine", cookieA, /Butter chicken/);
-    await page("/sante", cookieA, /Alex/);
+    await page("/sante", cookieA, /Alex[\s\S]*Où j’en suis/);
+    await page("/", cookieA, /Ma cible/);
     await page("/atelier", cookieA, /besoin de l’IA/);
     await page("/atelier/importer", cookieA, /besoin de l’IA/);
-    await page("/sante/objectifs", cookieA, /besoin de l’IA/);
+    await page("/atelier/creer", cookieA, /Créer une recette a besoin de l’IA/);
+    await page("/sante/objectifs", cookieA, /Où j’en suis[\s\S]*besoin de l’IA/);
     await page("/sante/apple", cookieA, /Apple Santé reste chez toi/);
     check((await fetch(`${BASE}/api/assistant`, { method: "POST", headers: { cookie: cookieA, "Content-Type": "application/json" }, body: JSON.stringify({ text: "Bonjour" }) })).status === 404, "démo : pas d'assistant, même avec une clé");
     check((await get("/api/sante/import", cookieA)).status === 404, "démo : pas d'import Apple Santé");

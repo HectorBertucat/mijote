@@ -17,9 +17,9 @@ import { zonesOf } from "@/lib/running/zones";
 
 export interface DemoCalendar {
   today: string;
-  /** Semaine précédente : cuisinée, mangée, deux boîtes de marge parties au congélo. */
+  /** Semaine précédente : cuisinée, mangée ; ses boîtes du congélo restent. */
   previous: { start: string; cookedOn: string; listOn: string };
-  /** Semaine en cours : la session de dimanche dernier, des boîtes au frigo et au congélo. */
+  /** Semaine en cours : la session de dimanche dernier, la réserve entamée (le midi d'aujourd'hui compris), des boîtes au congélo. */
   current: { start: string; cookedOn: string; listOn: string };
   /** Semaine suivante : les plats choisis, la liste de courses à faire. */
   next: { start: string };

@@ -32,6 +32,8 @@ const library: WeekRecipe[] = fs
     );
     return {
       slug: r.slug,
+      id: r.slug,
+      parentId: r.variantOf ?? null,
       name: r.name,
       tags: r.tags,
       fridgeDays: r.fridgeDays ?? null,

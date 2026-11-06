@@ -18,7 +18,10 @@
 //   nettement du repère (trop de protéines : plus de riz et moins de plat ; pas assez : l'inverse).
 //   Un plat mélangé (one pot) ne se compose pas : seule la taille de la part change ;
 // - l'écart au repère (gapOf) sert au choix des recettes : il reste surtout les protéines,
-//   puisque les kcal sont visées par la taille de la part.
+//   puisque les kcal sont visées par la taille de la part ;
+// - repère automatique (autoMealRef, par défaut) : le repère tiré de la cible de la semaine, son
+//   milieu borné (300 à 1 500 kcal, 15 à 120 g) et qui bouge d'au plus 100 kcal et 10 g par
+//   semaine par rapport à celui de la semaine d'avant. Le repère fixe, lui, ne suit pas la cible.
 import type { Macros } from "@/lib/nutrition/compute";
 
 /** Une personne du foyer, vue par un module pur : sa part de base et son repère d'un repas. */
@@ -44,7 +47,7 @@ export interface MealRef {
   proteinMax: number;
 }
 
-/** sante = dépense mesurée ; fixe = repère choisi par la personne (people.fixed_meal_ref) ; estimation = formule (Mifflin). */
+/** sante = dépense mesurée (ou en attente) ; fixe = repère choisi par la personne (people.fixed_meal_ref, mode fixe) ; estimation = formule (Mifflin). */
 export type RefSource = "sante" | "fixe" | "estimation";
 
 export interface Eater {
@@ -255,3 +258,52 @@ export const defaultOutside = (t: DayTarget): Outside => ({ kcal: Math.round(t.k
 
 /** Libellé court d'une part : « 4,5 u ». */
 export const unitsLabel = (u: number) => `${u.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} u`;
+
+// ─── Repère automatique ───
+
+/** Bornes du milieu d'un repère automatique, et ce dont il bouge au plus d'une semaine à l'autre. */
+export const AUTO_REF = { kcalMin: 300, kcalMax: 1500, proteinMin: 15, proteinMax: 120, kcalStep: 100, proteinStep: 10 } as const;
+
+export interface AutoRef {
+  ref: MealRef;
+  /** Ce que la cible seule donnerait (mealRef), avant bornes et pas. */
+  raw: MealRef;
+  /** Le pas de la semaine a retenu le repère : il rejoindra la cible les semaines suivantes. */
+  limited: boolean;
+  /** Le milieu sortait des bornes. */
+  bounded: boolean;
+}
+
+const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
+
+/**
+ * Repère d'un repas en mode automatique : (cible − hors batch) / 2, comme mealRef, dont le milieu est
+ * borné puis rapproché du repère de la semaine d'avant d'au plus un pas. La largeur de la fourchette
+ * reste celle de la cible. Sans repère précédent (premier calcul), pas de pas.
+ */
+export function autoMealRef(t: DayTarget, outside: Outside, previous: MealRef | null): AutoRef {
+  const raw = mealRef(t, outside);
+  let bounded = false;
+  let limited = false;
+  const axis = (lo: number, hi: number, min: number, max: number, step: number, prevLo?: number, prevHi?: number) => {
+    const half = (hi - lo) / 2;
+    let mid = (lo + hi) / 2;
+    const b = clamp(mid, min, max);
+    if (b !== mid) bounded = true;
+    mid = b;
+    if (prevLo != null && prevHi != null) {
+      const prev = (prevLo + prevHi) / 2;
+      if (Math.abs(mid - prev) > step) {
+        mid = prev + Math.sign(mid - prev) * step;
+        limited = true;
+      }
+    }
+    return [Math.max(0, Math.round(mid - half)), Math.round(mid + half)];
+  };
+  const [kcalMin, kcalMax] = axis(raw.kcalMin, raw.kcalMax, AUTO_REF.kcalMin, AUTO_REF.kcalMax, AUTO_REF.kcalStep, previous?.kcalMin, previous?.kcalMax);
+  const [proteinMin, proteinMax] = axis(raw.proteinMin, raw.proteinMax, AUTO_REF.proteinMin, AUTO_REF.proteinMax, AUTO_REF.proteinStep, previous?.proteinMin, previous?.proteinMax);
+  return { ref: { kcalMin, kcalMax, proteinMin, proteinMax }, raw, limited, bounded };
+}
+
+/** Libellé d'un repère : « 640–790 kcal, 48–58 g de protéines ». */
+export const refLabel = (r: MealRef) => `${r.kcalMin.toLocaleString("fr-FR")}–${r.kcalMax.toLocaleString("fr-FR")}\u00a0kcal, ${r.proteinMin}–${r.proteinMax}\u00a0g de protéines`;

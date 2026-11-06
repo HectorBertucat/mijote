@@ -128,11 +128,11 @@ test("goûts réglés dans l'appli : un dislike de départ retiré ne revient pa
   assert.ok(now.includes("Poivron") && now.includes("Champignons"));
 });
 
-test("repère fixe du profil : prime sur la formule, cède à la dépense mesurée, et fait la journée de la Semaine", () => {
+test("repère fixe du profil (mode fixe) : prime sur la cible, et fait la journée de la Semaine", () => {
   const { db } = openDb(":memory:");
   seedTest(db);
   const ref = { kcalMin: 700, kcalMax: 760, proteinMin: 52, proteinMax: 68 };
-  db.update(people).set({ fixedMealRef: ref, outsideKcal: 335, outsideProteinG: 43 }).where(eq(people.id, "alex")).run();
+  db.update(people).set({ fixedMealRef: ref, mealRefAuto: false, outsideKcal: 335, outsideProteinG: 43 }).where(eq(people.id, "alex")).run();
   db.insert(weighIns).values({ id: "w-a", personId: "alex", date: "2026-10-27", measuredAt: "2026-10-27T07:00:00Z", kg: 75, source: "manual" }).run();
   const a = eaterOf(db, db.select().from(people).where(eq(people.id, "alex")).get()!, new Date("2026-10-27T12:00:00Z"));
   assert.equal(a.source, "fixe");

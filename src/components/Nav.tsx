@@ -15,7 +15,7 @@ const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/recettes", label: "Recettes", icon: "book" },
   { href: "/semaine", label: "Semaine", icon: "cal" },
   { href: "/courses", label: "Courses", icon: "basket" },
-  { href: "/frigo", label: "Frigo", icon: "fridge" },
+  { href: "/plats", label: "Plats", icon: "fridge" },
   { href: "/sante", label: "Santé", icon: "pulse" },
 ];
 

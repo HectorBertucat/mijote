@@ -31,7 +31,10 @@ async function handle(req: Request, { params }: Ctx, method: "GET" | "POST") {
   if (method === "GET" && path[0] === "sport" && path[1] === "seance" && path[2] && !path[3] && query.has("since") && Number.isInteger(since)) await waitFor(path[2], since, req.signal);
   const r = appApi(db, { method, path, query, body, headers: req.headers });
   // Une écriture de l'app se voit aussi sur le site.
-  if (method === "POST" && r.status === 200) revalidatePath("/sante", "layout");
+  if (method === "POST" && r.status === 200) {
+    revalidatePath("/sante", "layout");
+    if (path[0] === "plats") revalidatePath("/", "layout");
+  }
   return Response.json(r.body, { status: r.status });
 }
 

@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
 import type { Db } from "@/lib/db/open";
-import { dayLogs, foodLog, foodTemplates, mealSlots, people, recipes, weekPlans } from "@/lib/db/schema";
+import { dayLogs, foodLog, foodTemplates, mealBoxes, mealSlots, people, recipes, reserveServings, weekPlans } from "@/lib/db/schema";
 import { addDays } from "@/lib/week/propose";
 import { dayIndexIn, MAX_DAYS, weekdayOf } from "@/lib/week/period";
 import { listHabits } from "@/lib/eaters/setup";
@@ -150,7 +150,15 @@ export function setEntryUnits(db: Db, id: string, units: number) {
     .run();
 }
 
-export const deleteEntry = (db: Db, id: string) => db.delete(foodLog).where(eq(foodLog.id, id)).run();
+/**
+ * Retire une ligne du journal. Si elle venait d'une portion du batch (src/lib/reserve), la portion est
+ * annulée avec elle : ses grammes reviennent dans la réserve, la boîte mangée revient au frigo.
+ */
+export function deleteEntry(db: Db, id: string) {
+  db.update(mealBoxes).set({ status: "stock", closedAt: null, eatenBy: null, foodLogId: null }).where(and(eq(mealBoxes.foodLogId, id), eq(mealBoxes.status, "eaten"))).run();
+  db.delete(reserveServings).where(eq(reserveServings.foodLogId, id)).run();
+  db.delete(foodLog).where(eq(foodLog.id, id)).run();
+}
 
 export function isComplete(db: Db, personId: string, date: string) {
   return db.select({ c: dayLogs.complete }).from(dayLogs).where(and(eq(dayLogs.personId, personId), eq(dayLogs.date, date))).get()?.c ?? false;
@@ -160,7 +168,36 @@ export function setComplete(db: Db, personId: string, date: string, complete: bo
   db.insert(dayLogs).values({ personId, date, complete }).onConflictDoUpdate({ target: [dayLogs.personId, dayLogs.date], set: { complete } }).run();
 }
 
+/**
+ * « Journée complète » en un geste : note d'abord ce qui est choisi parmi ce qui reste à cocher (repas
+ * prévus de la Semaine, habitudes du jour), par les mêmes fonctions que l'interface, puis marque la
+ * journée. Clés des repas prévus : `<meal>:<recipeId>` (planKey). Renvoie combien de lignes ont été notées.
+ */
+export function completeDay(db: Db, personId: string, date: string, pick: { planned?: string[]; templates?: string[] }): number {
+  const entries = listEntries(db, personId, date);
+  const todo = pending(plannedMeals(db, personId, date), listTemplates(db, personId), entries, date);
+  const planned = new Set(pick.planned ?? []);
+  const templates = new Set(pick.templates ?? []);
+  let n = 0;
+  db.transaction(() => {
+    for (const m of todo.planned)
+      if (planned.has(planKey(m)) && m.kcal != null) {
+        addRecipeEntry(db, personId, date, m.meal, m.recipeId, m.units, "plan");
+        n++;
+      }
+    for (const t of todo.templates)
+      if (templates.has(t.id)) {
+        addEntry(db, { personId, date, meal: t.meal, kind: "template", templateId: t.id, label: t.label, kcal: t.kcal, proteinG: t.proteinG, fatG: t.fatG, carbsG: t.carbsG });
+        n++;
+      }
+    setComplete(db, personId, date, true);
+  });
+  return n;
+}
+
 // ─── Vue du jour (pur) ───
+
+export const planKey = (m: Pick<PlannedMeal, "meal" | "recipeId">) => `${m.meal}:${m.recipeId}`;
 
 export interface DayTotals {
   kcal: number;
@@ -183,4 +220,27 @@ export function pending(planned: PlannedMeal[], templates: Template[], entries: 
     planned: planned.filter((p) => !loggedRecipe.has(`${p.meal}:${p.recipeId}`) && !loggedMeal.has(p.meal)),
     templates: templates.filter((t) => !loggedTpl.has(t.id)).map((t) => ({ ...t, suggested: t.weekdays.includes(d) })),
   };
+}
+
+export interface DayCheck {
+  /** À noter avant de dire la journée complète, cochés d'office : repas prévus (clé planKey) et habitudes du jour. */
+  planned: string[];
+  templates: string[];
+  /** Repas principaux sans rien de noté ni de prévu : à ajouter à la main, ou à laisser si sauté. */
+  empty: ("lunch" | "dinner")[];
+  /** Rien à pré-remplir et midi et soir notés : on peut la dire complète telle quelle. */
+  ready: boolean;
+}
+
+/**
+ * Ce qui reste avant une journée complète (pur) : les repas prévus pas encore notés et les habitudes
+ * prévues ce jour-là sont proposés d'office ; un midi ou un soir vide est signalé, sans rien inventer.
+ */
+export function dayCheck(todo: ReturnType<typeof pending>, entries: Pick<LogEntry, "meal">[]): DayCheck {
+  const planned = todo.planned.filter((m) => m.kcal != null).map(planKey);
+  const templates = todo.templates.filter((t) => t.suggested).map((t) => t.id);
+  const noted = new Set(entries.map((e) => e.meal));
+  const covered = new Set(todo.planned.map((m) => m.meal));
+  const empty = (["lunch", "dinner"] as const).filter((m) => !noted.has(m) && !covered.has(m));
+  return { planned, templates, empty, ready: !planned.length && !templates.length && !empty.length };
 }

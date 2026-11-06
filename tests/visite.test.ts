@@ -37,7 +37,7 @@ test("visite : le panier du drive n’est promis qu’avec un catalogue", () => 
 });
 
 test("visite : textes sans jargon, chaque étape ancrée sur un élément qui existe", () => {
-  const anchors = new Set(["semaine", "courses", "frigo", "sante", "recherche", "profil", "premiers-pas"]);
+  const anchors = new Set(["semaine", "courses", "plats", "sante", "recherche", "profil", "premiers-pas"]);
   for (const s of tourSteps({ catalog: true, profiles: 2, desktop: true })) {
     assert.doesNotMatch(`${s.title} ${s.body}`, /unités?\b/i, s.id);
     assert.ok(s.title.length <= 40 && s.body.length <= 180, `${s.id} : court`);

@@ -11,7 +11,8 @@ import { overview } from "@/lib/health/overview";
 import { DEFAULT_PERIOD, isPeriod, lineGrainOf } from "@/lib/health/series";
 import { addWeighIn, currentReview, getPerson, listPeople, listWaist, listWeighIns, todayParis, type Person } from "@/lib/health/store";
 import { goalSummary } from "@/lib/health/objectives";
-import { addEntry, addRecipeEntry, deleteEntry, isComplete, listEntries, listTemplates, MEALS, pending, plannedMeals, setComplete, setEntryUnits, totals, type LogMeal } from "@/lib/health/log";
+import { addEntry, addRecipeEntry, completeDay, dayCheck, deleteEntry, isComplete, listEntries, listTemplates, MEALS, pending, plannedMeals, setComplete, setEntryUnits, totals, type LogMeal } from "@/lib/health/log";
+import { statusFor } from "@/lib/health/status-store";
 import { recentWorkouts } from "@/lib/health/samples";
 import { courseView } from "@/lib/running/page";
 import { getRunProfile } from "@/lib/running/store";
@@ -25,12 +26,17 @@ import { programById, programFor } from "@/lib/training/programs";
 import { listWorkouts } from "@/lib/training/store";
 import { DRAWING, figureData, musclesData } from "./figures";
 import { ACTIONS, actionOf, clean, phaseOf } from "./state";
-import { healthSamples } from "@/lib/db/schema";
+import { actionIdOf, findAction, saveAction } from "./actions";
+import { adjustReserve, currentBatch, eatPortion, listDishes, recentServings, ReserveError, undoServing } from "@/lib/reserve/store";
+import { closeBase, freezeList, listBases, remakeBase, weighBase } from "@/lib/reserve/bases-store";
+import { healthSamples, reserves, tasteFeedback } from "@/lib/db/schema";
+import { RATING_LABEL, RATINGS, TAG_LABEL, TASTE_TAGS, NOTE_MAX } from "@/lib/feedback/core";
+import { FeedbackError, saveFeedback } from "@/lib/feedback/store";
 import { and, eq, inArray } from "drizzle-orm";
 
 export const API_VERSION = 1;
 /** Ce que sait faire ce Mijote : l'app n'affiche que ce qui est annoncé. */
-export const FEATURES = ["sante", "series", "jour", "pesee", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme"] as const;
+export const FEATURES = ["sante", "series", "jour", "pesee", "plats", "bases", "course", "sorties", "sport", "seance", "actions", "attente", "figures", "muscles", "rythme", "statut", "terminer", "gouts"] as const;
 
 export interface AppRequest {
   method: "GET" | "POST";
@@ -50,7 +56,12 @@ const isDate = (s: string | null): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.t
 function sante(db: Db, p: Person, q: URLSearchParams, today: string) {
   const periode = q.get("periode");
   const o = overview(db, p, isPeriod(periode) ? periode : DEFAULT_PERIOD, today);
-  return ok({ overview: o, series: seriesOf(o), goals: goalSummary(db, p), review: currentReview(db, p), waist: listWaist(db, p.id).slice(-30) });
+  return ok({ overview: o, series: seriesOf(o), goals: goalSummary(db, p), review: currentReview(db, p), waist: listWaist(db, p.id).slice(-30), status: statut(db, p) });
+}
+
+/** « Où j'en suis » (src/lib/health/status.ts) : cible et source, ce qui manque, rythme, protéines, repère d'un repas. */
+function statut(db: Db, p: Person, now = new Date()) {
+  return statusFor(db, p, now);
 }
 
 /** Les courbes de la vue d'ensemble, à plat pour les graphiques de l'app : un point par paquet mesuré. */
@@ -79,12 +90,14 @@ function seriesOf(o: ReturnType<typeof overview>) {
 function jour(db: Db, p: Person, date: string) {
   const entries = listEntries(db, p.id, date);
   const templates = listTemplates(db, p.id);
+  const todo = pending(plannedMeals(db, p.id, date), templates, entries, date);
   return {
     date,
     entries,
     totals: totals(entries),
     complete: isComplete(db, p.id, date),
-    todo: pending(plannedMeals(db, p.id, date), templates, entries, date),
+    todo,
+    check: dayCheck(todo, entries),
     review: currentReview(db, p),
   };
 }
@@ -97,6 +110,7 @@ const JourAction = z.discriminatedUnion("action", [
   z.object({ action: z.literal("parts"), date: z.string(), id: z.string().max(80), units: z.number().positive().max(20) }),
   z.object({ action: z.literal("retirer"), date: z.string(), id: z.string().max(80) }),
   z.object({ action: z.literal("complete"), date: z.string(), complete: z.boolean() }),
+  z.object({ action: z.literal("terminer"), date: z.string(), planned: z.array(z.string().max(120)).max(20).optional(), templates: z.array(z.string().max(80)).max(40).optional() }),
 ]);
 
 function jourPost(db: Db, p: Person, body: unknown, today: string): ApiReply {
@@ -139,6 +153,13 @@ function jourPost(db: Db, p: Person, body: unknown, today: string): ApiReply {
         setComplete(db, p.id, a.date, a.complete);
         message = a.complete ? "Journée complète : elle compte pour la cible." : "Journée marquée incomplète.";
         break;
+      case "terminer": {
+        // Sans liste, ce que propose `check` : les repas prévus et les habitudes du jour encore à cocher.
+        const c = dayCheck(pending(plannedMeals(db, p.id, a.date), listTemplates(db, p.id), listEntries(db, p.id, a.date), a.date), listEntries(db, p.id, a.date));
+        const n = completeDay(db, p.id, a.date, { planned: a.planned ?? c.planned, templates: a.templates ?? c.templates });
+        message = `Journée complète${n ? ` (${n} ${n > 1 ? "lignes notées" : "ligne notée"})` : ""} : elle compte pour la cible.`;
+        break;
+      }
     }
     return ok({ message, jour: jour(db, p, a.date) });
   } catch (e) {
@@ -155,6 +176,112 @@ function pesee(db: Db, p: Person, body: unknown, now: number): ApiReply {
     return fail(e instanceof Error ? e.message : "pesée refusée");
   }
   return ok({ message: `${parsed.data.kg.toFixed(1).replace(".", ",")} kg noté.`, weighIns: listWeighIns(db, p.id).slice(-60) });
+}
+
+// ─── Plats (la réserve du batch) ───
+
+/** Une portion mangée, sans la personne (c'est celle de la clé). */
+const withoutPerson = <T extends { personId: string }>(s: T): Omit<T, "personId"> => {
+  const out: Partial<T> = { ...s };
+  delete out.personId;
+  return out as Omit<T, "personId">;
+};
+
+/**
+ * Les plats et les portions restantes de chacun, la personne de la clé d'abord ; ses portions des trois
+ * derniers jours ; le batch du moment (son bilan : plats pesés ou estimés).
+ */
+function plats(db: Db, p: Person, now: number) {
+  const at = new Date(now);
+  const dishes = listDishes(db, p.id, at).map((d) => ({ ...d, people: d.people.map((s) => ({ ...s, me: s.personId === p.id })) }));
+  const b = currentBatch(db, at);
+  const eaten = recentServings(db, p.id, at);
+  // Le retour de goût déjà donné pour chaque portion mangée (POST plats/avis).
+  const avis = new Map(
+    eaten.length
+      ? db
+          .select({ servingId: tasteFeedback.servingId, rating: tasteFeedback.rating, tags: tasteFeedback.tags })
+          .from(tasteFeedback)
+          .where(inArray(tasteFeedback.servingId, eaten.map((s) => s.id)))
+          .all()
+          .map((f) => [f.servingId!, { rating: f.rating, tags: f.tags }])
+      : []
+  );
+  return {
+    today: todayParis(at),
+    person: { id: p.id, name: p.name },
+    dishes,
+    eaten: eaten.map((s) => ({ ...withoutPerson(s), avis: avis.get(s.id) ?? null })),
+    avis: { ratings: RATINGS.map((id) => ({ id, label: RATING_LABEL[id] })), tags: TASTE_TAGS.map((id) => ({ id, label: TAG_LABEL[id] })) },
+    batch: b ? { id: b.id, title: b.title, cookedOn: b.cookedOn, ...b.summary, items: b.dishes.map((d) => ({ dishId: d.reserveId, recipeId: d.recipeId, slug: d.slug, name: d.name, open: d.open, weigh: d.weigh })) } : null,
+    bases: listBases(db, dishes, at),
+    freeze: freezeList(db, dishes, at),
+  };
+}
+
+const Grams = z.record(z.string().max(40), z.number().min(0).max(3000));
+const MangerBody = z.object({ dishId: z.string().max(80), boxId: z.string().max(80).optional(), grams: Grams.optional(), date: z.string().optional(), meal: Meal.optional() });
+const AvisBody = z.object({
+  servingId: z.string().max(80).optional(),
+  dishId: z.string().max(80).optional(),
+  rating: z.enum(RATINGS),
+  tags: z.array(z.enum(TASTE_TAGS)).max(TASTE_TAGS.length).optional(),
+  note: z.string().max(NOTE_MAX).optional(),
+});
+const ReglageBody = z.object({ dishId: z.string().max(80), weights: z.record(z.string().max(40), z.number().min(0).max(50_000)).optional(), left: z.record(z.string().max(80), z.number().int().min(0).max(30)).optional() });
+
+function platsPost(db: Db, p: Person, verb: string, body: unknown, now: number): ApiReply {
+  const at = new Date(now);
+  const today = todayParis(at);
+  try {
+    let message: string;
+    let extra: Record<string, unknown> = {};
+    if (verb === "manger") {
+      const parsed = MangerBody.safeParse(body);
+      if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
+      const a = parsed.data;
+      if (a.date != null && (!isDate(a.date) || a.date > today)) return fail("date AAAA-MM-JJ attendue, pas dans le futur");
+      const serving = eatPortion(db, a.dishId, p.id, { boxId: a.boxId, grams: a.grams, date: a.date, meal: a.meal }, at);
+      message = `${serving.name.split(",")[0]} : ${serving.kcal} kcal, ${serving.protein} g de protéines.`;
+      extra = { serving: withoutPerson(serving) };
+    } else if (verb === "annuler") {
+      const parsed = z.object({ servingId: z.string().max(80) }).safeParse(body);
+      if (!parsed.success) return fail("{ servingId } attendu");
+      const r = undoServing(db, parsed.data.servingId, p.id);
+      message = `Portion de ${r.name.split(",")[0]} annulée.`;
+    } else if (verb === "avis") {
+      const parsed = AvisBody.safeParse(body);
+      if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
+      const a = parsed.data;
+      if (!a.servingId && !a.dishId) return fail("servingId ou dishId attendu");
+      const recipeId = a.dishId ? (db.select({ recipeId: reserves.recipeId }).from(reserves).where(eq(reserves.id, a.dishId)).get()?.recipeId ?? null) : null;
+      if (a.dishId && !recipeId) return fail("plat inconnu", 404);
+      const f = saveFeedback(db, { recipeId, personId: p.id, servingId: a.servingId ?? null, rating: a.rating, tags: a.tags ?? [], note: a.note ?? null }, at);
+      message = `Noté : ${RATING_LABEL[f.rating]}${f.tags.length ? ` (${f.tags.map((t) => TAG_LABEL[t]).join(", ")})` : ""}.`;
+      extra = { avis: { id: f.id, recipeId: f.recipeId, rating: f.rating, tags: f.tags, note: f.note, at: f.at } };
+    } else if (verb === "reglage") {
+      const parsed = ReglageBody.safeParse(body);
+      if (!parsed.success) return fail(parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; "));
+      adjustReserve(db, parsed.data.dishId, { weights: parsed.data.weights, left: parsed.data.left }, at);
+      message = "Réserve réajustée.";
+    } else if (verb === "base-refaire") {
+      const parsed = z.object({ family: z.string().max(40), rawG: z.number().min(0).max(20_000).optional(), grams: z.number().min(0).max(50_000).optional() }).safeParse(body);
+      if (!parsed.success) return fail("{ family, rawG? | grams? } attendu");
+      message = remakeBase(db, parsed.data.family, { rawG: parsed.data.rawG, grams: parsed.data.grams }, at).message;
+    } else if (verb === "base-pesee") {
+      const parsed = z.object({ baseId: z.string().max(80), grams: z.number().min(0).max(50_000) }).safeParse(body);
+      if (!parsed.success) return fail("{ baseId, grams } attendu");
+      message = `Pesée enregistrée : ${weighBase(db, parsed.data.baseId, parsed.data.grams, at).label}.`;
+    } else if (verb === "base-fini") {
+      const parsed = z.object({ baseId: z.string().max(80) }).safeParse(body);
+      if (!parsed.success) return fail("{ baseId } attendu");
+      message = `Récipient de ${closeBase(db, parsed.data.baseId, at).label} terminé.`;
+    } else return fail("chemin inconnu", 404);
+    return ok({ message, ...extra, plats: plats(db, p, now) });
+  } catch (e) {
+    if (e instanceof ReserveError || e instanceof FeedbackError) return fail(e.message, e.status);
+    return fail(e instanceof Error ? e.message : "action impossible");
+  }
 }
 
 // ─── Sport ───
@@ -387,29 +514,46 @@ function reglages(db: Db, p: Person, body: unknown): ApiReply {
 
 // ─── Routeur ───
 
-/** Réponses des derniers gestes par `actionId` (un renvoi après une coupure ne refait pas le geste). */
-const done = new Map<string, ApiReply>();
-const DONE_MAX = 500;
-
 export function appApi(db: Db, req: AppRequest): ApiReply {
   const now = req.now ?? Date.now();
-  const actionId = req.method === "POST" && req.body && typeof req.body === "object" ? (req.body as { actionId?: unknown }).actionId : undefined;
-  const key = typeof actionId === "string" && actionId.length <= 80 ? `${req.headers.get("x-mijote-key") ?? ""}:${actionId}` : null;
-  if (key && done.has(key)) return done.get(key)!;
-  const r = route(db, req, now);
-  const out: ApiReply = { status: r.status, body: { ...(clean(r.body) as Record<string, unknown>), generatedAt: new Date(now).toISOString() } };
-  if (key && r.status === 200) {
-    done.set(key, out);
-    if (done.size > DONE_MAX) done.delete(done.keys().next().value!);
-  }
-  return out;
+  const reply = (r: ApiReply): ApiReply => ({ status: r.status, body: { ...(clean(r.body) as Record<string, unknown>), generatedAt: new Date(now).toISOString() } });
+  const k = byKey(db, req.headers);
+  if (!k.link) return reply(k.error);
+  const p = getPerson(db, k.link.personId);
+  if (!p) return reply(fail("personne inconnue", 404));
+  const actionId = req.method === "POST" ? actionIdOf(req.body) : null;
+  if (!actionId) return reply(route(db, p, req, now));
+  // Un geste à `actionId` : lu, fait et gardé dans une même transaction « immediate », pour qu'un renvoi
+  // arrivé en même temps sur un autre processus attende la fin du premier au lieu de refaire le geste.
+  const name = `${req.method} ${req.path.join("/")}`;
+  return db.transaction(
+    () => {
+      const first = findAction(db, p.id, actionId);
+      if (first) return first.route === name ? reply(replay(db, p, first.reply, now)) : reply(fail("actionId déjà utilisé pour une autre action", 409));
+      const r = route(db, p, req, now);
+      if (r.status === 200) saveAction(db, { personId: p.id, actionId, route: name, reply: clean(r.body) as Record<string, unknown> }, now);
+      return reply(r);
+    },
+    { behavior: "immediate" },
+  );
 }
 
-function route(db: Db, req: AppRequest, now: number): ApiReply {
-  const k = byKey(db, req.headers);
-  if (!k.link) return k.error;
-  const p = getPerson(db, k.link.personId);
-  if (!p) return fail("personne inconnue", 404);
+/** Un renvoi reconnu : le message (et la portion) du premier envoi, mais la réserve, le journal, la séance et
+ * les pesées de maintenant : un autre geste a pu passer entre-temps (site, autre téléphone). */
+function replay(db: Db, p: Person, first: Record<string, unknown>, now: number): ApiReply {
+  const out: Record<string, unknown> = { ...first, replayed: true };
+  const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : null);
+  if ("plats" in out) out.plats = plats(db, p, now);
+  const day = obj(out.jour)?.date;
+  if (typeof day === "string") out.jour = jour(db, p, day);
+  if ("weighIns" in out) out.weighIns = listWeighIns(db, p.id).slice(-60);
+  const liveId = obj(out.live)?.id;
+  const row = typeof liveId === "string" ? getLive(db, liveId) : null;
+  if (row && row.personId === p.id) out.live = liveView(db, row, now);
+  return { status: 200, body: out };
+}
+
+function route(db: Db, p: Person, req: AppRequest, now: number): ApiReply {
   const today = todayParis(new Date(now));
   const [a, b] = req.path;
   const route = `${req.method} ${a ?? ""}${b ? `/${b}` : ""}`;
@@ -418,6 +562,8 @@ function route(db: Db, req: AppRequest, now: number): ApiReply {
       return ok({ version: API_VERSION, features: FEATURES, person: { id: p.id, name: p.name }, today, running: !!getRunProfile(db, p.id)?.enabled });
     case "GET sante":
       return sante(db, p, req.query, today);
+    case "GET statut":
+      return ok({ status: statut(db, p, new Date(now)) });
     case "GET jour": {
       const d = req.query.get("date");
       return ok(jour(db, p, isDate(d) && d <= today ? d : today));
@@ -426,6 +572,16 @@ function route(db: Db, req: AppRequest, now: number): ApiReply {
       return jourPost(db, p, req.body, today);
     case "POST pesee":
       return pesee(db, p, req.body, now);
+    case "GET plats":
+      return ok(plats(db, p, now));
+    case "POST plats/manger":
+    case "POST plats/annuler":
+    case "POST plats/reglage":
+    case "POST plats/base-refaire":
+    case "POST plats/base-pesee":
+    case "POST plats/base-fini":
+    case "POST plats/avis":
+      return platsPost(db, p, b, req.body, now);
     case "GET course": {
       const enabled = !!getRunProfile(db, p.id)?.enabled;
       return ok({ enabled, view: enabled ? courseView(db, p.id, new Date(now)) : null });

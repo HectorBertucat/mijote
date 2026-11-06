@@ -71,6 +71,12 @@ export const StepInput = z.object({
 
 export const RecipeInput = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/),
+  variantOf: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .nullable()
+    .optional()
+    .describe("Fichier du dépôt : slug de la recette d'origine dont celle-ci est une variante (recipes.parent_id)"),
   name: z.string(),
   description: z.string().nullable().optional(),
   servingsUnits: z.number().int().positive().describe("Unités cuites (une part d'adulte fait 4 à 5 unités)"),
@@ -84,6 +90,11 @@ export const RecipeInput = z.object({
   tips: z.string().nullable().optional(),
   ingredients: z.array(IngredientInput),
   steps: z.array(StepInput),
+  serve: z
+    .array(z.object({ label: z.string().min(1), bowls: z.array(z.string()), kind: z.enum(["main", "starch", "veg", "other"]).optional(), base: z.boolean().optional() }))
+    .nullable()
+    .optional()
+    .describe("Groupes servis séparément (le plat en premier, avec ce qui n'est dans aucun bol), quand la déduction depuis les étapes ne convient pas (src/lib/reserve/groups.ts)"),
 });
 
 export type RecipeInput = z.infer<typeof RecipeInput>;

@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./src/lib/db/migrations/**/*", "./src/seed/recipes/**/*"],
   },
+  // Le Frigo est devenu « Nos plats » (les boîtes sont des portions de la réserve) : les anciens liens y mènent.
+  redirects: async () => [{ source: "/frigo", destination: "/plats", permanent: false }],
 };
 
 export default nextConfig;

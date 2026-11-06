@@ -3,6 +3,8 @@
 import { sql } from "drizzle-orm";
 import type { IngredientYield } from "@/lib/nutrition/compute";
 import type { Program } from "@/lib/training/program";
+import type { ReserveGroup } from "@/lib/reserve/core";
+import type { ServeDecl } from "@/lib/reserve/groups";
 import { sqliteTable, text, integer, real, blob, primaryKey, index, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 const now = sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`;
@@ -36,9 +38,12 @@ export const people = sqliteTable("people", {
   outsideKcal: real("outside_kcal"),
   outsideProteinG: real("outside_protein_g"),
   setupDoneAt: text("setup_done_at"),
-  // Repère fixe d'un repas (kcal et protéines), choisi par la personne : il sert tant que la dépense
-  // n'est pas mesurée par Santé (plus juste qu'une formule quand on connaît déjà ses chiffres).
+  // Repère fixe d'un repas (kcal et protéines), choisi par la personne. Il ne sert qu'en mode fixe
+  // (meal_ref_auto faux) ; en mode automatique, il reste le point de départ du premier pas.
   fixedMealRef: json<{ kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number }>("fixed_meal_ref"),
+  // Repère automatique (migration 0014) : le repère d'un repas suit la cible de la semaine, moins le hors
+  // batch, borné et d'un pas limité (src/lib/eaters/core.ts, autoMealRef). Faux : le repère fixe.
+  mealRefAuto: integer("meal_ref_auto", { mode: "boolean" }).notNull().default(true),
   // Rythme guidé des séances de sport (src/lib/training/live.ts, GuideOpts) : mode automatique, secondes de
   // mise en place et de changement d'exercice. Null : les réglages par défaut.
   trainingGuide: json<{ auto: boolean; lead: number; change: number }>("training_guide"),
@@ -102,6 +107,8 @@ export const recipes = sqliteTable("recipes", {
   tips: text("tips"),
   // Variante : la recette d'origine (toujours la racine, jamais une variante), migration 0011.
   parentId: text("parent_id").references((): AnySQLiteColumn => recipes.id, { onDelete: "set null" }),
+  // Migration 0011 : groupes servis séparément déclarés par la fiche (sinon déduits, src/lib/reserve/groups.ts).
+  serveJson: json<ServeDecl[]>("serve_json"),
   createdAt: text("created_at").notNull().default(now),
   updatedAt: text("updated_at").notNull().default(now),
 });
@@ -172,6 +179,9 @@ export const weekPlans = sqliteTable("week_plans", {
   notes: text("notes"),
   // Migration 0002 : nombre de jours de la période (7 = une semaine, 14 au plus, src/lib/week/period.ts).
   days: integer("days").notNull().default(7),
+  // Migration 0012 : repas sans plat ignorés par l'accueil (leur nombre au moment d'ignorer ; NULL = avertir).
+  // Un repas de plus sans plat fait revenir l'avertissement (src/lib/home/next.ts, coverIgnored).
+  missingIgnored: integer("missing_ignored"),
 });
 
 export const mealSlots = sqliteTable(
@@ -269,6 +279,33 @@ export const timers = sqliteTable("timers", {
   doneAt: text("done_at"),
 });
 
+// Migration 0011 : la réserve d'une marmite cuite (src/lib/reserve). Les groupes servis séparément
+// (plat, riz, haricots verts), chacun avec sa dernière pesée (grammes, instant, kcal et protéines par
+// gramme) ; ce qui reste dans le grand récipient = la pesée − ce qui en est sorti depuis (portions
+// mangées, boîtes faites). counts : portions de chacun en tout (mangées comprises).
+export const reserves = sqliteTable(
+  "reserves",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id").references(() => cookSessions.id, { onDelete: "set null" }),
+    recipeId: text("recipe_id").references(() => recipes.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    cookedOn: text("cooked_on").notNull(), // YYYY-MM-DD
+    fridgeDays: integer("fridge_days").notNull(),
+    freezerOk: integer("freezer_ok", { mode: "boolean" }).notNull().default(false),
+    cookedUnits: real("cooked_units"), // unités cuites (fiche × multiplicateur)
+    kcalUnit: real("kcal_unit"), // kcal d'une unité de la marmite, pour la part visée de chacun
+    proteinUnit: real("protein_unit"),
+    groups: json<ReserveGroup[]>("groups").notNull().default(sql`'[]'`),
+    counts: json<Record<string, number>>("counts").notNull().default(sql`'{}'`),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    closedAt: text("closed_at"),
+    createdAt: text("created_at").notNull().default(now),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_reserves_status").on(t.status), index("idx_reserves_session").on(t.sessionId, t.recipeId)]
+);
+
 // Migration 0003 : les boîtes du frigo et du congélateur, rangées en fin de session (src/lib/boxes).
 // Grammes et macros figés au rangement ; une boîte mangée garde la ligne du journal qu'elle a écrite.
 export const mealBoxes = sqliteTable(
@@ -296,8 +333,59 @@ export const mealBoxes = sqliteTable(
     eatenBy: text("eaten_by").references(() => people.id, { onDelete: "set null" }),
     foodLogId: text("food_log_id"),
     createdAt: text("created_at").notNull().default(now),
+    // Migration 0011 : une boîte est une portion rangée de la réserve ; ses grammes par groupe.
+    reserveId: text("reserve_id").references(() => reserves.id, { onDelete: "set null" }),
+    portion: json<Record<string, number>>("portion_json"),
   },
   (t) => [index("idx_meal_boxes_status").on(t.status, t.place), index("idx_meal_boxes_session").on(t.sessionId, t.recipeId)]
+);
+
+// Migration 0011 : une portion mangée d'une réserve (dans le grand récipient ou une boîte), avec la
+// ligne du journal qu'elle a écrite. Annuler la supprime : ses grammes reviennent dans la réserve.
+export const reserveServings = sqliteTable(
+  "reserve_servings",
+  {
+    id: text("id").primaryKey(),
+    reserveId: text("reserve_id").notNull().references(() => reserves.id, { onDelete: "cascade" }),
+    personId: text("person_id").notNull().references(() => people.id),
+    at: text("at").notNull(), // instant ISO
+    date: text("date").notNull(), // jour de Paris du journal
+    meal: text("meal", { enum: ["breakfast", "lunch", "dinner", "snack"] }).notNull(),
+    source: text("source", { enum: ["recipient", "boite"] }).notNull(),
+    boxId: text("box_id").references(() => mealBoxes.id, { onDelete: "set null" }),
+    grams: json<Record<string, number>>("grams").notNull().default(sql`'{}'`),
+    kcal: real("kcal").notNull(),
+    proteinG: real("protein_g").notNull().default(0),
+    foodLogId: text("food_log_id"),
+  },
+  (t) => [index("idx_reserve_servings_reserve").on(t.reserveId, t.at), index("idx_reserve_servings_person").on(t.personId, t.at), index("idx_reserve_servings_log").on(t.foodLogId)]
+);
+
+// Migration 0015 : les bases du foyer (src/lib/reserve/bases.ts) : un gros récipient de riz, de haricots
+// verts… cuit à part, où chacun se sert. Un stock par base et par session (parts : les grammes de chaque
+// plat, réserve par réserve), ou par cuisson « Refaire » (session_id nul). Ce qui reste = la dernière
+// pesée − ce qui en est sorti depuis (les portions des plats qui la prennent, premier cuit, premier servi).
+export const baseStocks = sqliteTable(
+  "base_stocks",
+  {
+    id: text("id").primaryKey(),
+    family: text("family").notNull(), // riz, haricots-verts… (BASE_FAMILIES)
+    label: text("label").notNull(),
+    sessionId: text("session_id").references(() => cookSessions.id, { onDelete: "set null" }),
+    cookedOn: text("cooked_on").notNull(), // YYYY-MM-DD
+    fridgeDays: integer("fridge_days").notNull(),
+    cookedG: real("cooked_g").notNull(), // grammes cuits au départ
+    g: real("g").notNull(), // dernière pesée
+    at: text("at").notNull(), // instant ISO de la dernière pesée
+    estimated: integer("estimated", { mode: "boolean" }).notNull().default(true),
+    weighed: integer("weighed", { mode: "boolean" }).notNull().default(false), // pesé à part : les parts ne la refont plus
+    parts: json<Record<string, { g: number; estimated: boolean }>>("parts_json").notNull().default(sql`'{}'`),
+    status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+    closedAt: text("closed_at"),
+    createdAt: text("created_at").notNull().default(now),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_base_stocks_family").on(t.family, t.status), index("idx_base_stocks_session").on(t.sessionId)]
 );
 
 // ─── 3. Courses, achats, coûts ───
@@ -501,6 +589,24 @@ export const adjustProposals = sqliteTable("adjust_proposals", {
   updatedAt: text("updated_at").notNull().default(now),
 });
 
+// Créer une recette d'après des recettes publiées (src/lib/creation, migration 0015) : l'envie, la
+// recherche (sources résumées, gardée en cache pour la même envie), les propositions vérifiées par le
+// code et les retouches demandées. Une ligne par création ; la page reprend la plus récente.
+export const recipeCreations = sqliteTable(
+  "recipe_creations",
+  {
+    id: text("id").primaryKey(),
+    envie: text("envie").notNull(),
+    envieKey: text("envie_key").notNull(), // envie normalisée : la même envie réutilise la recherche
+    research: json<unknown>("research"), // Research de src/lib/creation/core.ts (null : pas encore cherché)
+    proposals: json<unknown[]>("proposals").notNull().default(sql`'[]'`), // CreationProposal[], vérifiées
+    costUsd: real("cost_usd").notNull().default(0), // ce qu'a coûté la création, recherche comprise
+    createdAt: text("created_at").notNull().default(now),
+    updatedAt: text("updated_at").notNull().default(now),
+  },
+  (t) => [index("idx_recipe_creations_key").on(t.envieKey), index("idx_recipe_creations_updated").on(t.updatedAt)]
+);
+
 // ─── 5. Santé (migration 0012) ───
 // Dates du jour en YYYY-MM-DD (heure de Paris). Le calcul (tendance, dépense, cibles) est
 // dans src/lib/health/, ces tables ne gardent que les mesures et les décisions.
@@ -596,6 +702,8 @@ export const weeklyTargets = sqliteTable(
     fatMinG: real("fat_min_g").notNull(),
     confidence: text("confidence", { enum: ["estimate", "holding", "adaptive"] }).notNull(),
     details: json<Record<string, unknown>>("details").notNull().default(sql`'{}'`),
+    // Repère d'un repas de la semaine en mode automatique (migration 0014) : le pas de la semaine suivante s'y mesure.
+    mealRef: json<{ kcalMin: number; kcalMax: number; proteinMin: number; proteinMax: number }>("meal_ref"),
     createdAt: text("created_at").notNull().default(now),
   },
   (t) => [uniqueIndex("uq_weekly_target").on(t.personId, t.weekStart)]
@@ -841,4 +949,57 @@ export const runFeedback = sqliteTable(
     createdAt: text("created_at").notNull().default(now),
   },
   (t) => [uniqueIndex("uq_run_feedback_day").on(t.personId, t.date)]
+);
+
+// ─── 10. API de l'app iPhone (migration 0012, docs/api-app.md) ───
+// Les gestes déjà faits, par `actionId` : un renvoi (réponse perdue, même après un redémarrage) ne refait pas
+// le geste. `reply` : la réponse du premier envoi (ses `plats`, `jour`, `live` sont recalculés au renvoi).
+// Gardés 30 jours (src/lib/app-api/actions.ts).
+export const appActions = sqliteTable(
+  "app_actions",
+  {
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    actionId: text("action_id").notNull(),
+    route: text("route").notNull(), // « POST plats/manger »
+    at: integer("at").notNull(), // ms epoch, heure du serveur
+    reply: json<Record<string, unknown>>("reply").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.actionId] }), index("idx_app_actions_at").on(t.at)]
+);
+
+// ─── 11. Goûts et variantes réelles (migration 0015_gouts_variantes, src/lib/feedback) ───
+// Le retour de goût de chacun après avoir mangé : une note (j'adore, ok, bof), des étiquettes (sec, trop
+// dense…) et un mot libre. Un retour par repas ; le plus récent de chacun compte pour une recette.
+export const tasteFeedback = sqliteTable(
+  "taste_feedback",
+  {
+    id: text("id").primaryKey(),
+    recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+    personId: text("person_id").notNull().references(() => people.id, { onDelete: "cascade" }),
+    rating: text("rating", { enum: ["love", "ok", "meh"] }).notNull(),
+    tags: json<string[]>("tags").notNull().default(sql`'[]'`),
+    note: text("note"),
+    // La portion mangée qui l'a fait naître (« J'ai mangé »), s'il y en a une.
+    servingId: text("serving_id").references(() => reserveServings.id, { onDelete: "set null" }),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("idx_taste_feedback_recipe").on(t.recipeId, t.personId, t.createdAt)]
+);
+
+// Un ingrédient remplacé en vrai (patate douce → pomme de terre), noté en cuisinant ou après : rattaché à
+// la session en cours (la réserve rangée en tient compte) ou à une réserve déjà rangée (sa nutrition est
+// recalculée). `position` : la ligne de la fiche ; `fromFood` : son aliment au moment du remplacement.
+export const recipeSwaps = sqliteTable(
+  "recipe_swaps",
+  {
+    id: text("id").primaryKey(),
+    recipeId: text("recipe_id").notNull().references(() => recipes.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    fromFood: text("from_food"),
+    toFood: text("to_food").notNull(),
+    sessionId: text("session_id").references(() => cookSessions.id, { onDelete: "set null" }),
+    reserveId: text("reserve_id").references(() => reserves.id, { onDelete: "set null" }),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (t) => [index("idx_recipe_swaps_recipe").on(t.recipeId, t.createdAt)]
 );
