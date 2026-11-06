@@ -1,28 +1,40 @@
 // La part de chacun d’une recette, en gros chiffres colorés selon son repère : cartes de la
 // Semaine et du Composer. Avec les mangeurs (src/lib/eaters), la part suit la cible de chacun
-// (unités au demi près) ; sans, une part de base, sans repère.
+// (unités au demi près) ; sans, une part de base, sans repère. Garniture cuite à part : la part se
+// compose, « +20 % de riz » dit l'écart à la fiche (src/lib/eaters/core.ts, compose).
 import { Macro, MacroRow } from "@/components/ui";
 import { DEFAULT_PORTION_UNITS } from "@/lib/nutrition/compute";
-import { portionOf, unitsLabel, type Eater } from "@/lib/eaters/core";
+import { portionOf, unitsLabel, type Eater, type SideMacros } from "@/lib/eaters/core";
 
 const TEXT = { ok: "text-ok", low: "text-warn", high: "text-ko" } as const;
 
 export function PartMacros({
   kcalUnit,
   proteinUnit,
+  side = null,
+  sideLabel = null,
   eaters,
   size = "md",
   className = "",
 }: {
   kcalUnit: number | null;
   proteinUnit: number | null;
+  /** Garniture à part (riz, semoule) et son nom court : la part de chacun se compose. */
+  side?: SideMacros | null;
+  sideLabel?: string | null;
   eaters?: Pick<Eater, "id" | "name" | "baseUnits" | "ref">[];
   size?: "md" | "sm";
   className?: string;
 }) {
   if (kcalUnit == null) return <p className={`text-small text-ink-3 ${className}`}>nutrition inconnue</p>;
   if (eaters?.length) {
-    const parts = eaters.map((e) => ({ e, p: portionOf(e, { kcalUnit, proteinUnit }) }));
+    const parts = eaters.map((e) => ({ e, p: portionOf(e, { kcalUnit, proteinUnit, side }) }));
+    const sideNote = (r: number) => {
+      const pct = Math.round((r - 1) * 100);
+      if (!pct) return null;
+      const of = sideLabel ? (/^[aeiouyéèh]/i.test(sideLabel) ? `d’${sideLabel}` : `de ${sideLabel}`) : "de garniture";
+      return `${pct > 0 ? "+" : "−"}${Math.abs(pct)}\u00a0% ${of}`;
+    };
     return (
       <div className={`grid gap-1 text-small tabular-nums ${className}`} aria-label="Part de chacun">
         {parts.map(({ e, p }) => (
@@ -30,6 +42,7 @@ export function PartMacros({
             <b className="min-w-18 font-semibold text-ink">
               {e.name} <span className="font-normal text-ink-2">{unitsLabel(p.units)}</span>
             </b>
+            {sideNote(p.sideRatio) && <span className="text-ink-2">{sideNote(p.sideRatio)}</span>}
             <b className={`font-display ${size === "sm" ? "text-body" : "text-h3"} num-tight ${p.verdict ? TEXT[p.verdict.kcal] : "text-ink"}`}>{p.kcal}&nbsp;kcal</b>
             <b className={`font-display ${size === "sm" ? "text-body" : "text-h3"} num-tight ${p.verdict ? TEXT[p.verdict.protein] : "text-ink"}`}>{p.protein}&nbsp;g</b>
             {!e.ref && <span className="text-ink-3">sans repère</span>}

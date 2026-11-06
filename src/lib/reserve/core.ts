@@ -5,8 +5,9 @@
 // portion vise le repère de la personne comme une boîte (boxes/core.ts), généralisé à N groupes :
 // - la taille de la portion vise les kcal de la part de la Semaine (eaters/core.ts, portionUnits) ;
 // - le plat (`main`) porte les protéines ; les féculents (`starch`) suivent la proportion de la
-//   marmite tant que les protéines atteignent le bas du repère ; sinon moins de féculent, plus de plat
-//   (jusqu'à la moitié de la proportion), jamais plus que la proportion de la marmite (sideRatio) ;
+//   marmite tant que les protéines tiennent le repère ; s'il en manque, moins de féculent et plus de
+//   plat ; s'il y en a trop, plus de féculent et moins de plat ; entre la moitié et une fois et demie
+//   la proportion, seulement dans le sens qui corrige (sideRatio, comme la part de la Semaine) ;
 //   les légumes et le reste suivent le plat dans la proportion de la marmite ;
 // - tout ce qui reste dans le grand récipient est réparti entre les portions restantes : un manque
 //   rapetisse tout le monde ; un surplus grossit chacun jusqu'au haut de son repère ; au-delà de 3 %,
@@ -55,6 +56,8 @@ export interface Target {
   /** Milieu et bas du repère en protéines (null : sans repère). */
   protein: number | null;
   proteinMin: number | null;
+  /** Haut du repère en protéines : au-delà, plus de féculent et moins de plat (absent : sans plafond). */
+  proteinMax?: number | null;
 }
 
 export type Grams = Record<string, number>;
@@ -139,7 +142,7 @@ export function splitGroups(groups: Pick<ReserveGroup, "key" | "kind" | "kcalG" 
     let t = 1;
     modes[p.id] = "simple";
     if (sW > 0 && dK > 0 && sK > 0 && p.protein != null && p.proteinMin != null) {
-      const r = sideRatio({ kcal: p.kcal!, protein: p.protein, proteinMin: p.proteinMin }, { kcalG: dK / dW, proteinG: dP / dW }, { kcalG: sK / sW, proteinG: sP / sW }, sW / dW);
+      const r = sideRatio({ kcal: p.kcal!, protein: p.protein, proteinMin: p.proteinMin, proteinMax: p.proteinMax }, { kcalG: dK / dW, proteinG: dP / dW }, { kcalG: sK / sW, proteinG: sP / sW }, sW / dW);
       t = r.ratio / (sW / dW);
       modes[p.id] = r.mode;
     }

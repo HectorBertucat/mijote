@@ -4,22 +4,26 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { fillUp, freshness, limitOf, mealAt, sideRatio } from "@/lib/boxes/core";
 
-test("garniture à part : la proportion de la marmite tant que les protéines suffisent, moins de riz s'il en manque", () => {
+test("garniture à part : la proportion de la marmite dans le repère, le riz glisse dans le sens qui corrige", () => {
   const dish = { kcalG: 1.2, proteinG: 0.15 };
   const rice = { kcalG: 1.3, proteinG: 0.03 };
-  // À 0,8 (la marmite), 700 kcal donnent 700 × (0,15 + 0,8 × 0,03) / (1,2 + 0,8 × 1,3) ≈ 54 g.
-  assert.deepEqual(sideRatio({ kcal: 700, protein: 50, proteinMin: 45 }, dish, rice, 0.8), { ratio: 0.8, mode: "simple" });
-  // Peu de protéines visées : jamais plus de riz que la marmite (un surplus de protéines ne se compense pas).
+  // À 0,8 (la marmite), 700 kcal donnent 700 × (0,15 + 0,8 × 0,03) / (1,2 + 0,8 × 1,3) ≈ 54 g : dans 45-60, rien ne bouge.
+  assert.deepEqual(sideRatio({ kcal: 700, protein: 52, proteinMin: 45, proteinMax: 60 }, dish, rice, 0.8), { ratio: 0.8, mode: "simple" });
+  // Il en manque (58-65 visés) : moins de riz, plus de plat, jusqu'à entrer dans le repère.
+  const low = sideRatio({ kcal: 700, protein: 60, proteinMin: 58, proteinMax: 65 }, dish, rice, 0.8);
+  assert.equal(low.mode, "cible");
+  assert.ok(low.ratio < 0.8 && low.ratio >= 0.4, String(low.ratio));
+  const at = (t: number) => (700 * (dish.proteinG + t * rice.proteinG)) / (dish.kcalG + t * rice.kcalG);
+  assert.ok(at(low.ratio) >= 58);
+  // Il y en a trop (30-40 visés) : plus de riz, moins de plat, jamais plus d'une fois et demie la marmite.
+  const high = sideRatio({ kcal: 700, protein: 35, proteinMin: 30, proteinMax: 40 }, dish, rice, 0.8);
+  assert.ok(high.ratio > 0.8 && high.ratio <= 1.2 + 1e-9, String(high.ratio));
+  assert.equal(high.mode, "borne"); // même à 1,2, 700 kcal font plus de 40 g
+  // Sans haut de repère : un surplus ne bouge rien.
   assert.deepEqual(sideRatio({ kcal: 700, protein: 5, proteinMin: 4 }, dish, rice, 0.8), { ratio: 0.8, mode: "simple" });
-  // Il en manque : t = (0,15 − (60/700) × 1,2) / ((60/700) × 1,3 − 0,03) ≈ 0,58, entre 0,4 et 0,8.
-  const r = sideRatio({ kcal: 700, protein: 60, proteinMin: 56 }, dish, rice, 0.8);
-  assert.equal(r.mode, "cible");
-  const d = 700 / (dish.kcalG + r.ratio * rice.kcalG);
-  assert.ok(Math.abs(d * dish.proteinG + r.ratio * d * rice.proteinG - 60) < 0.01);
   // Plus de protéines que le plat seul n'en donne : le moins de riz permis (la moitié de la marmite).
   assert.deepEqual(sideRatio({ kcal: 700, protein: 120, proteinMin: 110 }, dish, rice, 0.8), { ratio: 0.4, mode: "borne" });
 });
-
 
 test("surplus : chaque boîte grossit du même facteur jusqu'à son plafond, le reste va aux autres", () => {
   // 10 + 5 unités, 3 de plus : facteur 1,2 → 12 et 6 ; la première plafonnée à 11 laisse 7 à la seconde.

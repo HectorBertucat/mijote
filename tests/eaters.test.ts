@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { gapOf, mealRef, meanGap, portionOf, portionUnits, type Eater } from "@/lib/eaters/core";
-import { assign, propose, type SlotIn, type WeekRecipe } from "@/lib/week/propose";
+import { compose, gapOf, mealRef, meanGap, portionOf, portionUnits, type Eater } from "@/lib/eaters/core";
+import { assign, propose, sideFactorOf, type SlotIn, type WeekRecipe } from "@/lib/week/propose";
 import { dayRefOf, weekNutrition } from "@/lib/week/nutrition";
 import { openDb } from "@/lib/db/open";
 import { foodTemplates, people, weighIns } from "@/lib/db/schema";
@@ -17,10 +17,11 @@ test("repère d'un repas : (cible du jour ± 150 − hors batch) / 2", () => {
   assert.deepEqual(sam.ref, { kcalMin: 650, kcalMax: 800, proteinMin: 40, proteinMax: 50 });
 });
 
-test("la part vise le milieu du repère, au demi près, dans ses bornes", () => {
-  // 150 kcal l'unité : 730 / 150 = 4,87 → 5 pour Alex ; 725 / 150 = 4,83 → 5 pour Sam
+test("la part tient les kcal, puis les protéines, puis vise le milieu, au demi près, dans ses bornes", () => {
+  // 150 kcal l'unité : 730 / 150 = 4,87 → 5 pour Alex (750 kcal, 60 g, dans le repère).
   assert.equal(portionUnits(alex, { kcalUnit: 150, proteinUnit: 12 }), 5);
-  assert.equal(portionUnits(sam, { kcalUnit: 150, proteinUnit: 12 }), 5);
+  // Sam : 5 u feraient 750 kcal mais 60 g pour 50 au plus ; 4,5 u restent dans ses kcal (675) avec 54 g.
+  assert.equal(portionUnits(sam, { kcalUnit: 150, proteinUnit: 12 }), 4.5);
   // plat riche (200 kcal/u) : Sam 3,5 u, Alex 3,5 u
   assert.equal(portionUnits(sam, { kcalUnit: 200, proteinUnit: 12 }), 3.5);
   assert.equal(portionUnits(alex, { kcalUnit: 200, proteinUnit: 12 }), 3.5);
@@ -150,4 +151,38 @@ test("repère fixe du profil (mode fixe) : prime sur la cible, et fait la journ�
   day = dayRefOf(b)!;
   assert.equal(day.kcalMin, 2 * 700 + 335);
   assert.equal(day.proteinMax, 2 * 68 + 43);
+});
+
+test("part composée : le riz à part glisse dans le sens qui corrige, entre ×0,5 et ×1,5 de la fiche", () => {
+  // 1 u = 150 kcal, 12 g, dont le riz à part : 60 kcal, 1,5 g.
+  const r = { kcalUnit: 150, proteinUnit: 12, side: { kcalUnit: 60, proteinUnit: 1.5 } };
+  // Alex tient son repère à la fiche : rien ne bouge.
+  assert.deepEqual(compose(alex, r), { units: 5, sideRatio: 1 });
+  // Petit gabarit peu protéiné (repère 30-38 g) : plus de riz et moins de plat, dans ses kcal.
+  const small: Eater = { ...alex, id: "s", baseUnits: 4, ref: { kcalMin: 550, kcalMax: 650, proteinMin: 30, proteinMax: 38 } };
+  const c = compose(small, r);
+  assert.ok(c.sideRatio > 1 && c.sideRatio <= 1.5, JSON.stringify(c));
+  assert.equal(c.why, "proteines-hautes");
+  const p = portionOf(small, r);
+  assert.equal(p.verdict!.kcal, "ok");
+  assert.ok(p.protein! < portionOf(small, { kcalUnit: 150, proteinUnit: 12 }).protein!, "moins de protéines qu'à la fiche");
+  // Grand appétit de protéines (repère 75-90 g) : moins de riz, plus de plat, jamais sous la moitié.
+  const big: Eater = { ...alex, id: "b", ref: { kcalMin: 700, kcalMax: 760, proteinMin: 75, proteinMax: 90 } };
+  const d = compose(big, r);
+  assert.ok(d.sideRatio < 1 && d.sideRatio >= 0.5, JSON.stringify(d));
+  assert.equal(d.why, "proteines-basses");
+  // Sans garniture à part (plat mélangé) : la fiche, seule la taille change.
+  assert.equal(compose(small, { kcalUnit: 150, proteinUnit: 12 }).sideRatio, 1);
+  // Sans repère : la part de base à la fiche.
+  assert.deepEqual(compose({ baseUnits: 4, ref: null }, r), { units: 4, sideRatio: 1 });
+});
+
+test("garniture à cuire : celle des parts servies plus le reste du plat, au vingtième de la fiche", () => {
+  const r = { servingsUnits: 20, factor: 1.5, side: { kcalUnit: 60, proteinUnit: 1.5 } };
+  // 30 u cuites, 28 servies avec 34 u de riz (parts composées), 2 de reste : 36 / 20 = 1,8.
+  assert.equal(sideFactorOf(r, { sideUsed: 34, unitsLeft: 2 }), 1.8);
+  // Arrondi au vingtième au-dessus : 30,5 / 20 = 1,525 → 1,55.
+  assert.equal(sideFactorOf(r, { sideUsed: 30.5, unitsLeft: 0 }), 1.55);
+  // Sans garniture à part : le multiplicateur du plat.
+  assert.equal(sideFactorOf({ ...r, side: null }, { sideUsed: 34, unitsLeft: 2 }), 1.5);
 });

@@ -133,7 +133,8 @@ function createShell(db: Db, slugs: string[], opts: ListOptions = {}) {
   rs.sort((a, b) => (order.get(a.slug) ?? 0) - (order.get(b.slug) ?? 0));
   const scales = Object.fromEntries(rs.filter((r) => opts.scales?.[r.slug] != null && opts.scales[r.slug] !== 1).map((r) => [r.slug, opts.scales![r.slug]]));
   const ingIds = new Set(ings.map((i) => i.id));
-  const extras = Object.fromEntries(Object.entries(opts.extras ?? {}).filter(([id, g]) => ingIds.has(id) && g > 0));
+  // Grammes ajoutés (paquet fini) ou retirés (garniture composée plus légère que la fiche).
+  const extras = Object.fromEntries(Object.entries(opts.extras ?? {}).filter(([id, g]) => ingIds.has(id) && g !== 0));
   db.insert(shoppingLists)
     .values({
       id: listId,
@@ -236,10 +237,10 @@ export async function planList(ings: Ing[], opts: PlanOptions = {}): Promise<Pla
   const entries: Entry[] = [];
   function add(key: string, label: string, grams: number | null, pieces: number | null, ing: Ing, pantry: boolean, prefs?: Prefs) {
     const { factor, extraG } = scaleOf(ing);
-    if (grams != null) grams = grams * factor + extraG;
+    if (grams != null) grams = Math.max(0, grams * factor + extraG);
     else if (extraG > 0) grams = extraG;
     if (pieces != null) pieces = factor === 1 ? pieces : Math.ceil(pieces * factor - 1e-6);
-    if (extraG > 0 && pieces != null && grams != null) pieces = null; // grammes ajoutés : on achète au poids
+    if (extraG !== 0 && pieces != null && grams != null) pieces = null; // grammes ajoutés ou retirés : on achète au poids
     const unit = pieces != null ? pieceUnit(ing.lineRaw) : null;
     entries.push({ key, label, grams, pieces, unit, pieceG: pieceGrams(ing.foodId, unit), ing, pantry, prefs });
   }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sideLabelOf } from "@/lib/week/selection";
 import { Suspense } from "react";
 import { buttonClass, Icon, Lanes, Scene } from "@/components/ui";
 import { DishBox } from "@/components/ui/dish";
@@ -45,8 +46,11 @@ export default async function Composer({ searchParams }: { searchParams: Promise
     .map((y) => {
       const factor = sel.scales[y.slug] ?? 1;
       const mine = Object.fromEntries(Object.entries(sel.extras).filter(([id]) => ingOwner.get(id) === y.id));
-      if (!Object.keys(mine).length) return { ...y, factor, extras: mine };
-      const n = scaledNutrition(ings.get(y.id) ?? [], y.servingsUnits, factor, mine);
+      // La garniture dosée selon les parts ne change pas la part type : chacun a déjà la sienne (compose).
+      const sideIds = new Set((ings.get(y.id) ?? []).filter((i) => i.side).map((i) => i.id));
+      const packs = Object.fromEntries(Object.entries(mine).filter(([id]) => !sideIds.has(id)));
+      if (!Object.keys(packs).length) return { ...y, factor, extras: mine };
+      const n = scaledNutrition(ings.get(y.id) ?? [], y.servingsUnits, factor, packs);
       return { ...y, factor, extras: mine, kcalUnit: n.perUnit.kcal, proteinUnit: n.perUnit.protein };
     });
   const est = selected.length ? estimateSession(selected) : null;
@@ -63,9 +67,15 @@ export default async function Composer({ searchParams }: { searchParams: Promise
 
   const toggle = (slug: string) => composerHref(picked.includes(slug) ? { ...sel, slugs: picked.filter((s) => s !== slug) } : { ...sel, slugs: [...picked, slug] });
   const withFactor = (slug: string, f: number) => composerHref({ ...sel, scales: { ...sel.scales, [slug]: f } });
+  // Nom court de la garniture cuite à part (« riz ») : la part de chacun se compose.
+  const sideOf = (rid: string) => {
+    const items = (ings.get(rid) ?? []).filter((i) => i.side).map((i) => i.item);
+    return items.length ? sideLabelOf(items) : null;
+  };
   const extraLines = Object.entries(sel.extras).map(([id, g]) => {
     const rid = ingOwner.get(id)!;
-    return { id, g, recipe: all.find((y) => y.id === rid)!, item: (ings.get(rid) ?? []).find((i) => i.id === id)?.item ?? "?" };
+    const ing = (ings.get(rid) ?? []).find((i) => i.id === id);
+    return { id, g, recipe: all.find((y) => y.id === rid)!, item: ing?.item ?? "?", side: !!ing?.side };
   });
   // Durée prévue par le planificateur pour chaque mode, aux unités choisies (déterministe, quelques ms).
   const plans: Partial<Record<SessionMode, SessionPlan>> = {};
@@ -188,7 +198,7 @@ export default async function Composer({ searchParams }: { searchParams: Promise
                             <Link href={`/recettes/${y.slug}`} className="font-bold leading-[1.25] underline-offset-4 hover:underline">
                               {y.name}
                             </Link>
-                            <PartMacros kcalUnit={y.kcalUnit} proteinUnit={y.proteinUnit} eaters={eaters} size="sm" />
+                            <PartMacros kcalUnit={y.kcalUnit} proteinUnit={y.proteinUnit} side={y.side} sideLabel={sideOf(y.id)} eaters={eaters} size="sm" />
                             {notFor.length > 0 && (
                               <p className="flex items-start gap-2 text-small text-warn-ink">
                                 <Icon name="alert" size="s" className="mt-[3px] shrink-0" />
@@ -211,7 +221,8 @@ export default async function Composer({ searchParams }: { searchParams: Promise
                     <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line py-4 text-small">
                       <Icon name="leaf" size="s" className="text-ink-2" />
                       <span className="min-w-0 flex-1">
-                        {e.recipe.name}&nbsp;: +{fmtG(e.g)} {e.item.split(/[,(]/)[0].toLowerCase()} pour finir le paquet (part recalculée)
+                        {e.recipe.name}&nbsp;: {e.g > 0 ? "+" : "−"}
+                        {fmtG(Math.abs(e.g))} {e.item.split(/[,(]/)[0].toLowerCase()} {e.side ? "dosé selon la part de chacun" : "pour finir le paquet (part recalculée)"}
                       </span>
                       <Link href={composerHref({ ...sel, extras: Object.fromEntries(Object.entries(sel.extras).filter(([id]) => id !== e.id)) })} scroll={false} className={buttonClass({ variant: "quiet", size: "sm" })}>
                         Retirer

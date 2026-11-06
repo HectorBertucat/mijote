@@ -3,18 +3,20 @@
 // dates limites et le rangement. Module pur (tests/boxes.test.ts).
 //
 // Règles :
-// - le rapport féculent / plat d'une portion est celui de la marmite tant que les protéines atteignent le
-//   bas du repère ; s'il en manque, moins de féculent et plus de plat (jusqu'à la moitié du rapport de la
-//   marmite). Jamais plus de féculent que la marmite : un surplus de protéines ne se compense pas par du
-//   féculent (sideRatio) ;
+// - le rapport féculent / plat d'une portion est celui de la marmite tant que les protéines tiennent le
+//   repère ; s'il en manque, moins de féculent et plus de plat ; s'il y en a trop, plus de féculent et
+//   moins de plat ; entre la moitié et une fois et demie la marmite, seulement dans le sens qui corrige
+//   (sideRatio, la même règle que la part de la Semaine : eaters/core.ts, compose) ;
 // - ce qui reste une fois chacun à sa part grossit chaque part d'autant, jusqu'au haut de son repère (fillUp) ;
 // - une boîte au frigo se garde les jours de conservation de la recette, au congélateur trois mois,
 //   décongelée jusqu'au lendemain.
 
+import { SIDE_RATIO_MAX, SIDE_RATIO_MIN } from "@/lib/eaters/core";
+
 export type SplitMode = "simple" | "cible" | "borne";
 
-/** Garniture / plat d'une personne : entre la moitié du rapport de la marmite et ce rapport. */
-export const SIDE_RATIO_MIN = 0.5;
+/** Garniture / plat d'une personne : entre la moitié et une fois et demie le rapport de la marmite (eaters/core.ts). */
+export { SIDE_RATIO_MAX, SIDE_RATIO_MIN };
 /** Une portion de marge n'est faite que s'il reste au moins 3/4 d'une part. */
 export const MARGIN_MIN_SHARE = 0.75;
 /** Au-delà de 3 % au-dessus des repères, le surplus reste « pour qui veut ». */
@@ -26,7 +28,6 @@ export const DEFAULT_FRIDGE_DAYS = 3;
 export const FREEZER_DAYS = 90;
 export const THAWED_DAYS = 1;
 
-const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
 /**
  * Une base cuite pour plusieurs recettes (le riz de deux recettes dans le même faitout), pesée en une
@@ -44,31 +45,43 @@ export function splitShared<K extends string>(totalG: number, shares: { key: K; 
   return Object.fromEntries(shares.map((s, i) => [s.key, out[i] * GRAM_STEP])) as Record<K, number>;
 }
 
+/** Quitter la proportion de la marmite coûte : 1 point (2 g de protéines d'écart) pour 0,2 de rapport. */
+const SIDE_DRIFT_COST = 5;
+
 /**
- * Rapport garniture / plat (en grammes) d'une boîte qui vise `target.kcal` : celui de la marmite si les
- * protéines atteignent `proteinMin`, sinon moins de garniture pour viser `protein` (le milieu), borné.
+ * Rapport garniture / plat (en grammes) d'une portion qui vise `target.kcal`, comme la part de la
+ * Semaine (eaters/core.ts, compose) : celui de la marmite tant que les protéines tiennent le repère ;
+ * s'il en manque, moins de garniture et plus de plat ; s'il y en a trop (`proteinMax`), plus de
+ * garniture et moins de plat. Entre la moitié et une fois et demie la marmite, seulement dans le sens
+ * qui corrige, et l'écart à la marmite coûte : on ne la quitte que pour un vrai gain.
  */
 export function sideRatio(
-  target: { kcal: number; protein: number; proteinMin: number },
+  target: { kcal: number; protein: number; proteinMin: number; proteinMax?: number | null },
   dish: { kcalG: number; proteinG: number },
   side: { kcalG: number; proteinG: number },
   potRatio: number
 ): { ratio: number; mode: SplitMode } {
-  const lo = potRatio * SIDE_RATIO_MIN;
-  // Densités en protéines par kcal : celle du mélange glisse de la garniture au plat quand le rapport baisse.
-  const q = target.protein / target.kcal;
-  const qd = dish.proteinG / dish.kcalG;
-  const qs = side.proteinG / side.kcalG;
-  if (!Number.isFinite(q) || !Number.isFinite(qd) || !Number.isFinite(qs) || !(potRatio > 0)) return { ratio: potRatio, mode: "simple" };
+  const ok = [dish.kcalG, dish.proteinG, side.kcalG, side.proteinG, target.kcal].every(Number.isFinite) && potRatio > 0 && dish.kcalG + side.kcalG > 0;
+  if (!ok) return { ratio: potRatio, mode: "simple" };
+  // Protéines d'une portion à `target.kcal` quand la garniture vaut t grammes par gramme de plat.
   const proteinAt = (t: number) => (target.kcal * (dish.proteinG + t * side.proteinG)) / (dish.kcalG + t * side.kcalG);
-  // Assez de protéines avec la proportion de la marmite, ou un plat pas plus protéiné que la garniture : on n'y touche pas.
-  if (proteinAt(potRatio) >= target.proteinMin || qd <= qs + 1e-6) return { ratio: potRatio, mode: "simple" };
-  // q = (pd + t·ps) / (kd + t·ks)  ⇔  t = (pd − q·kd) / (q·ks − ps)
-  const t = (dish.proteinG - q * dish.kcalG) / (q * side.kcalG - side.proteinG);
-  // Plus de protéines que le plat seul n'en donne : le moins de garniture permis.
-  if (!Number.isFinite(t) || t < 0) return { ratio: lo, mode: "borne" };
-  const bounded = clamp(t, lo, potRatio);
-  return { ratio: bounded, mode: Math.abs(bounded - t) > 1e-9 ? "borne" : "cible" };
+  const max = target.proteinMax ?? Infinity;
+  const gap = (p: number) => Math.max(0, p - max, target.proteinMin - p) / 2;
+  const p1 = proteinAt(potRatio);
+  // Dans le repère à la proportion de la marmite : on n'y touche pas.
+  if (gap(p1) === 0) return { ratio: potRatio, mode: "simple" };
+  const up = p1 > max; // trop de protéines : plus de garniture ; sinon moins
+  let best = { k: 1, cost: gap(p1) };
+  const n = Math.round((SIDE_RATIO_MAX - SIDE_RATIO_MIN) / 0.05);
+  for (let i = 0; i <= n; i++) {
+    const k = Math.round((SIDE_RATIO_MIN + i * 0.05) * 100) / 100;
+    if (up ? k <= 1 : k >= 1) continue;
+    const cost = gap(proteinAt(k * potRatio)) + Math.abs(k - 1) * SIDE_DRIFT_COST;
+    if (cost < best.cost - 1e-9 || (Math.abs(cost - best.cost) <= 1e-9 && Math.abs(k - 1) < Math.abs(best.k - 1))) best = { k, cost };
+  }
+  if (best.k === 1) return { ratio: potRatio, mode: "simple" };
+  const atBound = best.k <= SIDE_RATIO_MIN + 1e-9 || best.k >= SIDE_RATIO_MAX - 1e-9;
+  return { ratio: best.k * potRatio, mode: atBound && gap(proteinAt(best.k * potRatio)) > 0 ? "borne" : "cible" };
 }
 
 /**

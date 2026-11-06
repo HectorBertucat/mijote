@@ -41,21 +41,31 @@ export function targetsOf(db: Db, macros: { kcalUnit: number | null; proteinUnit
       kcalMax: e.ref?.kcalMax ?? null,
       protein: e.ref ? (e.ref.proteinMin + e.ref.proteinMax) / 2 : null,
       proteinMin: e.ref?.proteinMin ?? null,
+      proteinMax: e.ref?.proteinMax ?? null,
     };
   });
 }
 
 /** La marmite d'une recette, prête à peser : groupes et macros (× multiplicateur), foyer, repas prévus. */
-export function calcModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean; swaps?: Swap[] } = {}, now = new Date()): CalcModel | null {
+export function calcModel(db: Db, slug: string, opts: { scale?: number; cookedOn?: string; week?: boolean; swaps?: Swap[]; extras?: Record<string, number> } = {}, now = new Date()): CalcModel | null {
   const r = db.select().from(recipes).where(eq(recipes.slug, slug)).get();
   if (!r) return null;
   const scale = opts.scale ?? 1;
   const cookedOn = opts.cookedOn ?? todayParis(now);
-  const planner = loadPlannerRecipes(db, [slug], { [slug]: scale })[0];
+  // Grammes ajoutés ou retirés de la session (paquet fini, garniture dosée selon les parts) : ce qui a vraiment cuit.
+  const extras = opts.extras ?? {};
+  const planner = loadPlannerRecipes(db, [slug], { [slug]: scale }, extras)[0];
   const groups = serveGroups(planner, r.serveJson as ServeDecl[] | null);
   const bases = separableBases(planner, groups, r.serveJson as ServeDecl[] | null);
   // Un ingrédient remplacé en cuisinant (src/lib/feedback/swap.ts) : la nutrition suit l'aliment mis.
-  const ings = swapRows(db.select().from(recipeIngredients).where(eq(recipeIngredients.recipeId, r.id)).orderBy(asc(recipeIngredients.position)).all(), opts.swaps ?? []);
+  const rows = db
+    .select()
+    .from(recipeIngredients)
+    .where(eq(recipeIngredients.recipeId, r.id))
+    .orderBy(asc(recipeIngredients.position))
+    .all()
+    .map((i) => (i.grams != null && extras[i.id] ? { ...i, grams: Math.max(0, i.grams + extras[i.id] / scale) } : i));
+  const ings = swapRows(rows, opts.swaps ?? []);
   const nut = (idx: number[]) => computeNutrition(idx.map((n) => ings[n]).map((i) => ({ item: i.item, food: i.foodId, grams: i.grams, units: i.units, yield: i.yield })), 1);
   // Comme la fiche : sans 80 % des ingrédients connus, pas de kcal pour le partage.
   const known = nut(ings.map((i, n) => (i.optional ? -1 : n)).filter((n) => n >= 0)).coverage >= 0.8;
@@ -136,7 +146,7 @@ export function sessionReserves(db: Db, sessionId: string, now = new Date()): { 
   if (!s?.planJson) return null;
   const plan = s.planJson as SessionPlan;
   const cookedOn = cookedOnOf(s);
-  const models = plan.recipes.map((r) => calcModel(db, r.slug, { scale: r.scale, cookedOn, week: true }, now)).filter((m): m is CalcModel => m != null);
+  const models = plan.recipes.map((r) => calcModel(db, r.slug, { scale: r.scale, cookedOn, week: true, extras: plan.extras }, now)).filter((m): m is CalcModel => m != null);
   const saved: Record<string, SavedReserve> = {};
   for (const row of db.select().from(reserves).where(eq(reserves.sessionId, sessionId)).all()) {
     if (!row.recipeId) continue;
@@ -189,7 +199,7 @@ export function saveReserve(db: Db, sessionId: string, recipeId: string, input: 
   checkCounts(input.counts);
   checkCounts(input.freezer ?? {});
   const cookedOn = cookedOnOf(s);
-  const model = calcModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true, swaps: sessionSwaps(db, sessionId, recipeId) }, now)!;
+  const model = calcModel(db, r.slug, { scale: inPlan.scale, cookedOn, week: true, swaps: sessionSwaps(db, sessionId, recipeId), extras: (s.planJson as SessionPlan).extras }, now)!;
   const at = now.toISOString();
   const ids = new Set(model.people.map((p) => p.id));
   // `counts` : les portions restantes de chacun ; le total y ajoute celles déjà mangées.
@@ -700,7 +710,7 @@ export function ensureEstimates(db: Db, now = new Date()): number {
       const r = t.select().from(recipes).where(eq(recipes.id, recipeId)).get();
       const inPlan = r && planOf(s).find((x) => x.slug === r.slug);
       if (!r || !inPlan) continue;
-      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true, swaps: sessionSwaps(t, sessionId, recipeId) }, now);
+      const model = calcModel(t, r.slug, { scale: inPlan.scale, cookedOn: cookedOnOf(s), week: true, swaps: sessionSwaps(t, sessionId, recipeId), extras: (s.planJson as SessionPlan | null)?.extras }, now);
       if (!model) continue;
       const { groups, counts } = estimatedReserve(model, at);
       const id = randomUUID();

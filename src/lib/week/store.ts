@@ -10,7 +10,7 @@ import type { Db } from "@/lib/db/open";
 import { mealSlots, people, preferences, recipeIngredients, recipes, shoppingLists, weekPlans, weekRecipes } from "@/lib/db/schema";
 import { listRecipesWithSteps } from "@/lib/recipes/queries";
 import type { Ing } from "@/lib/shopping/build";
-import { assign, autoSize, defaultPlace, isFactor, NEXT_PLACE, propose, slotKey, swap, type Assignment, type Meal, type SlotIn, type WeekRecipe } from "./propose";
+import { assign, autoSize, defaultPlace, isFactor, NEXT_PLACE, propose, sideFactorOf, slotKey, swap, type Assignment, type Meal, type SlotIn, type WeekRecipe } from "./propose";
 import { clampDays, DEFAULT_DAYS, isClassicWeek, periodDays, remapPlaces, type PlanRef } from "./period";
 import { dislikeRules, exclusionsOf, type DislikeRule } from "./tastes";
 import { buildProfiles, lineResolver, totalResolver } from "./packs";
@@ -324,7 +324,7 @@ export function cyclePlace(db: Db, slotId: string): string | null {
 }
 
 /** La dernière liste de courses faite depuis cette semaine, et si la sélection a changé depuis. */
-export function weekList(db: Db, planId: string, sel: WeekSel[]) {
+export function weekList(db: Db, planId: string, sel: WeekSel[], cook: { slugs: string[]; scales: Record<string, number>; extras: Record<string, number> } = plainCook(sel)) {
   const l = db.select().from(shoppingLists).where(and(eq(shoppingLists.weekPlanId, planId), isNull(shoppingLists.archivedAt))).orderBy(desc(shoppingLists.createdAt)).limit(1).get();
   if (!l) return null;
   const same = (a: Record<string, number>, b: Record<string, number>) => {
@@ -332,9 +332,7 @@ export function weekList(db: Db, planId: string, sel: WeekSel[]) {
     const kb = Object.keys(b).filter((k) => b[k] !== 0 && b[k] !== 1);
     return ka.length === kb.length && ka.every((k) => a[k] === b[k]);
   };
-  const scales = Object.fromEntries(sel.filter((x) => x.factor !== 1).map((x) => [x.slug, x.factor]));
-  const extras = Object.assign({}, ...sel.map((x) => x.extras)) as Record<string, number>;
-  const changed = [...l.recipeSlugs].sort().join() !== sel.map((x) => x.slug).sort().join() || !same(l.recipeScales, scales) || !same(l.recipeExtras, extras);
+  const changed = [...l.recipeSlugs].sort().join() !== [...cook.slugs].sort().join() || !same(l.recipeScales, cook.scales) || !same(l.recipeExtras, cook.extras);
   const ordered = l.status === "ordered" || l.status === "paid";
   return { id: l.id, status: l.status, ordered, createdAt: l.createdAt, orderedAt: l.orderedAt, changed, building: l.buildTotal != null && (l.buildDone ?? 0) < l.buildTotal && !l.buildError };
 }
@@ -353,6 +351,43 @@ function selectedRecipes(db: Db, lib: LibRecipe[], sel: WeekSel[]) {
     return { ...r, kcalUnit: n.perUnit.kcal, proteinUnit: n.perUnit.protein, carbsUnit: n.perUnit.carbs, fatUnit: n.perUnit.fat, fiberUnit: n.perUnit.fiber };
   });
   return { selected, ings };
+}
+
+/** Ce qu'on cuit sans garniture composée : les multiplicateurs et les grammes ajoutés à la main. */
+const plainCook = (sel: WeekSel[]) => ({
+  slugs: sel.map((x) => x.slug),
+  scales: Object.fromEntries(sel.filter((x) => x.factor !== 1).map((x) => [x.slug, x.factor])),
+  extras: Object.assign({}, ...sel.map((x) => x.extras)) as Record<string, number>,
+});
+
+/** Grammes arrondis à 5 g, comme la balance. */
+const round5 = (g: number) => Math.round(g / 5) * 5;
+
+/**
+ * Ce qu'on cuit vraiment : le multiplicateur de chaque plat, et les grammes ajoutés (paquets finis,
+ * choisis à la main) plus l'écart de la garniture à part avec la fiche multipliée : la part de chacun
+ * en a sa propre dose (src/lib/eaters/core.ts, compose). Courses, Composer et session partent de là.
+ */
+export function cookUnits(selected: (WeekRecipe & { id: string })[], sel: WeekSel[], a: Pick<Assignment, "recipes">, ings: Map<string, Ing[]>) {
+  const { scales, extras } = plainCook(sel);
+  const sides: Record<string, number> = {};
+  for (const r of selected) {
+    const p = a.recipes.find((x) => x.slug === r.slug);
+    if (!p || !r.side) continue;
+    const sf = sideFactorOf(r, p);
+    sides[r.slug] = sf;
+    const f = r.factor ?? 1;
+    if (Math.abs(sf - f) < 1e-9) continue;
+    for (const i of ings.get(r.id) ?? []) {
+      if (!i.side || i.grams == null) continue;
+      const d = round5(i.grams * (sf - f));
+      // Jamais moins que rien : la ligne garde au moins 0 g.
+      const next = Math.max(-i.grams * f, (extras[i.id] ?? 0) + d);
+      if (next) extras[i.id] = next;
+      else delete extras[i.id];
+    }
+  }
+  return { slugs: sel.map((x) => x.slug), scales, extras, sides };
 }
 
 /** Tout ce que la page affiche : grille, recettes retenues avec leur répartition. */
@@ -376,6 +411,7 @@ export function weekView(db: Db, weekStart: string, days?: number) {
   }
   // La grille montre ce qui est en base ; la répartition recalculée sert aux cartes.
   const grid = w.slots.map((s) => ({ ...s, slug: s.recipeId ? slugById.get(s.recipeId) ?? null : null }));
+  const cook = cookUnits(selected, sel, a, ings);
   const extraLines = selected.flatMap((r) =>
     Object.entries(r.extras ?? {}).map(([id, g]) => ({ slug: r.slug, ingredientId: id, grams: g, item: (ings.get(r.id) ?? []).find((i) => i.id === id)?.item ?? "?" }))
   );
@@ -391,8 +427,9 @@ export function weekView(db: Db, weekStart: string, days?: number) {
     library: lib,
     tastes,
     extraLines,
-    list: weekList(db, w.planId, sel),
+    list: weekList(db, w.planId, sel, cook),
     ingredients: ings,
+    cook,
   };
 }
 

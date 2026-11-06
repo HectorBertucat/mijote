@@ -5,13 +5,13 @@ import { DishBox } from "@/components/ui/dish";
 import { dishRecipes } from "@/components/semaine/dishes";
 import { db } from "@/lib/db/client";
 import { catalogEnabled } from "@/lib/chronocatalog";
-import { addDays, COOK_DAY, MEAL_LABEL, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
+import { addDays, COOK_DAY, MEAL_LABEL, slotKey, stepFactor, unitsOf, type Meal } from "@/lib/week/propose";
 import { clampDays, defaultPeriod, isDay, neighbour, periodDays, periodHeading, periodLabel, weekdayOf } from "@/lib/week/period";
 import { missingIgnoredOf, periodPlans, weekView } from "@/lib/week/store";
 import { coverIgnored } from "@/lib/home/next";
 import { batchInPeriod } from "@/lib/reserve/batch";
 import { recentBatches } from "@/lib/reserve/store";
-import { composerHref } from "@/lib/week/selection";
+import { composerHref, factorLabel, sideLabelOf } from "@/lib/week/selection";
 import { joinFr } from "@/lib/week/tastes";
 import { estimateRecipe, estimateSession } from "@/lib/session/estimate";
 import { densityOf, fitBadge, fitRank, fitsAll, fitSummary, proteinDense, recipeFits, weekFit, type Served } from "@/lib/week/fit";
@@ -77,10 +77,16 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   };
   const est = selected.length ? estimateSession(selected) : null;
   const slugs = selected.map((r) => r.slug);
-  const scales = Object.fromEntries(selection.filter((x) => x.factor !== 1).map((x) => [x.slug, x.factor]));
-  const extras = Object.assign({}, ...selection.map((x) => x.extras)) as Record<string, number>;
+  // Nom court de la garniture cuite à part (« riz »), pour dire comment la part de chacun se compose.
+  const sideOf = (r: { id: string }) => {
+    const items = (view.ingredients.get(r.id) ?? []).filter((i) => i.side).map((i) => i.item);
+    const label = items.length ? sideLabelOf(items) : null;
+    return label ? `${label[0].toUpperCase()}${label.slice(1)}` : null;
+  };
+  // Ce qu'on cuit vraiment : multiplicateurs, grammes ajoutés et garniture dosée selon les parts.
+  const { scales, extras } = view.cook;
   // Durée prévue par le planificateur, aux unités choisies (comme le Composer).
-  const plan = selected.length ? buildPlan(db, { slugs, scales, mode: "solo" }) : null;
+  const plan = selected.length ? buildPlan(db, { slugs, scales, extras, mode: "solo" }) : null;
   const people = [...new Map(grid.map((s) => [s.personId, { id: s.personId, name: s.personName }])).values()].sort((x, y) => rankOf(x.id) - rankOf(y.id));
   const cell = (day: number, meal: Meal, personId: string) => grid.find((s) => s.day === day && s.meal === meal && s.personId === personId);
   const frozen = new Set(a.recipes.flatMap((r) => r.meals.filter((m) => m.frozen).flatMap((m) => m.personIds.map((p) => `${m.day}:${m.meal}:${p}`))));
@@ -95,7 +101,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
   const outside = new Map(eaters.filter((e) => e.outside).map((e) => [e.id, e.outsideByDay ?? e.outside!]));
   const nutrition = selected.length
     ? weekNutrition(
-        grid,
+        grid.map((s) => ({ ...s, sideRatio: a.sideBySlot.get(slotKey(s)) })),
         [...bySlug.values()], // grammes ajoutés : macros recalculées des recettes retenues
         people.map((p) => p.id),
         outside,
@@ -470,9 +476,14 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
                         <p className="num text-small text-ink-2">
                           {rp.unitsUsed}&nbsp;u mangées · {rp.unitsLeft > 0 ? `${rp.unitsLeft} u en trop${r.freezerOk ? ", au congélo" : ""}` : "rien ne reste"} · frigo {r.fridgeDays ?? 3}&nbsp;jours
                         </p>
+                        {view.cook.sides[rp.slug] != null && Math.abs(view.cook.sides[rp.slug] - factor) > 1e-9 && (
+                          <p className="num text-small text-ink-2">
+                            {sideOf(r)} {factorLabel(view.cook.sides[rp.slug])} la fiche, dosé selon la part de chacun
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <PartMacros kcalUnit={r.kcalUnit} proteinUnit={r.proteinUnit} eaters={eaters} className="lg:col-span-5" />
+                    <PartMacros kcalUnit={r.kcalUnit} proteinUnit={r.proteinUnit} side={r.side} sideLabel={sideOf(r)?.toLowerCase() ?? null} eaters={eaters} className="lg:col-span-5" />
                     <FactorStepper name={r.name} factor={factor} units={unitsOf(r)} dec={ctl(stepFactor(factor, -1))} inc={ctl(stepFactor(factor, 1))} className="justify-self-start lg:col-span-3 lg:justify-self-end" />
                     {added.map((x) => (
                       <form key={x.ingredientId} action={extraAction} className="flex flex-wrap items-center gap-x-4 gap-y-2 text-small lg:col-span-12">
@@ -493,7 +504,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             </ul>
             <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
               <HowTo>
-                <p>Les quantités se calent toutes seules sur les repas, jusqu’au double de la fiche&nbsp;; − et + pour forcer.</p>
+                <p>Les recettes choisies se partagent toute la semaine&nbsp;: les quantités se calent toutes seules sur les repas, jusqu’au triple de la fiche&nbsp;; − et + pour forcer.</p>
                 <p>La part de chacun suit sa cible&nbsp;: (cible du jour − ce qu’il mange hors batch) ÷ 2, au demi près.</p>
                 <p>Au-delà de la durée au frigo, le congélateur prend le relais si le plat le supporte.</p>
               </HowTo>

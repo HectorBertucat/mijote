@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { isDay, parsePeriod } from "@/lib/week/period";
-import { addRecipe, clearWeek, cyclePlace, loadSelection, loadWeek, proposeWeek, removeRecipe, setExtra, setFactor, setMissingIgnored, setPeriod, swapRecipe } from "@/lib/week/store";
+import { addRecipe, clearWeek, cyclePlace, loadSelection, loadWeek, proposeWeek, removeRecipe, setExtra, setFactor, setMissingIgnored, setPeriod, swapRecipe, weekView } from "@/lib/week/store";
 import { startShoppingList } from "@/lib/shopping/build";
 
 function weekOf(formData: FormData): string {
@@ -108,14 +108,10 @@ export async function extraAction(formData: FormData) {
 /** « Faire la liste de courses » depuis la semaine : la liste garde week_plan_id et les unités choisies. */
 export async function weekListAction(formData: FormData) {
   const w = weekOf(formData);
-  const { planId } = loadWeek(db, w);
-  const sel = loadSelection(db, planId);
-  if (!sel.length) back(w, "propose:");
-  const id = startShoppingList(db, sel.map((x) => x.slug), {
-    weekPlanId: planId,
-    scales: Object.fromEntries(sel.map((x) => [x.slug, x.factor])),
-    extras: Object.assign({}, ...sel.map((x) => x.extras)),
-  });
+  const view = weekView(db, w);
+  if (!view.selection.length) back(w, "propose:");
+  // Garniture dosée selon la part de chacun comprise (cookUnits).
+  const id = startShoppingList(db, view.cook.slugs, { weekPlanId: view.planId, scales: view.cook.scales, extras: view.cook.extras });
   revalidatePath("/courses");
   revalidatePath("/semaine");
   redirect(`/courses/${id}`);

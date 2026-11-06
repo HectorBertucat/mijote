@@ -81,7 +81,7 @@ test("présence par défaut : tout le monde mange à tous les repas, midi au bur
   assert.equal(units, 14 * 5 + 7 * 4);
 });
 
-test("quantités automatiques : les recettes choisies couvrent la semaine, jamais au-delà du double de la fiche", () => {
+test("quantités automatiques : les recettes choisies couvrent la semaine, jamais au-delà du triple de la fiche", () => {
   const slots = week();
   const congelables = library.filter((r) => r.freezerOk && r.servingsUnits >= 20).slice(0, 3);
   assert.equal(congelables.length, 3);
@@ -96,6 +96,23 @@ test("quantités automatiques : les recettes choisies couvrent la semaine, jamai
   const one = autoSize([congelables[0]], short);
   assert.ok((one[0].factor ?? 1) < 1, `facteur ${one[0].factor}`);
   assert.equal(assign(one, short).uncovered.length, 0);
+});
+
+test("quantités automatiques : deux recettes se partagent toute la semaine, même quand l'une n'est pas pour tout le monde", () => {
+  // Sam part le jeudi soir ; une recette non congelable que Sam ne mange pas, une congelable pour tous.
+  const slots = week();
+  const fresh = library.find((r) => !r.freezerOk && (r.fridgeDays ?? 3) >= 3 && r.servingsUnits >= 10)!;
+  const frozen = library.find((r) => r.freezerOk && r.slug !== fresh.slug && r.servingsUnits >= 10)!;
+  const excluded = new Map([[fresh.slug, new Set(["sam"])]]);
+  const sized = autoSize([fresh, frozen], slots, { excluded });
+  const a = assign(sized, slots, { excluded });
+  assert.equal(a.uncovered.length, 0, JSON.stringify(a.uncovered));
+  checkFridge(a);
+  // Les deux recettes servent, et il ne reste presque rien (au vingtième de fiche près).
+  for (const p of a.recipes) assert.ok(p.unitsUsed > 0, p.slug);
+  for (const [i, p] of a.recipes.entries()) assert.ok(p.unitsLeft <= sized[i].servingsUnits * 0.05 + 0.5, `${p.slug} reste ${p.unitsLeft}`);
+  // Sam ne mange jamais la recette exclue.
+  for (const m of a.recipes.find((p) => p.slug === fresh.slug)!.meals) assert.ok(!m.personIds.includes("sam"));
 });
 
 test("la semaine par défaut : 2 à 4 recettes, presque tout couvert, frigo respecté", () => {

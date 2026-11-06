@@ -24,15 +24,17 @@ test("repère de Sam : le shaker baisse ce qu'un repas doit apporter", () => {
   assert.deepEqual(sam.ref, { kcalMin: 550, kcalMax: 700, proteinMin: 36, proteinMax: 47 });
 });
 
-test("recette très protéinée : bien pour les deux, protéines au-dessus du repère sans gêne", () => {
+test("recette très protéinée : bien pour les deux, une part un peu plus petite (dans ses kcal) pour qui en a trop", () => {
   const a = recipeFit(alex, tikka);
   assert.equal(a.units, 5);
   assert.equal(a.kcal, 700);
   assert.equal(a.protein, 65);
   assert.equal(a.level, "bien");
   const s = recipeFit(sam, tikka);
-  assert.equal(s.units, 4.5);
-  assert.equal(s.protein, 59); // au-dessus de 47 : pas un défaut
+  // 4,5 u feraient 630 kcal et 59 g ; 4 u restent dans les kcal (560) et dépassent moins (52 g pour 47 au plus).
+  assert.equal(s.units, 4);
+  assert.equal(s.kcal, 560);
+  assert.equal(s.protein, 52); // au-dessus de 47 : pas un défaut
   assert.equal(s.level, "bien");
   // Une pastille verte seulement pour une recette qui se distingue (proteinDense) : sinon rien.
   assert.equal(fitBadge(recipeFits(both, tikka)), null);
@@ -161,7 +163,7 @@ test("trop riche pour Sam : un plat plus léger, vérifié pour Alex aussi", () 
 test("jour moyen : deux repas et le hors batch", () => {
   const w = weekFit([sam], [tikka]);
   const s = w.people[0];
-  assert.deepEqual(s.perDay, { kcal: 2 * 630 + 250, protein: 2 * 59 + 30 });
+  assert.deepEqual(s.perDay, { kcal: 2 * 560 + 250, protein: 2 * 52 + 30 });
 });
 
 test("atelier : les protéines pour 100 kcal qu'une recette doit apporter, dans le prompt", () => {

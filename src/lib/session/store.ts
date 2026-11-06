@@ -35,7 +35,7 @@ export function loadPlannerRecipes(db: Db, slugs: string[], scales: Record<strin
       scale: scales[r.slug] ?? 1,
       ingredients: ings
         .filter((i) => i.recipeId === r.id)
-        .map((i) => ({ id: i.id, item: i.item, grams: i.grams != null && extras[i.id] ? i.grams + extras[i.id] / (scales[r.slug] ?? 1) : i.grams, units: i.units, group: i.group, optional: i.optional, pantry: i.pantry, foodId: i.foodId, side: i.side })),
+        .map((i) => ({ id: i.id, item: i.item, grams: i.grams != null && extras[i.id] ? Math.max(0, i.grams + extras[i.id] / (scales[r.slug] ?? 1)) : i.grams, units: i.units, group: i.group, optional: i.optional, pantry: i.pantry, foodId: i.foodId, side: i.side })),
       steps: steps
         .filter((s) => s.recipeId === r.id)
         .map((s) => ({

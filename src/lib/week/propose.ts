@@ -22,7 +22,7 @@
 //   (`taste`, src/lib/feedback/core.ts) ;
 // - une recette et sa variante (même famille, recipes.parent_id) ne vont jamais ensemble.
 import { estimateSession, estimateRecipe, type RecipeLike } from "@/lib/session/estimate";
-import { gapOf, meanGap, portionUnits, type Eater } from "@/lib/eaters/core";
+import { compose, gapOf, meanGap, portionUnits, type Eater, type SideMacros } from "@/lib/eaters/core";
 import { selectionWaste, wastePenalty, type PackProfiles, type WasteLine } from "./waste";
 import { dayString } from "@/lib/days";
 
@@ -43,6 +43,8 @@ export interface WeekRecipe extends RecipeLike {
   freezerOk: boolean;
   kcalUnit: number | null;
   proteinUnit: number | null;
+  /** Garniture cuite à part (riz, semoule), par unité de la fiche : la part de chacun se compose. */
+  side?: SideMacros | null;
   status?: string;
   /** Famille (recipes.parent_id) : une recette et sa variante ne vont pas ensemble. */
   id?: string;
@@ -140,11 +142,14 @@ export interface RecipePlan {
   unitsUsed: number;
   unitsLeft: number;
   frozenUnits: number;
+  /** Garniture à part servie, en unités de la fiche (unités × rapport de chacun) ; = unitsUsed sans garniture. */
+  sideUsed: number;
 }
 
 export interface Assignment {
   bySlot: Map<string, string>; // clé de créneau (jour:repas:personne) → slug
   unitsBySlot: Map<string, number>; // clé de créneau → unités servies
+  sideBySlot: Map<string, number>; // clé de créneau → rapport de garniture (1 = la fiche)
   recipes: RecipePlan[];
   uncovered: SlotIn[];
   neededUnits: number;
@@ -162,16 +167,22 @@ const present = (s: SlotIn) => s.place !== "away";
  * d'abord ce qui se garde le moins (frigo le plus court, non congelable), et on
  * évite le même plat midi et soir d'un même jour quand il y a le choix.
  */
-export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreContext, "excluded" | "eaters"> = {}): Assignment {
-  const left = new Map(recipes.map((r) => [r.slug, unitsOf(r)]));
-  const plans = new Map<string, RecipePlan>(recipes.map((r) => [r.slug, { slug: r.slug, meals: [], unitsUsed: 0, unitsLeft: unitsOf(r), frozenUnits: 0 }]));
+export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreContext, "excluded" | "eaters"> & { demand?: boolean } = {}): Assignment {
+  // `demand` : quantités illimitées, les repas se partagent à parts égales (au prorata de la fiche) ;
+  // sert à autoSize pour savoir combien cuire de chaque recette.
+  const supply = (r: WeekRecipe) => (ctx.demand ? Infinity : unitsOf(r));
+  const left = new Map(recipes.map((r) => [r.slug, supply(r)]));
+  const plans = new Map<string, RecipePlan>(recipes.map((r) => [r.slug, { slug: r.slug, meals: [], unitsUsed: 0, unitsLeft: supply(r), frozenUnits: 0, sideUsed: 0 }]));
+  const load = (r: WeekRecipe) => plans.get(r.slug)!.unitsUsed / Math.max(1, r.servingsUnits);
   const allowed = (r: WeekRecipe, people: SlotIn[]) => !people.some((x) => ctx.excluded?.get(r.slug)?.has(x.personId));
   const bySlot = new Map<string, string>();
   const unitsBySlot = new Map<string, number>();
-  const unitsFor = (x: SlotIn, r: WeekRecipe) => {
+  const sideBySlot = new Map<string, number>();
+  const partOf = (x: SlotIn, r: WeekRecipe) => {
     const e = ctx.eaters?.get(x.personId);
-    return e ? portionUnits(e, r) : x.portionUnits;
+    return e ? compose(e, r) : { units: x.portionUnits, sideRatio: 1 };
   };
+  const unitsFor = (x: SlotIn, r: WeekRecipe) => partOf(x, r).units;
   const needOf = (r: WeekRecipe, people: SlotIn[]) => people.reduce((s, x) => s + unitsFor(x, r), 0);
   const uncovered: SlotIn[] = [];
   const eaten = slots.filter(present);
@@ -193,6 +204,8 @@ export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreCo
     const rank = (r: WeekRecipe, people: SlotIn[]) => {
       const how = eligible(r);
       if (!how || (left.get(r.slug) ?? 0) < needOf(r, people) - 1e-9 || !allowed(r, people)) return null;
+      // À la demande, l'ordre de consommation n'a plus d'objet (tout est assez) : on équilibre.
+      if (ctx.demand) return [how === "fresh" ? 0 : 1, sameDay.get(day)?.has(r.slug) ? 1 : 0, load(r), how === "fresh" ? fridgeOf(r) : 0, r.freezerOk ? 1 : 0];
       return [
         how === "fresh" ? 0 : 1,
         sameDay.get(day)?.has(r.slug) ? 1 : 0,
@@ -223,14 +236,26 @@ export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreCo
         frozenUnits += units;
       }
       for (const x of people) {
+        const c = partOf(x, r);
         bySlot.set(slotKey(x), r.slug);
-        unitsBySlot.set(slotKey(x), unitsFor(x, r));
+        unitsBySlot.set(slotKey(x), c.units);
+        sideBySlot.set(slotKey(x), c.sideRatio);
+        p.sideUsed += c.units * c.sideRatio;
       }
       sameDay.set(day, new Set([...(sameDay.get(day) ?? []), r.slug]));
     };
 
     const together = pick(group);
-    if (together) {
+    // Quelqu'un préférerait un plat qu'un autre convive ne mange pas (goûts) : chacun le sien,
+    // sinon ce plat ne sert jamais aux repas pris ensemble.
+    const apart =
+      together &&
+      group.length > 1 &&
+      group.some((x) => {
+        const own = pick([x]);
+        return own && own !== together && !allowed(own, group);
+      });
+    if (together && !apart) {
       serve(together, group);
       continue;
     }
@@ -243,7 +268,7 @@ export function assign(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreCo
   }
 
   const coveredUnits = neededUnits - uncovered.reduce((s, x) => s + x.portionUnits, 0);
-  return { bySlot, unitsBySlot, recipes: recipes.map((r) => plans.get(r.slug)!), uncovered, neededUnits, coveredUnits, frozenUnits };
+  return { bySlot, unitsBySlot, sideBySlot, recipes: recipes.map((r) => plans.get(r.slug)!), uncovered, neededUnits, coveredUnits, frozenUnits };
 }
 
 function cmp(a: number[], b: number[]) {
@@ -362,42 +387,83 @@ export function swap(library: WeekRecipe[], slots: SlotIn[], current: string[], 
 
 // ─── Quantités automatiques ───
 
-/** Multiplicateur le plus haut choisi tout seul : au-delà, une marmite déborde des récipients d'une cuisine courante. */
-export const AUTO_MAX_FACTOR = 2;
+/** Multiplicateur le plus haut choisi tout seul (le haut des pas de FACTORS) : au-delà, la session déborde même en fournées. */
+export const AUTO_MAX_FACTOR = FACTORS[FACTORS.length - 1];
+/** Le plus bas : en dessous, une recette ne vaut plus une place dans la session. */
+export const AUTO_MIN_FACTOR = FACTORS[0];
+/** Finesse du multiplicateur calculé : au vingtième de la fiche (×1,35). */
+const AUTO_PER = 20;
+/** Au vingtième au-dessus, entre les bornes, sans reste flottant (1,15 et non 1,1500000000000001). */
+const roundUp = (f: number) => Math.min(AUTO_MAX_FACTOR, Math.max(AUTO_MIN_FACTOR, Math.ceil(f * AUTO_PER - 1e-9) / AUTO_PER));
 
 /**
- * Les unités à cuire de recettes choisies à la main : le multiplicateur de chacune (pas de FACTORS,
- * jusqu'à AUTO_MAX_FACTOR) qui couvre le plus de repas avec le moins de reste. Un reste qui se
- * congèle coûte peu (c'est de la marge), un reste qui ne se congèle pas coûte plus. Recherche
- * gloutonne : un pas à la fois sur la recette qui améliore le plus, jusqu'à ne plus rien gagner.
+ * Les unités à cuire de recettes choisies à la main : ce sont les recettes qui se partagent la
+ * semaine, pas leur fiche qui la borne.
+ * 1. On répartit les repas comme si chaque recette était illimitée (assign « à la demande ») :
+ *    frigo, congélateur et goûts respectés, le même plat évité midi et soir, et le reste partagé
+ *    à parts égales au prorata de la fiche.
+ * 2. Chaque recette cuit ce que mangent ses repas (au vingtième de la fiche près, de AUTO_MIN_FACTOR
+ *    à AUTO_MAX_FACTOR).
+ * 3. Contrôle avec la vraie répartition : un repas resté sans plat fait monter la recette qui peut
+ *    le servir ; puis chaque recette redescend à ce qu'on en mange, tant que rien ne se découvre.
+ * Un repas que personne ne peut servir (au-delà du frigo sans recette congelable, goûts) le reste.
  */
 export function autoSize(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreContext, "excluded" | "eaters"> = {}): WeekRecipe[] {
   if (!recipes.length) return recipes;
-  const steps = FACTORS.filter((f) => f <= AUTO_MAX_FACTOR);
-  const cost = (rs: WeekRecipe[]) => {
-    const a = assign(rs, slots, ctx);
-    const unused = a.recipes.reduce((s, p) => s + (p.unitsUsed === 0 ? 1 : 0), 0);
-    const left = a.recipes.reduce((s, p, i) => s + p.unitsLeft * (rs[i].freezerOk ? 0.15 : 1), 0);
-    return (a.neededUnits - a.coveredUnits) * 10 + left + unused * 20;
-  };
-  let cur: WeekRecipe[] = recipes.map((r) => ({ ...r, factor: 1 }));
-  let best = cost(cur);
-  for (let guard = 0; guard < 40; guard++) {
-    let move: { rs: WeekRecipe[]; c: number } | null = null;
-    for (let i = 0; i < cur.length; i++) {
-      for (const dir of [1, -1] as const) {
-        const f = stepFactor(cur[i].factor ?? 1, dir);
-        if (f === cur[i].factor || !steps.includes(f as (typeof FACTORS)[number])) continue;
-        const rs = cur.map((r, j) => (j === i ? { ...r, factor: f } : r));
-        const c = cost(rs);
-        if (c < (move?.c ?? best) - 1e-9) move = { rs, c };
-      }
+  const plan = assign(recipes, slots, { ...ctx, demand: true });
+  const used = new Map(plan.recipes.map((p) => [p.slug, p.unitsUsed]));
+  let cur: WeekRecipe[] = recipes.map((r) => ({ ...r, factor: roundUp((used.get(r.slug) ?? 0) / Math.max(1, r.servingsUnits)) }));
+  const at = (rs: WeekRecipe[]) => assign(rs, slots, ctx);
+  let a = at(cur);
+
+  // 3a. Combler : un repas non couvert fait grossir la recette la moins chargée qui pouvait le servir.
+  const hopeless = new Set(plan.uncovered.map(slotKey));
+  for (let guard = 0; guard < 60 && a.uncovered.some((s) => !hopeless.has(slotKey(s))); guard++) {
+    const s = a.uncovered.find((x) => !hopeless.has(slotKey(x)))!;
+    const n = daysAfterSession(s.day);
+    const fits = cur
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => (r.factor ?? 1) < AUTO_MAX_FACTOR - 1e-9 && (n <= fridgeOf(r) || r.freezerOk) && !ctx.excluded?.get(r.slug)?.has(s.personId))
+      .sort((x, y) => (x.r.factor ?? 1) - (y.r.factor ?? 1) || x.r.slug.localeCompare(y.r.slug));
+    if (!fits.length) break;
+    const { r, i } = fits[0];
+    const need = ctx.eaters?.get(s.personId) ? portionUnits(ctx.eaters.get(s.personId)!, r) : s.portionUnits;
+    const next = cur.map((x, j) => (j === i ? { ...x, factor: roundUp((x.factor ?? 1) + need / Math.max(1, x.servingsUnits)) } : x));
+    const b = at(next);
+    if (b.coveredUnits <= a.coveredUnits + 1e-9 && b.uncovered.length >= a.uncovered.length) {
+      // Pas mieux : ce repas ne se couvre pas de cette façon, on n'insiste pas.
+      hopeless.add(slotKey(s));
+      continue;
     }
-    if (!move) break;
-    cur = move.rs;
-    best = move.c;
+    cur = next;
+    a = b;
+  }
+
+  // 3b. Ajuster : chaque recette redescend à ce qu'on en mange, si rien ne se découvre.
+  for (let i = 0; i < cur.length; i++) {
+    const p = a.recipes[i];
+    const f = roundUp(p.unitsUsed / Math.max(1, cur[i].servingsUnits));
+    if (f >= (cur[i].factor ?? 1) - 1e-9) continue;
+    const next = cur.map((x, j) => (j === i ? { ...x, factor: f } : x));
+    const b = at(next);
+    if (b.coveredUnits >= a.coveredUnits - 1e-9) {
+      cur = next;
+      a = b;
+    }
   }
   return cur;
+}
+
+/**
+ * Garniture à cuire (riz, semoule à part), en multiplicateur de la fiche : celle des repas servis,
+ * au rapport de chacun, plus le reste du plat à la fiche ; au vingtième au-dessus. Sans garniture
+ * à part : le multiplicateur du plat.
+ */
+export function sideFactorOf(r: Pick<WeekRecipe, "side" | "factor" | "servingsUnits">, p: Pick<RecipePlan, "sideUsed" | "unitsLeft">): number {
+  const f = r.factor ?? 1;
+  if (!r.side || r.servingsUnits <= 0) return f;
+  const units = p.sideUsed + Math.max(0, p.unitsLeft);
+  return Math.ceil((units / r.servingsUnits) * AUTO_PER - 1e-9) / AUTO_PER;
 }
 
 /** Protéine principale (pour l'affichage). */
