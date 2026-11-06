@@ -405,7 +405,9 @@ const roundUp = (f: number) => Math.min(AUTO_MAX_FACTOR, Math.max(AUTO_MIN_FACTO
  * 2. Chaque recette cuit ce que mangent ses repas (au vingtième de la fiche près, de AUTO_MIN_FACTOR
  *    à AUTO_MAX_FACTOR).
  * 3. Contrôle avec la vraie répartition : un repas resté sans plat fait monter la recette qui peut
- *    le servir ; puis chaque recette redescend à ce qu'on en mange, tant que rien ne se découvre.
+ *    le servir ; si elle est au plafond, une autre qui peut servir plus tôt grossit et lui laisse ses
+ *    parts pour la fin de période (relais) ; puis chaque recette redescend à ce qu'on en mange, tant
+ *    que rien ne se découvre.
  * Un repas que personne ne peut servir (au-delà du frigo sans recette congelable, goûts) le reste.
  */
 export function autoSize(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<ScoreContext, "excluded" | "eaters"> = {}): WeekRecipe[] {
@@ -439,7 +441,25 @@ export function autoSize(recipes: WeekRecipe[], slots: SlotIn[], ctx: Pick<Score
     a = b;
   }
 
-  // 3b. Ajuster : chaque recette redescend à ce qu'on en mange, si rien ne se découvre.
+  // 3b. Relais : un plat au plafond ne couvre plus la fin de période ; un autre qui peut servir plus
+  // tôt grossit d'un repas à la fois et lui laisse ses parts pour plus tard, tant que ça couvre plus.
+  for (let guard = 0; guard < 60 && a.uncovered.length; guard++) {
+    let move: { rs: WeekRecipe[]; b: Assignment } | null = null;
+    for (let i = 0; i < cur.length; i++) {
+      const r = cur[i];
+      if ((r.factor ?? 1) >= AUTO_MAX_FACTOR - 1e-9) continue;
+      // Un repas de plus : la plus grosse part de base du foyer.
+      const meal = Math.max(...slots.map((x) => x.portionUnits), 1);
+      const rs = cur.map((x, j) => (j === i ? { ...x, factor: roundUp((x.factor ?? 1) + meal / Math.max(1, x.servingsUnits)) } : x));
+      const b = at(rs);
+      if (b.coveredUnits > (move?.b.coveredUnits ?? a.coveredUnits) + 1e-9) move = { rs, b };
+    }
+    if (!move) break;
+    cur = move.rs;
+    a = move.b;
+  }
+
+  // 3c. Ajuster : chaque recette redescend à ce qu'on en mange, si rien ne se découvre.
   for (let i = 0; i < cur.length; i++) {
     const p = a.recipes[i];
     const f = roundUp(p.unitsUsed / Math.max(1, cur[i].servingsUnits));
