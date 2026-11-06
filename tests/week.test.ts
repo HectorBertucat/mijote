@@ -115,6 +115,24 @@ test("quantités automatiques : deux recettes se partagent toute la semaine, mê
   for (const m of a.recipes.find((p) => p.slug === fresh.slug)!.meals) assert.ok(!m.personIds.includes("sam"));
 });
 
+test("quantités automatiques : un plat au plafond, l'autre prend le relais là où il peut servir", () => {
+  // Tout le monde mange tous les repas ; une recette non congelable que Sam ne mange pas (J+1 à J+3),
+  // une petite recette congelable qui plafonne au triple de sa fiche.
+  const slots = week(() => "home");
+  const fresh = library.find((r) => !r.freezerOk && (r.fridgeDays ?? 3) >= 3 && r.servingsUnits >= 10)!;
+  const frozen = { ...library.find((r) => r.freezerOk && r.slug !== fresh.slug)!, servingsUnits: 20 };
+  const excluded = new Map([[fresh.slug, new Set(["sam"])]]);
+  const sized = autoSize([fresh, frozen], slots, { excluded });
+  const a = assign(sized, slots, { excluded });
+  checkFridge(a);
+  assert.equal(sized[1].factor, AUTO_MAX_FACTOR, "la congelable est au plafond");
+  // Le plat frais sert tous les repas d'Alex qu'il peut servir (frigo), pour laisser la congelable à la fin.
+  const fridge = fresh.fridgeDays ?? 3;
+  const alexEarly = slots.filter((x) => x.personId === "alex" && daysAfterSession(x.day) <= fridge).length;
+  const served = a.recipes.find((p) => p.slug === fresh.slug)!.meals.length;
+  assert.equal(served, alexEarly);
+});
+
 test("la semaine par défaut : 2 à 4 recettes, presque tout couvert, frigo respecté", () => {
   const p = propose(library, week());
   assert.ok(p);
