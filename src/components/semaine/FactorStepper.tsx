@@ -9,7 +9,7 @@ import { Stepper } from "@/components/ui";
 
 export type Control = ({ href: string } | { action: (fd: FormData) => Promise<void>; fields: Record<string, string> }) & { to: number };
 
-const label = (f: number) => `×${String(f).replace(".", ",")}`;
+const label = (f: number) => `×${f.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}`;
 
 export function FactorStepper({ name, factor, units, dec, inc, className = "" }: { name: string; factor: number; units: number; dec: Control | null; inc: Control | null; className?: string }) {
   const router = useRouter();

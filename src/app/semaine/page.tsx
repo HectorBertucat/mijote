@@ -458,7 +458,7 @@ export default async function Semaine({ searchParams }: { searchParams: Promise<
             </ul>
             <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
               <HowTo>
-                <p>Les quantités se calent toutes seules sur les repas, jusqu’au double de la fiche&nbsp;; − et + pour forcer.</p>
+                <p>Les recettes choisies se partagent toute la semaine&nbsp;: les quantités se calent toutes seules sur les repas, jusqu’au triple de la fiche&nbsp;; − et + pour forcer.</p>
                 <p>La part de chacun suit sa cible&nbsp;: (cible du jour − ce qu’il mange hors batch) ÷ 2, au demi près.</p>
                 <p>Au-delà de la durée au frigo, le congélateur prend le relais si le plat le supporte.</p>
               </HowTo>
